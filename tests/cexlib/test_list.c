@@ -1,7 +1,7 @@
 #include <cex/cextest/cextest.h>
 #include <cex/cex.h>
-#include <cex/cexlib/dlist.c>
-#include <cex/cexlib/dlist.h>
+#include <cex/cexlib/list.c>
+#include <cex/cexlib/list.h>
 #include <cex/cexlib/allocators.c>
 #include <stdio.h>
 
@@ -29,41 +29,41 @@ ATEST_SETUP_F(void)
  *
  */
 
-ATEST_F(test_dlist_alloc_capacity)
+ATEST_F(testlist_alloc_capacity)
 {
     // 4 is minimum
-    atassert_eql(4, _dlist__alloc_capacity(1));
-    atassert_eql(4, _dlist__alloc_capacity(2));
-    atassert_eql(4, _dlist__alloc_capacity(3));
-    atassert_eql(4, _dlist__alloc_capacity(4));
+    atassert_eql(4, list__alloc_capacity(1));
+    atassert_eql(4, list__alloc_capacity(2));
+    atassert_eql(4, list__alloc_capacity(3));
+    atassert_eql(4, list__alloc_capacity(4));
 
     // up to 1024 grow with factor of 2
-    atassert_eql(8, _dlist__alloc_capacity(5));
-    atassert_eql(16, _dlist__alloc_capacity(12));
-    atassert_eql(64, _dlist__alloc_capacity(45));
-    atassert_eql(1024, _dlist__alloc_capacity(1023));
+    atassert_eql(8, list__alloc_capacity(5));
+    atassert_eql(16, list__alloc_capacity(12));
+    atassert_eql(64, list__alloc_capacity(45));
+    atassert_eql(1024, list__alloc_capacity(1023));
 
     // after 1024 increase by 20%
-    atassert_eql(1024 * 1.2, _dlist__alloc_capacity(1024));
-    atassert_eql(1000000 * 1.2, _dlist__alloc_capacity(1000000));
+    atassert_eql(1024 * 1.2, list__alloc_capacity(1024));
+    atassert_eql(1000000 * 1.2, list__alloc_capacity(1000000));
 
     return NULL;
 }
 
-ATEST_F(test_dlist_new)
+ATEST_F(testlist_new)
 {
     const Allocator_c* allocator = AllocatorHeap_new();
-    dlist$define(int) a;
+    list$define(int) a;
 
-    except_traceback(err, dlist$new(&a, 5, allocator))
+    except_traceback(err, list$new(&a, 5, allocator))
     {
-        atassert(false && "dlist$new fail");
+        atassert(false && "list$new fail");
     }
 
     atassert(a.arr != NULL);
     atassert_eqi(a.count, 0);
 
-    dlist_head_s* head = (dlist_head_s*)((char*)a.arr - sizeof(dlist_head_s));
+    list_head_s* head = (list_head_s*)((char*)a.arr - sizeof(list_head_s));
     atassert_eqi(head->header.magic, 0x1eed);
     atassert_eqi(head->header.elalign, alignof(int));
     atassert_eqi(head->header.elsize, sizeof(int));
@@ -77,14 +77,14 @@ ATEST_F(test_dlist_new)
     return NULL; // Every ATEST_F() must return NULL to succeed!
 }
 
-ATEST_F(test_dlist_append)
+ATEST_F(testlist_append)
 {
     const Allocator_c* allocator = AllocatorHeap_new();
-    dlist$define(int) a;
+    list$define(int) a;
 
-    except_traceback(err, dlist$new(&a, 4, allocator))
+    except_traceback(err, list$new(&a, 4, allocator))
     {
-        atassert(false && "dlist$new fail");
+        atassert(false && "list$new fail");
     }
 
     // adding new elements into the end
@@ -92,7 +92,7 @@ ATEST_F(test_dlist_append)
         atassert_eqs(EOK, dlist.append(&a, &i));
     }
     atassert_eqi(a.count, 4);
-    dlist_head_s* head = _dlist__head((dlist_c*)&a);
+    list_head_s* head = list__head((list_c*)&a);
     atassert_eqi(head->count, 4);
     atassert_eqi(head->capacity, 4);
 
@@ -112,7 +112,7 @@ ATEST_F(test_dlist_append)
     }
 
     atassert_eqi(a.count, 8);
-    head = _dlist__head((dlist_c*)&a);
+    head = list__head((list_c*)&a);
     atassert_eqi(head->count, 8);
     atassert_eqi(head->capacity, 8);
 
@@ -122,23 +122,23 @@ ATEST_F(test_dlist_append)
     return NULL; // Every ATEST_F() must return NULL to succeed!
 }
 
-ATEST_F(test_dlist_extend)
+ATEST_F(testlist_extend)
 {
     const Allocator_c* allocator = AllocatorHeap_new();
 
-    dlist$define(int) a;
-    except_traceback(err, dlist$new(&a, 4, allocator))
+    list$define(int) a;
+    except_traceback(err, list$new(&a, 4, allocator))
     {
-        atassert(false && "dlist$new fail");
+        atassert(false && "list$new fail");
     }
 
     int arr[4] = { 0, 1, 2, 3 };
     // a.arr = arr;
     // a.count = 1;
 
-    atassert_eqs(EOK, dlist.extend(&a, arr, len(arr)));
+    atassert_eqs(EOK, dlist.extend(&a, arr, arr$len(arr)));
     atassert_eqi(a.count, 4);
-    dlist_head_s* head = _dlist__head((dlist_c*)&a);
+    list_head_s* head = list__head((list_c*)&a);
     atassert_eqi(head->count, 4);
     atassert_eqi(head->capacity, 4);
 
@@ -149,7 +149,7 @@ ATEST_F(test_dlist_extend)
 
     int arr2[4] = { 4, 5, 6, 7 };
     // triggers resize
-    atassert_eqs(EOK, dlist.extend(&a, arr2, len(arr2)));
+    atassert_eqs(EOK, dlist.extend(&a, arr2, arr$len(arr2)));
 
     // validate appended values
     for (u32 i = 0; i < a.count; i++) {
@@ -157,7 +157,7 @@ ATEST_F(test_dlist_extend)
     }
 
     atassert_eqi(a.count, 8);
-    head = _dlist__head((dlist_c*)&a);
+    head = list__head((list_c*)&a);
     atassert_eqi(head->count, 8);
     atassert_eqi(head->capacity, 8);
 
@@ -167,14 +167,14 @@ ATEST_F(test_dlist_extend)
     return NULL; // Every ATEST_F() must return NULL to succeed!
 }
 
-ATEST_F(test_dlist_iterator)
+ATEST_F(testlist_iterator)
 {
     const Allocator_c* allocator = AllocatorHeap_new();
 
-    dlist$define(int) a;
-    except_traceback(err, dlist$new(&a,  4, allocator))
+    list$define(int) a;
+    except_traceback(err, list$new(&a,  4, allocator))
     {
-        atassert(false && "dlist$new fail");
+        atassert(false && "list$new fail");
     }
 
     u32 nit = 0;
@@ -187,7 +187,7 @@ ATEST_F(test_dlist_iterator)
 
     int arr[4] = { 0, 1, 2, 300 };
     nit = 0;
-    for$array(it, arr, len(arr))
+    for$array(it, arr, arr$len(arr))
     {
         atassert_eqi(it.idx, nit);
         atassert_eqi(*it.val, arr[nit]);
@@ -204,7 +204,7 @@ ATEST_F(test_dlist_iterator)
         { .foo = 2 },
     };
     nit = 0;
-    for$array(it, tarr, len(tarr))
+    for$array(it, tarr, arr$len(tarr))
     {
         atassert_eqi(it.idx, nit);
         atassert_eqi(it.val->foo, nit+1);
@@ -213,14 +213,14 @@ ATEST_F(test_dlist_iterator)
     atassert_eqi(nit, 2);
 
     nit = 0;
-    for$array(it, tarr, len(tarr))
+    for$array(it, tarr, arr$len(tarr))
     {
         atassert_eqi(it.idx, nit);
         atassert_eqi(it.val->foo, nit+1);
         nit++;
     }
     atassert_eqi(nit, 2);
-    atassert_eqs(EOK, dlist.extend(&a, arr, len(arr)));
+    atassert_eqs(EOK, dlist.extend(&a, arr, arr$len(arr)));
     atassert_eqi(a.count, 4);
 
     nit = 0;
@@ -248,7 +248,7 @@ ATEST_F(test_dlist_iterator)
 }
 
 
-ATEST_F(test_dlist_align64)
+ATEST_F(testlist_align64)
 {
     const Allocator_c* allocator = AllocatorHeap_new();
 
@@ -259,11 +259,11 @@ ATEST_F(test_dlist_align64)
     _Static_assert(sizeof(struct foo64) == 64, "size");
     _Static_assert(alignof(struct foo64) == 64, "align");
 
-    dlist$define(struct foo64) a;
+    list$define(struct foo64) a;
 
-    except_traceback(err, dlist$new(&a, 4, allocator))
+    except_traceback(err, list$new(&a, 4, allocator))
     {
-        atassert(false && "dlist$new fail");
+        atassert(false && "list$new fail");
     }
 
     // adding new elements into the end
@@ -272,7 +272,7 @@ ATEST_F(test_dlist_align64)
         atassert_eqs(EOK, dlist.append(&a, &f));
     }
     atassert_eqi(a.count, 4);
-    dlist_head_s* head = _dlist__head((dlist_c*)&a);
+    list_head_s* head = list__head((list_c*)&a);
     atassert_eqi(head->count, 4);
     atassert_eqi(head->capacity, 4);
     atassert_eqi(head->header.elalign, 64);
@@ -294,7 +294,7 @@ ATEST_F(test_dlist_align64)
     }
 
     atassert_eqi(a.count, 8);
-    head = _dlist__head((dlist_c*)&a);
+    head = list__head((list_c*)&a);
     atassert_eqi(head->count, 8);
     atassert_eqi(head->capacity, 8);
 
@@ -304,7 +304,7 @@ ATEST_F(test_dlist_align64)
     return NULL; // Every ATEST_F() must return NULL to succeed!
 }
 
-ATEST_F(test_dlist_align16)
+ATEST_F(testlist_align16)
 {
     const Allocator_c* allocator = AllocatorHeap_new();
 
@@ -315,11 +315,11 @@ ATEST_F(test_dlist_align16)
     _Static_assert(sizeof(struct foo64) == 16, "size");
     _Static_assert(alignof(struct foo64) == 16, "align");
 
-    dlist$define(struct foo64) a;
+    list$define(struct foo64) a;
 
-    except_traceback(err, dlist$new(&a, 4, allocator))
+    except_traceback(err, list$new(&a, 4, allocator))
     {
-        atassert(false && "dlist$new fail");
+        atassert(false && "list$new fail");
     }
 
     // adding new elements into the end
@@ -328,7 +328,7 @@ ATEST_F(test_dlist_align16)
         atassert_eqs(EOK, dlist.append(&a, &f));
     }
     atassert_eqi(a.count, 4);
-    dlist_head_s* head = _dlist__head((dlist_c*)&a);
+    list_head_s* head = list__head((list_c*)&a);
     atassert_eqi(head->count, 4);
     atassert_eqi(head->capacity, 4);
     atassert_eqi(head->header.elalign, 16);
@@ -350,7 +350,7 @@ ATEST_F(test_dlist_align16)
     }
 
     atassert_eqi(a.count, 8);
-    head = _dlist__head((dlist_c*)&a);
+    head = list__head((list_c*)&a);
     atassert_eqi(head->count, 8);
     atassert_eqi(head->capacity, 8);
 
@@ -370,13 +370,13 @@ main(int argc, char* argv[])
     ATEST_PARSE_MAINARGS(argc, argv);
     ATEST_PRINT_HEAD();  // >>> all tests below
     
-    ATEST_RUN(test_dlist_alloc_capacity);
-    ATEST_RUN(test_dlist_new);
-    ATEST_RUN(test_dlist_append);
-    ATEST_RUN(test_dlist_extend);
-    ATEST_RUN(test_dlist_iterator);
-    ATEST_RUN(test_dlist_align64);
-    ATEST_RUN(test_dlist_align16);
+    ATEST_RUN(testlist_alloc_capacity);
+    ATEST_RUN(testlist_new);
+    ATEST_RUN(testlist_append);
+    ATEST_RUN(testlist_extend);
+    ATEST_RUN(testlist_iterator);
+    ATEST_RUN(testlist_align64);
+    ATEST_RUN(testlist_align16);
     
     ATEST_PRINT_FOOTER();  // ^^^^^ all tests runs are above
     return ATEST_EXITCODE();

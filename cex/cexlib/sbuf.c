@@ -1,7 +1,7 @@
 #include "sbuf.h"
 
 static inline sbuf_head_s*
-_sbuf__head(sbuf_c self)
+sbuf__head(sbuf_c self)
 {
     uassert(self != NULL);
     sbuf_head_s* head = (sbuf_head_s*)(self - sizeof(sbuf_head_s));
@@ -14,7 +14,7 @@ _sbuf__head(sbuf_c self)
     return head;
 }
 static inline size_t
-_sbuf__alloc_capacity(size_t capacity)
+sbuf__alloc_capacity(size_t capacity)
 {
     uassert(capacity < INT32_MAX && "requested capacity exceeds 2gb, maybe overflow?");
 
@@ -32,7 +32,7 @@ _sbuf__alloc_capacity(size_t capacity)
     }
 }
 static inline Exception
-_sbuf__grow_buffer(sbuf_c* self, u32 length)
+sbuf__grow_buffer(sbuf_c* self, u32 length)
 {
     sbuf_head_s* head = (sbuf_head_s*)(*self - sizeof(sbuf_head_s));
 
@@ -41,7 +41,7 @@ _sbuf__grow_buffer(sbuf_c* self, u32 length)
         return Error.overflow;
     }
 
-    u32 new_capacity = _sbuf__alloc_capacity(length);
+    u32 new_capacity = sbuf__alloc_capacity(length);
     head = head->allocator->realloc(head, new_capacity);
     if (unlikely(head == NULL)) {
         *self = NULL;
@@ -55,13 +55,13 @@ _sbuf__grow_buffer(sbuf_c* self, u32 length)
 }
 
 Exception
-_sbuf_create(sbuf_c* self, u32 capacity, const Allocator_c* allocator)
+sbuf_create(sbuf_c* self, u32 capacity, const Allocator_c* allocator)
 {
     uassert(self != NULL);
     uassert(capacity != 0);
     uassert(allocator != NULL);
 
-    capacity = _sbuf__alloc_capacity(capacity);
+    capacity = sbuf__alloc_capacity(capacity);
 
     char* buf = allocator->alloc(capacity);
 
@@ -87,7 +87,7 @@ _sbuf_create(sbuf_c* self, u32 capacity, const Allocator_c* allocator)
 }
 
 Exception
-_sbuf_create_static(sbuf_c* self, char* buf, size_t buf_size)
+sbuf_create_static(sbuf_c* self, char* buf, size_t buf_size)
 {
     if (unlikely(self == NULL)) {
         uassert(self != NULL);
@@ -124,24 +124,24 @@ _sbuf_create_static(sbuf_c* self, char* buf, size_t buf_size)
 }
 
 Exception
-_sbuf_grow(sbuf_c* self, u32 capacity)
+sbuf_grow(sbuf_c* self, u32 capacity)
 {
-    sbuf_head_s* head = _sbuf__head(*self);
+    sbuf_head_s* head = sbuf__head(*self);
     if (capacity <= head->capacity) {
         // capacity is enough, no need to grow
         return Error.ok;
     }
-    return _sbuf__grow_buffer(self, capacity);
+    return sbuf__grow_buffer(self, capacity);
 }
 
 Exception
-_sbuf_append_c(sbuf_c* self, char* s)
+sbuf_append_c(sbuf_c* self, char* s)
 {
     if (s == NULL) {
         return Error.argument;
     }
 
-    sbuf_head_s* head = _sbuf__head(*self);
+    sbuf_head_s* head = sbuf__head(*self);
 
     u32 length = head->length;
     u32 capacity = head->capacity;
@@ -152,7 +152,7 @@ _sbuf_append_c(sbuf_c* self, char* s)
 
         // Try resize
         if (length > capacity - 1) {
-            except(err, _sbuf__grow_buffer(self, length + 1))
+            except(err, sbuf__grow_buffer(self, length + 1))
             {
                 return err;
             }
@@ -172,20 +172,20 @@ _sbuf_append_c(sbuf_c* self, char* s)
     return Error.ok;
 }
 Exception
-_sbuf_replace(sbuf_c* self, const str_c old, const str_c new)
+sbuf_replace(sbuf_c* self, const str_c old, const str_c new)
 {
     uassert(self != NULL);
     uassert(old.buf != new.buf && "old and new overlap");
     uassert(*self != new.buf && "self and new overlap");
     uassert(*self != old.buf && "self and old overlap");
 
-    sbuf_head_s* head = _sbuf__head(*self);
+    sbuf_head_s* head = sbuf__head(*self);
 
-    if (unlikely(!str.is_valid(old) || !str.is_valid(new) || old.len == 0)) {
+    if (unlikely(!sview.is_valid(old) || !sview.is_valid(new) || old.len == 0)) {
         return Error.argument;
     }
 
-    str_c s = str.cbuf(*self, head->length);
+    str_c s = sview.cbuf(*self, head->length);
 
     if (unlikely(s.len == 0)) {
         return Error.ok;
@@ -194,7 +194,7 @@ _sbuf_replace(sbuf_c* self, const str_c old, const str_c new)
     u32 capacity = head->capacity;
 
     ssize_t idx = -1;
-    while ((idx = str.indexof(s, old, idx + 1, 0)) != -1) {
+    while ((idx = sview.indexof(s, old, idx + 1, 0)) != -1) {
         // pointer to start of the found `old`
 
         char* f = &((*self)[idx]);
@@ -216,7 +216,7 @@ _sbuf_replace(sbuf_c* self, const str_c old, const str_c new)
         else {
             // Try resize
             if (unlikely(s.len + (new.len-old.len) > capacity - 1)) {
-                except(err, _sbuf__grow_buffer(self, s.len + (new.len-old.len)))
+                except(err, sbuf__grow_buffer(self, s.len + (new.len-old.len)))
                 {
                     return err;
                 }
@@ -240,9 +240,9 @@ _sbuf_replace(sbuf_c* self, const str_c old, const str_c new)
 }
 
 Exception
-_sbuf_append(sbuf_c* self, str_c s)
+sbuf_append(sbuf_c* self, str_c s)
 {
-    sbuf_head_s* head = _sbuf__head(*self);
+    sbuf_head_s* head = sbuf__head(*self);
 
     if (s.buf == NULL) {
         return Error.argument;
@@ -259,7 +259,7 @@ _sbuf_append(sbuf_c* self, str_c s)
 
     // Try resize
     if (length + s.len > capacity - 1) {
-        except(err, _sbuf__grow_buffer(self, length + s.len))
+        except(err, sbuf__grow_buffer(self, length + s.len))
         {
             return err;
         }
@@ -278,34 +278,34 @@ _sbuf_append(sbuf_c* self, str_c s)
 }
 
 void
-_sbuf_clear(sbuf_c* self)
+sbuf_clear(sbuf_c* self)
 {
-    sbuf_head_s* head = _sbuf__head(*self);
+    sbuf_head_s* head = sbuf__head(*self);
     head->length = 0;
     (*self)[head->length] = '\0';
 }
 
 u32
-_sbuf_length(const sbuf_c self)
+sbuf_length(const sbuf_c self)
 {
-    sbuf_head_s* head = _sbuf__head(self);
+    sbuf_head_s* head = sbuf__head(self);
     return head->length;
 }
 
 u32
-_sbuf_capacity(const sbuf_c self)
+sbuf_capacity(const sbuf_c self)
 {
-    sbuf_head_s* head = _sbuf__head(self);
+    sbuf_head_s* head = sbuf__head(self);
     return head->capacity;
 }
 
 sbuf_c
-_sbuf_destroy(sbuf_c* self)
+sbuf_destroy(sbuf_c* self)
 {
     uassert(self != NULL);
 
     if (*self != NULL) {
-        sbuf_head_s* head = _sbuf__head(*self);
+        sbuf_head_s* head = sbuf__head(*self);
 
         // NOTE: null-terminate string to avoid future usage,
         // it will appear as empty string if references anywhere else
@@ -324,15 +324,15 @@ _sbuf_destroy(sbuf_c* self)
 const struct __module__sbuf sbuf = {
     // Autogenerated by CEX
     // clang-format off
-    .create = _sbuf_create,
-    .create_static = _sbuf_create_static,
-    .grow = _sbuf_grow,
-    .append_c = _sbuf_append_c,
-    .replace = _sbuf_replace,
-    .append = _sbuf_append,
-    .clear = _sbuf_clear,
-    .length = _sbuf_length,
-    .capacity = _sbuf_capacity,
-    .destroy = _sbuf_destroy,
+    .create = sbuf_create,
+    .create_static = sbuf_create_static,
+    .grow = sbuf_grow,
+    .append_c = sbuf_append_c,
+    .replace = sbuf_replace,
+    .append = sbuf_append,
+    .clear = sbuf_clear,
+    .length = sbuf_length,
+    .capacity = sbuf_capacity,
+    .destroy = sbuf_destroy,
     // clang-format on
 };

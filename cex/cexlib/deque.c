@@ -2,7 +2,7 @@
 
 
 static inline deque_head_s*
-_deque__head(deque_c self)
+deque__head(deque_c self)
 {
     uassert(self != NULL);
     deque_head_s* head = (deque_head_s*)self;
@@ -18,7 +18,7 @@ _deque__head(deque_c self)
 }
 
 static inline size_t
-_deque__alloc_capacity(size_t capacity)
+deque__alloc_capacity(size_t capacity)
 {
     if (capacity < 16) {
         return 16;
@@ -33,7 +33,7 @@ _deque__alloc_capacity(size_t capacity)
 }
 
 static inline void*
-_deque__get_byindex(deque_head_s* head, size_t index)
+deque__get_byindex(deque_head_s* head, size_t index)
 {
     size_t _idx = head->idx_head + index;
     // _idx = _idx % head->capacity;
@@ -42,7 +42,7 @@ _deque__get_byindex(deque_head_s* head, size_t index)
 }
 
 static inline size_t
-_deque__alloc_size(size_t capacity, size_t elsize, size_t elalign)
+deque__alloc_size(size_t capacity, size_t elsize, size_t elalign)
 {
     uassert(capacity > 0 && "zero capacity");
     uassert(elsize > 0 && "zero element size");
@@ -60,7 +60,7 @@ _deque__alloc_size(size_t capacity, size_t elsize, size_t elalign)
 }
 
 Exception
-_deque_validate(deque_c *self)
+deque_validate(deque_c *self)
 {
     if (self == NULL) {
         return Error.argument;
@@ -100,7 +100,7 @@ _deque_validate(deque_c *self)
 }
 
 Exception
-_deque_create(
+deque_create(
     deque_c* self,
     size_t max_capacity,
     bool rewrite_overflowed,
@@ -140,8 +140,8 @@ _deque_create(
         return Error.argument;
     }
 
-    size_t capacity = _deque__alloc_capacity(max_capacity);
-    size_t alloc_size = _deque__alloc_size(capacity, elsize, elalign);
+    size_t capacity = deque__alloc_capacity(max_capacity);
+    size_t alloc_size = deque__alloc_size(capacity, elsize, elalign);
 
     _Static_assert(alignof(deque_head_s) == 64, "align");
     deque_head_s* que = allocator->alloc_aligned(alignof(deque_head_s), alloc_size);
@@ -175,7 +175,7 @@ _deque_create(
 }
 
 Exception
-_deque_create_static(
+deque_create_static(
     deque_c* self,
     void* buf,
     size_t buf_len,
@@ -216,8 +216,8 @@ _deque_create_static(
     // buffer size might not contain exact pow of 2 number, just round it down
     size_t max_capacity = (buf_len - sizeof(deque_head_s)) / elsize / 2;
 
-    size_t capacity = _deque__alloc_capacity(max_capacity);
-    size_t alloc_size = _deque__alloc_size(capacity, elsize, elalign);
+    size_t capacity = deque__alloc_capacity(max_capacity);
+    size_t alloc_size = deque__alloc_size(capacity, elsize, elalign);
     if (alloc_size > buf_len) {
         uassert(alloc_size > buf_len && "deque_c expected allocation exceeds buf_len");
         return Error.overflow;
@@ -246,20 +246,20 @@ _deque_create_static(
 }
 
 Exception
-_deque_append(deque_c* self, const void* item)
+deque_append(deque_c* self, const void* item)
 {
     if (item == NULL) {
         return Error.argument;
     }
 
-    deque_head_s* head = _deque__head(*self);
+    deque_head_s* head = deque__head(*self);
     if (head->idx_head == head->idx_tail) {
         // No records, it's safe to reset
         // We can reset from any place if deque is empty, this will save allocations
         head->idx_head = 0;
         head->idx_tail = 0;
     } else if (unlikely(head->idx_tail == head->capacity)) {
-        size_t new_cap = _deque__alloc_capacity(head->capacity + 1);
+        size_t new_cap = deque__alloc_capacity(head->capacity + 1);
 
         // We've reached the end of the buffer, let's decide to wrap or expand
         if (head->allocator == NULL || (head->max_capacity > 0 && new_cap > head->max_capacity)) {
@@ -272,7 +272,7 @@ _deque_append(deque_c* self, const void* item)
                 }
             }
         } else {
-            size_t alloc_size = _deque__alloc_size(
+            size_t alloc_size = deque__alloc_size(
                 new_cap,
                 head->header.elsize,
                 head->header.elalign
@@ -306,21 +306,21 @@ _deque_append(deque_c* self, const void* item)
 }
 
 Exception
-_deque_enqueue(deque_c* self, const void* item)
+deque_enqueue(deque_c* self, const void* item)
 {
-    return _deque_append(self, item);
+    return deque_append(self, item);
 }
 
 Exception
-_deque_push(deque_c* self, const void* item)
+deque_push(deque_c* self, const void* item)
 {
-    return _deque_append(self, item);
+    return deque_append(self, item);
 }
 
 void*
-_deque_dequeue(deque_c* self)
+deque_dequeue(deque_c* self)
 {
-    deque_head_s* head = _deque__head(*self);
+    deque_head_s* head = deque__head(*self);
 
     if (head->idx_tail <= head->idx_head) {
         return NULL;
@@ -335,9 +335,9 @@ _deque_dequeue(deque_c* self)
 }
 
 void*
-_deque_pop(deque_c* self)
+deque_pop(deque_c* self)
 {
-    deque_head_s* head = _deque__head(*self);
+    deque_head_s* head = deque__head(*self);
 
     if (head->idx_tail <= head->idx_head) {
         return NULL;
@@ -352,38 +352,38 @@ _deque_pop(deque_c* self)
 }
 
 void*
-_deque_get(deque_c* self, size_t index)
+deque_get(deque_c* self, size_t index)
 {
-    deque_head_s* head = _deque__head(*self);
+    deque_head_s* head = deque__head(*self);
 
     if (unlikely(head->idx_head + index >= head->idx_tail)) {
         // out of bounds or empty
         return NULL;
     }
 
-    return _deque__get_byindex(head, index);
+    return deque__get_byindex(head, index);
 }
 
 size_t
-_deque_count(const deque_c* self)
+deque_count(const deque_c* self)
 {
-    deque_head_s* head = _deque__head(*self);
+    deque_head_s* head = deque__head(*self);
     return head->idx_tail - head->idx_head;
 }
 
 void
-_deque_clear(deque_c* self)
+deque_clear(deque_c* self)
 {
-    deque_head_s* head = _deque__head(*self);
+    deque_head_s* head = deque__head(*self);
     head->idx_head = 0;
     head->idx_tail = 0;
 }
 
 void*
-_deque_destroy(deque_c* self)
+deque_destroy(deque_c* self)
 {
     if (self != NULL) {
-        deque_head_s* head = _deque__head(*self);
+        deque_head_s* head = deque__head(*self);
         if (head->allocator != NULL) {
             head->allocator->free(head);
         }
@@ -394,7 +394,7 @@ _deque_destroy(deque_c* self)
 }
 
 void*
-_deque_iter_get(deque_c* self, i32 direction, cex_iterator_s* iterator)
+deque_iter_get(deque_c* self, i32 direction, cex_iterator_s* iterator)
 {
     uassert(self != NULL && "self == NULL");
     uassert(iterator != NULL && "null iterator");
@@ -412,7 +412,7 @@ _deque_iter_get(deque_c* self, i32 direction, cex_iterator_s* iterator)
 
     if (unlikely(iterator->val == NULL)) {
         // iterator first run/initialization
-        deque_head_s* head = _deque__head(*self);
+        deque_head_s* head = deque__head(*self);
 
         size_t cnt = head->idx_tail - head->idx_head;
         if (unlikely(cnt == 0)) {
@@ -440,12 +440,12 @@ _deque_iter_get(deque_c* self, i32 direction, cex_iterator_s* iterator)
     }
 
     iterator->idx.i = ctx->cursor;
-    iterator->val = _deque__get_byindex((deque_head_s*)*self, ctx->cursor);
+    iterator->val = deque__get_byindex((deque_head_s*)*self, ctx->cursor);
     return iterator->val;
 }
 
 void*
-_deque_iter_fetch(deque_c* self, i32 direction, cex_iterator_s* iterator)
+deque_iter_fetch(deque_c* self, i32 direction, cex_iterator_s* iterator)
 {
     uassert(self != NULL && "self == NULL");
     uassert(iterator != NULL && "null iterator");
@@ -463,7 +463,7 @@ _deque_iter_fetch(deque_c* self, i32 direction, cex_iterator_s* iterator)
 
     if (unlikely(iterator->val == NULL)) {
         // iterator first run/initialization
-        deque_head_s* head = _deque__head(*self);
+        deque_head_s* head = deque__head(*self);
 
         size_t cnt = head->idx_tail - head->idx_head;
         if (unlikely(cnt == 0)) {
@@ -493,11 +493,11 @@ _deque_iter_fetch(deque_c* self, i32 direction, cex_iterator_s* iterator)
     if (ctx->direction > 0) {
         // que always return index = 0
         iterator->idx.i = 0;
-        iterator->val = _deque_dequeue(self);
+        iterator->val = deque_dequeue(self);
     } else {
         // stack always return index = dequeue.capacity
         iterator->idx.i = ctx->capacity;
-        iterator->val = _deque_pop(self);
+        iterator->val = deque_pop(self);
     }
 
     return iterator->val;
@@ -505,19 +505,19 @@ _deque_iter_fetch(deque_c* self, i32 direction, cex_iterator_s* iterator)
 const struct __module__deque deque = {
     // Autogenerated by CEX
     // clang-format off
-    .validate = _deque_validate,
-    .create = _deque_create,
-    .create_static = _deque_create_static,
-    .append = _deque_append,
-    .enqueue = _deque_enqueue,
-    .push = _deque_push,
-    .dequeue = _deque_dequeue,
-    .pop = _deque_pop,
-    .get = _deque_get,
-    .count = _deque_count,
-    .clear = _deque_clear,
-    .destroy = _deque_destroy,
-    .iter_get = _deque_iter_get,
-    .iter_fetch = _deque_iter_fetch,
+    .validate = deque_validate,
+    .create = deque_create,
+    .create_static = deque_create_static,
+    .append = deque_append,
+    .enqueue = deque_enqueue,
+    .push = deque_push,
+    .dequeue = deque_dequeue,
+    .pop = deque_pop,
+    .get = deque_get,
+    .count = deque_count,
+    .clear = deque_clear,
+    .destroy = deque_destroy,
+    .iter_get = deque_iter_get,
+    .iter_fetch = deque_iter_fetch,
     // clang-format on
 };

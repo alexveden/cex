@@ -239,7 +239,7 @@ class Func:
         ifc_name: function interface short name
     """
 
-    def __init__(self, decl: str, ifc_prefix: str, func_prefix: str):
+    def __init__(self, decl: str, ifc_prefix: str):
         g = RE_FUNC.match(decl)
         assert g, f"Function regex not matched: {decl}"
         self.is_static = False
@@ -259,14 +259,14 @@ class Func:
         self.docstr = ""
 
         g = re.match(
-            rf"^{func_prefix}{ifc_prefix}__([\w]+)__(\w+)", self.name, re.MULTILINE
+            rf"^{ifc_prefix}__([\w]+)__(\w+)", self.name, re.MULTILINE
         )
         if g:
             self.sub_module = g.group(1)
             self.ifc_name = g.group(2)
             assert self.ifc_name
         elif g := re.match(
-            rf"^{func_prefix}{ifc_prefix}_(\w+)", self.name, re.MULTILINE
+            rf"^{ifc_prefix}_(\w+)", self.name, re.MULTILINE
         ):
             self.sub_module = None
             self.ifc_name = g.group(1)
@@ -342,11 +342,9 @@ class CEXBuilder:
                 h_file.replace(".h", "")
             ), f"BaseName of {c_file=} and {h_file=} mismatch"
             self.is_public_header = False
-            self.func_prefix = "_"
         else:
             self.is_public_header = True
             self.c_file = None
-            self.func_prefix = ""
 
         if namespace:
             self.namespace = namespace
@@ -431,7 +429,7 @@ class CEXBuilder:
             # print(repr(b))
             if isinstance(b, Code):
                 if self.is_func_code(b):
-                    f = Func(b.buf.getvalue(), ns, self.func_prefix)
+                    f = Func(b.buf.getvalue(), ns)
                     if f.ifc_name:
                         if f.is_inline and not f.is_static:
                             raise ValueError(
@@ -448,7 +446,7 @@ class CEXBuilder:
 
         assert (
             functions
-        ), f"No functions passed module filter, expected prefix: {self.func_prefix}{self.namespace}_"
+        ), f"No functions passed module filter, expected prefix: {self.namespace}_"
 
         for sub_module, flist in functions.items():
             if sub_module:
@@ -496,7 +494,7 @@ class CEXBuilder:
         for i, b in enumerate(blocks):
             if isinstance(b, Code):
                 if self.is_func_code(b):
-                    f = Func(b.buf.getvalue(), ns, self.func_prefix)
+                    f = Func(b.buf.getvalue(), ns)
                     if f.ifc_name:
                         if f.is_inline and not f.is_static:
                             raise ValueError(
@@ -603,7 +601,7 @@ class CEXBuilder:
             if not isinstance(block, Code) or not self.is_func_code(block):
                 continue
 
-            f = Func(block.buf.getvalue(), "", self.func_prefix)
+            f = Func(block.buf.getvalue(), "")
 
             is_var_args = False
 
@@ -733,7 +731,7 @@ class CEXBuilder:
                 if not isinstance(block, Code) or not self.is_func_code(block):
                     continue
 
-                f = Func(block.buf.getvalue(), self.namespace, self.func_prefix)
+                f = Func(block.buf.getvalue(), self.namespace)
                 sub_mod = f.sub_module if f.sub_module else ""
                 flist = sub_module_blocks.setdefault(sub_mod, [])
                 flist.append(block)

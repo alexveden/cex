@@ -1,5 +1,5 @@
 #pragma once
-#include "str.h"
+#include "sview.h"
 #include <cex/cex.h>
 #include <cex/cexlib/allocators.h>
 

@@ -31,16 +31,16 @@ ATEST_SETUP_F(void)
  *
  */
 
-ATEST_F(test_dlist_alloc_capacity)
+ATEST_F(testlist_alloc_capacity)
 {
     // 4 is minimum
-    atassert_eql(16, _deque__alloc_capacity(0));
-    atassert_eql(16, _deque__alloc_capacity(1));
-    atassert_eql(16, _deque__alloc_capacity(15));
-    atassert_eql(16, _deque__alloc_capacity(16));
-    atassert_eql(32, _deque__alloc_capacity(17));
-    atassert_eql(32, _deque__alloc_capacity(32));
-    atassert_eql(128, _deque__alloc_capacity(100));
+    atassert_eql(16, deque__alloc_capacity(0));
+    atassert_eql(16, deque__alloc_capacity(1));
+    atassert_eql(16, deque__alloc_capacity(15));
+    atassert_eql(16, deque__alloc_capacity(16));
+    atassert_eql(32, deque__alloc_capacity(17));
+    atassert_eql(32, deque__alloc_capacity(32));
+    atassert_eql(128, deque__alloc_capacity(100));
 
 
     return NULL;
@@ -56,7 +56,7 @@ ATEST_F(test_deque_new)
 
     atassert_eqs(EOK, deque.validate(&a));
 
-    deque_head_s* head = _deque__head(a);
+    deque_head_s* head = deque__head(a);
     // deque_head_s head = (*a)._head;
     atassert_eqi(head->header.magic, 0xdef0);
     atassert_eqi(head->header.elalign, alignof(int));
@@ -720,7 +720,7 @@ ATEST_F(test_deque_static)
     alignas(64) char buf[sizeof(deque_head_s) + sizeof(int) * 16];
 
     deque_c a;
-    except_traceback(err, deque$new_static(&a, int, buf, len(buf), true))
+    except_traceback(err, deque$new_static(&a, int, buf, arr$len(buf), true))
     {
         atassert(false && "deque$new fail");
     }
@@ -745,7 +745,7 @@ ATEST_F(test_deque_static_append_grow)
     alignas(64) char buf[sizeof(deque_head_s) + sizeof(int) * 16];
 
     deque_c a;
-    except_traceback(err, deque$new_static(&a, int, buf, len(buf), false))
+    except_traceback(err, deque$new_static(&a, int, buf, arr$len(buf), false))
     {
         atassert(false && "deque$new fail");
     }
@@ -779,7 +779,7 @@ ATEST_F(test_deque_static_append_grow_overwrite)
     alignas(64) char buf[sizeof(deque_head_s) + sizeof(int) * 16];
 
     deque_c a;
-    except_traceback(err, deque$new_static(&a, int, buf, len(buf), true))
+    except_traceback(err, deque$new_static(&a, int, buf, arr$len(buf), true))
     {
         atassert(false && "deque$new fail");
     }
@@ -819,7 +819,7 @@ ATEST_F(test_deque_validate)
     alignas(64) char buf[sizeof(deque_head_s) + sizeof(int) * 16];
 
     deque_c a;
-    atassert_eqs(EOK, deque$new_static(&a, int, buf, len(buf), true));
+    atassert_eqs(EOK, deque$new_static(&a, int, buf, arr$len(buf), true));
     atassert((void*)a == (void*)buf);
     atassert_eqs(Error.argument, deque.validate(NULL));
     atassert_eqs(EOK, deque.validate(&a));
@@ -831,7 +831,7 @@ ATEST_F(test_deque_validate__head_gt_tail)
     alignas(64) char buf[sizeof(deque_head_s) + sizeof(int) * 16];
 
     deque_c a;
-    atassert_eqs(EOK, deque$new_static(&a, int, buf, len(buf), true));
+    atassert_eqs(EOK, deque$new_static(&a, int, buf, arr$len(buf), true));
     deque_head_s* head = &a->_head;
     head->idx_head = 1;
     atassert_eqs(Error.integrity, deque.validate(&a));
@@ -843,7 +843,7 @@ ATEST_F(test_deque_validate__eloffset_weird)
     alignas(64) char buf[sizeof(deque_head_s) + sizeof(int) * 16];
 
     deque_c a;
-    atassert_eqs(EOK, deque$new_static(&a, int, buf, len(buf), true));
+    atassert_eqs(EOK, deque$new_static(&a, int, buf, arr$len(buf), true));
     deque_head_s* head = &a->_head;
     head->header.eloffset = 1;
     atassert_eqs(Error.integrity, deque.validate(&a));
@@ -855,7 +855,7 @@ ATEST_F(test_deque_validate__eloffset_elalign)
     alignas(64) char buf[sizeof(deque_head_s) + sizeof(int) * 16];
 
     deque_c a;
-    atassert_eqs(EOK, deque$new_static(&a, int, buf, len(buf), true));
+    atassert_eqs(EOK, deque$new_static(&a, int, buf, arr$len(buf), true));
     deque_head_s* head = &a->_head;
     head->header.elalign = 0;
     atassert_eqs(Error.integrity, deque.validate(&a));
@@ -869,7 +869,7 @@ ATEST_F(test_deque_validate__capacity_gt_max_capacity)
     alignas(64) char buf[sizeof(deque_head_s) + sizeof(int) * 16];
 
     deque_c a;
-    atassert_eqs(EOK, deque$new_static(&a, int, buf, len(buf), true));
+    atassert_eqs(EOK, deque$new_static(&a, int, buf, arr$len(buf), true));
     deque_head_s* head = &a->_head;
     head->max_capacity = 16;
     head->capacity = 17;
@@ -883,7 +883,7 @@ ATEST_F(test_deque_validate__zero_capacity)
     alignas(64) char buf[sizeof(deque_head_s) + sizeof(int) * 16];
 
     deque_c a;
-    atassert_eqs(EOK, deque$new_static(&a, int, buf, len(buf), true));
+    atassert_eqs(EOK, deque$new_static(&a, int, buf, arr$len(buf), true));
     deque_head_s* head = &a->_head;
     head->capacity = 0;
     atassert_eqs(Error.integrity, deque.validate(&a));
@@ -895,7 +895,7 @@ ATEST_F(test_deque_validate__bad_magic)
     alignas(64) char buf[sizeof(deque_head_s) + sizeof(int) * 16];
 
     deque_c a;
-    atassert_eqs(EOK, deque$new_static(&a, int, buf, len(buf), true));
+    atassert_eqs(EOK, deque$new_static(&a, int, buf, arr$len(buf), true));
     deque_head_s* head = &a->_head;
     head->header.magic = 0xdef1;
     atassert_eqs(Error.integrity, deque.validate(&a));
@@ -907,7 +907,7 @@ ATEST_F(test_deque_validate__bad_pointer_alignment)
     alignas(64) char buf[sizeof(deque_head_s) + sizeof(int) * 16];
 
     deque_c a;
-    atassert_eqs(EOK, deque$new_static(&a, int, buf, len(buf), true));
+    atassert_eqs(EOK, deque$new_static(&a, int, buf, arr$len(buf), true));
     a = (void*)(buf + 1);
     atassert_eqs(Error.memory, deque.validate(&a));
 
@@ -926,7 +926,7 @@ main(int argc, char* argv[])
     ATEST_PARSE_MAINARGS(argc, argv);
     ATEST_PRINT_HEAD();  // >>> all tests below
     
-    ATEST_RUN(test_dlist_alloc_capacity);
+    ATEST_RUN(testlist_alloc_capacity);
     ATEST_RUN(test_deque_new);
     ATEST_RUN(test_element_alignment_16);
     ATEST_RUN(test_element_alignment_64);

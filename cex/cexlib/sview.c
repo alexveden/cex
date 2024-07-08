@@ -1,4 +1,4 @@
-#include "str.h"
+#include "sview.h"
 
 
 // static inline size_t _str__len(str_c* s){
@@ -13,17 +13,17 @@
 //     return s->_len;
 // }
 static inline bool
-_str__isvalid(const str_c* s)
+sview__isvalid(const str_c* s)
 {
     return s->buf != NULL;
 }
 
 static inline ssize_t
-_str__index(str_c* s, char c)
+sview__index(str_c* s, char c)
 {
     ssize_t result = -1;
 
-    if (_str__isvalid(s)) {
+    if (sview__isvalid(s)) {
         for (size_t i = 0; i < s->len; i++) {
             if (s->buf[i] == c) {
                 result = i;
@@ -36,7 +36,7 @@ _str__index(str_c* s, char c)
 }
 
 str_c
-_str_cstr(const char* ccharptr)
+sview_cstr(const char* ccharptr)
 {
     if (unlikely(ccharptr == NULL)) {
         return (str_c){ 0 };
@@ -49,7 +49,7 @@ _str_cstr(const char* ccharptr)
 }
 
 str_c
-_str_cbuf(char* s, size_t length)
+sview_cbuf(char* s, size_t length)
 {
     if (unlikely(s == NULL)) {
         return (str_c){ 0 };
@@ -62,7 +62,7 @@ _str_cbuf(char* s, size_t length)
 }
 
 str_c
-_str_sub(str_c s, ssize_t start, ssize_t end)
+sview_sub(str_c s, ssize_t start, ssize_t end)
 {
     if (unlikely(s.len == 0)) {
         if (start == 0 && end == 0) {
@@ -96,7 +96,7 @@ _str_sub(str_c s, ssize_t start, ssize_t end)
 }
 
 Exception
-_str_copy(str_c s, char* dest, size_t destlen)
+sview_copy(str_c s, char* dest, size_t destlen)
 {
     uassert(dest != s.buf && "self copy is not allowed");
 
@@ -107,7 +107,7 @@ _str_copy(str_c s, char* dest, size_t destlen)
     // If we fail next, it still writes empty string
     dest[0] = '\0';
 
-    if (unlikely(!_str__isvalid(&s))) {
+    if (unlikely(!sview__isvalid(&s))) {
         return Error.check;
     }
 
@@ -126,19 +126,19 @@ _str_copy(str_c s, char* dest, size_t destlen)
 }
 
 size_t
-_str_length(str_c s)
+sview_length(str_c s)
 {
     return s.len;
 }
 
 bool
-_str_is_valid(str_c s)
+sview_is_valid(str_c s)
 {
-    return _str__isvalid(&s);
+    return sview__isvalid(&s);
 }
 
 char*
-_str_iter(str_c s, cex_iterator_s* iterator)
+sview_iter(str_c s, cex_iterator_s* iterator)
 {
     uassert(iterator != NULL && "null iterator");
 
@@ -152,7 +152,7 @@ _str_iter(str_c s, cex_iterator_s* iterator)
 
     if (unlikely(iterator->val == NULL)) {
         // Iterator is not initialized set to 1st item
-        if (unlikely(!_str__isvalid(&s) || s.len == 0)) {
+        if (unlikely(!sview__isvalid(&s) || s.len == 0)) {
             return NULL;
         }
         iterator->val = s.buf;
@@ -171,7 +171,7 @@ _str_iter(str_c s, cex_iterator_s* iterator)
 }
 
 ssize_t
-_str_indexof(str_c s, str_c needle, size_t start, size_t end)
+sview_indexof(str_c s, str_c needle, size_t start, size_t end)
 {
     if (needle.len == 0 || needle.len > s.len) {
         return -1;
@@ -198,29 +198,29 @@ _str_indexof(str_c s, str_c needle, size_t start, size_t end)
 }
 
 bool
-_str_contains(str_c s, str_c needle)
+sview_contains(str_c s, str_c needle)
 {
-    return _str_indexof(s, needle, 0, 0) != -1;
+    return sview_indexof(s, needle, 0, 0) != -1;
 }
 
 bool
-_str_starts_with(str_c s, str_c needle)
+sview_starts_with(str_c s, str_c needle)
 {
-    return _str_indexof(s, needle, 0, needle.len) != -1;
+    return sview_indexof(s, needle, 0, needle.len) != -1;
 }
 
 bool
-_str_ends_with(str_c s, str_c needle)
+sview_ends_with(str_c s, str_c needle)
 {
     if(needle.len > s.len) {
         return false;
     }
 
-    return _str_indexof(s, needle, s.len - needle.len, 0) != -1;
+    return sview_indexof(s, needle, s.len - needle.len, 0) != -1;
 }
 
 str_c*
-_str_iter_split(str_c s, const char split_by, cex_iterator_s* iterator)
+sview_iter_split(str_c s, const char split_by, cex_iterator_s* iterator)
 {
     uassert(iterator != NULL && "null iterator");
 
@@ -235,15 +235,15 @@ _str_iter_split(str_c s, const char split_by, cex_iterator_s* iterator)
 
     if (unlikely(iterator->val == NULL)) {
         // First run handling
-        if (unlikely(!_str__isvalid(&s))) {
+        if (unlikely(!sview__isvalid(&s))) {
             return NULL;
         }
-        ssize_t idx = _str__index(&s, split_by);
+        ssize_t idx = sview__index(&s, split_by);
         if (idx < 0) {
             idx = s.len;
         }
         ctx->cursor = idx;
-        ctx->str = str.sub(s, 0, idx);
+        ctx->str = sview.sub(s, 0, idx);
 
         iterator->val = &ctx->str;
         iterator->idx.i = 0;
@@ -258,14 +258,14 @@ _str_iter_split(str_c s, const char split_by, cex_iterator_s* iterator)
         if (unlikely(ctx->cursor == s.len)) {
             // edge case, we have separator at last col
             // it's not an error, return empty split token
-            ctx->str = str.cstr("");
+            ctx->str = sview.cstr("");
             return iterator->val;
         }
 
         // Get remaining string after prev split_by char
-        str_c tok = str.sub(s, ctx->cursor, 0);
+        str_c tok = sview.sub(s, ctx->cursor, 0);
 
-        ssize_t idx = _str__index(&tok, split_by);
+        ssize_t idx = sview__index(&tok, split_by);
         iterator->idx.i++;
 
         if (idx < 0) {
@@ -274,7 +274,7 @@ _str_iter_split(str_c s, const char split_by, cex_iterator_s* iterator)
             ctx->cursor = s.len;
         } else {
             // Sub from prev cursor to idx (excluding split char)
-            ctx->str = str.sub(tok, 0, idx);
+            ctx->str = sview.sub(tok, 0, idx);
             ctx->cursor += idx + 1;
         }
 
@@ -285,17 +285,34 @@ _str_iter_split(str_c s, const char split_by, cex_iterator_s* iterator)
 const struct __module__str str = {
     // Autogenerated by CEX
     // clang-format off
-    .cstr = _str_cstr,
-    .cbuf = _str_cbuf,
-    .sub = _str_sub,
-    .copy = _str_copy,
-    .length = _str_length,
-    .is_valid = _str_is_valid,
-    .iter = _str_iter,
-    .indexof = _str_indexof,
-    .contains = _str_contains,
-    .starts_with = _str_starts_with,
-    .ends_with = _str_ends_with,
-    .iter_split = _str_iter_split,
+    .cstr = sview_cstr,
+    .cbuf = sview_cbuf,
+    .sub = sview_sub,
+    .copy = sview_copy,
+    .length = sview_length,
+    .is_valid = sview_is_valid,
+    .iter = sview_iter,
+    .indexof = sview_indexof,
+    .contains = sview_contains,
+    .starts_with = sview_starts_with,
+    .ends_with = sview_ends_with,
+    .iter_split = sview_iter_split,
+    // clang-format on
+};
+const struct __module__sview sview = {
+    // Autogenerated by CEX
+    // clang-format off
+    .cstr = sview_cstr,
+    .cbuf = sview_cbuf,
+    .sub = sview_sub,
+    .copy = sview_copy,
+    .length = sview_length,
+    .is_valid = sview_is_valid,
+    .iter = sview_iter,
+    .indexof = sview_indexof,
+    .contains = sview_contains,
+    .starts_with = sview_starts_with,
+    .ends_with = sview_ends_with,
+    .iter_split = sview_iter_split,
     // clang-format on
 };

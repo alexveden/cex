@@ -89,7 +89,7 @@ ATEST_F(test_allocator_static_arena_stack)
   // false);
 
   char buf[1024];
-  const Allocator_c* allocator = AllocatorStaticArena_new(buf, len(buf));
+  const Allocator_c* allocator = AllocatorStaticArena_new(buf, arr$len(buf));
 
   AllocatorStaticArena_c* a = (AllocatorStaticArena_c*)allocator;
   atassert(a->base.magic != 0);
@@ -160,7 +160,7 @@ ATEST_F(test_allocator_static_arena_stack_aligned)
 {
 
   alignas(64) char buf[1024];
-  const Allocator_c* allocator = AllocatorStaticArena_new(buf, len(buf));
+  const Allocator_c* allocator = AllocatorStaticArena_new(buf, arr$len(buf));
 
   AllocatorStaticArena_c* a = (AllocatorStaticArena_c*)allocator;
 
@@ -235,7 +235,7 @@ ATEST_F(test_allocator_static_arena_heap)
 {
 
   char buf[1024];
-  const Allocator_c* allocator = AllocatorStaticArena_new(buf, len(buf));
+  const Allocator_c* allocator = AllocatorStaticArena_new(buf, arr$len(buf));
   AllocatorStaticArena_c* a = (AllocatorStaticArena_c*)allocator;
 
   atassert(allocator != NULL);

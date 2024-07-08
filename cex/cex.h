@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 typedef int8_t i8;
 typedef uint8_t u8;
@@ -17,7 +18,7 @@ typedef uint64_t u64;
 typedef float f32;
 typedef double f64;
 
-#define len(arr) (sizeof(arr) / sizeof(arr[0]))
+#define arr$len(arr) (sizeof(arr) / sizeof(arr[0]))
 #define let __auto_type
 
 #define unlikely(expr) __builtin_expect(!!(expr), 0)
@@ -293,7 +294,7 @@ _Static_assert(sizeof(cex_iterator_s) == 64, "cex size");
  * Iterator function signature:
  * u32* array_iterator(u32 array[], u32 len, cex_iterator_s* iter)
  *
- * for$iter(u32, it, array_iterator(arr2, len(arr2), &it.iterator))
+ * for$iter(u32, it, array_iterator(arr2, arr$len(arr2), &it.iterator))
  */
 #define for$iter(eltype, it, iter_func)                                                            \
     union __CEX_TMPNAME(__cex_iter_)                                                               \
