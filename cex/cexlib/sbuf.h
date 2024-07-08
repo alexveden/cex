@@ -1,7 +1,7 @@
 #pragma once
 #include "str.h"
-#include <include/cex.h>
-#include <include/cex/allocators.h>
+#include <cex/cex.h>
+#include <cex/cexlib/allocators.h>
 
 /**
  * @brief Dynamic array (list) implementation
@@ -43,7 +43,7 @@ Exception
 (*append_c)(sbuf_c* self, char* s);
 
 Exception
-(*replace)(sbuf_c* self, str_c old, str_c new);
+(*replace)(sbuf_c* self, const str_c old, const str_c new);
 
 Exception
 (*append)(sbuf_c* self, str_c s);

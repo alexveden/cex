@@ -1,7 +1,6 @@
-#include "../atest.h"
-#include <include/cex.h>
-#include <include/cex/str.c>
-#include <include/misc/utils.c>
+#include <cex/cextest/cextest.h>
+#include <cex/cex.h>
+#include <cex/cexlib/str.c>
 #include <stdio.h>
 
 /*

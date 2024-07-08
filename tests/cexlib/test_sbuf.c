@@ -1,9 +1,9 @@
-#include "../atest.h"
-#include <include/cex.h>
-#include <include/cex/str.c>
-#include <include/cex/sbuf.c>
-#include <include/cex/sbuf.h>
-#include <include/cex/allocators.c>
+#include <cex/cextest/cextest.h>
+#include <cex/cex.h>
+#include <cex/cexlib/str.c>
+#include <cex/cexlib/sbuf.c>
+#include <cex/cexlib/sbuf.h>
+#include <cex/cexlib/allocators.c>
 #include <stdio.h>
 #include <stdio.h>
 

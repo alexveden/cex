@@ -26,6 +26,8 @@ typedef double f64;
 #define __CEX_CONCAT_INNER(a, b) a##b
 #define __CEX_CONCAT(a, b) __CEX_CONCAT_INNER(a, b)
 #define __CEX_TMPNAME(base) __CEX_CONCAT(base, __LINE__)
+#define MIN(X, Y) ((X) < (Y) ? (X) : (Y))
+#define MAX(X, Y) ((X) > (Y) ? (X) : (Y))
 
 /*
  *                 ERRORS
@@ -147,7 +149,7 @@ _uhf_errors_is_error__system(int syscall_res, int* out_result)
  *                 ASSERTIONS MACROS
  */
 
-#ifdef UHFTEST
+#ifdef CEXTEST
 // this prevents spamming on stderr (i.e. atest.h output stream in silent mode)
 #define UPERRORF_OUT__ stdout
 #else
@@ -172,7 +174,7 @@ _uhf_errors_is_error__system(int syscall_res, int* out_result)
 
 int __cex_test_uassert_enabled = 1;
 
-#ifdef UHFTEST
+#ifdef CEXTEST
 #define uassert_disable() __cex_test_uassert_enabled = 0
 #define uassert_enable() __cex_test_uassert_enabled = 1
 #define uassert_is_enabled() (__cex_test_uassert_enabled)

@@ -1,0 +1,12 @@
+Diagnostics:
+  ClangTidy:
+    # annoying fff.h Suspicious usage of 'sizeof(A*)'; pointer to aggregate' 
+    Remove: bugprone-sizeof-expression
+
+  # Suppress GCC ATEST_NOOPT __attribute(optimize("O0")) warning
+  Suppress: '-Wunknown-attributes'
+
+CompileFlags:
+  Add: [
+    -I/home/ubertrader/code/cex
+   ]

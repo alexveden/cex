@@ -1,6 +1,4 @@
 #include "str.h"
-#include "include/cex.h"
-#include <include/misc/utils.h>
 
 
 // static inline size_t _str__len(str_c* s){

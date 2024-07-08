@@ -1,8 +1,8 @@
-#include "../atest.h"
-#include <include/cex.h>
-#include <include/cex/allocators.c>
-#include <include/cex/deque.c>
-#include <include/cex/deque.h>
+#include <cex/cextest/cextest.h>
+#include <cex/cex.h>
+#include <cex/cexlib/allocators.c>
+#include <cex/cexlib/deque.c>
+#include <cex/cexlib/deque.h>
 #include <stdalign.h>
 #include <stdio.h>
 

@@ -1,5 +1,5 @@
 #pragma once
-#include <include/cex.h>
+#include <cex/cex.h>
 #include <stdalign.h>
 #include <stdint.h>
 #include <string.h>

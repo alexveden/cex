@@ -136,6 +136,7 @@ _AllocatorStaticArena__aligned_realloc(void* ptr, size_t alignment, size_t size)
 {
     (void)ptr;
     (void)size;
+    (void)alignment;
     uassert(_Allocator_c__static_arena.base.magic != 0 && "Allocator not initialized");
     uassert(_Allocator_c__static_arena.base.magic == ALLOCATOR_STATIC_ARENA_MAGIC && "bad type!");
     uassert(false && "realloc is not supported by static arena allocator");
