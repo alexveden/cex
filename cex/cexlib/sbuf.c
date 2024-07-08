@@ -172,7 +172,7 @@ sbuf_append_c(sbuf_c* self, char* s)
     return Error.ok;
 }
 Exception
-sbuf_replace(sbuf_c* self, const str_c old, const str_c new)
+sbuf_replace(sbuf_c* self, const sview_c old, const sview_c new)
 {
     uassert(self != NULL);
     uassert(old.buf != new.buf && "old and new overlap");
@@ -185,7 +185,7 @@ sbuf_replace(sbuf_c* self, const str_c old, const str_c new)
         return Error.argument;
     }
 
-    str_c s = sview.cbuf(*self, head->length);
+    sview_c s = sview.cbuf(*self, head->length);
 
     if (unlikely(s.len == 0)) {
         return Error.ok;
@@ -240,7 +240,7 @@ sbuf_replace(sbuf_c* self, const str_c old, const str_c new)
 }
 
 Exception
-sbuf_append(sbuf_c* self, str_c s)
+sbuf_append(sbuf_c* self, sview_c s)
 {
     sbuf_head_s* head = sbuf__head(*self);
 

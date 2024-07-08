@@ -1,0 +1,27 @@
+---
+Language:        Cpp
+BasedOnStyle:  Mozilla
+IndentWidth:     4
+ContinuationIndentWidth: 4
+ColumnLimit: 100
+# Breaks after return type in function (only in .c, skipping .h definitions)
+AlwaysBreakAfterReturnType: AllDefinitions
+AlwaysBreakAfterDefinitionReturnType: TopLevel
+AllowAllArgumentsOnNextLine: false
+AlignAfterOpenBracket: BlockIndent
+PenaltyBreakAssignment: 1000
+PenaltyBreakString: 10000
+PenaltyBreakBeforeFirstCallParameter: 0
+PenaltyBreakOpenParenthesis: 0
+PenaltyExcessCharacter: 100
+# PenaltyBreakComment: 10
+# PenaltyBreakScopeResolution: 0
+# PenaltyIndentedWhitespace: 1
+AlignOperands: AlignAfterOperator
+BinPackArguments: false
+MaxEmptyLinesToKeep: 2
+InsertBraces: true
+BreakStringLiterals: false
+BreakBeforeTernaryOperators: true
+...
+

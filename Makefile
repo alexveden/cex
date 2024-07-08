@@ -35,6 +35,7 @@ clean:
 
 test:
 	@echo "\nMaking CEX TEST: $(t)"
+	@./cli/atest --data=$(BUILD_DIR)/.atestdb $(t) 
 	@mkdir -p $(BUILD_DIR)/$(dir $(t)) # > /dev/null 2>&1
 	$(CC) $(CFLAGS) $(t) $(shell cat $(t) | grep -e "//\s*\#gcc_args " | sed 's@//\s*#gcc_args @@' | xargs) -o $(BUILD_DIR)/$(t).test $(LDFLAGS)
 	ulimit -c unlimited && $(BUILD_DIR)/$(t).test vvvvv $(c) 

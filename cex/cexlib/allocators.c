@@ -63,7 +63,7 @@ _AllocatorHeap__aligned_realloc(void* ptr, size_t alignment, size_t size)
     //
     size_t new_size = malloc_usable_size(ptr);
     // NOTE: malloc_usable_size() returns a value no less than the size of
-    // the block of allocated memory pointed to by ptr. 
+    // the block of allocated memory pointed to by ptr.
 
     if (new_size >= size) {
         // This should return extended memory
@@ -104,6 +104,35 @@ _AllocatorHeap__free(void* ptr)
     return NULL; // always NULL
 }
 
+static FILE*
+_AllocatorHeap__fopen(const char* filename, const char* mode)
+{
+    uassert(_Allocator_c__heap.base.magic != 0 && "Allocator not initialized");
+    uassert(_Allocator_c__heap.base.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
+    uassert(filename != NULL);
+    uassert(mode != NULL);
+
+    FILE* res = fopen(filename, mode);
+    if (res != NULL) {
+        _Allocator_c__heap.n_fopen++;
+    }
+    return res;
+}
+
+static int
+_AllocatorHeap__fclose(FILE* f)
+{
+    uassert(_Allocator_c__heap.base.magic != 0 && "Allocator not initialized");
+    uassert(_Allocator_c__heap.base.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
+
+    uassert(f != NULL);
+    uassert(f != stdin && "closing stdin");
+    uassert(f != stdout && "closing stdout");
+    uassert(f != stderr && "closing stderr");
+
+    _Allocator_c__heap.n_fclose++;
+    return fclose(f);
+}
 
 /**
  * @brief  heap-based allocator (simple proxy for malloc/free/realloc)
@@ -122,6 +151,8 @@ AllocatorHeap_new(void)
         .free = _AllocatorHeap__free,
         .realloc_aligned = _AllocatorHeap__aligned_realloc,
         .alloc_aligned = _AllocatorHeap__aligned_alloc,
+        .fopen = _AllocatorHeap__fopen,
+        .fclose = _AllocatorHeap__fclose,
     };
 
     return &_Allocator_c__heap.base;
@@ -220,6 +251,35 @@ _AllocatorStaticArena__alloc(size_t size)
     return ptr;
 }
 
+static FILE*
+_AllocatorStaticArena__fopen(const char* filename, const char* mode)
+{
+    uassert(_Allocator_c__static_arena.base.magic != 0 && "not initialized");
+    uassert(filename != NULL);
+    uassert(mode != NULL);
+
+    AllocatorStaticArena_c* a = &_Allocator_c__static_arena;
+    FILE* res = fopen(filename, mode);
+    if (res != NULL) {
+        a->n_fopen++;
+    }
+    return res;
+}
+
+static int
+_AllocatorStaticArena__fclose(FILE* f)
+{
+    uassert(_Allocator_c__static_arena.base.magic != 0 && "not initialized");
+    uassert(f != NULL);
+    uassert(f != stdin && "closing stdin");
+    uassert(f != stdout && "closing stdout");
+    uassert(f != stderr && "closing stderr");
+
+    AllocatorStaticArena_c* a = &_Allocator_c__static_arena;
+    a->n_fclose++;
+    return fclose(f);
+}
+
 
 /**
  * @brief Static arena allocator (can be heap or stack arena)
@@ -253,6 +313,8 @@ AllocatorStaticArena_new(char* buffer, size_t capacity)
         .realloc = _AllocatorStaticArena__realloc,
         .realloc_aligned = _AllocatorStaticArena__aligned_realloc,
         .free = _AllocatorStaticArena__free,
+        .fopen = _AllocatorStaticArena__fopen,
+        .fclose = _AllocatorStaticArena__fclose,
     };
 
     a->mem = buffer;
@@ -287,6 +349,10 @@ AllocatorStaticArena_free(void)
     uassert(a->base.magic != 0 && "allocator is not initialized");
     uassert(a->base.magic == ALLOCATOR_STATIC_ARENA_MAGIC && "wrong allocator type");
 
+    if (a->n_fopen != a->n_fclose) {
+        uperrorf("AllocatorStaticArena: number fopens() don't match number of fclose()\n");
+    }
+
     memset(a, 0, sizeof(*a));
     return NULL;
 }
@@ -301,6 +367,10 @@ AllocatorHeap_free(void)
 
     if (a->n_allocs != a->n_free) {
         uperrorf("AllocatorHeap: number allocations don't match number of free\n");
+    }
+
+    if (a->n_fopen != a->n_fclose) {
+        uperrorf("AllocatorHeap: number fopens() don't match number of fclose()\n");
     }
 
     memset(a, 0, sizeof(*a));

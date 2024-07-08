@@ -20,9 +20,9 @@ FAKE_VALUE_FUNC(Exc, __wrap_sbuf_grow, sbuf_c*, u32)Exception __real_sbuf_grow(s
 
 FAKE_VALUE_FUNC(Exc, __wrap_sbuf_append_c, sbuf_c*, char*)Exception __real_sbuf_append_c(sbuf_c*, char*);
 
-FAKE_VALUE_FUNC(Exc, __wrap_sbuf_replace, sbuf_c*, const str_c, const str_c)Exception __real_sbuf_replace(sbuf_c*, const str_c, const str_c);
+FAKE_VALUE_FUNC(Exc, __wrap_sbuf_replace, sbuf_c*, const sview_c, const sview_c)Exception __real_sbuf_replace(sbuf_c*, const sview_c, const sview_c);
 
-FAKE_VALUE_FUNC(Exc, __wrap_sbuf_append, sbuf_c*, str_c)Exception __real_sbuf_append(sbuf_c*, str_c);
+FAKE_VALUE_FUNC(Exc, __wrap_sbuf_append, sbuf_c*, sview_c)Exception __real_sbuf_append(sbuf_c*, sview_c);
 
 FAKE_VOID_FUNC(__wrap_sbuf_clear, sbuf_c*)void __real_sbuf_clear(sbuf_c*);
 

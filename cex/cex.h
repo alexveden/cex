@@ -1,11 +1,13 @@
 
 #pragma once
+#include <errno.h>
 #include <stdalign.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 typedef int8_t i8;
 typedef uint8_t u8;
@@ -49,46 +51,48 @@ const struct
     Exc integrity;
     Exc exists;
     Exc not_found;
-    Exc shared_mem;
-    Exc quote_pool;
-    Exc protocol;
-    Exc timeout;
-    Exc offline;
-    Exc delay;
-    Exc algo_order;
     Exc skip;
-    Exc strategy;
-    Exc network;
     Exc check;
+    Exc empty;
 } Error = {
     // FIX: implement Error struct validation func/macro
-    .ok = EOK,                      // Success
-    .memory = "MemoryError",        // memory allocation error
-    .io = "IOError",                // IO error
-    .overflow = "OverflowError",    // buffer overflow
-    .argument = "ArgumentError",    // function argument error
-    .integrity = "IntegrityError",  // data integrity error
-    .exists = "ExistsError",        // entity or key already exists
-    .not_found = "NotFoundError",   // entity or key already exists
-    .shared_mem = "SharedMemError", // shared memory error
-    .quote_pool = "QuotePoolError", // quote pool error
-    .protocol = "ProtocolError",    // protocol error
-    .timeout = "TimeoutError",      // resource timeout
-    .offline = "OfflineError",      // resource offline
-    .delay = "DelayError",          // resource delay
-    .algo_order = "AlgoOrderError", // algo order / protocol sequence error
-    .skip = "ShouldBeSkipped",      // NOT an error, function result must be skipped
-    .strategy = "StrategyError",    // generic UHF strategy error
-    .network = "NetworkError",      // generic network error
-    .check = "SanityCheckError",    // generic error checking failed
+    .ok = EOK,                     // Success
+    .memory = "MemoryError",       // memory allocation error
+    .io = "IOError",               // IO error
+    .overflow = "OverflowError",   // buffer overflow
+    .argument = "ArgumentError",   // function argument error
+    .integrity = "IntegrityError", // data integrity error
+    .exists = "ExistsError",       // entity or key already exists
+    .not_found = "NotFoundError",  // entity or key already exists
+    .skip = "ShouldBeSkipped",     // NOT an error, function result must be skipped
+    .check = "SanityCheckError",   // uerrcheck() failed
+    .empty = "EmptyError",         // resource is empty
 };
 
 
 /// Strips full path of __FILENAME__ to the file basename
 #define __FILENAME__ (strrchr("/" __FILE__, '/') + 1)
 
+
+/// analog of fprintf, but preserves errno for user space
+static inline bool
+__cex__fprintf(FILE* stream, const char* format, ...)
+{
+    //
+    int _errno = errno;
+
+    va_list args;
+    va_start(args, format);
+    vfprintf(stream, format, args);
+    va_end(args);
+
+    errno = _errno;
+    return true;
+}
+
+
 #define uptraceback(uerr, fail_func)                                                               \
-    (fprintf(                                                                                      \
+    (__cex__fprintf(                                                                               \
          stdout,                                                                                   \
          "[^STCK] ( %s:%d %s() ) ^^^^^ [%s] in %s\n",                                              \
          __FILENAME__,                                                                             \
@@ -100,7 +104,7 @@ const struct
      1)
 
 #define uperrorf(format, ...)                                                                      \
-    (fprintf(                                                                                      \
+    (__cex__fprintf(                                                                               \
         stdout,                                                                                    \
         "[ERROR] ( %s:%d %s() ) " format,                                                          \
         __FILENAME__,                                                                              \
@@ -164,7 +168,7 @@ _uhf_errors_is_error__system(int syscall_res, int* out_result)
 #define uassert(cond) ((void)(0))
 #else
 #define utracef(format, ...)                                                                       \
-    (fprintf(                                                                                      \
+    (__cex__fprintf(                                                                               \
         stdout,                                                                                    \
         "[TRACE] ( %s:%d %s() ) " format,                                                          \
         __FILENAME__,                                                                              \
@@ -197,7 +201,7 @@ void __sanitizer_print_stack_trace();
     do {                                                                                           \
         if (unlikely(!((A)))) {                                                                    \
             if (uassert_is_enabled()) {                                                            \
-                fprintf(                                                                           \
+                __cex__fprintf(                                                                    \
                     uassert_is_enabled() ? stderr : UPERRORF_OUT__,                                \
                     "[ASSERT] ( %s:%d %s() ) %s\n",                                                \
                     __FILENAME__,                                                                  \
@@ -215,7 +219,7 @@ void __sanitizer_print_stack_trace();
     do {                                                                                           \
         if (unlikely(!((A)))) {                                                                    \
             if (uassert_is_enabled()) {                                                            \
-                fprintf(                                                                           \
+                __cex__fprintf(                                                                    \
                     uassert_is_enabled() ? stderr : UPERRORF_OUT__,                                \
                     "[ASSERT] ( %s:%d %s() ) " format "\n",                                        \
                     __FILENAME__,                                                                  \
@@ -233,7 +237,7 @@ void __sanitizer_print_stack_trace();
 #define uerrcheck(condition)                                                                       \
     do {                                                                                           \
         if (unlikely(!((condition)))) {                                                            \
-            fprintf(                                                                               \
+            __cex__fprintf(                                                                        \
                 UPERRORF_OUT__,                                                                    \
                 "[UERRCHK] ( %s:%d %s() ) Check failed: %s\n",                                     \
                 __FILENAME__,                                                                      \
@@ -331,5 +335,7 @@ typedef struct Allocator_c
     void* (*alloc_aligned)(size_t, size_t);
     void* (*realloc_aligned)(void*, size_t, size_t);
     void* (*free)(void*);
+    FILE* (*fopen)(const char* filename, const char* mode);
+    int (*fclose)(FILE*);
 } Allocator_c;
-_Static_assert(sizeof(Allocator_c) == 48, "size!");
+_Static_assert(sizeof(Allocator_c) == 64, "size!");

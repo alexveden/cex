@@ -6,33 +6,33 @@
 #include <cex/cexlib/sview.h>
 
 // IMPORTANT: wrapping works only with gcc  `-Wl,--wrap=Shmem_new,--wrap=Protocol_event_emitter_new`  flag
-FAKE_VALUE_FUNC(bool, __wrap_sview__isvalid, const str_c*)bool __real_sview__isvalid(const str_c*);
+FAKE_VALUE_FUNC(bool, __wrap_sview__isvalid, const sview_c*)bool __real_sview__isvalid(const sview_c*);
 
-FAKE_VALUE_FUNC(ssize_t, __wrap_sview__index, str_c*, char)ssize_t __real_sview__index(str_c*, char);
+FAKE_VALUE_FUNC(ssize_t, __wrap_sview__index, sview_c*, char)ssize_t __real_sview__index(sview_c*, char);
 
-FAKE_VALUE_FUNC(str_c, __wrap_sview_cstr, const char*)str_c __real_sview_cstr(const char*);
+FAKE_VALUE_FUNC(sview_c, __wrap_sview_cstr, const char*)sview_c __real_sview_cstr(const char*);
 
-FAKE_VALUE_FUNC(str_c, __wrap_sview_cbuf, char*, size_t)str_c __real_sview_cbuf(char*, size_t);
+FAKE_VALUE_FUNC(sview_c, __wrap_sview_cbuf, char*, size_t)sview_c __real_sview_cbuf(char*, size_t);
 
-FAKE_VALUE_FUNC(str_c, __wrap_sview_sub, str_c, ssize_t, ssize_t)str_c __real_sview_sub(str_c, ssize_t, ssize_t);
+FAKE_VALUE_FUNC(sview_c, __wrap_sview_sub, sview_c, ssize_t, ssize_t)sview_c __real_sview_sub(sview_c, ssize_t, ssize_t);
 
-FAKE_VALUE_FUNC(Exc, __wrap_sview_copy, str_c, char*, size_t)Exception __real_sview_copy(str_c, char*, size_t);
+FAKE_VALUE_FUNC(Exc, __wrap_sview_copy, sview_c, char*, size_t)Exception __real_sview_copy(sview_c, char*, size_t);
 
-FAKE_VALUE_FUNC(size_t, __wrap_sview_length, str_c)size_t __real_sview_length(str_c);
+FAKE_VALUE_FUNC(size_t, __wrap_sview_length, sview_c)size_t __real_sview_length(sview_c);
 
-FAKE_VALUE_FUNC(bool, __wrap_sview_is_valid, str_c)bool __real_sview_is_valid(str_c);
+FAKE_VALUE_FUNC(bool, __wrap_sview_is_valid, sview_c)bool __real_sview_is_valid(sview_c);
 
-FAKE_VALUE_FUNC(char*, __wrap_sview_iter, str_c, cex_iterator_s*)char* __real_sview_iter(str_c, cex_iterator_s*);
+FAKE_VALUE_FUNC(char*, __wrap_sview_iter, sview_c, cex_iterator_s*)char* __real_sview_iter(sview_c, cex_iterator_s*);
 
-FAKE_VALUE_FUNC(ssize_t, __wrap_sview_indexof, str_c, str_c, size_t, size_t)ssize_t __real_sview_indexof(str_c, str_c, size_t, size_t);
+FAKE_VALUE_FUNC(ssize_t, __wrap_sview_indexof, sview_c, sview_c, size_t, size_t)ssize_t __real_sview_indexof(sview_c, sview_c, size_t, size_t);
 
-FAKE_VALUE_FUNC(bool, __wrap_sview_contains, str_c, str_c)bool __real_sview_contains(str_c, str_c);
+FAKE_VALUE_FUNC(bool, __wrap_sview_contains, sview_c, sview_c)bool __real_sview_contains(sview_c, sview_c);
 
-FAKE_VALUE_FUNC(bool, __wrap_sview_starts_with, str_c, str_c)bool __real_sview_starts_with(str_c, str_c);
+FAKE_VALUE_FUNC(bool, __wrap_sview_starts_with, sview_c, sview_c)bool __real_sview_starts_with(sview_c, sview_c);
 
-FAKE_VALUE_FUNC(bool, __wrap_sview_ends_with, str_c, str_c)bool __real_sview_ends_with(str_c, str_c);
+FAKE_VALUE_FUNC(bool, __wrap_sview_ends_with, sview_c, sview_c)bool __real_sview_ends_with(sview_c, sview_c);
 
-FAKE_VALUE_FUNC(str_c*, __wrap_sview_iter_split, str_c, const char, cex_iterator_s*)str_c* __real_sview_iter_split(str_c, const char, cex_iterator_s*);
+FAKE_VALUE_FUNC(sview_c*, __wrap_sview_iter_split, sview_c, const char, cex_iterator_s*)sview_c* __real_sview_iter_split(sview_c, const char, cex_iterator_s*);
 
 
 const struct __module__sview sview = {

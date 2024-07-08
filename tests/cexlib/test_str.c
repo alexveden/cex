@@ -28,7 +28,7 @@ ATEST_F(test_cstr)
     const char* cstr = "hello";
 
 
-    str_c s = sview.cstr(cstr);
+    sview_c s = sview.cstr(cstr);
     atassert_eqs(s.buf, cstr);
     atassert_eqi(s.len, 5); // lazy init until sview.length() is called
     atassert(s.buf == cstr);
@@ -38,13 +38,13 @@ ATEST_F(test_cstr)
 
     atassert_eqi(s.len, 5); // now s.len is set
 
-    str_c snull = sview.cstr(NULL);
+    sview_c snull = sview.cstr(NULL);
     atassert_eqs(snull.buf, NULL);
     atassert_eqi(snull.len, 0);
     atassert_eqi(sview.length(snull), 0);
     atassert_eqi(sview.is_valid(snull), false);
 
-    str_c sempty = sview.cstr("");
+    sview_c sempty = sview.cstr("");
     atassert_eqs(sempty.buf, "");
     atassert_eqi(sempty.len, 0);
     atassert_eqi(sview.length(sempty), 0);
@@ -59,7 +59,7 @@ ATEST_F(test_copy)
     char buf[8];
     memset(buf, 'a', arr$len(buf));
 
-    str_c s = sview.cstr("1234567");
+    sview_c s = sview.cstr("1234567");
     atassert_eqi(s.len, 7);
 
     memset(buf, 'a', arr$len(buf));
@@ -77,23 +77,23 @@ ATEST_F(test_copy)
     atassert_eqs(Error.argument, sview.copy(s, buf, 0));
 
     memset(buf, 'a', arr$len(buf));
-    atassert_eqs(Error.check, sview.copy((str_c){ 0 }, buf, arr$len(buf)));
+    atassert_eqs(Error.check, sview.copy((sview_c){ 0 }, buf, arr$len(buf)));
     // buffer reset to "" string if s is bad
     atassert_eqs("", buf);
 
 
     memset(buf, 'a', arr$len(buf));
-    atassert_eqs(Error.check, sview.copy((str_c){ 0 }, buf, arr$len(buf)));
+    atassert_eqs(Error.check, sview.copy((sview_c){ 0 }, buf, arr$len(buf)));
     // buffer reset to "" string
     atassert_eqs("", buf);
 
-    str_c sbig = sview.cstr("12345678");
+    sview_c sbig = sview.cstr("12345678");
     memset(buf, 'a', arr$len(buf));
     atassert_eqs(Error.overflow, sview.copy(sbig, buf, arr$len(buf)));
     // string is truncated
     atassert_eqs("1234567", buf);
 
-    str_c ssmall = sview.cstr("1234");
+    sview_c ssmall = sview.cstr("1234");
     memset(buf, 'a', arr$len(buf));
     atassert_eqs(Error.ok, sview.copy(ssmall, buf, arr$len(buf)));
     atassert_eqs("1234", buf);
@@ -104,8 +104,8 @@ ATEST_F(test_copy)
 ATEST_F(test_sub_positive_start)
 {
 
-    str_c sub;
-    str_c s = sview.cstr("123456");
+    sview_c sub;
+    sview_c s = sview.cstr("123456");
     atassert_eqi(s.len, 6);
     atassert_eqi(sview.is_valid(s), true);
 
@@ -184,7 +184,7 @@ ATEST_F(test_sub_positive_start)
 ATEST_F(test_sub_negative_start)
 {
 
-    str_c s = sview.cstr("123456");
+    sview_c s = sview.cstr("123456");
     atassert_eqi(s.len, 6);
     atassert_eqi(sview.is_valid(s), true);
 
@@ -249,7 +249,7 @@ ATEST_F(test_sub_negative_start)
 ATEST_F(test_iter)
 {
 
-    str_c s = sview.cstr("123456");
+    sview_c s = sview.cstr("123456");
     atassert_eqi(s.len, 6);
     u32 nit = 0;
     for$iter(char, it, sview.iter(s, &it.iterator))
@@ -308,12 +308,12 @@ ATEST_F(test_iter)
 ATEST_F(test_iter_split)
 {
 
-    str_c s = sview.cstr("123456");
+    sview_c s = sview.cstr("123456");
     u32 nit = 0;
     char buf[128] = {0};
     
     nit = 0;
-    for$iter(str_c, it, sview.iter_split(s, ',', &it.iterator))
+    for$iter(sview_c, it, sview.iter_split(s, ',', &it.iterator))
     {
         atassert_eqi(sview.is_valid(*it.val), true);
         atassert_eqs(Error.ok, sview.copy(*it.val, buf, arr$len(buf)));
@@ -325,7 +325,7 @@ ATEST_F(test_iter_split)
 
     nit = 0;
     s = sview.cstr("123,456");
-    for$iter(str_c, it, sview.iter_split(s, ',', &it.iterator))
+    for$iter(sview_c, it, sview.iter_split(s, ',', &it.iterator))
     {
         atassert_eqi(sview.is_valid(*it.val), true);
         atassert_eqs(Error.ok, sview.copy(*it.val, buf, arr$len(buf)));
@@ -337,7 +337,7 @@ ATEST_F(test_iter_split)
 
     nit = 0;
     s = sview.cstr("123,456,88,99");
-    for$iter(str_c, it, sview.iter_split(s, ',', &it.iterator))
+    for$iter(sview_c, it, sview.iter_split(s, ',', &it.iterator))
     {
         atassert_eqi(sview.is_valid(*it.val), true);
         atassert_eqs(Error.ok, sview.copy(*it.val, buf, arr$len(buf)));
@@ -349,7 +349,7 @@ ATEST_F(test_iter_split)
 
     nit = 0;
     s = sview.cstr("123,456,88,");
-    for$iter(str_c, it, sview.iter_split(s, ',', &it.iterator))
+    for$iter(sview_c, it, sview.iter_split(s, ',', &it.iterator))
     {
         atassert_eqi(sview.is_valid(*it.val), true);
         atassert_eqs(Error.ok, sview.copy(*it.val, buf, arr$len(buf)));
@@ -358,14 +358,14 @@ ATEST_F(test_iter_split)
     }
     atassert_eqi(nit, 3);
 
-    atassert(false && "FIX: implement sview.cmp(str_c) / sview.cmpc(char*)");
+    atassert(false && "FIX: implement sview.cmp(sview_c) / sview.cmpc(char*)");
     return NULL;
 }
 
 ATEST_F(test_indexof)
 {
 
-    str_c s = sview.cstr("123456");
+    sview_c s = sview.cstr("123456");
     atassert_eqi(s.len, 6);
 
     // match first
@@ -421,7 +421,7 @@ ATEST_F(test_indexof)
 
 ATEST_F(test_contains_starts_ends)
 {
-    str_c s = sview.cstr("123456");
+    sview_c s = sview.cstr("123456");
     atassert_eqi(1, sview.contains(s, sview.cstr("1")));
     atassert_eqi(1, sview.contains(s, sview.cstr("123456")));
     atassert_eqi(0, sview.contains(s, sview.cstr("1234567")));

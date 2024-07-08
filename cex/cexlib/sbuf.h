@@ -43,10 +43,10 @@ Exception
 (*append_c)(sbuf_c* self, char* s);
 
 Exception
-(*replace)(sbuf_c* self, const str_c old, const str_c new);
+(*replace)(sbuf_c* self, const sview_c old, const sview_c new);
 
 Exception
-(*append)(sbuf_c* self, str_c s);
+(*append)(sbuf_c* self, sview_c s);
 
 void
 (*clear)(sbuf_c* self);

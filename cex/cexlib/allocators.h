@@ -19,8 +19,10 @@ typedef struct
     u32 n_allocs;
     u32 n_reallocs;
     u32 n_free;
+    u32 n_fopen;
+    u32 n_fclose;
 } AllocatorDynamic_c;
-_Static_assert(sizeof(AllocatorDynamic_c) == 64, "size!");
+_Static_assert(sizeof(AllocatorDynamic_c) == 128, "size!");
 
 typedef struct
 {
@@ -28,6 +30,8 @@ typedef struct
     void* mem;
     void* next;
     void* max;
+    u32 n_fopen;
+    u32 n_fclose;
 } AllocatorStaticArena_c;
 _Static_assert(sizeof(AllocatorStaticArena_c) == 128, "size!");
 
