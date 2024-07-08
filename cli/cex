@@ -1,0 +1,769 @@
+#!/usr/bin/env python3
+import argparse
+from textwrap import indent
+import os
+import io
+import re
+
+RE_COMMENT_LINE = re.compile(r"^\s*//", re.MULTILINE)
+RE_COMMENT_ML_START = re.compile(r"^\s*\/\*", re.MULTILINE)
+RE_COMMENT_ML_END = re.compile(r".*\*\/", re.MULTILINE)
+RE_CODE_START_LINE = re.compile(r"^[a-zA-Z_0-9\*]+\s+", re.MULTILINE)
+RE_FUNC = re.compile(r"(.*)\s+(\w+)\({1}([\w,\[\]\(\)\s\*\.]+)\)", re.MULTILINE)
+RE_STATIC = re.compile(r"(^static\s|\sstatic\s|\sstatic$)", re.MULTILINE)
+RE_INLINE = re.compile(r"(^inline\s|\sinline\s|\sinline$)", re.MULTILINE)
+
+
+class Block:
+    """Generic code block
+
+    Attributes:
+        buf: code buffer
+        line_start: start line of block
+        line_end: end line of block
+    """
+
+    def __init__(self, line_start: int):
+        self.buf = io.StringIO()
+        self.line_start = line_start
+        self.line_end = None
+
+    def __str__(self):
+        return self.__class__.__qualname__
+
+    def __repr__(self):
+        return f"Block: {str(self)} [{self.line_start}:{self.line_end}]\n{self.buf.getvalue()}"
+
+    @staticmethod
+    def probe(line: str) -> bool:
+        """Probes new block type based on line of code"""
+        return False
+
+    def process_line(self, line: str) -> bool:
+        """Process line of code in initialized block"""
+        raise NotImplementedError()
+
+
+class Comment(Block):
+    """Commentary block
+
+    Attributes:
+        comment_type: 'm' - multi line, 's' - single line
+    """
+
+    def __init__(self, line_start):
+        self.comment_type = None
+        super().__init__(line_start)
+
+    def __str__(self):
+        return f"Comment({self.comment_type}) [{self.line_start}:{self.line_end}]"
+
+    @staticmethod
+    def probe(line: str) -> bool:
+        return RE_COMMENT_LINE.search(line) or RE_COMMENT_ML_START.search(line)
+
+    def process_line(self, line: str) -> bool | None:
+        if self.comment_type is None:
+            if RE_COMMENT_ML_START.search(line):
+                self.comment_type = "m"
+            elif RE_COMMENT_LINE.search(line):
+                self.comment_type = "s"
+            else:
+                raise ValueError("Unsupproted commet")
+
+            self.buf.write(line)
+
+            # Single line contains comment end mark
+            if RE_COMMENT_ML_END.search(line):
+                return False
+
+            return True
+        else:
+            if self.comment_type == "s":
+                if RE_COMMENT_LINE.search(line):
+                    self.buf.write(line)
+                    return True
+                else:
+                    return None  # Unknown line, probe next block
+            else:
+                # In multiline comment, write all until end
+
+                if RE_COMMENT_ML_END.search(line):
+                    self.buf.write(line.replace("\n", ""))
+                    return False  # Block ended
+                else:
+                    self.buf.write(line)
+                    return True  # Block continues
+
+
+class Code(Block):
+    """Code block
+
+    Attributes:
+        code_type: "func", "var", "struct"
+    """
+
+    def __init__(self, line_start):
+        self.code_type = None
+        self._is_signature = True
+        self._brstack = []
+        self._brackets: dict = {
+            "[": "]",
+            "]": None,
+            "(": ")",
+            ")": None,
+            "{": "}",
+            "}": None,
+        }
+        self._comment = None
+        super().__init__(line_start)
+
+    def __str__(self):
+        return f"Code({self.code_type})[{self.line_start}:{self.line_end}]"
+
+    @staticmethod
+    def probe(line: str) -> bool:
+        assert not RE_COMMENT_LINE.search(line)
+        assert not RE_COMMENT_ML_START.search(line)
+        return RE_CODE_START_LINE.search(line)
+
+    def process_brackets(self, c: str):
+        assert len(c) == 1
+        assert c in self._brackets
+        if not self._brstack:
+            assert (
+                self._brackets[c] is not None
+            ), f"Must me opening bracket: c={c}\n{self.buf.getvalue()}"
+            self._brstack.append(c)
+        else:
+            if self._brackets[self._brstack[-1]] == c:
+                # c is closing bracket
+                self._brstack.pop(-1)
+            else:
+                # new bracket level
+                assert (
+                    self._brackets[c] is not None
+                ), f"Must me opening bracket: c={c}\n{self.buf.getvalue()}"
+                self._brstack.append(c)
+        pass
+
+    def process_line(self, line: str) -> bool | None:
+        if not self._comment:
+            if Comment.probe(line):
+                self._comment = Comment(-1)
+                if not self._comment.process_line(line):
+                    self._comment = None
+                return True
+        else:
+            cmt = self._comment.process_line(line)
+            if cmt:
+                return True
+            else:
+                self._comment = None
+                if cmt is not None:
+                    return True
+
+        for c in line.strip():
+            # We are in signature
+            if self._is_signature:
+                # Decide definition type based on signature
+                if c in self._brackets:
+
+                    if c == "(":
+                        self.code_type = "func"
+                    elif c == "{":
+                        assert (
+                            not self._brstack
+                        ), f"No all brackets closed: {self._brstack}"
+                        # Function signature is completed, started implementation
+                        self._is_signature = False
+                        if self.code_type is None:
+                            if "struct " in self.buf.getvalue():
+                                self.code_type = "struct"
+
+                    self.process_brackets(c)
+                elif c == "=":
+                    self.code_type = "var"
+                elif c == ";":
+                    # Reached the end while in signature
+                    # assert self.code_type == "func", f"{self.code_type}"
+                    if self.code_type is None:
+                        if "extern " in self.buf.getvalue():
+                            self.code_type = "var"
+                    if self.code_type == "func":
+                        if "typedef " in self.buf.getvalue():
+                            self.code_type = "type"
+                        else:
+                            self.code_type = "decl"
+                    # Return block end
+                    return False
+
+                if self._is_signature:
+                    self.buf.write(c)
+            else:
+
+                if c in self._brackets:
+                    self.process_brackets(c)
+
+                if len(self._brstack) == 0:
+
+                    # Handle last closing bracket of a function
+                    if self.code_type == "func":
+                        if c == "}":
+                            return False
+                    elif self.code_type == "var":
+                        if c == ";":
+                            return False
+                    else:
+                        if c == ";":
+                            return False
+
+                pass
+
+        if self._is_signature:
+            self.buf.write(" ")
+        return True
+
+
+class Func:
+    """Function metadata
+
+    Attributes:
+        is_static: function defined as static
+        is_inline: function defined as inline
+        typedef: function type definition part
+        name: function full name
+        args: function full arguments
+        docstr: comment block prior function
+        sub_module: function sub module, typically _<namespace>__<sub_module>__<name>
+        ifc_name: function interface short name
+    """
+
+    def __init__(self, decl: str, ifc_prefix: str, func_prefix: str):
+        g = RE_FUNC.match(decl)
+        assert g, f"Function regex not matched: {decl}"
+        self.is_static = False
+        self.is_inline = False
+        typedef = g.group(1)
+
+        if RE_STATIC.search(typedef):
+            self.is_static = True
+            typedef = RE_STATIC.sub(" ", typedef)
+        if RE_INLINE.search(typedef):
+            self.is_inline = True
+            typedef = RE_INLINE.sub(" ", typedef)
+
+        self.typedef = typedef.strip()
+        self.name = g.group(2).strip()
+        self.args = g.group(3).strip()
+        self.docstr = ""
+
+        g = re.match(
+            rf"^{func_prefix}{ifc_prefix}__([\w]+)__(\w+)", self.name, re.MULTILINE
+        )
+        if g:
+            self.sub_module = g.group(1)
+            self.ifc_name = g.group(2)
+            assert self.ifc_name
+        elif g := re.match(
+            rf"^{func_prefix}{ifc_prefix}_(\w+)", self.name, re.MULTILINE
+        ):
+            self.sub_module = None
+            self.ifc_name = g.group(1)
+            assert self.ifc_name
+        else:
+            # Not in namespace
+            self.ifc_name = None
+            self.sub_module = None
+
+        assert (
+            "(" not in self.typedef and ")" not in self.typedef
+        ), f"function pointers?? {self}"
+
+    def to_pointer_decl(self, indent: bool) -> str:
+        """Function declaration for .h struct
+
+        Args:
+            indent: indent type def and name
+
+        Returns:
+
+        """
+        assert self.ifc_name, "not in namespace"
+
+        if indent:
+            return f"{self.typedef}\n(*{self.ifc_name})({self.args});\n"
+        else:
+            return f"{self.typedef} (*{self.ifc_name})({self.args});\n"
+
+    def to_pointer_def(self) -> str:
+        """Function .c struct field definition"""
+        assert self.ifc_name, "not in namespace"
+
+        return f"    .{self.ifc_name} = {self.name},"
+
+    def __repr__(self):
+        return f"""
+Function:
+    typedef: {self.typedef}
+    is_static: {self.is_static}
+    is_inline: {self.is_inline}
+    name: {self.name}
+    args: {self.args}
+    """
+
+
+class CEXBuilder:
+    """CEX Module generator
+
+    Attributes:
+        c_file: .c file path
+        h_file: .h file path
+        namespace: module namespace (i.e. expected function prefix _<namespace>_)
+    """
+
+    def __init__(
+        self, c_file: str, h_file: str, namespace: str = None
+    ):
+        """CEX Module generator initializer
+
+        Args:
+            c_file: path to .c file
+            h_file: path to .h file
+            namespace:
+        """
+        assert h_file.endswith(".h")
+        self.h_file = h_file
+
+        if c_file:
+            assert c_file.endswith(".c")
+            self.c_file = c_file
+            assert os.path.basename(c_file.replace(".c", "")) == os.path.basename(
+                h_file.replace(".h", "")
+            ), f"BaseName of {c_file=} and {h_file=} mismatch"
+            self.is_public_header = False
+            self.func_prefix = "_"
+        else:
+            self.is_public_header = True
+            self.c_file = None
+            self.func_prefix = ""
+
+        if namespace:
+            self.namespace = namespace
+        else:
+            self.namespace = os.path.basename(self.h_file).replace(".h", "")
+
+        ns = self.namespace
+        if self.is_public_header:
+            self.ns_struct_name = f"__header__{ns}"
+        else:
+            if ns == ns.lower():
+                self.ns_struct_name = f"__module__{ns}"
+            else:
+                self.ns_struct_name = f"__class__{ns}"
+
+    @staticmethod
+    def block_probe(line: str, lineno: int) -> Block | None:
+        """Probed block type"""
+        if Comment.probe(line):
+            return Comment(lineno)
+        if Code.probe(line):
+            return Code(lineno)
+        return None
+
+    def parse_source(self, c_file) -> tuple[list[str], list[Block]]:
+        """Parses source for lines and list of Blocks"""
+        assert os.path.exists(c_file), f"File not exists: {c_file}"
+
+        with open(c_file, "r") as fh:
+            lines = fh.readlines()
+
+        blocks = []
+        current_block: Block | None = None
+        for i, line in enumerate(lines):
+            while True:
+                if current_block is None:
+                    current_block = self.block_probe(line, i)
+
+                if current_block:
+                    lres = current_block.process_line(line)
+                    if not lres:
+                        # block ended at this line
+                        blocks.append(current_block)
+                        # print(repr(current_block))
+
+                        if lres is None:
+                            # previous block demanded next probe, at current line!
+                            current_block.line_end = i - 1
+                            current_block = None
+                            continue
+                        else:
+                            current_block.line_end = i
+                            current_block = None
+                # process next source line
+                break
+
+        return lines, blocks
+
+    def is_func_code(self, block: Code):
+        isinstance(block, Code)
+
+        if self.is_public_header:
+            if block.code_type == "decl":
+                return True
+        else:
+            if block.code_type == "func":
+                return True
+        return False
+
+    def make_interface_declaration(self, blocks: list[Block]):
+        """Generates CEX interface declaration in .h file"""
+        ns = self.namespace
+        ns_struct_name = self.ns_struct_name
+        ifc_contents = []
+        ifc_contents.append(f"struct {ns_struct_name}")
+        ifc_contents.append("{")
+        ifc_contents.append("    // Autogenerated by CEX")
+        ifc_contents.append("    // clang-format off\n")
+        functions: dict[str | None, list[Func]] = {}
+        for i, b in enumerate(blocks):
+
+            # print(repr(b))
+            if isinstance(b, Code):
+                if self.is_func_code(b):
+                    f = Func(b.buf.getvalue(), ns, self.func_prefix)
+                    if f.ifc_name:
+                        if f.is_inline and not f.is_static:
+                            raise ValueError(
+                                f"Function: {f.name} must be have static with inline"
+                            )
+
+                        if f.is_inline and f.is_static:
+                            continue
+
+                        if i > 0 and isinstance(blocks[i - 1], Comment):
+                            f.docstr = blocks[i - 1].buf.getvalue()
+                        flist = functions.setdefault(f.sub_module, [])
+                        flist.append(f)
+
+        assert (
+            functions
+        ), f"No functions passed module filter, expected prefix: {self.func_prefix}{self.namespace}_"
+
+        for sub_module, flist in functions.items():
+            if sub_module:
+                ifc_contents.append(f"\nstruct {{  // sub-module .{sub_module} >>>")
+
+            def dd(txt):
+                return indent(txt, "    ") if sub_module else txt
+
+            for func in flist:
+                if func.docstr:
+                    ifc_contents.append(dd(func.docstr))
+                ifc_contents.append(dd(func.to_pointer_decl(indent=True)))
+
+            if sub_module:
+                ifc_contents.append(
+                    f"}} {sub_module};  // sub-module .{sub_module} <<<"
+                )
+            pass
+
+        ifc_contents.append("    // clang-format on")
+        if not self.is_public_header:
+            ifc_contents.append("};")
+            # NOTE: need extra line for endif handling
+            # Algo, no empty lines should be between declaration and extern,
+            #  because empty line remains and stacking at consequent calls
+            ifc_contents.append(
+                f"extern const struct {ns_struct_name} {ns}; // CEX Autogen\n"
+            )
+        else:
+            # NOTE: need extra line for endif handling
+            ifc_contents.append("};\n")
+
+        return ifc_contents
+
+    def make_interface_definition(self, blocks: list[Block]):
+        """Generates CEX interface definition (in .c file)"""
+        ns = self.namespace
+        ns_struct_name = self.ns_struct_name
+
+        ifc_contents = []
+        ifc_contents.append(f"const struct {ns_struct_name} {ns} = {{")
+        ifc_contents.append("    // Autogenerated by CEX")
+        ifc_contents.append("    // clang-format off")
+        functions: dict[str | None, list[Func]] = {}
+        for i, b in enumerate(blocks):
+            if isinstance(b, Code):
+                if self.is_func_code(b):
+                    f = Func(b.buf.getvalue(), ns, self.func_prefix)
+                    if f.ifc_name:
+                        if f.is_inline and not f.is_static:
+                            raise ValueError(
+                                f"Function: {f.name} must be have static with inline"
+                            )
+                        if f.is_inline and f.is_static:
+                            continue
+                        if i > 0 and isinstance(blocks[i - 1], Comment):
+                            f.docstr = blocks[i - 1].buf.getvalue()
+                        flist = functions.setdefault(f.sub_module, [])
+                        flist.append(f)
+
+        assert functions, "No functions passed module filter"
+
+        for sub_module, flist in functions.items():
+            if sub_module:
+                ifc_contents.append(
+                    f"\n    .{sub_module} = {{  // sub-module .{sub_module} >>>"
+                )
+
+            def dd(txt):
+                return indent(txt, "    ") if sub_module else txt
+
+            for func in flist:
+                ifc_contents.append(dd(func.to_pointer_def()))
+
+            if sub_module:
+                ifc_contents.append(f"    }},  // sub-module .{sub_module} <<<")
+            pass
+
+        ifc_contents.append("    // clang-format on")
+        ifc_contents.append("};")
+
+        return ifc_contents
+
+    def clean_old_struct_code(
+        self, src_lines: list[str], src_blocks: list[Block]
+    ) -> int:
+        """Cleans old source from previews CEX declarations/definitions"""
+        existing = []
+        last_ifndef = None
+        for b in src_blocks:
+            if isinstance(b, Code) and b.code_type in ["var", "struct"]:
+                code_line = b.buf.getvalue()
+                if self.ns_struct_name in code_line:
+                    existing.append(b)
+
+        for b in reversed(existing):
+            # print(f"exists at: {b}")
+            del src_lines[int(b.line_start) : int(b.line_end) + 1]
+
+        for i, line in enumerate(reversed(src_lines)):
+            if line.strip() == "":
+                continue
+            # Check #endif guard
+            if line.strip().startswith("#endif"):
+                last_ifndef = len(src_lines) - i - 1
+            break
+        return last_ifndef
+
+    def make_fff_fake(self, fake_dir: str, h_file: str, blocks: list[Block], sub_module: str = ""):
+        assert os.path.exists(fake_dir), f"{fake_dir} not exists"
+
+        if h_file.startswith("./"):
+            h_file = h_file[2:]
+
+        src = io.StringIO()
+        src_reset = io.StringIO()
+        src_wrap = io.StringIO()
+        src_wrap_reset = io.StringIO()
+        src.write("// Autogenerated <fff.h> mocks\n")
+        src.write("// NOTE: Do not edit, all changes can be lost\n")
+        src.write("\n// clang-format off\n")
+        src.write("#include <tests/fff.h>\n")
+        src.write(f"#include <{h_file}>\n\n")
+        src_wrap.write(src.getvalue())
+        src_wrap.write(
+            "// IMPORTANT: wrapping works only with gcc  `-Wl,--wrap=Shmem_new,--wrap=Protocol_event_emitter_new`  flag"
+        )
+        fake_count = 0
+
+        _RE_COMBINE_WHITESPACE = re.compile(r"\s+")
+
+        file = h_file
+        base_file = "fake__" + file.replace("../", "").replace("include/", "").replace(
+            "src/", ""
+        ).replace("/", "__")
+
+        if sub_module:
+            base_file = base_file.replace(".h", f"__{sub_module}.h")
+
+        wrap_fake = base_file.replace(".h", "__wrap.h")
+
+        src_reset.write("\n// clang-format off\n")
+        src_wrap_reset.write("\n// clang-format off\n")
+        src_reset.write(
+            f"\n\nstatic void {base_file.replace('.h', '__resetall(void) {')}\n"
+        )
+        src_wrap_reset.write(
+            f"\n\nstatic void {wrap_fake.replace('.h', '__resetall(void) {')}\n"
+        )
+
+        for block in blocks:
+            if not isinstance(block, Code) or not self.is_func_code(block):
+                continue
+
+            f = Func(block.buf.getvalue(), "", self.func_prefix)
+
+            is_var_args = False
+
+            sig_args = []
+            fargs = f.args.split(",")
+            for a in fargs:
+                # make argument string exactly 1 space separated
+                a = _RE_COMBINE_WHITESPACE.sub(" ", a).strip()
+
+                subargs = a.split(" ")
+                if "[" in subargs[-1]:
+                    subargs[-1] = "*"
+                elif "..." == subargs[-1]:
+                    is_var_args = True
+                else:
+                    del subargs[-1]
+
+                a = " ".join(subargs)
+                if a:
+                    sig_args.append(a)
+            fake_count += 1
+
+            # print(sig_args)
+            sig_args_prefix = ", " if sig_args else ""
+            src.write("\n")
+            src_wrap.write("\n")
+            var_arg_prefix = "_VARARG" if is_var_args else ""
+
+            if f.typedef.strip() == "void":
+                src.write(
+                    f"FAKE_VOID_FUNC{var_arg_prefix}({f.name}{sig_args_prefix}{', '.join(sig_args)})"
+                )
+                src_wrap.write(
+                    f"FAKE_VOID_FUNC{var_arg_prefix}(__wrap_{f.name}{sig_args_prefix}{', '.join(sig_args)})"
+                )
+                src_wrap.write(f"void __real_{f.name}({', '.join(sig_args)});\n")
+            else:
+                ret_val = f.typedef
+                ret_val = ret_val.replace("UErr_exc", "UErr_e")
+                ret_val = ret_val.replace("Exception", "Exc")
+                ret_val = ret_val.replace("ExcSkip", "Exc")
+                src.write(
+                    f"FAKE_VALUE_FUNC{var_arg_prefix}({ret_val}, {f.name}{sig_args_prefix}{', '.join(sig_args)})"
+                )
+                src_wrap.write(
+                    f"FAKE_VALUE_FUNC{var_arg_prefix}({ret_val}, __wrap_{f.name}{sig_args_prefix}{', '.join(sig_args)})"
+                )
+                src_wrap.write(f"{f.typedef} __real_{f.name}({', '.join(sig_args)});\n")
+
+            src_reset.write(f"    RESET_FAKE({f.name})\n")
+            src_wrap_reset.write(f"    RESET_FAKE(__wrap_{f.name})\n")
+
+        src.write("\n\n")
+        src_wrap.write("\n\n")
+
+        src_reset.write("}\n\n")
+        src_wrap_reset.write("}\n\n")
+
+        if not self.is_public_header:
+            c_ifc_impl = self.make_interface_definition(blocks)
+            src.write("\n".join(c_ifc_impl))
+            src_wrap.write("\n".join(c_ifc_impl))
+
+        with open(os.path.join(fake_dir, base_file), "w") as fh:
+            fh.write(src.getvalue())
+            fh.write(src_reset.getvalue())
+
+        if not sub_module:
+            with open(os.path.join(fake_dir, wrap_fake), "w") as fh:
+                fh.write(src_wrap.getvalue())
+                fh.write(src_wrap_reset.getvalue())
+
+    def build(self, fake_dir):
+        """Build CEX module"""
+        c_lines, c_blocks = self.parse_source(c_file)
+        h_lines, h_blocks = self.parse_source(h_file)
+
+        ifc_decl = self.make_interface_declaration(c_blocks)
+        ifc_def = self.make_interface_definition(c_blocks)
+
+        self.clean_old_struct_code(c_lines, c_blocks)
+        endif_guard = self.clean_old_struct_code(h_lines, h_blocks)
+
+        if endif_guard:
+            # ifc_decl.append('\n')
+            h_lines.insert(endif_guard, "\n".join(ifc_decl))
+        else:
+            h_lines.append("\n".join(ifc_decl))
+        c_lines.append("\n".join(ifc_def))
+
+        with open(self.c_file, "w") as fh:
+            fh.writelines(c_lines)
+        with open(self.h_file, "w") as fh:
+            fh.writelines(h_lines)
+
+        if fake_dir:
+            self.make_fff_fake(fake_dir, h_file, c_blocks)
+
+    def build_header(self, fake_dir):
+        """Build CEX module"""
+        h_lines, h_blocks = self.parse_source(h_file)
+
+        ifc_decl = self.make_interface_declaration(h_blocks)
+        ifc_def = self.make_interface_definition(h_blocks)
+
+        self.clean_old_struct_code(h_lines, h_blocks)
+        endif_guard = self.clean_old_struct_code(h_lines, h_blocks)
+
+        if endif_guard:
+            h_lines.insert(endif_guard, "\n".join(ifc_decl))
+        else:
+            h_lines.append("\n".join(ifc_decl))
+        h_lines.append("\n".join(ifc_def))
+
+        # print("\n".join(h_lines))
+        with open(self.h_file, "w") as fh:
+            fh.writelines(h_lines)
+
+        if fake_dir:
+
+            # Make fake for whole app
+            self.make_fff_fake(fake_dir, h_file, h_blocks, "")
+
+            sub_module_blocks = {}
+
+            for block in h_blocks:
+                if not isinstance(block, Code) or not self.is_func_code(block):
+                    continue
+
+                f = Func(block.buf.getvalue(), self.namespace, self.func_prefix)
+                sub_mod = f.sub_module if f.sub_module else ""
+                flist = sub_module_blocks.setdefault(sub_mod, [])
+                flist.append(block)
+
+            # Make fake for individual sub modules
+            for sub_mod, funcs_blocks in sub_module_blocks.items():
+                if not sub_mod.strip():
+                    sub_mod = "unknown"
+                self.make_fff_fake(fake_dir, h_file, funcs_blocks, sub_mod)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("source_file", help="File path .c (code mode) or .h (lib mode)")
+    parser.add_argument("--fakedir", help="fff.h fake directory", default="")
+    parser.add_argument("--namespace", help="module/class namespace, inferred from file name", default=None)
+    args = parser.parse_args()
+
+    if args.source_file.endswith('.c'):
+        c_file = args.source_file
+        h_file = args.source_file.replace(".c", ".h")
+    else:
+        assert args.source_file.endswith('.h')
+        h_file = args.source_file
+        c_file = None
+
+    builder = CEXBuilder(c_file, h_file, namespace=args.namespace)
+    if builder.is_public_header:
+        builder.build_header(args.fakedir)
+    else:
+        builder.build(args.fakedir)
+
+    print(f"CEX done for: {args.source_file}")
