@@ -286,7 +286,7 @@ sbuf_clear(sbuf_c* self)
 }
 
 u32
-sbuf_length(const sbuf_c self)
+sbuf_len(const sbuf_c self)
 {
     sbuf_head_s* head = sbuf__head(self);
     return head->length;
@@ -331,7 +331,7 @@ const struct __module__sbuf sbuf = {
     .replace = sbuf_replace,
     .append = sbuf_append,
     .clear = sbuf_clear,
-    .length = sbuf_length,
+    .len = sbuf_len,
     .capacity = sbuf_capacity,
     .destroy = sbuf_destroy,
     // clang-format on

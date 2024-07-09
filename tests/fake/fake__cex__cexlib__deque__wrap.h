@@ -32,7 +32,7 @@ FAKE_VALUE_FUNC(void*, __wrap_deque_pop, deque_c*)void* __real_deque_pop(deque_c
 
 FAKE_VALUE_FUNC(void*, __wrap_deque_get, deque_c*, size_t)void* __real_deque_get(deque_c*, size_t);
 
-FAKE_VALUE_FUNC(size_t, __wrap_deque_count, const deque_c*)size_t __real_deque_count(const deque_c*);
+FAKE_VALUE_FUNC(size_t, __wrap_deque_len, const deque_c*)size_t __real_deque_len(const deque_c*);
 
 FAKE_VOID_FUNC(__wrap_deque_clear, deque_c*)void __real_deque_clear(deque_c*);
 
@@ -55,7 +55,7 @@ const struct __module__deque deque = {
     .dequeue = deque_dequeue,
     .pop = deque_pop,
     .get = deque_get,
-    .count = deque_count,
+    .len = deque_len,
     .clear = deque_clear,
     .destroy = deque_destroy,
     .iter_get = deque_iter_get,
@@ -79,7 +79,7 @@ static void fake__cex__cexlib__deque__wrap__resetall(void) {
     RESET_FAKE(__wrap_deque_dequeue)
     RESET_FAKE(__wrap_deque_pop)
     RESET_FAKE(__wrap_deque_get)
-    RESET_FAKE(__wrap_deque_count)
+    RESET_FAKE(__wrap_deque_len)
     RESET_FAKE(__wrap_deque_clear)
     RESET_FAKE(__wrap_deque_destroy)
     RESET_FAKE(__wrap_deque_iter_get)

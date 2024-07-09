@@ -75,7 +75,7 @@ void*
 (*get)(deque_c* self, size_t index);
 
 size_t
-(*count)(const deque_c* self);
+(*len)(const deque_c* self);
 
 void
 (*clear)(deque_c* self);

@@ -22,7 +22,7 @@ FAKE_VALUE_FUNC(Exc, __wrap_list_append, void*, void*)Exception __real_list_appe
 
 FAKE_VALUE_FUNC(Exc, __wrap_list_extend, void*, void*, size_t)Exception __real_list_extend(void*, void*, size_t);
 
-FAKE_VALUE_FUNC(size_t, __wrap_list_count, void*)size_t __real_list_count(void*);
+FAKE_VALUE_FUNC(size_t, __wrap_list_len, void*)size_t __real_list_len(void*);
 
 FAKE_VALUE_FUNC(void*, __wrap_list_destroy, void*)void* __real_list_destroy(void*);
 
@@ -35,7 +35,7 @@ const struct __module__list list = {
     .create = list_create,
     .append = list_append,
     .extend = list_extend,
-    .count = list_count,
+    .len = list_len,
     .destroy = list_destroy,
     .iter = list_iter,
     // clang-format on
@@ -52,7 +52,7 @@ static void fake__cex__cexlib__list__wrap__resetall(void) {
     RESET_FAKE(__wrap_list_create)
     RESET_FAKE(__wrap_list_append)
     RESET_FAKE(__wrap_list_extend)
-    RESET_FAKE(__wrap_list_count)
+    RESET_FAKE(__wrap_list_len)
     RESET_FAKE(__wrap_list_destroy)
     RESET_FAKE(__wrap_list_iter)
 }

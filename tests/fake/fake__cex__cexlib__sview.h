@@ -12,7 +12,7 @@ FAKE_VALUE_FUNC(sview_c, sview_cstr, const char*)
 FAKE_VALUE_FUNC(sview_c, sview_cbuf, char*, size_t)
 FAKE_VALUE_FUNC(sview_c, sview_sub, sview_c, ssize_t, ssize_t)
 FAKE_VALUE_FUNC(Exc, sview_copy, sview_c, char*, size_t)
-FAKE_VALUE_FUNC(size_t, sview_length, sview_c)
+FAKE_VALUE_FUNC(size_t, sview_len, sview_c)
 FAKE_VALUE_FUNC(bool, sview_is_valid, sview_c)
 FAKE_VALUE_FUNC(char*, sview_iter, sview_c, cex_iterator_s*)
 FAKE_VALUE_FUNC(ssize_t, sview_indexof, sview_c, sview_c, size_t, size_t)
@@ -35,7 +35,7 @@ const struct __module__sview sview = {
     .cbuf = sview_cbuf,
     .sub = sview_sub,
     .copy = sview_copy,
-    .length = sview_length,
+    .len = sview_len,
     .is_valid = sview_is_valid,
     .iter = sview_iter,
     .indexof = sview_indexof,
@@ -60,7 +60,7 @@ static void fake__cex__cexlib__sview__resetall(void) {
     RESET_FAKE(sview_cbuf)
     RESET_FAKE(sview_sub)
     RESET_FAKE(sview_copy)
-    RESET_FAKE(sview_length)
+    RESET_FAKE(sview_len)
     RESET_FAKE(sview_is_valid)
     RESET_FAKE(sview_iter)
     RESET_FAKE(sview_indexof)

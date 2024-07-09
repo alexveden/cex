@@ -133,7 +133,7 @@ sview_copy(sview_c s, char* dest, size_t destlen)
 }
 
 size_t
-sview_length(sview_c s)
+sview_len(sview_c s)
 {
     return s.len;
 }
@@ -460,7 +460,7 @@ const struct __module__sview sview = {
     .cbuf = sview_cbuf,
     .sub = sview_sub,
     .copy = sview_copy,
-    .length = sview_length,
+    .len = sview_len,
     .is_valid = sview_is_valid,
     .iter = sview_iter,
     .indexof = sview_indexof,

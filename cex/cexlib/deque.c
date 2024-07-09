@@ -365,7 +365,7 @@ deque_get(deque_c* self, size_t index)
 }
 
 size_t
-deque_count(const deque_c* self)
+deque_len(const deque_c* self)
 {
     deque_head_s* head = deque__head(*self);
     return head->idx_tail - head->idx_head;
@@ -485,7 +485,7 @@ deque_iter_fetch(deque_c* self, i32 direction, cex_iterator_s* iterator)
         ctx->cnt++;
 
         if (unlikely(ctx->cnt == ctx->max_count)) {
-            uassert(deque.count(self) == 0 && "que size was changed during iterator");
+            uassert(deque.len(self) == 0 && "que size was changed during iterator");
             return NULL;
         }
     }
@@ -514,7 +514,7 @@ const struct __module__deque deque = {
     .dequeue = deque_dequeue,
     .pop = deque_pop,
     .get = deque_get,
-    .count = deque_count,
+    .len = deque_len,
     .clear = deque_clear,
     .destroy = deque_destroy,
     .iter_get = deque_iter_get,

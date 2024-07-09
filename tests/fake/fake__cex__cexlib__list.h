@@ -14,7 +14,7 @@ FAKE_VALUE_FUNC(size_t, list__alloc_size, size_t, size_t, size_t)
 FAKE_VALUE_FUNC(Exc, list_create, list_c*, size_t, size_t, size_t, const Allocator_c*)
 FAKE_VALUE_FUNC(Exc, list_append, void*, void*)
 FAKE_VALUE_FUNC(Exc, list_extend, void*, void*, size_t)
-FAKE_VALUE_FUNC(size_t, list_count, void*)
+FAKE_VALUE_FUNC(size_t, list_len, void*)
 FAKE_VALUE_FUNC(void*, list_destroy, void*)
 FAKE_VALUE_FUNC(void*, list_iter, void*, cex_iterator_s*)
 
@@ -24,7 +24,7 @@ const struct __module__list list = {
     .create = list_create,
     .append = list_append,
     .extend = list_extend,
-    .count = list_count,
+    .len = list_len,
     .destroy = list_destroy,
     .iter = list_iter,
     // clang-format on
@@ -41,7 +41,7 @@ static void fake__cex__cexlib__list__resetall(void) {
     RESET_FAKE(list_create)
     RESET_FAKE(list_append)
     RESET_FAKE(list_extend)
-    RESET_FAKE(list_count)
+    RESET_FAKE(list_len)
     RESET_FAKE(list_destroy)
     RESET_FAKE(list_iter)
 }

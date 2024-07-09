@@ -19,7 +19,7 @@ FAKE_VALUE_FUNC(Exc, deque_push, deque_c*, const void*)
 FAKE_VALUE_FUNC(void*, deque_dequeue, deque_c*)
 FAKE_VALUE_FUNC(void*, deque_pop, deque_c*)
 FAKE_VALUE_FUNC(void*, deque_get, deque_c*, size_t)
-FAKE_VALUE_FUNC(size_t, deque_count, const deque_c*)
+FAKE_VALUE_FUNC(size_t, deque_len, const deque_c*)
 FAKE_VOID_FUNC(deque_clear, deque_c*)
 FAKE_VALUE_FUNC(void*, deque_destroy, deque_c*)
 FAKE_VALUE_FUNC(void*, deque_iter_get, deque_c*, i32, cex_iterator_s*)
@@ -37,7 +37,7 @@ const struct __module__deque deque = {
     .dequeue = deque_dequeue,
     .pop = deque_pop,
     .get = deque_get,
-    .count = deque_count,
+    .len = deque_len,
     .clear = deque_clear,
     .destroy = deque_destroy,
     .iter_get = deque_iter_get,
@@ -61,7 +61,7 @@ static void fake__cex__cexlib__deque__resetall(void) {
     RESET_FAKE(deque_dequeue)
     RESET_FAKE(deque_pop)
     RESET_FAKE(deque_get)
-    RESET_FAKE(deque_count)
+    RESET_FAKE(deque_len)
     RESET_FAKE(deque_clear)
     RESET_FAKE(deque_destroy)
     RESET_FAKE(deque_iter_get)

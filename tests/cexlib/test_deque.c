@@ -99,13 +99,13 @@ ATEST_F(test_element_alignment_16)
     atassert_eqi(head->header.eloffset, 64);
     atassert_eqi(head->capacity, 16);
     atassert(head->allocator == allocator);
-    atassert_eqi(deque.count(&a), 0);
+    atassert_eqi(deque.len(&a), 0);
 
     for (u32 i = 0; i < 16; i++) {
         struct foo16 f = { .foo = i };
         atassert_eqs(EOK, deque.append(&a, &f));
     }
-    atassert_eqi(deque.count(&a), 16);
+    atassert_eqi(deque.len(&a), 16);
     atassert_eqi(head->idx_tail, 16);
 
     u32 nit = 0;
@@ -116,7 +116,7 @@ ATEST_F(test_element_alignment_16)
         nit++;
     }
     atassert_eqi(nit, 16);
-    atassert_eqi(deque.count(&a), 0);
+    atassert_eqi(deque.len(&a), 0);
 
     deque.destroy(&a);
 
@@ -153,13 +153,13 @@ ATEST_F(test_element_alignment_64)
     atassert_eqi(head->header.eloffset, 64);
     atassert_eqi(head->capacity, 16);
     atassert(head->allocator == allocator);
-    atassert_eqi(deque.count(&a), 0);
+    atassert_eqi(deque.len(&a), 0);
 
     for (u32 i = 0; i < 16; i++) {
         struct foo64 f = { .foo = i };
         atassert_eqs(EOK, deque.append(&a, &f));
     }
-    atassert_eqi(deque.count(&a), 16);
+    atassert_eqi(deque.len(&a), 16);
     atassert_eqi(head->idx_tail, 16);
 
     u32 nit = 0;
@@ -191,12 +191,12 @@ ATEST_F(test_deque_new_append_pop)
 
     deque_head_s* head = &a->_head;
     atassert_eqi(head->capacity, 16);
-    atassert_eqi(deque.count(&a), 0);
+    atassert_eqi(deque.len(&a), 0);
 
     for (u32 i = 0; i < 16; i++) {
         atassert_eqs(EOK, deque.append(&a, &i));
     }
-    atassert_eqi(deque.count(&a), 16);
+    atassert_eqi(deque.len(&a), 16);
     atassert_eqi(head->idx_tail, 16);
 
     u32 nit = 0;
@@ -207,12 +207,12 @@ ATEST_F(test_deque_new_append_pop)
         nit++;
     }
     atassert_eqi(nit, 16);
-    atassert_eqi(deque.count(&a), 0);
+    atassert_eqi(deque.len(&a), 0);
 
     for (u32 i = 0; i < 16; i++) {
         atassert_eqs(EOK, deque.enqueue(&a, &i));
     }
-    atassert_eqi(deque.count(&a), 16);
+    atassert_eqi(deque.len(&a), 16);
     atassert_eqi(head->idx_head, 0);
     atassert_eqi(head->idx_tail, 16);
 
@@ -221,7 +221,7 @@ ATEST_F(test_deque_new_append_pop)
         atassertf(p != NULL, "%d\n: NULL", i);
         atassertf(*p == i, "%d: i=%d\n", *p, i);
     }
-    atassert_eqi(deque.count(&a), 0);
+    atassert_eqi(deque.len(&a), 0);
     atassert_eqi(head->idx_head, 16);
     atassert_eqi(head->idx_tail, 16);
 
@@ -243,12 +243,12 @@ ATEST_F(test_deque_new_append_roll_over)
 
     deque_head_s* head = &a->_head;
     atassert_eqi(head->capacity, 16);
-    atassert_eqi(deque.count(&a), 0);
+    atassert_eqi(deque.len(&a), 0);
 
     for (u32 i = 0; i < 16; i++) {
         atassert_eqs(EOK, deque.push(&a, &i));
     }
-    atassert_eqi(deque.count(&a), 16);
+    atassert_eqi(deque.len(&a), 16);
     atassert_eqi(head->idx_head, 0);
     atassert_eqi(head->idx_tail, 16);
 
@@ -258,31 +258,31 @@ ATEST_F(test_deque_new_append_roll_over)
         atassertf(p != NULL, "%d\n: NULL", i);
         nit++;
     }
-    atassert_eqi(deque.count(&a), 0);
+    atassert_eqi(deque.len(&a), 0);
     atassert_eqi(head->idx_head, 16);
     atassert_eqi(head->idx_tail, 16);
 
     // Que is emty, next push/append/enque - resets all to zero
     atassert_eqs(EOK, deque.append(&a, &nit));
     atassert_eqs(EOK, deque.append(&a, &nit));
-    atassert_eqi(deque.count(&a), 2);
+    atassert_eqi(deque.len(&a), 2);
     atassert_eqi(head->idx_head, 0);
     atassert_eqi(head->idx_tail, 2);
 
     deque.dequeue(&a);
     deque.dequeue(&a);
-    atassert_eqi(deque.count(&a), 0);
+    atassert_eqi(deque.len(&a), 0);
     atassert_eqi(head->idx_head, 2);
     atassert_eqi(head->idx_tail, 2);
 
     // Que is emty, next push/append/enque - resets all to zero
     atassert_eqs(EOK, deque.append(&a, &nit));
-    atassert_eqi(deque.count(&a), 1);
+    atassert_eqi(deque.len(&a), 1);
     atassert_eqi(head->idx_head, 0);
     atassert_eqi(head->idx_tail, 1);
 
     deque.clear(&a);
-    atassert_eqi(deque.count(&a), 0);
+    atassert_eqi(deque.len(&a), 0);
     atassert_eqi(head->idx_head, 0);
     atassert_eqi(head->idx_tail, 0);
 
@@ -303,12 +303,12 @@ ATEST_F(test_deque_new_append_grow)
 
     deque_head_s* head = &a->_head;
     atassert_eqi(head->capacity, 16);
-    atassert_eqi(deque.count(&a), 0);
+    atassert_eqi(deque.len(&a), 0);
 
     for (u32 i = 0; i < 16; i++) {
         atassert_eqs(EOK, deque.push(&a, &i));
     }
-    atassert_eqi(deque.count(&a), 16);
+    atassert_eqi(deque.len(&a), 16);
     atassert_eqi(head->idx_head, 0);
     atassert_eqi(head->idx_tail, 16);
 
@@ -316,12 +316,12 @@ ATEST_F(test_deque_new_append_grow)
     // realloc + growing the deque
     deque.dequeue(&a);
     deque.dequeue(&a);
-    atassert_eqi(deque.count(&a), 14);
+    atassert_eqi(deque.len(&a), 14);
 
     u32 nit = 123;
     atassert_eqs(EOK, deque.push(&a, &nit));
     head = &a->_head; // head may change after resize!
-    atassert_eqi(deque.count(&a), 15);
+    atassert_eqi(deque.len(&a), 15);
     atassert_eqi(head->header.magic, 0xdef0);
     atassert_eqi(head->header.elsize, sizeof(int));
     atassert_eqi(head->header.eloffset, 64);
@@ -349,13 +349,13 @@ ATEST_F(test_deque_new_append_max_cap_wrap)
     deque_head_s* head = &a->_head;
     atassert_eqi(head->capacity, 16);
     atassert_eqi(head->max_capacity, 16);
-    atassert_eqi(deque.count(&a), 0);
+    atassert_eqi(deque.len(&a), 0);
 
     u32 nit = 123;
     for (u32 i = 0; i < 16; i++) {
         atassert_eqs(EOK, deque.push(&a, &i));
     }
-    atassert_eqi(deque.count(&a), 16);
+    atassert_eqi(deque.len(&a), 16);
     atassert_eqi(head->idx_head, 0);
     atassert_eqi(head->idx_tail, 16);
 
@@ -366,18 +366,18 @@ ATEST_F(test_deque_new_append_max_cap_wrap)
     // realloc + growing the deque
     deque.dequeue(&a);
     deque.dequeue(&a);
-    atassert_eqi(deque.count(&a), 14);
+    atassert_eqi(deque.len(&a), 14);
 
     // These two pushes will wrap the ring buffer and add to the beginning
     nit = 123;
     atassert_eqs(EOK, deque.push(&a, &nit));
     nit = 124;
     atassert_eqs(EOK, deque.push(&a, &nit));
-    atassert_eqi(deque.count(&a), 16);
+    atassert_eqi(deque.len(&a), 16);
     atassert_eqs(Error.overflow, deque.push(&a, &nit));
 
     head = &a->_head; // head may change after resize!
-    atassert_eqi(deque.count(&a), 16);
+    atassert_eqi(deque.len(&a), 16);
     atassert_eqi(head->max_capacity, 16);
     atassert_eqi(head->capacity, 16);
     atassert_eqi(head->idx_head, 2);
@@ -415,19 +415,19 @@ ATEST_F(test_deque_new_append_max_cap__rewrite_overflow)
     deque_head_s* head = &a->_head;
     atassert_eqi(head->capacity, 16);
     atassert_eqi(head->max_capacity, 16);
-    atassert_eqi(deque.count(&a), 0);
+    atassert_eqi(deque.len(&a), 0);
 
     u32 nit = 123;
     for (u32 i = 0; i < 16; i++) {
         atassert_eqs(EOK, deque.push(&a, &i));
     }
-    atassert_eqi(deque.count(&a), 16);
+    atassert_eqi(deque.len(&a), 16);
     atassert_eqi(head->idx_head, 0);
     atassert_eqi(head->idx_tail, 16);
 
     // Max capacity set, and no more room for extra
     atassert_eqs(EOK, deque.push(&a, &nit));
-    atassert_eqi(deque.count(&a), 16);
+    atassert_eqi(deque.len(&a), 16);
     atassert_eqi(head->idx_head, 1);
     atassert_eqi(head->idx_tail, 17);
 
@@ -452,13 +452,13 @@ ATEST_F(test_deque_new_append_max_cap__rewrite_overflow_with_rollover)
     deque_head_s* head = &a->_head;
     atassert_eqi(head->capacity, 16);
     atassert_eqi(head->max_capacity, 16);
-    atassert_eqi(deque.count(&a), 0);
+    atassert_eqi(deque.len(&a), 0);
 
     u32 nit = 123;
     for (u32 i = 0; i < 16; i++) {
         atassert_eqs(EOK, deque.push(&a, &i));
     }
-    atassert_eqi(deque.count(&a), 16);
+    atassert_eqi(deque.len(&a), 16);
     atassert_eqi(head->idx_head, 0);
     atassert_eqi(head->idx_tail, 16);
 
@@ -474,14 +474,14 @@ ATEST_F(test_deque_new_append_max_cap__rewrite_overflow_with_rollover)
     nit = 125;
     atassert_eqs(EOK, deque.push(&a, &nit));
 
-    atassert_eqi(deque.count(&a), 16);
+    atassert_eqi(deque.len(&a), 16);
     atassert_eqi(head->idx_head, 3);
     atassert_eqi(head->idx_tail, 19);
 
     // at the beginning
     atassert_eqi(3, *((int*)deque.get(&a, 0)));
-    atassert_eqi(125, *((int*)deque.get(&a, deque.count(&a) - 1)));
-    atassert(NULL == deque.get(&a, deque.count(&a)));
+    atassert_eqi(125, *((int*)deque.get(&a, deque.len(&a) - 1)));
+    atassert(NULL == deque.get(&a, deque.len(&a)));
 
     atassert_eqi(125, *((int*)deque.pop(&a)));
     atassert_eqi(124, *((int*)deque.pop(&a)));
@@ -506,7 +506,7 @@ ATEST_F(test_deque_new_append_max_cap__rewrite_overflow__multiloop)
     deque_head_s* head = &a->_head;
     atassert_eqi(head->capacity, 16);
     atassert_eqi(head->max_capacity, 16);
-    atassert_eqi(deque.count(&a), 0);
+    atassert_eqi(deque.len(&a), 0);
 
     for (u32 i = 0; i < 256; i++) {
         atassert_eqs(EOK, deque.push(&a, &i));
@@ -514,7 +514,7 @@ ATEST_F(test_deque_new_append_max_cap__rewrite_overflow__multiloop)
 
     atassert_eqi(head->capacity, 16);
     atassert_eqi(head->max_capacity, 16);
-    atassert_eqi(deque.count(&a), 16);
+    atassert_eqi(deque.len(&a), 16);
 
     for (u32 i = 256 - 16; i < 256; i++) {
         atassert_eqi(i, *((int*)deque.dequeue(&a)));
@@ -537,7 +537,7 @@ ATEST_F(test_deque_new_append_multi_resize)
     deque_head_s* head = &a->_head;
     atassert_eqi(head->capacity, 16);
     atassert_eqi(head->max_capacity, 0);
-    atassert_eqi(deque.count(&a), 0);
+    atassert_eqi(deque.len(&a), 0);
 
     for (u32 i = 0; i < 256; i++) {
         atassert_eqs(EOK, deque.push(&a, &i));
@@ -546,7 +546,7 @@ ATEST_F(test_deque_new_append_multi_resize)
     head = &a->_head; // refresh dangling head pointer
     atassert_eqi(head->capacity, 256);
     atassert_eqi(head->max_capacity, 0);
-    atassert_eqi(deque.count(&a), 256);
+    atassert_eqi(deque.len(&a), 256);
     for (u32 i = 0; i < 256; i++) {
         atassert_eqi(i, *((int*)deque.get(&a, i)));
     }
@@ -573,7 +573,7 @@ ATEST_F(test_deque_iter_get)
     deque_head_s* head = &a->_head;
     atassert_eqi(head->capacity, 16);
     atassert_eqi(head->max_capacity, 16);
-    atassert_eqi(deque.count(&a), 0);
+    atassert_eqi(deque.len(&a), 0);
 
     u32 nit = 123;
 
@@ -588,7 +588,7 @@ ATEST_F(test_deque_iter_get)
     for (u32 i = 0; i < 16; i++) {
         atassert_eqs(EOK, deque.push(&a, &i));
     }
-    atassert_eqi(deque.count(&a), 16);
+    atassert_eqi(deque.len(&a), 16);
     atassert_eqi(head->idx_head, 0);
     atassert_eqi(head->idx_tail, 16);
 
@@ -628,7 +628,7 @@ ATEST_F(test_deque_iter_fetch)
     deque_head_s* head = &a->_head;
     atassert_eqi(head->capacity, 16);
     atassert_eqi(head->max_capacity, 16);
-    atassert_eqi(deque.count(&a), 0);
+    atassert_eqi(deque.len(&a), 0);
 
     u32 nit = 123;
 
@@ -643,7 +643,7 @@ ATEST_F(test_deque_iter_fetch)
     for (u32 i = 0; i < 16; i++) {
         atassert_eqs(EOK, deque.push(&a, &i));
     }
-    atassert_eqi(deque.count(&a), 16);
+    atassert_eqi(deque.len(&a), 16);
     atassert_eqi(head->idx_head, 0);
     atassert_eqi(head->idx_tail, 16);
 
@@ -656,7 +656,7 @@ ATEST_F(test_deque_iter_fetch)
         nit++;
     }
 
-    atassert_eqi(deque.count(&a), 0);
+    atassert_eqi(deque.len(&a), 0);
     atassert_eqi(head->idx_head, 16);
     atassert_eqi(head->idx_tail, 16);
 
@@ -677,7 +677,7 @@ ATEST_F(test_deque_iter_fetch_reversed)
     deque_head_s* head = &a->_head;
     atassert_eqi(head->capacity, 16);
     atassert_eqi(head->max_capacity, 16);
-    atassert_eqi(deque.count(&a), 0);
+    atassert_eqi(deque.len(&a), 0);
 
     u32 nit = 123;
 
@@ -692,7 +692,7 @@ ATEST_F(test_deque_iter_fetch_reversed)
     for (u32 i = 0; i < 16; i++) {
         atassert_eqs(EOK, deque.push(&a, &i));
     }
-    atassert_eqi(deque.count(&a), 16);
+    atassert_eqi(deque.len(&a), 16);
     atassert_eqi(head->idx_head, 0);
     atassert_eqi(head->idx_tail, 16);
 
@@ -705,7 +705,7 @@ ATEST_F(test_deque_iter_fetch_reversed)
         nit++;
     }
 
-    atassert_eqi(deque.count(&a), 0);
+    atassert_eqi(deque.len(&a), 0);
     atassert_eqi(head->idx_head, 0);
     atassert_eqi(head->idx_tail, 0);
 
@@ -736,7 +736,7 @@ ATEST_F(test_deque_static)
     atassert_eqi(head->idx_tail, 0);
     atassert_eqi(head->idx_head, 0);
     atassert(head->allocator == NULL);
-    atassert_eqi(deque.count(&a), 0);
+    atassert_eqi(deque.len(&a), 0);
     return NULL;
 }
 
@@ -751,7 +751,7 @@ ATEST_F(test_deque_static_append_grow)
     }
 
     deque_head_s* head = &a->_head;
-    atassert_eqi(deque.count(&a), 0);
+    atassert_eqi(deque.len(&a), 0);
 
     for (u32 i = 0; i < 16; i++) {
         atassert_eqs(EOK, deque.push(&a, &i));
@@ -762,7 +762,7 @@ ATEST_F(test_deque_static_append_grow)
     atassert_eqi(head->header.rewrite_overflowed, false);
     atassert_eqi(head->capacity, 16);
     atassert_eqi(head->max_capacity, 16);
-    atassert_eqi(deque.count(&a), 16);
+    atassert_eqi(deque.len(&a), 16);
 
 
     i32 nit = 1;
@@ -786,7 +786,7 @@ ATEST_F(test_deque_static_append_grow_overwrite)
     atassert_eqs(EOK, deque.validate(&a));
 
     deque_head_s* head = &a->_head;
-    atassert_eqi(deque.count(&a), 0);
+    atassert_eqi(deque.len(&a), 0);
 
     for (u32 i = 0; i < 16; i++) {
         atassert_eqs(EOK, deque.push(&a, &i));
@@ -794,7 +794,7 @@ ATEST_F(test_deque_static_append_grow_overwrite)
     atassert_eqi(head->header.rewrite_overflowed, true);
     atassert_eqi(head->capacity, 16);
     atassert_eqi(head->max_capacity, 16);
-    atassert_eqi(deque.count(&a), 16);
+    atassert_eqi(deque.len(&a), 16);
 
 
     i32 nit = 123;
@@ -802,7 +802,7 @@ ATEST_F(test_deque_static_append_grow_overwrite)
     atassert_eqi(head->idx_tail, 16);
 
     atassert_eqs(EOK, deque.push(&a, &nit));
-    atassert_eqi(123, *(int*)deque.get(&a, deque.count(&a) - 1));
+    atassert_eqi(123, *(int*)deque.get(&a, deque.len(&a) - 1));
     atassert_eqi(head->idx_head, 1);
     atassert_eqi(head->idx_tail, 17);
 

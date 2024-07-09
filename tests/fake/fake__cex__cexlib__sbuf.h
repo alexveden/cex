@@ -16,7 +16,7 @@ FAKE_VALUE_FUNC(Exc, sbuf_append_c, sbuf_c*, char*)
 FAKE_VALUE_FUNC(Exc, sbuf_replace, sbuf_c*, const sview_c, const sview_c)
 FAKE_VALUE_FUNC(Exc, sbuf_append, sbuf_c*, sview_c)
 FAKE_VOID_FUNC(sbuf_clear, sbuf_c*)
-FAKE_VALUE_FUNC(u32, sbuf_length, const sbuf_c)
+FAKE_VALUE_FUNC(u32, sbuf_len, const sbuf_c)
 FAKE_VALUE_FUNC(u32, sbuf_capacity, const sbuf_c)
 FAKE_VALUE_FUNC(sbuf_c, sbuf_destroy, sbuf_c*)
 
@@ -30,7 +30,7 @@ const struct __module__sbuf sbuf = {
     .replace = sbuf_replace,
     .append = sbuf_append,
     .clear = sbuf_clear,
-    .length = sbuf_length,
+    .len = sbuf_len,
     .capacity = sbuf_capacity,
     .destroy = sbuf_destroy,
     // clang-format on
@@ -49,7 +49,7 @@ static void fake__cex__cexlib__sbuf__resetall(void) {
     RESET_FAKE(sbuf_replace)
     RESET_FAKE(sbuf_append)
     RESET_FAKE(sbuf_clear)
-    RESET_FAKE(sbuf_length)
+    RESET_FAKE(sbuf_len)
     RESET_FAKE(sbuf_capacity)
     RESET_FAKE(sbuf_destroy)
 }

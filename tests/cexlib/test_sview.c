@@ -32,7 +32,7 @@ ATEST_F(test_cstr)
     atassert_eqs(s.buf, cstr);
     atassert_eqi(s.len, 5); // lazy init until sview.length() is called
     atassert(s.buf == cstr);
-    atassert_eqi(sview.length(s), 5);
+    atassert_eqi(sview.len(s), 5);
     atassert_eqi(sview.is_valid(s), true);
 
 
@@ -41,13 +41,13 @@ ATEST_F(test_cstr)
     sview_c snull = sview.cstr(NULL);
     atassert_eqs(snull.buf, NULL);
     atassert_eqi(snull.len, 0);
-    atassert_eqi(sview.length(snull), 0);
+    atassert_eqi(sview.len(snull), 0);
     atassert_eqi(sview.is_valid(snull), false);
 
     sview_c sempty = sview.cstr("");
     atassert_eqs(sempty.buf, "");
     atassert_eqi(sempty.len, 0);
-    atassert_eqi(sview.length(sempty), 0);
+    atassert_eqi(sview.len(sempty), 0);
     atassert_eqi(sempty.len, 0);
     atassert_eqi(sview.is_valid(sempty), true);
 

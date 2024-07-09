@@ -97,13 +97,13 @@ ATEST_F(test_sbuf_append_char)
     atassert_eqs(Error.argument, sbuf.append_c(&s, NULL));
     atassert_eqs(EOK, sbuf.append_c(&s, ""));
     atassert_eqs("", s);
-    atassert_eqi(sbuf.length(s), 0);
+    atassert_eqi(sbuf.len(s), 0);
 
     atassert_eqs(EOK, sbuf.append_c(&s, "1234"));
     atassert_eqi(sbuf.capacity(s), 64 - sizeof(sbuf_head_s) - 1);
     atassert_eqs("1234", s);
-    atassert_eqi(sbuf.length(s), 4);
-    atassert_eqi(sbuf.length(s), strlen(s));
+    atassert_eqi(sbuf.len(s), 4);
+    atassert_eqi(sbuf.len(s), strlen(s));
 
     s = sbuf.destroy(&s);
     atassert(s == NULL);
@@ -125,14 +125,14 @@ ATEST_F(test_sbuf_append_char_grow)
     atassert_eqs(EOK, sbuf.append_c(&s, "1234567890A"));
     atassert_eqi(sbuf.capacity(s), 32 - sizeof(sbuf_head_s) - 1);
     atassert_eqs("1234567890A", s);
-    atassert_eqi(sbuf.length(s), 11);
+    atassert_eqi(sbuf.len(s), 11);
 
     atassert_eqs(EOK, sbuf.append_c(&s, "B"));
     atassert_eqi(sbuf.capacity(s), 64 - sizeof(sbuf_head_s) - 1);
     atassert_eqs("1234567890AB", s);
 
     // check null term
-    atassert_eqi(s[sbuf.length(s)], 0);
+    atassert_eqi(s[sbuf.len(s)], 0);
     atassert_eqi(s[sbuf.capacity(s)], 0);
 
     s = sbuf.destroy(&s);
@@ -155,14 +155,14 @@ ATEST_F(test_sbuf_append_str_grow)
     atassert_eqs(EOK, sbuf.append(&s, sview.cstr("1234567890A")));
     atassert_eqi(sbuf.capacity(s), 32 - sizeof(sbuf_head_s) - 1);
     atassert_eqs("1234567890A", s);
-    atassert_eqi(sbuf.length(s), 11);
+    atassert_eqi(sbuf.len(s), 11);
 
     atassert_eqs(EOK, sbuf.append(&s, sview.cstr("B")));
     atassert_eqi(sbuf.capacity(s), 64 - sizeof(sbuf_head_s) - 1);
     atassert_eqs("1234567890AB", s);
 
     // check null term
-    atassert_eqi(s[sbuf.length(s)], 0);
+    atassert_eqi(s[sbuf.len(s)], 0);
     atassert_eqi(s[sbuf.capacity(s)], 0);
 
     s = sbuf.destroy(&s);
@@ -183,7 +183,7 @@ ATEST_F(test_sbuf_clear)
     atassert_eqs("1234567890A", s);
 
     sbuf.clear(&s);
-    atassert_eqi(sbuf.length(s), 0);
+    atassert_eqi(sbuf.len(s), 0);
     atassert_eqs("", s);
     atassert_eqi(strlen(s), 0);
 
@@ -232,35 +232,35 @@ ATEST_F(test_sbuf_replace)
 
     atassert_eqs(EOK, sbuf.replace(&s, sview.cstr("123"), sview.cstr("456")));
     atassert_eqs(s, "456456456");
-    atassert_eqi(sbuf.length(s), 9);
+    atassert_eqi(sbuf.len(s), 9);
     atassert_eqi(sbuf.capacity(s), cap);
 
     atassert_eqs(EOK, sbuf.replace(&s, sview.cstr("456"), sview.cstr("78")));
     atassert_eqs(s, "787878");
-    atassert_eqi(sbuf.length(s), 6);
+    atassert_eqi(sbuf.len(s), 6);
     atassert_eqi(sbuf.capacity(s), cap);
-    atassert_eqi(s[sbuf.length(s)], 0);
+    atassert_eqi(s[sbuf.len(s)], 0);
 
     atassert_eqs(EOK, sbuf.replace(&s, sview.cstr("78"), sview.cstr("321")));
     atassert_eqs(s, "321321321");
-    atassert_eqi(sbuf.length(s), 9);
+    atassert_eqi(sbuf.len(s), 9);
     atassert_eqi(sbuf.capacity(s), cap);
-    atassert_eqi(s[sbuf.length(s)], 0);
+    atassert_eqi(s[sbuf.len(s)], 0);
 
     atassert_eqs(EOK, sbuf.replace(&s, sview.cstr("32"), sview.cstr("")));
     atassert_eqs(s, "111");
-    atassert_eqi(sbuf.length(s), 3);
+    atassert_eqi(sbuf.len(s), 3);
     atassert_eqi(sbuf.capacity(s), cap);
-    atassert_eqi(s[sbuf.length(s)], 0);
+    atassert_eqi(s[sbuf.len(s)], 0);
 
     atassert_eqs(EOK, sbuf.replace(&s, sview.cstr("1"), sview.cstr("2")));
     atassert_eqs(s, "222");
-    atassert_eqi(sbuf.length(s), 3);
+    atassert_eqi(sbuf.len(s), 3);
     atassert_eqi(sbuf.capacity(s), cap);
     
     atassert_eqs(EOK, sbuf.replace(&s, sview.cstr("2"), sview.cstr("")));
     atassert_eqs(s, "");
-    atassert_eqi(sbuf.length(s), 0);
+    atassert_eqi(sbuf.len(s), 0);
     atassert_eqi(sbuf.capacity(s), cap);
 
     sbuf.destroy(&s);
@@ -281,12 +281,12 @@ ATEST_F(test_sbuf_replace_resize)
     atassert_eqs(EOK, sbuf.append(&s, sview.cstr("1234567890A")));
     atassert_eqi(sbuf.capacity(s), 32 - sizeof(sbuf_head_s) - 1);
     atassert_eqs("1234567890A", s);
-    atassert_eqi(sbuf.length(s), 11);
+    atassert_eqi(sbuf.len(s), 11);
 
     atassert_eqs(EOK, sbuf.replace(&s, sview.cstr("A"), sview.cstr("AB")));
     atassert_eqi(sbuf.capacity(s), 64 - sizeof(sbuf_head_s) - 1);
     atassert_eqs("1234567890AB", s);
-    atassert_eqi(sbuf.length(s), 12);
+    atassert_eqi(sbuf.len(s), 12);
 
 
     sbuf.destroy(&s);
@@ -310,9 +310,9 @@ ATEST_F(test_sbuf_replace_error_checks)
     atassert_eqs(Error.argument, sbuf.replace(&s, sview.cstr(""), sview.cstr("asda")));
 
     atassert_eqs("1234567890A", s);
-    atassert_eqi(sbuf.length(s), 11);
+    atassert_eqi(sbuf.len(s), 11);
     sbuf.clear(&s);
-    atassert_eqi(sbuf.length(s), 0);
+    atassert_eqi(sbuf.len(s), 0);
     atassert_eqs(Error.ok, sbuf.replace(&s, sview.cstr("123"), sview.cstr("asda")));
 
 

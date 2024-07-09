@@ -52,7 +52,7 @@ void
 (*clear)(sbuf_c* self);
 
 u32
-(*length)(const sbuf_c self);
+(*len)(const sbuf_c self);
 
 u32
 (*capacity)(const sbuf_c self);

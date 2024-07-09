@@ -23,7 +23,7 @@ typedef struct
     }
 
 #define list$new(self, capacity, allocator)                                                       \
-    (dlist.create(                                                                                 \
+    (list.create(                                                                                 \
         (list_c*)self,                                                                            \
         capacity,                                                                                  \
         sizeof(typeof(*(((self))->arr))),                                                          \
@@ -64,7 +64,7 @@ Exception
 (*extend)(void* self, void* items, size_t nitems);
 
 size_t
-(*count)(void* self);
+(*len)(void* self);
 
 void*
 (*destroy)(void* self);

@@ -31,7 +31,7 @@ Exception
 (*copy)(sview_c s, char* dest, size_t destlen);
 
 size_t
-(*length)(sview_c s);
+(*len)(sview_c s);
 
 bool
 (*is_valid)(sview_c s);

@@ -71,7 +71,7 @@ ATEST_F(testlist_new)
     atassert_eqi(head->capacity, 8);
     atassert(head->allocator == allocator);
 
-    dlist.destroy(&a);
+    list.destroy(&a);
     AllocatorHeap_free();
 
     return NULL; // Every ATEST_F() must return NULL to succeed!
@@ -89,7 +89,7 @@ ATEST_F(testlist_append)
 
     // adding new elements into the end
     for (u32 i = 0; i < 4; i++) {
-        atassert_eqs(EOK, dlist.append(&a, &i));
+        atassert_eqs(EOK, list.append(&a, &i));
     }
     atassert_eqi(a.count, 4);
     list_head_s* head = list__head((list_c*)&a);
@@ -103,7 +103,7 @@ ATEST_F(testlist_append)
 
     // check if array got resized
     for (u32 i = 4; i < 8; i++) {
-        atassert_eqs(EOK, dlist.append(&a, &i));
+        atassert_eqs(EOK, list.append(&a, &i));
     }
 
     // validate appended values
@@ -116,7 +116,7 @@ ATEST_F(testlist_append)
     atassert_eqi(head->count, 8);
     atassert_eqi(head->capacity, 8);
 
-    dlist.destroy(&a);
+    list.destroy(&a);
     AllocatorHeap_free();
 
     return NULL; // Every ATEST_F() must return NULL to succeed!
@@ -136,7 +136,7 @@ ATEST_F(testlist_extend)
     // a.arr = arr;
     // a.count = 1;
 
-    atassert_eqs(EOK, dlist.extend(&a, arr, arr$len(arr)));
+    atassert_eqs(EOK, list.extend(&a, arr, arr$len(arr)));
     atassert_eqi(a.count, 4);
     list_head_s* head = list__head((list_c*)&a);
     atassert_eqi(head->count, 4);
@@ -149,7 +149,7 @@ ATEST_F(testlist_extend)
 
     int arr2[4] = { 4, 5, 6, 7 };
     // triggers resize
-    atassert_eqs(EOK, dlist.extend(&a, arr2, arr$len(arr2)));
+    atassert_eqs(EOK, list.extend(&a, arr2, arr$len(arr2)));
 
     // validate appended values
     for (u32 i = 0; i < a.count; i++) {
@@ -161,7 +161,7 @@ ATEST_F(testlist_extend)
     atassert_eqi(head->count, 8);
     atassert_eqi(head->capacity, 8);
 
-    dlist.destroy(&a);
+    list.destroy(&a);
     AllocatorHeap_free();
 
     return NULL; // Every ATEST_F() must return NULL to succeed!
@@ -178,7 +178,7 @@ ATEST_F(testlist_iterator)
     }
 
     u32 nit = 0;
-    for$iter(int, it, dlist.iter(&a, &it.iterator))
+    for$iter(int, it, list.iter(&a, &it.iterator))
     {
         atassert(false && "not expected");
         nit++;
@@ -220,11 +220,11 @@ ATEST_F(testlist_iterator)
         nit++;
     }
     atassert_eqi(nit, 2);
-    atassert_eqs(EOK, dlist.extend(&a, arr, arr$len(arr)));
+    atassert_eqs(EOK, list.extend(&a, arr, arr$len(arr)));
     atassert_eqi(a.count, 4);
 
     nit = 0;
-    for$iter(*a.arr, it, dlist.iter(&a, &it.iterator))
+    for$iter(*a.arr, it, list.iter(&a, &it.iterator))
     {
         atassert_eqi(it.idx.i, nit);
         atassert_eqi(*it.val, arr[nit]);
@@ -241,7 +241,7 @@ ATEST_F(testlist_iterator)
     }
     atassert_eqi(nit, 4);
 
-    dlist.destroy(&a);
+    list.destroy(&a);
     AllocatorHeap_free();
 
     return NULL;
@@ -269,7 +269,7 @@ ATEST_F(testlist_align64)
     // adding new elements into the end
     for (u32 i = 0; i < 4; i++) {
         struct foo64 f = {.foo = i};
-        atassert_eqs(EOK, dlist.append(&a, &f));
+        atassert_eqs(EOK, list.append(&a, &f));
     }
     atassert_eqi(a.count, 4);
     list_head_s* head = list__head((list_c*)&a);
@@ -285,7 +285,7 @@ ATEST_F(testlist_align64)
     // check if array got resized
     for (u32 i = 4; i < 8; i++) {
         struct foo64 f = {.foo = i};
-        atassert_eqs(EOK, dlist.append(&a, &f));
+        atassert_eqs(EOK, list.append(&a, &f));
     }
 
     // validate appended values
@@ -298,7 +298,7 @@ ATEST_F(testlist_align64)
     atassert_eqi(head->count, 8);
     atassert_eqi(head->capacity, 8);
 
-    dlist.destroy(&a);
+    list.destroy(&a);
     AllocatorHeap_free();
 
     return NULL; // Every ATEST_F() must return NULL to succeed!
@@ -325,7 +325,7 @@ ATEST_F(testlist_align16)
     // adding new elements into the end
     for (u32 i = 0; i < 4; i++) {
         struct foo64 f = {.foo = i};
-        atassert_eqs(EOK, dlist.append(&a, &f));
+        atassert_eqs(EOK, list.append(&a, &f));
     }
     atassert_eqi(a.count, 4);
     list_head_s* head = list__head((list_c*)&a);
@@ -341,7 +341,7 @@ ATEST_F(testlist_align16)
     // check if array got resized
     for (u32 i = 4; i < 8; i++) {
         struct foo64 f = {.foo = i};
-        atassert_eqs(EOK, dlist.append(&a, &f));
+        atassert_eqs(EOK, list.append(&a, &f));
     }
 
     // validate appended values
@@ -354,7 +354,7 @@ ATEST_F(testlist_align16)
     atassert_eqi(head->count, 8);
     atassert_eqi(head->capacity, 8);
 
-    dlist.destroy(&a);
+    list.destroy(&a);
     AllocatorHeap_free();
 
     return NULL; // Every ATEST_F() must return NULL to succeed!
