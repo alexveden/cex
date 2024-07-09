@@ -44,7 +44,7 @@ ATEST_F(test_io)
     return NULL; // Every ATEST_F() must return NULL to succeed!
 }
 
-ATEST_F(test_read)
+ATEST_F(test_readall)
 {
     io_c file = { 0 };
     atassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_50b.txt", "r", allocator));
@@ -56,8 +56,9 @@ ATEST_F(test_read)
 
     sview_c content;
     atassert_eqs(Error.ok, io.readall(&file, &content));
+
     atassert_eqi(50, io.size(&file));
-    atassert_eqi(50 + 1 + 16, file._fbuf_size); // +1 null term
+    atassert_eqi(50 + 16, file._fbuf_size); // +1 null term
     atassert_eqi(0, file._fbuf[file._fsize]);
     atassert_eqs(
         "000000001\n"
@@ -77,10 +78,11 @@ ATEST_F(test_read)
     return NULL; // Every ATEST_F() must return NULL to succeed!
 }
 
-ATEST_F(test_read_empty)
+ATEST_F(test_readall_empty)
 {
     io_c file = { 0 };
     atassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_empty.txt", "r", allocator));
+
     atassert(file._fh != NULL);
     atassert_eql(file._fsize, 0); // not calculated yet!
     atassert(file._fbuf == NULL);
@@ -91,9 +93,10 @@ ATEST_F(test_read_empty)
     atassert_eqs(Error.eof, io.readall(&file, &content));
     atassert_eqi(0, io.size(&file));
     atassert(file._fbuf == NULL);
-    atassert(file._fbuf_size == 0);
+    atassert_eqi(file._fbuf_size, 0);
     atassert_eqs(content.buf, "");
     atassert_eqi(content.len, 0);
+
 
 
     io.close(&file);
@@ -116,6 +119,7 @@ ATEST_F(test_readall_stdin)
     atassert_eql(file._fsize, 0); // not calculated yet!
     atassert(file._fbuf == NULL);
     atassert(file._fbuf_size == 0);
+
 
     io.close(&file);
     return NULL; // Every ATEST_F() must return NULL to succeed!
@@ -266,7 +270,7 @@ ATEST_F(test_read_all_then_read_line)
     sview_c content;
     atassert_eqs(Error.ok, io.readall(&file, &content));
     atassert_eqi(50, io.size(&file));
-    atassert_eqi(file._fbuf_size, 67);
+    atassert_eqi(file._fbuf_size, 66);
 
     atassert_eqs(Error.eof, io.readline(&file, &content));
     atassert_eqs(content.buf, "");
@@ -339,7 +343,7 @@ ATEST_F(test_readall_realloc)
     io.rewind(&file);
 
     atassert_eqs(Error.ok, io.readall(&file, &content));
-    atassert_eqi(file._fbuf_size, 4095+4096+2+16+1);
+    atassert_eqi(file._fbuf_size, 4095+4096+2+16);
     atassert(sview.starts_with(content, sview.cstr("4095")));
     atassert_eqi(sview.indexof(content, sview.cstr("4096"), 0, 0), 4096);
     atassert_eqi(content.len, 4095+4096+2);
@@ -348,6 +352,72 @@ ATEST_F(test_readall_realloc)
     return NULL; // Every ATEST_F() must return NULL to succeed!
 }
 
+ATEST_F(test_read)
+{
+    io_c file = { 0 };
+    atassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_line_4095.txt", "r", allocator));
+
+    char buf[128];
+    memset(buf, 'z', arr$len(buf));
+
+    size_t read_len = 4;
+    atassert_eqs(Error.ok, io.read(&file, buf, 2, &read_len));
+    atassert_eqi(memcmp(buf, "40950000", 8), 0);
+    atassert_eqi(read_len, 4);
+
+
+    io.close(&file);
+    return NULL; // Every ATEST_F() must return NULL to succeed!
+}
+
+ATEST_F(test_read_empty)
+{
+    io_c file = { 0 };
+    atassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_empty.txt", "r", allocator));
+
+    char buf[128];
+    memset(buf, 'z', arr$len(buf));
+
+    size_t read_len = 4;
+    atassert_eqs(Error.eof, io.read(&file, buf, 2, &read_len));
+    atassert_eqi(memcmp(buf, "zzzzzzzz", 8), 0); // untouched!
+    atassert_eqi(read_len, 0);
+
+    io.close(&file);
+    return NULL; // Every ATEST_F() must return NULL to succeed!
+}
+
+ATEST_F(test_read_not_all)
+{
+    io_c file = { 0 };
+    atassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_50b.txt", "r", allocator));
+
+    char buf[128];
+    memset(buf, 'z', arr$len(buf));
+
+    size_t read_len = 100;
+    atassert_eqs(Error.ok, io.read(&file, buf, 1, &read_len));
+    atassert_eqi(read_len, 50);
+
+    // NOTE: read method does not null terminate!
+    atassert_eqi(buf[read_len], 'z');
+
+    buf[read_len] = '\0'; // null terminate to compare string result below
+    atassert_eqs(
+        "000000001\n"
+        "000000002\n"
+        "000000003\n"
+        "000000004\n"
+        "000000005\n",
+        buf
+    );
+
+    atassert_eqs(Error.eof, io.read(&file, buf, 1, &read_len));
+    atassert_eqi(read_len, 0);
+
+    io.close(&file);
+    return NULL; // Every ATEST_F() must return NULL to succeed!
+}
 /*
  *
  * MAIN (AUTO GENERATED)
@@ -360,8 +430,8 @@ main(int argc, char* argv[])
     ATEST_PRINT_HEAD();  // >>> all tests below
     
     ATEST_RUN(test_io);
-    ATEST_RUN(test_read);
-    ATEST_RUN(test_read_empty);
+    ATEST_RUN(test_readall);
+    ATEST_RUN(test_readall_empty);
     ATEST_RUN(test_readall_stdin);
     ATEST_RUN(test_read_line);
     ATEST_RUN(test_read_line_empty_file);
@@ -371,6 +441,9 @@ main(int argc, char* argv[])
     ATEST_RUN(test_read_all_then_read_line);
     ATEST_RUN(test_read_long_line);
     ATEST_RUN(test_readall_realloc);
+    ATEST_RUN(test_read);
+    ATEST_RUN(test_read_empty);
+    ATEST_RUN(test_read_not_all);
     
     ATEST_PRINT_FOOTER();  // ^^^^^ all tests runs are above
     return ATEST_EXITCODE();

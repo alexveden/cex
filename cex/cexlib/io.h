@@ -52,6 +52,9 @@ size_t
 (*size)(io_c* self);
 
 Exception
+(*read)(io_c* self, void* restrict obj_buffer, size_t obj_el_size, size_t* obj_count);
+
+Exception
 (*readall)(io_c* self, sview_c* s);
 
 Exception

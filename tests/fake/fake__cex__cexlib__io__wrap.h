@@ -24,6 +24,8 @@ FAKE_VALUE_FUNC(Exc, __wrap_io_tell, io_c*, size_t*)Exception __real_io_tell(io_
 
 FAKE_VALUE_FUNC(size_t, __wrap_io_size, io_c*)size_t __real_io_size(io_c*);
 
+FAKE_VALUE_FUNC(Exc, __wrap_io_read, io_c*, void* restrict, size_t, size_t*)Exception __real_io_read(io_c*, void* restrict, size_t, size_t*);
+
 FAKE_VALUE_FUNC(Exc, __wrap_io_readall, io_c*, sview_c*)Exception __real_io_readall(io_c*, sview_c*);
 
 FAKE_VALUE_FUNC(Exc, __wrap_io_readline, io_c*, sview_c*)Exception __real_io_readline(io_c*, sview_c*);
@@ -43,6 +45,7 @@ const struct __module__io io = {
     .rewind = io_rewind,
     .tell = io_tell,
     .size = io_size,
+    .read = io_read,
     .readall = io_readall,
     .readline = io_readline,
     .close = io_close,
@@ -61,6 +64,7 @@ static void fake__cex__cexlib__io__wrap__resetall(void) {
     RESET_FAKE(__wrap_io_rewind)
     RESET_FAKE(__wrap_io_tell)
     RESET_FAKE(__wrap_io_size)
+    RESET_FAKE(__wrap_io_read)
     RESET_FAKE(__wrap_io_readall)
     RESET_FAKE(__wrap_io_readline)
     RESET_FAKE(__wrap_io_close)

@@ -173,6 +173,37 @@ io_size(io_c* self)
 }
 
 Exception
+io_read(io_c* self, void* restrict obj_buffer, size_t obj_el_size, size_t* obj_count)
+{
+    uassert(self != NULL);
+    uassert(self->_fh != NULL);
+
+    if (obj_buffer == NULL) {
+        return Error.argument;
+    }
+    if (obj_el_size == 0) {
+        return Error.argument;
+    }
+    if (obj_count == NULL || *obj_count == 0) {
+        return Error.argument;
+    }
+
+    const size_t ret_count = fread(obj_buffer, obj_el_size, *obj_count, self->_fh);
+
+    if (ret_count != *obj_count) {
+        if (ferror(self->_fh)) {
+            *obj_count = 0;
+            return Error.io;
+        } else {
+            *obj_count = ret_count;
+            return (ret_count == 0) ? Error.eof : Error.ok;
+        }
+    }
+
+    return Error.ok;
+}
+
+Exception
 io_readall(io_c* self, sview_c* s)
 {
     uassert(self != NULL);
@@ -193,15 +224,21 @@ io_readall(io_c* self, sview_c* s)
     self->_fsize = io_size(self);
 
     if (unlikely(self->_fsize == 0)) {
+
         *s = (sview_c){
             .buf = "",
             .len = 0,
         };
+        except_traceback(err, io_seek(self, 0, SEEK_END))
+        {
+
+            ;
+        }
         return Error.eof;
     }
     // allocate extra 16 bytes, to catch condition when file size grows
     // this may be indication we are trying to read stream
-    size_t exp_size = self->_fsize + 1 + 16;
+    size_t exp_size = self->_fsize + 1 + 15;
 
     if (self->_fbuf == NULL) {
         self->_fbuf = self->_allocator->alloc(exp_size);
@@ -236,7 +273,7 @@ io_readall(io_c* self, sview_c* s)
     // Always null terminate
     self->_fbuf[bytes_read] = '\0';
 
-    return Error.ok;
+    return bytes_read == 0 ? Error.eof : Error.ok;
 }
 
 Exception
@@ -311,7 +348,7 @@ io_readline(io_c* self, sview_c* s)
         self->_fbuf[cursor] = '\0';
     }
 
-    if (ferror(fh)) {
+    if (ferror(self->_fh)) {
         result = Error.io;
         goto fail;
     }
@@ -322,7 +359,7 @@ io_readline(io_c* self, sview_c* s)
             .buf = "",
             .len = cursor,
         };
-        return (feof(fh) ? Error.eof : Error.ok);
+        return (feof(self->_fh) ? Error.eof : Error.ok);
     } else {
         *s = (sview_c){
             .buf = self->_fbuf,
@@ -371,6 +408,7 @@ const struct __module__io io = {
     .rewind = io_rewind,
     .tell = io_tell,
     .size = io_size,
+    .read = io_read,
     .readall = io_readall,
     .readline = io_readline,
     .close = io_close,
