@@ -231,7 +231,6 @@ io_readall(io_c* self, sview_c* s)
         };
         except_traceback(err, io_seek(self, 0, SEEK_END))
         {
-
             ;
         }
         return Error.eof;
@@ -254,26 +253,26 @@ io_readall(io_c* self, sview_c* s)
         return Error.memory;
     }
 
-    size_t bytes_read = fread(self->_fbuf, sizeof(char), self->_fbuf_size, self->_fh);
+    size_t read_size = self->_fbuf_size;
+    except(err, io_read(self, self->_fbuf, sizeof(char), &read_size))
+    {
+        return err;
+    }
 
-    if (bytes_read != self->_fsize) {
-        utracef("%ld != %ld: %s\n", bytes_read, self->_fsize, strerror(errno));
-        if (!feof(self->_fh) && ferror(self->_fh)) {
-            return Error.io;
-        } else {
-            return "File size changed";
-        }
+    if (read_size != self->_fsize) {
+        utracef("%ld != %ld: %s\n", read_size, self->_fsize, strerror(errno));
+        return "File size changed";
     }
 
     *s = (sview_c){
         .buf = self->_fbuf,
-        .len = bytes_read,
+        .len = read_size,
     };
 
     // Always null terminate
-    self->_fbuf[bytes_read] = '\0';
+    self->_fbuf[read_size] = '\0';
 
-    return bytes_read == 0 ? Error.eof : Error.ok;
+    return read_size == 0 ? Error.eof : Error.ok;
 }
 
 Exception
