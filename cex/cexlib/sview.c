@@ -19,16 +19,23 @@ sview__isvalid(const sview_c* s)
 }
 
 static inline ssize_t
-sview__index(sview_c* s, char c)
+sview__index(sview_c* s, const char* c, u8 clen)
 {
     ssize_t result = -1;
 
-    if (sview__isvalid(s)) {
-        for (size_t i = 0; i < s->len; i++) {
-            if (s->buf[i] == c) {
-                result = i;
-                break;
-            }
+    if (!sview__isvalid(s)) {
+        return -1;
+    }
+
+    u8 split_by_idx[UINT8_MAX] = { 0 };
+    for (u8 i = 0; i < clen; i++) {
+        split_by_idx[(u8)c[i]] = 1;
+    }
+
+    for (size_t i = 0; i < s->len; i++) {
+        if (split_by_idx[(u8)s->buf[i]]) {
+            result = i;
+            break;
         }
     }
 
@@ -212,22 +219,179 @@ sview_starts_with(sview_c s, sview_c needle)
 bool
 sview_ends_with(sview_c s, sview_c needle)
 {
-    if(needle.len > s.len) {
+    if (needle.len > s.len) {
         return false;
     }
 
     return sview_indexof(s, needle, s.len - needle.len, 0) != -1;
 }
 
+
+static inline void
+sview__strip_left(sview_c* s)
+{
+    char* cend = s->buf + s->len;
+
+    while (s->buf < cend) {
+        switch (*s->buf) {
+            case ' ':
+            case '\t':
+            case '\n':
+            case '\r':
+                s->buf++;
+                s->len--;
+                break;
+            default:
+                return;
+        }
+    }
+}
+
+static inline void
+sview__strip_right(sview_c* s)
+{
+    while (s->len > 0) {
+        switch (s->buf[s->len - 1]) {
+            case ' ':
+            case '\t':
+            case '\n':
+            case '\r':
+                s->len--;
+                break;
+            default:
+                return;
+        }
+    }
+}
+
+sview_c
+sview_lstrip(sview_c s)
+{
+    if (s.buf == NULL) {
+        return (sview_c){
+            .buf = NULL,
+            .len = 0,
+        };
+    }
+    if (unlikely(s.len == 0)) {
+        return (sview_c){
+            .buf = "",
+            .len = 0,
+        };
+    }
+
+    sview_c result = (sview_c){
+        .buf = s.buf,
+        .len = s.len,
+    };
+
+    sview__strip_left(&result);
+    return result;
+}
+
+sview_c
+sview_rstrip(sview_c s)
+{
+    if (s.buf == NULL) {
+        return (sview_c){
+            .buf = NULL,
+            .len = 0,
+        };
+    }
+    if (unlikely(s.len == 0)) {
+        return (sview_c){
+            .buf = "",
+            .len = 0,
+        };
+    }
+
+    sview_c result = (sview_c){
+        .buf = s.buf,
+        .len = s.len,
+    };
+
+    sview__strip_right(&result);
+    return result;
+}
+
+sview_c
+sview_strip(sview_c s)
+{
+    if (s.buf == NULL) {
+        return (sview_c){
+            .buf = NULL,
+            .len = 0,
+        };
+    }
+    if (unlikely(s.len == 0)) {
+        return (sview_c){
+            .buf = "",
+            .len = 0,
+        };
+    }
+
+    sview_c result = (sview_c){
+        .buf = s.buf,
+        .len = s.len,
+    };
+
+    sview__strip_left(&result);
+    sview__strip_right(&result);
+    return result;
+}
+
+int
+sview_cmp(sview_c self, sview_c other)
+{
+    if (unlikely(self.buf == NULL)) {
+        if (other.buf == NULL) {
+            return 0;
+        } else {
+            return -1;
+        }
+    }
+
+    if (unlikely(self.len == 0)) {
+        if (other.buf == NULL) {
+            return 1;
+        } else if (other.len == 0) {
+            return 0;
+        } else {
+            return -other.buf[0];
+        }
+    }
+
+    size_t min_len = (self.len > other.len) ? self.len : other.len;
+
+    int cmp = memcmp(self.buf, other.buf, min_len);
+    if (cmp == 0 && self.len != other.len) {
+        if(self.len > other.len) {
+            cmp = self.buf[min_len] - '\0';
+        } else {
+            cmp = '\0' - other.buf[min_len];
+        }
+
+    }
+    return cmp;
+}
+
+int
+sview_cmpc(sview_c self, const char* other)
+{
+    return sview_cmp(self, sview_cstr(other));
+}
+
 sview_c*
-sview_iter_split(sview_c s, const char split_by, cex_iterator_s* iterator)
+sview_iter_split(sview_c s, const char* split_by, cex_iterator_s* iterator)
 {
     uassert(iterator != NULL && "null iterator");
+    uassert(split_by != NULL && "null split_by");
 
     // temporary struct based on _ctxbuffer
     struct iter_ctx
     {
         size_t cursor;
+        size_t split_by_len;
         sview_c str;
     }* ctx = (struct iter_ctx*)iterator->_ctx;
     _Static_assert(sizeof(*ctx) <= sizeof(iterator->_ctx), "ctx size overflow");
@@ -238,7 +402,14 @@ sview_iter_split(sview_c s, const char split_by, cex_iterator_s* iterator)
         if (unlikely(!sview__isvalid(&s))) {
             return NULL;
         }
-        ssize_t idx = sview__index(&s, split_by);
+        ctx->split_by_len = strlen(split_by);
+
+        if (ctx->split_by_len == 0) {
+            return NULL;
+        }
+        uassert(ctx->split_by_len < UINT8_MAX && "split_by is suspiciously long!");
+
+        ssize_t idx = sview__index(&s, split_by, ctx->split_by_len);
         if (idx < 0) {
             idx = s.len;
         }
@@ -264,8 +435,8 @@ sview_iter_split(sview_c s, const char split_by, cex_iterator_s* iterator)
 
         // Get remaining string after prev split_by char
         sview_c tok = sview.sub(s, ctx->cursor, 0);
+        ssize_t idx = sview__index(&tok, split_by, ctx->split_by_len);
 
-        ssize_t idx = sview__index(&tok, split_by);
         iterator->idx.i++;
 
         if (idx < 0) {
@@ -275,7 +446,7 @@ sview_iter_split(sview_c s, const char split_by, cex_iterator_s* iterator)
         } else {
             // Sub from prev cursor to idx (excluding split char)
             ctx->str = sview.sub(tok, 0, idx);
-            ctx->cursor += idx + 1;
+            ctx->cursor += idx;
         }
 
         return iterator->val;
@@ -296,6 +467,11 @@ const struct __module__sview sview = {
     .contains = sview_contains,
     .starts_with = sview_starts_with,
     .ends_with = sview_ends_with,
+    .lstrip = sview_lstrip,
+    .rstrip = sview_rstrip,
+    .strip = sview_strip,
+    .cmp = sview_cmp,
+    .cmpc = sview_cmpc,
     .iter_split = sview_iter_split,
     // clang-format on
 };

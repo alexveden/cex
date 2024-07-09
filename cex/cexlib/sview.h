@@ -51,8 +51,23 @@ bool
 bool
 (*ends_with)(sview_c s, sview_c needle);
 
+sview_c
+(*lstrip)(sview_c s);
+
+sview_c
+(*rstrip)(sview_c s);
+
+sview_c
+(*strip)(sview_c s);
+
+int
+(*cmp)(sview_c self, sview_c other);
+
+int
+(*cmpc)(sview_c self, const char* other);
+
 sview_c*
-(*iter_split)(sview_c s, const char split_by, cex_iterator_s* iterator);
+(*iter_split)(sview_c s, const char* split_by, cex_iterator_s* iterator);
 
     // clang-format on
 };

@@ -1,7 +1,7 @@
-#include <cex/cextest/cextest.h>
 #include <cex/cex.h>
-#include <cex/cexlib/sview.c>
 #include <cex/cexlib/list.h>
+#include <cex/cexlib/sview.c>
+#include <cex/cextest/cextest.h>
 #include <stdio.h>
 
 /*
@@ -310,55 +310,87 @@ ATEST_F(test_iter_split)
 
     sview_c s = sview.cstr("123456");
     u32 nit = 0;
-    char buf[128] = {0};
+    char buf[128] = { 0 };
     
+
     nit = 0;
-    for$iter(sview_c, it, sview.iter_split(s, ',', &it.iterator))
+    const char* expected1[] = {
+        "123456",
+    };
+    for$iter(sview_c, it, sview.iter_split(s, ",", &it.iterator))
     {
         atassert_eqi(sview.is_valid(*it.val), true);
         atassert_eqs(Error.ok, sview.copy(*it.val, buf, arr$len(buf)));
-        // printf("%d: %s\n", nit, buf);
-        atassert(memcmp(it.val->buf, "123456", it.val->len) == 0);
+        atassert_eqi(sview.cmpc(*it.val, expected1[nit]), 0);
         nit++;
     }
     atassert_eqi(nit, 1);
 
     nit = 0;
     s = sview.cstr("123,456");
-    for$iter(sview_c, it, sview.iter_split(s, ',', &it.iterator))
+    const char* expected2[] = {
+        "123",
+        "456",
+    };
+    for$iter(sview_c, it, sview.iter_split(s, ",", &it.iterator))
     {
         atassert_eqi(sview.is_valid(*it.val), true);
         atassert_eqs(Error.ok, sview.copy(*it.val, buf, arr$len(buf)));
-        // printf("%d: '%s'\n", nit, buf);
-        // atassert(memcmp(it.val->_buf, "123456", it.val->_len) == 0);
+        atassert_eqi(sview.cmpc(*it.val, expected2[nit]), 0);
         nit++;
     }
     atassert_eqi(nit, 2);
 
     nit = 0;
     s = sview.cstr("123,456,88,99");
-    for$iter(sview_c, it, sview.iter_split(s, ',', &it.iterator))
+    const char* expected3[] = {
+        "123",
+        "456",
+        "88",
+        "99",
+    };
+    for$iter(sview_c, it, sview.iter_split(s, ",", &it.iterator))
     {
         atassert_eqi(sview.is_valid(*it.val), true);
         atassert_eqs(Error.ok, sview.copy(*it.val, buf, arr$len(buf)));
-        // printf("%d: '%s'\n", nit, buf);
-        // atassert(memcmp(it.val->_buf, "123456", it.val->_len) == 0);
+        atassert_eqi(sview.cmpc(*it.val, expected3[nit]), 0);
         nit++;
     }
     atassert_eqi(nit, 4);
 
     nit = 0;
+    const char* expected4[] = {
+        "123",
+        "456",
+        "88",
+        "",
+    };
     s = sview.cstr("123,456,88,");
-    for$iter(sview_c, it, sview.iter_split(s, ',', &it.iterator))
+    for$iter(sview_c, it, sview.iter_split(s, ",", &it.iterator))
     {
         atassert_eqi(sview.is_valid(*it.val), true);
         atassert_eqs(Error.ok, sview.copy(*it.val, buf, arr$len(buf)));
-        // atassert(memcmp(it.val->_buf, "123456", it.val->_len) == 0);
+        atassert_eqi(sview.cmpc(*it.val, expected4[nit]), 0);
         nit++;
     }
-    atassert_eqi(nit, 3);
+    atassert_eqi(nit, 4);
 
-    atassert(false && "FIX: implement sview.cmp(sview_c) / sview.cmpc(char*)");
+    nit = 0;
+    s = sview.cstr("123,456#88@99");
+    const char* expected5[] = {
+        "123",
+        "456",
+        "88",
+        "99",
+    };
+    for$iter(sview_c, it, sview.iter_split(s, ",@#", &it.iterator))
+    {
+        atassert_eqi(sview.is_valid(*it.val), true);
+        atassert_eqs(Error.ok, sview.copy(*it.val, buf, arr$len(buf)));
+        atassert_eqi(sview.cmpc(*it.val, expected5[nit]), 0);
+        nit++;
+    }
+    atassert_eqi(nit, 4);
     return NULL;
 }
 
@@ -371,7 +403,7 @@ ATEST_F(test_indexof)
     // match first
     atassert_eqi(0, sview.indexof(s, sview.cstr("1"), 0, 0));
 
-    // match full 
+    // match full
     atassert_eqi(0, sview.indexof(s, sview.cstr("123456"), 0, 0));
 
     // needle overflow s
@@ -394,7 +426,7 @@ ATEST_F(test_indexof)
 
     // bad needle
     atassert_eqi(-1, sview.indexof(s, sview.cstr(NULL), 0, 0));
-    
+
     // no match
     atassert_eqi(-1, sview.indexof(s, sview.cstr("foo"), 0, 0));
 
@@ -452,6 +484,76 @@ ATEST_F(test_contains_starts_ends)
 
     return NULL;
 }
+
+ATEST_F(test_strip)
+{
+    sview_c s = sview.cstr("\n\t \r123\n\t\r 456 \r\n\t");
+    (void)s;
+    sview_c out;
+
+    // LEFT
+    out = sview.lstrip(sview.cstr(NULL));
+    atassert_eqi(out.len, 0);
+    atassert(out.buf == NULL);
+
+    out = sview.lstrip(sview.cstr(""));
+    atassert_eqi(out.len, 0);
+    atassert_eqs(out.buf, "");
+
+    out = sview.lstrip(s);
+    atassert_eqi(out.len, 14);
+    atassert_eqs(out.buf, "123\n\t\r 456 \r\n\t");
+
+
+    // RIGHT
+    out = sview.rstrip(sview.cstr(NULL));
+    atassert_eqi(out.len, 0);
+    atassert(out.buf == NULL);
+
+    out = sview.rstrip(sview.cstr(""));
+    atassert_eqi(out.len, 0);
+    atassert_eqs(out.buf, "");
+
+    s = sview.cstr("\n\t \r123\n\t\r 456 \r\n\t");
+    out = sview.rstrip(s);
+    atassert_eqi(out.len, 14);
+    atassert_eqi(memcmp(out.buf, "\n\t \r123\n\t\r 456", out.len), 0);
+
+    // BOTH
+    out = sview.strip(sview.cstr(NULL));
+    atassert_eqi(out.len, 0);
+    atassert(out.buf == NULL);
+
+    out = sview.strip(sview.cstr(""));
+    atassert_eqi(out.len, 0);
+    atassert_eqs(out.buf, "");
+
+    s = sview.cstr("\n\t \r123\n\t\r 456 \r\n\t");
+    out = sview.strip(s);
+    atassert_eqi(out.len, 10);
+    atassert_eqi(memcmp(out.buf, "123\n\t\r 456", out.len), 0);
+
+    return NULL;
+}
+
+ATEST_F(test_cmp)
+{
+
+    atassert_eqi(sview.cmp(sview.cstr("123456"), sview.cstr("123456")), 0);
+    atassert_eqi(sview.cmp(sview.cstr(NULL), sview.cstr(NULL)), 0);
+    atassert_eqi(sview.cmp(sview.cstr(""), sview.cstr("")), 0);
+    atassert_eqi(sview.cmp(sview.cstr("ABC"), sview.cstr("AB")), 67);
+    atassert_eqi(sview.cmp(sview.cstr("ABA"), sview.cstr("ABZ")), -25);
+    atassert_eqi(sview.cmp(sview.cstr("AB"), sview.cstr("ABC")), -67);
+    atassert_eqi(sview.cmp(sview.cstr("A"), sview.cstr("")), (int)'A');
+    atassert_eqi(sview.cmp(sview.cstr(""), sview.cstr("A")), -1*((int)'A'));
+    atassert_eqi(sview.cmp(sview.cstr(""), sview.cstr(NULL)), 1);
+    atassert_eqi(sview.cmp(sview.cstr(NULL), sview.cstr("ABC")), -1);
+
+    atassert_eqi(sview.cmpc(sview.cstr("ABC"), "AB"), 67);
+
+    return NULL;
+}
 /*
  *
  * MAIN (AUTO GENERATED)
@@ -471,6 +573,8 @@ main(int argc, char* argv[])
     ATEST_RUN(test_iter_split);
     ATEST_RUN(test_indexof);
     ATEST_RUN(test_contains_starts_ends);
+    ATEST_RUN(test_strip);
+    ATEST_RUN(test_cmp);
     
     ATEST_PRINT_FOOTER();  // ^^^^^ all tests runs are above
     return ATEST_EXITCODE();

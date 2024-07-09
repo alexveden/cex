@@ -8,7 +8,7 @@
 // IMPORTANT: wrapping works only with gcc  `-Wl,--wrap=Shmem_new,--wrap=Protocol_event_emitter_new`  flag
 FAKE_VALUE_FUNC(bool, __wrap_sview__isvalid, const sview_c*)bool __real_sview__isvalid(const sview_c*);
 
-FAKE_VALUE_FUNC(ssize_t, __wrap_sview__index, sview_c*, char)ssize_t __real_sview__index(sview_c*, char);
+FAKE_VALUE_FUNC(ssize_t, __wrap_sview__index, sview_c*, const char*, u8)ssize_t __real_sview__index(sview_c*, const char*, u8);
 
 FAKE_VALUE_FUNC(sview_c, __wrap_sview_cstr, const char*)sview_c __real_sview_cstr(const char*);
 
@@ -32,7 +32,21 @@ FAKE_VALUE_FUNC(bool, __wrap_sview_starts_with, sview_c, sview_c)bool __real_svi
 
 FAKE_VALUE_FUNC(bool, __wrap_sview_ends_with, sview_c, sview_c)bool __real_sview_ends_with(sview_c, sview_c);
 
-FAKE_VALUE_FUNC(sview_c*, __wrap_sview_iter_split, sview_c, const char, cex_iterator_s*)sview_c* __real_sview_iter_split(sview_c, const char, cex_iterator_s*);
+FAKE_VOID_FUNC(__wrap_sview__strip_left, sview_c*)void __real_sview__strip_left(sview_c*);
+
+FAKE_VOID_FUNC(__wrap_sview__strip_right, sview_c*)void __real_sview__strip_right(sview_c*);
+
+FAKE_VALUE_FUNC(sview_c, __wrap_sview_lstrip, sview_c)sview_c __real_sview_lstrip(sview_c);
+
+FAKE_VALUE_FUNC(sview_c, __wrap_sview_rstrip, sview_c)sview_c __real_sview_rstrip(sview_c);
+
+FAKE_VALUE_FUNC(sview_c, __wrap_sview_strip, sview_c)sview_c __real_sview_strip(sview_c);
+
+FAKE_VALUE_FUNC(int, __wrap_sview_cmp, sview_c, sview_c)int __real_sview_cmp(sview_c, sview_c);
+
+FAKE_VALUE_FUNC(int, __wrap_sview_cmpc, sview_c, const char*)int __real_sview_cmpc(sview_c, const char*);
+
+FAKE_VALUE_FUNC(sview_c*, __wrap_sview_iter_split, sview_c, const char*, cex_iterator_s*)sview_c* __real_sview_iter_split(sview_c, const char*, cex_iterator_s*);
 
 
 const struct __module__sview sview = {
@@ -49,6 +63,11 @@ const struct __module__sview sview = {
     .contains = sview_contains,
     .starts_with = sview_starts_with,
     .ends_with = sview_ends_with,
+    .lstrip = sview_lstrip,
+    .rstrip = sview_rstrip,
+    .strip = sview_strip,
+    .cmp = sview_cmp,
+    .cmpc = sview_cmpc,
     .iter_split = sview_iter_split,
     // clang-format on
 };
@@ -69,6 +88,13 @@ static void fake__cex__cexlib__sview__wrap__resetall(void) {
     RESET_FAKE(__wrap_sview_contains)
     RESET_FAKE(__wrap_sview_starts_with)
     RESET_FAKE(__wrap_sview_ends_with)
+    RESET_FAKE(__wrap_sview__strip_left)
+    RESET_FAKE(__wrap_sview__strip_right)
+    RESET_FAKE(__wrap_sview_lstrip)
+    RESET_FAKE(__wrap_sview_rstrip)
+    RESET_FAKE(__wrap_sview_strip)
+    RESET_FAKE(__wrap_sview_cmp)
+    RESET_FAKE(__wrap_sview_cmpc)
     RESET_FAKE(__wrap_sview_iter_split)
 }
 
