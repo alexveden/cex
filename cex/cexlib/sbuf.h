@@ -60,6 +60,9 @@ u32
 sbuf_c
 (*destroy)(sbuf_c* self);
 
+Exception
+(*sprintf)(sbuf_c* self, const char* format, ...);
+
     // clang-format on
 };
 extern const struct __module__sbuf sbuf; // CEX Autogen

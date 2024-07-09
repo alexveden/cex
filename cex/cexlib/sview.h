@@ -6,8 +6,11 @@
 
 typedef struct
 {
-    char*  buf;
+    // NOTE: len comes first which prevents bad casting of sview_c to char*
+    // stb_sprintf() has special case of you accidentally pass sview_c to
+    // %s format specifier (it will show -> (sview_c->%S))
     size_t len;
+    char*  buf;
 } sview_c;
 
 _Static_assert(sizeof(sview_c) == 16, "size");
