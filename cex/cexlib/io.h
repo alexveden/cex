@@ -30,11 +30,32 @@ Exception
 Exception
 (*fattach)(io_c* self, FILE* fh, const Allocator_c* allocator);
 
+int
+(*fileno)(io_c* self);
+
+bool
+(*isatty)(io_c* self);
+
+Exception
+(*flush)(io_c* self);
+
+Exception
+(*seek)(io_c* self, long offset, int whence);
+
+void
+(*rewind)(io_c* self);
+
+Exception
+(*tell)(io_c* self, size_t* size);
+
 size_t
 (*size)(io_c* self);
 
 Exception
 (*readall)(io_c* self, sview_c* s);
+
+Exception
+(*readline)(io_c* self, sview_c* s);
 
 void
 (*close)(io_c* self);

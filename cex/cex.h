@@ -54,6 +54,7 @@ const struct
     Exc skip;
     Exc check;
     Exc empty;
+    Exc eof;
 } Error = {
     // FIX: implement Error struct validation func/macro
     .ok = EOK,                     // Success
@@ -67,6 +68,7 @@ const struct
     .skip = "ShouldBeSkipped",     // NOT an error, function result must be skipped
     .check = "SanityCheckError",   // uerrcheck() failed
     .empty = "EmptyError",         // resource is empty
+    .eof = "EOF",                  // end of file reached
 };
 
 
@@ -330,12 +332,13 @@ _Static_assert(sizeof(cex_iterator_s) == 64, "cex size");
 typedef struct Allocator_c
 {
     u64 magic;
-    void* (*alloc)(size_t);
-    void* (*realloc)(void*, size_t);
-    void* (*alloc_aligned)(size_t, size_t);
-    void* (*realloc_aligned)(void*, size_t, size_t);
-    void* (*free)(void*);
+    void* (*alloc)(size_t size);
+    void* (*realloc)(void* ptr, size_t new_size);
+    void* (*alloc_aligned)(size_t alignment, size_t size);
+    void* (*realloc_aligned)(void* ptr, size_t alignment, size_t new_size);
+    void* (*free)(void* ptr);
     FILE* (*fopen)(const char* filename, const char* mode);
-    int (*fclose)(FILE*);
+    int (*fclose)(FILE* stream);
+    // TODO: consider adding open/close - for tracking open handles
 } Allocator_c;
 _Static_assert(sizeof(Allocator_c) == 64, "size!");

@@ -1,5 +1,7 @@
 #include "io.h"
 #include "cex/cex.h"
+#include <errno.h>
+#include <unistd.h>
 
 
 Exception
@@ -52,15 +54,92 @@ io_fattach(io_c* self, FILE* fh, const Allocator_c* allocator)
         return Error.argument;
     }
 
-    *self = (io_c){
-        ._fh = fh,
-        ._allocator = allocator,
-        ._flags = {
-            .is_attached = true,
-        }
-    };
+    *self = (io_c){ ._fh = fh,
+                    ._allocator = allocator,
+                    ._flags = {
+                        .is_attached = true,
+                    } };
 
     return Error.ok;
+}
+
+int
+io_fileno(io_c* self)
+{
+    uassert(self != NULL);
+    uassert(self->_fh != NULL);
+
+    return fileno(self->_fh);
+}
+
+bool
+io_isatty(io_c* self)
+{
+    uassert(self != NULL);
+    uassert(self->_fh != NULL);
+
+    return isatty(fileno(self->_fh)) == 1;
+}
+
+Exception
+io_flush(io_c* self)
+{
+    uassert(self != NULL);
+    uassert(self->_fh != NULL);
+
+    int ret = fflush(self->_fh);
+    if (unlikely(ret == -1)) {
+        return Error.io;
+    } else {
+        return Error.ok;
+    }
+}
+
+Exception
+io_seek(io_c* self, long offset, int whence)
+{
+    uassert(self != NULL);
+    uassert(self->_fh != NULL);
+
+    int ret = fseek(self->_fh, offset, whence);
+    if (unlikely(ret == -1)) {
+        if (errno == EINVAL) {
+            return Error.argument;
+        } else {
+            return Error.io;
+        }
+    } else {
+        return Error.ok;
+    }
+}
+
+void
+io_rewind(io_c* self)
+{
+    uassert(self != NULL);
+    uassert(self->_fh != NULL);
+
+    rewind(self->_fh);
+}
+
+Exception
+io_tell(io_c* self, size_t* size)
+{
+    uassert(self != NULL);
+    uassert(self->_fh != NULL);
+
+    long ret = ftell(self->_fh);
+    if (unlikely(ret < 0)) {
+        if (errno == EINVAL) {
+            return Error.argument;
+        } else {
+            return Error.io;
+        }
+        *size = 0;
+    } else {
+        *size = ret;
+        return Error.ok;
+    }
 }
 
 size_t
@@ -71,13 +150,23 @@ io_size(io_c* self)
 
     if (self->_fsize == 0) {
         // Do some caching
-        i64 old_pos = ftell(self->_fh);
-        if (fseek(self->_fh, 0, SEEK_END) == -1) {
+        size_t old_pos = 0;
+        except(err, io_tell(self, &old_pos))
+        {
             return 0;
         }
-        self->_fsize = ftell(self->_fh);
-        // restore old position if any
-        fseek(self->_fh, old_pos, SEEK_SET);
+        except(err, io_seek(self, 0, SEEK_END))
+        {
+            return 0;
+        }
+        except(err, io_tell(self, &self->_fsize))
+        {
+            return 0;
+        }
+        except(err, io_seek(self, old_pos, SEEK_SET))
+        {
+            return 0;
+        }
     }
 
     return self->_fsize;
@@ -96,25 +185,37 @@ io_readall(io_c* self, sview_c* s)
         .len = 0,
     };
 
-    // Check if it's possible to seek file, it should fail if pipe/socket/stdin
-    if (unlikely(fseek(self->_fh, 0, SEEK_END) == -1)) {
-        return raise_exc(Error.io, "fseek error, maybe pipe/socket/std[in/out/err]: %s\n", strerror(errno));
+    // Forbid console and stdin
+    if (io_isatty(self)) {
+        return raise_exc(Error.io, "io.readall() not allowed for pipe/socket/std[in/out/err]\n");
     }
-    self->_fsize = ftell(self->_fh);
-    fseek(self->_fh, 0, SEEK_SET);
+
+    self->_fsize = io_size(self);
 
     if (unlikely(self->_fsize == 0)) {
-        return Error.empty;
-    }
-
-    uassert(self->_fbuf == NULL && "TODO: handle already allocated");
-    self->_fbuf = self->_allocator->alloc(self->_fsize + 1 + 16);
-    if (unlikely(self->_fbuf == NULL)) {
-        return Error.memory;
+        *s = (sview_c){
+            .buf = "",
+            .len = 0,
+        };
+        return Error.eof;
     }
     // allocate extra 16 bytes, to catch condition when file size grows
     // this may be indication we are trying to read stream
-    self->_fbuf_size = self->_fsize + 1 + 16;
+    size_t exp_size = self->_fsize + 1 + 16;
+
+    if (self->_fbuf == NULL) {
+        self->_fbuf = self->_allocator->alloc(exp_size);
+        self->_fbuf_size = exp_size;
+    } else {
+        if (self->_fbuf_size < exp_size) {
+            self->_fbuf = self->_allocator->realloc(self->_fbuf, exp_size);
+            self->_fbuf_size = exp_size;
+        }
+    }
+    if (unlikely(self->_fbuf == NULL)) {
+        self->_fbuf_size = 0;
+        return Error.memory;
+    }
 
     size_t bytes_read = fread(self->_fbuf, sizeof(char), self->_fbuf_size, self->_fh);
 
@@ -136,6 +237,106 @@ io_readall(io_c* self, sview_c* s)
     self->_fbuf[bytes_read] = '\0';
 
     return Error.ok;
+}
+
+Exception
+io_readline(io_c* self, sview_c* s)
+{
+    uassert(self != NULL);
+    uassert(self->_fh != NULL);
+    uassert(s != NULL);
+
+
+    Exc result = Error.ok;
+    size_t cursor = 0;
+    FILE* fh = self->_fh;
+    char* buf = self->_fbuf;
+    size_t buf_size = self->_fbuf_size;
+
+    int c = EOF;
+    while ((c = fgetc(fh)) != EOF) {
+        if (unlikely(c == '\n')) {
+            // Handle windows \r\n new lines also
+            if (cursor > 0 && buf[cursor - 1] == '\r') {
+                cursor--;
+            }
+            break;
+        }
+        if (unlikely(c == '\0')) {
+            // plain text file should not have any zero bytes in there
+            result = Error.integrity;
+            goto fail;
+        }
+
+        if (unlikely(cursor >= buf_size)) {
+            if (self->_fbuf == NULL) {
+                uassert(cursor == 0 && "no buf, cursor expected 0");
+
+                self->_fbuf = buf = self->_allocator->alloc(4096);
+                if (self->_fbuf == NULL) {
+                    result = Error.memory;
+                    goto fail;
+                }
+                self->_fbuf_size = buf_size = 4096 - 1; // keep extra for null
+                self->_fbuf[self->_fbuf_size] = '\0';
+                self->_fbuf[cursor] = '\0';
+            } else {
+                uassert(cursor > 0 && "no buf, cursor expected 0");
+                uassert(self->_fbuf_size > 0 && "empty buffer, weird");
+
+                if (self->_fbuf_size + 1 < 4096) {
+                    // Cap minimal buf size
+                    self->_fbuf_size = 4095;
+                }
+
+                // Grow initial size by factor of 2
+                self->_fbuf = buf = self->_allocator->realloc(
+                    self->_fbuf,
+                    (self->_fbuf_size + 1) * 2
+                );
+                if (self->_fbuf == NULL) {
+                    self->_fbuf_size = 0;
+                    result = Error.memory;
+                    goto fail;
+                }
+                self->_fbuf_size = buf_size = (self->_fbuf_size + 1) * 2 - 1;
+                self->_fbuf[self->_fbuf_size] = '\0';
+            }
+        }
+        buf[cursor] = c;
+        cursor++;
+    }
+
+    if (self->_fbuf != NULL) {
+        self->_fbuf[cursor] = '\0';
+    }
+
+    if (ferror(fh)) {
+        result = Error.io;
+        goto fail;
+    }
+
+    if (cursor == 0) {
+        // return valid sview_c, but empty string
+        *s = (sview_c){
+            .buf = "",
+            .len = cursor,
+        };
+        return (feof(fh) ? Error.eof : Error.ok);
+    } else {
+        *s = (sview_c){
+            .buf = self->_fbuf,
+            .len = cursor,
+        };
+        return Error.ok;
+    }
+
+fail:
+    *s = (sview_c){
+        .buf = NULL,
+        .len = 0,
+    };
+    return result;
 }
 
 void
@@ -163,8 +364,15 @@ const struct __module__io io = {
     // clang-format off
     .fopen = io_fopen,
     .fattach = io_fattach,
+    .fileno = io_fileno,
+    .isatty = io_isatty,
+    .flush = io_flush,
+    .seek = io_seek,
+    .rewind = io_rewind,
+    .tell = io_tell,
     .size = io_size,
     .readall = io_readall,
+    .readline = io_readline,
     .close = io_close,
     // clang-format on
 };
