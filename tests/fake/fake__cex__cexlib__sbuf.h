@@ -19,6 +19,7 @@ FAKE_VOID_FUNC(sbuf_clear, sbuf_c*)
 FAKE_VALUE_FUNC(u32, sbuf_len, const sbuf_c)
 FAKE_VALUE_FUNC(u32, sbuf_capacity, const sbuf_c)
 FAKE_VALUE_FUNC(sbuf_c, sbuf_destroy, sbuf_c*)
+FAKE_VALUE_FUNC(char*, sbuf__sprintf_callback, const char*, void*, int)
 FAKE_VALUE_FUNC_VARARG(Exc, sbuf_sprintf, sbuf_c*, const char*, ...)
 
 const struct __module__sbuf sbuf = {
@@ -34,6 +35,7 @@ const struct __module__sbuf sbuf = {
     .len = sbuf_len,
     .capacity = sbuf_capacity,
     .destroy = sbuf_destroy,
+    ._sprintf_callback = sbuf__sprintf_callback,
     .sprintf = sbuf_sprintf,
     // clang-format on
 };
@@ -54,6 +56,7 @@ static void fake__cex__cexlib__sbuf__resetall(void) {
     RESET_FAKE(sbuf_len)
     RESET_FAKE(sbuf_capacity)
     RESET_FAKE(sbuf_destroy)
+    RESET_FAKE(sbuf__sprintf_callback)
     RESET_FAKE(sbuf_sprintf)
 }
 

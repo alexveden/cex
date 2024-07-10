@@ -187,16 +187,16 @@ sbuf_append_c(sbuf_c* self, char* s)
     return Error.ok;
 }
 Exception
-sbuf_replace(sbuf_c* self, const sview_c old, const sview_c new)
+sbuf_replace(sbuf_c* self, const sview_c oldstr, const sview_c newstr)
 {
     uassert(self != NULL);
-    uassert(old.buf != new.buf && "old and new overlap");
-    uassert(*self != new.buf && "self and new overlap");
-    uassert(*self != old.buf && "self and old overlap");
+    uassert(oldstr.buf != newstr.buf && "old and new overlap");
+    uassert(*self != newstr.buf && "self and new overlap");
+    uassert(*self != oldstr.buf && "self and old overlap");
 
     sbuf_head_s* head = sbuf__head(*self);
 
-    if (unlikely(!sview.is_valid(old) || !sview.is_valid(new) || old.len == 0)) {
+    if (unlikely(!sview.is_valid(oldstr) || !sview.is_valid(newstr) || oldstr.len == 0)) {
         return Error.argument;
     }
 
@@ -209,27 +209,27 @@ sbuf_replace(sbuf_c* self, const sview_c old, const sview_c new)
     u32 capacity = head->capacity;
 
     ssize_t idx = -1;
-    while ((idx = sview.indexof(s, old, idx + 1, 0)) != -1) {
+    while ((idx = sview.indexof(s, oldstr, idx + 1, 0)) != -1) {
         // pointer to start of the found `old`
 
         char* f = &((*self)[idx]);
 
-        if (old.len == new.len) {
+        if (oldstr.len == newstr.len) {
             // Tokens exact match just replace
-            memcpy(f, new.buf, new.len);
-        } else if (new.len < old.len) {
+            memcpy(f, newstr.buf, newstr.len);
+        } else if (newstr.len < oldstr.len) {
             // Move remainder of a string to fill the gap
-            memcpy(f, new.buf, new.len);
-            memmove(f + new.len, f + old.len, s.len - idx - old.len);
-            s.len -= (old.len - new.len);
-            if (new.len == 0) {
+            memcpy(f, newstr.buf, newstr.len);
+            memmove(f + newstr.len, f + oldstr.len, s.len - idx - oldstr.len);
+            s.len -= (oldstr.len - newstr.len);
+            if (newstr.len == 0) {
                 // NOTE: Edge case: replacing all by empty string, reset index again
                 idx--;
             }
         } else {
             // Try resize
-            if (unlikely(s.len + (new.len - old.len) > capacity - 1)) {
-                except(err, sbuf__grow_buffer(self, s.len + (new.len - old.len)))
+            if (unlikely(s.len + (newstr.len - oldstr.len) > capacity - 1)) {
+                except(err, sbuf__grow_buffer(self, s.len + (newstr.len - oldstr.len)))
                 {
                     return err;
                 }
@@ -239,9 +239,9 @@ sbuf_replace(sbuf_c* self, const sview_c old, const sview_c new)
                 f = &((*self)[idx]);
             }
             // Move exceeding string to avoid overwriting
-            memmove(f + new.len, f + old.len, s.len - idx - old.len + 1);
-            memcpy(f, new.buf, new.len);
-            s.len += (new.len - old.len);
+            memmove(f + newstr.len, f + oldstr.len, s.len - idx - oldstr.len + 1);
+            memcpy(f, newstr.buf, newstr.len);
+            s.len += (newstr.len - oldstr.len);
         }
     }
 
@@ -441,6 +441,7 @@ const struct __module__sbuf sbuf = {
     .len = sbuf_len,
     .capacity = sbuf_capacity,
     .destroy = sbuf_destroy,
+    ._sprintf_callback = sbuf__sprintf_callback,
     .sprintf = sbuf_sprintf,
     // clang-format on
 };

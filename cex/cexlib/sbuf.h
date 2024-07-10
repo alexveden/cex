@@ -43,7 +43,7 @@ Exception
 (*append_c)(sbuf_c* self, char* s);
 
 Exception
-(*replace)(sbuf_c* self, const sview_c old, const sview_c new);
+(*replace)(sbuf_c* self, const sview_c oldstr, const sview_c newstr);
 
 Exception
 (*append)(sbuf_c* self, sview_c s);
@@ -59,6 +59,9 @@ u32
 
 sbuf_c
 (*destroy)(sbuf_c* self);
+
+char*
+(*_sprintf_callback)(const char* buf, void* user, int len);
 
 Exception
 (*sprintf)(sbuf_c* self, const char* format, ...);
