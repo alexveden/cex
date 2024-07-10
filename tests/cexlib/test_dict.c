@@ -196,9 +196,9 @@ ATEST_F(test_dict_generic_auto_cmp_hash)
     } rec;
     (void)rec;
 
-    atassert(dict$hashfunc(typeof(rec), key_u64) == hm_int_hash);
-    atassert(dict$hashfunc(typeof(rec), key) == hm_str_static_hash);
-    atassert(dict$hashfunc(typeof(rec), key_ptr) == hm_str_hash);
+    atassert(_dict$hashfunc(typeof(rec), key_u64) == hm_int_hash);
+    atassert(_dict$hashfunc(typeof(rec), key) == hm_str_static_hash);
+    atassert(_dict$hashfunc(typeof(rec), key_ptr) == hm_str_hash);
     return NULL;
 }
 /*
