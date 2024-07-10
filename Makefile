@@ -44,7 +44,12 @@ test:
 	$(CC) $(CFLAGS) $(t) $(shell cat $(t) | grep -e "//\s*\#gcc_args " | sed 's@//\s*#gcc_args @@' | xargs) -o $(BUILD_DIR)/$(t).test $(LDFLAGS)
 	ulimit -c unlimited && $(BUILD_DIR)/$(t).test vvvvv $(c) 
 
-	# @cli/atest --data=$(BUILD_DIR)/.atestdb $(t) 
+debug:
+	@echo "\nMaking CEX TEST: $(t)"
+	@./cli/atest --data=$(BUILD_DIR)/.atestdb $(t) 
+	@mkdir -p $(BUILD_DIR)/$(dir $(t)) # > /dev/null 2>&1
+	$(CC) $(CFLAGS) $(t) $(shell cat $(t) | grep -e "//\s*\#gcc_args " | sed 's@//\s*#gcc_args @@' | xargs) -o $(BUILD_DIR)/$(t).test $(LDFLAGS)
+	ulimit -c unlimited && gdb -q --args $(BUILD_DIR)/$(t).test vvvvv $(c) 
 
 tests: $(TARGETS)
 	@for test in $(SRC); do ulimit -c unlimited; $(BUILD_DIR)/$$test.test q $(c); done 

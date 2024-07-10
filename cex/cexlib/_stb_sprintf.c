@@ -1349,6 +1349,7 @@ STB_SPRINTF_DECORATE(vsnprintf)(char* buf, int count, char const* fmt, va_list v
         l = (int)(c.buf - buf);
         if (l >= count) { // should never be greater, only equal (or less) than count
             l = count - 1;
+            c.length = l;
         }
         buf[l] = 0;
     }

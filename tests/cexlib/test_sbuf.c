@@ -319,6 +319,172 @@ ATEST_F(test_sbuf_replace_error_checks)
     sbuf.destroy(&s);
     return NULL;
 }
+
+ATEST_F(test_sbuf_sprintf)
+{
+    sbuf_c s;
+
+    atassert_eqs(EOK, sbuf.create(&s, 5, allocator));
+    atassert_eqi(sbuf.capacity(s), 32 - sizeof(sbuf_head_s) - 1);
+    atassert_eqi(sbuf.capacity(s), 11);
+
+    // wipe all nullterm
+    memset(s, 0xff, sbuf.capacity(s)+1);
+    atassert_eqi(s[sbuf.len(s)], -1);
+    atassert_eqi(s[sbuf.capacity(s)], -1);
+
+    atassert_eqs(EOK, sbuf.sprintf(&s, "%s", "123"));
+    atassert_eqs("123", s);
+    atassert_eqi(sbuf.len(s), 3);
+    atassert_eqi(s[sbuf.len(s)], '\0');
+    atassert_eqi(s[sbuf.capacity(s)], '\0');
+    atassert_eqi(sbuf.capacity(s), 11);
+
+    atassert_eqs(EOK, sbuf.sprintf(&s, "%s", "456"));
+    atassert_eqs("123456", s);
+    atassert_eqi(sbuf.len(s), 6);
+    atassert_eqi(sbuf.capacity(s), 11);
+
+    atassert_eqs(EOK, sbuf.sprintf(&s, "%s", "7890A"));
+    atassert_eqs("1234567890A", s);
+    atassert_eqi(sbuf.len(s), 11);
+    atassert_eqi(sbuf.capacity(s), 11);
+
+    atassert_eqs(EOK, sbuf.sprintf(&s, "%s", "B"));
+    atassert_eqs("1234567890AB", s);
+    atassert_eqi(sbuf.len(s), 12);
+    atassert_eqi(sbuf.capacity(s), 64 - sizeof(sbuf_head_s) - 1);
+
+    atassert_eqs(EOK, sbuf.sprintf(&s, "%s", "CDE"));
+    atassert_eqs("1234567890ABCDE", s);
+    atassert_eqi(sbuf.len(s), 15);
+    atassert_eqi(sbuf.capacity(s), 64 - sizeof(sbuf_head_s) - 1);
+    atassert_eqi(s[sbuf.len(s)], '\0');
+    atassert_eqi(s[sbuf.capacity(s)], '\0');
+
+    sbuf.destroy(&s);
+    return NULL;
+}
+
+ATEST_F(test_sbuf_sprintf_long_growth)
+{
+    sbuf_c s;
+
+    atassert_eqs(EOK, sbuf.create(&s, 5, allocator));
+    atassert_eqi(sbuf.capacity(s), 32 - sizeof(sbuf_head_s) - 1);
+    atassert_eqi(sbuf.capacity(s), 11);
+
+    char buf[16];
+    char svbuf[16];
+    const u32 n_max = 1000;
+    for(u32 i = 0; i < n_max; i++) {
+        snprintf(buf, arr$len(buf), "%04d", i);
+        atassert_eqs(EOK, sbuf.sprintf(&s, "%04d", i));
+
+        sview_c v = sview.cstr(s);
+        atassertf(sview.ends_with(v, sview.cstr(buf)), "i=%d, s=%s", i, v.buf);
+        atassert_eqi(s[sbuf.len(s)], '\0');
+        atassert_eqi(s[sbuf.capacity(s)], '\0');
+    }
+    atassert_eqi(n_max*4, sbuf.len(s));
+
+    sview_c sv = sview.cstr(s);
+
+    for(u32 i = 0; i < n_max; i++) {
+        snprintf(buf, arr$len(buf), "%04d", i);
+        sview_c sub1 = sview.sub(sv, i*4, i*4+4);
+
+        atassert_eqs(EOK, sview.copy(sub1, svbuf, 16));
+        // atassert_eqs(svbuf, buf);
+        // atassert_eqs(sub1.buf, buf);
+        atassertf(sview.cmpc(sub1, buf) == 0, "i=%d, buf=%s sub1=%s", i, buf, sub1.buf);
+    }
+
+    sbuf.destroy(&s);
+    return NULL;
+}
+
+ATEST_F(test_sbuf_sprintf_long_growth_prebuild_buffer)
+{
+    sbuf_c s;
+
+    atassert_eqs(EOK, sbuf.create(&s, 1024*1024, allocator));
+    atassert_eqi(sbuf.capacity(s), 1024*1024 - sizeof(sbuf_head_s) - 1);
+
+    char buf[16];
+    char svbuf[16];
+    const u32 n_max = 1000;
+    for(u32 i = 0; i < n_max; i++) {
+        snprintf(buf, arr$len(buf), "%04d", i);
+        atassert_eqs(EOK, sbuf.sprintf(&s, "%04d", i));
+
+        sview_c v = sview.cstr(s);
+        atassertf(sview.ends_with(v, sview.cstr(buf)), "i=%d, s=%s", i, v.buf);
+        atassert_eqi(s[sbuf.len(s)], '\0');
+        atassert_eqi(s[sbuf.capacity(s)], '\0');
+    }
+    atassert_eqi(n_max*4, sbuf.len(s));
+
+    sview_c sv = sview.cstr(s);
+
+    for(u32 i = 0; i < n_max; i++) {
+        snprintf(buf, arr$len(buf), "%04d", i);
+        sview_c sub1 = sview.sub(sv, i*4, i*4+4);
+        atassert_eqs(EOK, sview.copy(sub1, svbuf, 16));
+        atassertf(sview.cmpc(sub1, buf) == 0, "i=%d, buf=%s sub1=%s", i, buf, sub1.buf);
+    }
+
+    sbuf.destroy(&s);
+    return NULL;
+}
+ATEST_F(test_sbuf_sprintf_static)
+{
+    sbuf_c s;
+    char buf[32];
+
+    atassert_eqs(EOK, sbuf.create_static(&s, buf, arr$len(buf)));
+    atassert_eqi(sbuf.capacity(s), 32 - sizeof(sbuf_head_s) - 1);
+    atassert_eqi(sbuf.capacity(s), 11);
+
+    // wipe all nullterm
+    memset(s, 0xff, sbuf.capacity(s)+1);
+    atassert_eqi(s[sbuf.len(s)], -1);
+    atassert_eqi(s[sbuf.capacity(s)], -1);
+
+    atassert_eqs(EOK, sbuf.sprintf(&s, "%s", "123"));
+    atassert_eqs("123", s);
+    atassert_eqi(sbuf.len(s), 3);
+    atassert_eqi(s[sbuf.len(s)], '\0');
+    atassert_eqi(s[sbuf.capacity(s)], '\0');
+    atassert_eqi(sbuf.capacity(s), 11);
+
+    atassert_eqs(EOK, sbuf.sprintf(&s, "%s", "456"));
+    atassert_eqs("123456", s);
+    atassert_eqi(sbuf.len(s), 6);
+    atassert_eqi(sbuf.capacity(s), 11);
+
+    atassert_eqs(Error.overflow, sbuf.sprintf(&s, "%s", "7890AB"));
+    atassert_eqs("123456", s);
+    atassert_eqi(sbuf.len(s), 6);
+    atassert_eqi(sbuf.capacity(s), 11);
+
+    atassert_eqs(Error.ok, sbuf.sprintf(&s, "%s", "7890A"));
+    atassert_eqs("1234567890A", s);
+    atassert_eqi(sbuf.len(s), 11);
+    atassert_eqi(sbuf.capacity(s), 11);
+    atassert_eqi(s[sbuf.len(s)], '\0');
+    atassert_eqi(s[sbuf.capacity(s)], '\0');
+
+    atassert_eqs(Error.overflow, sbuf.sprintf(&s, "%s", "B"));
+    atassert_eqs("1234567890A", s);
+    atassert_eqi(sbuf.len(s), 11);
+    atassert_eqi(sbuf.capacity(s), 32 - sizeof(sbuf_head_s) - 1);
+    atassert_eqi(s[sbuf.len(s)], '\0');
+    atassert_eqi(s[sbuf.capacity(s)], '\0');
+
+    sbuf.destroy(&s);
+    return NULL;
+}
 /*
 *
 * MAIN (AUTO GENERATED)
@@ -339,6 +505,10 @@ int main(int argc, char *argv[])
     ATEST_RUN(test_sbuf_replace);
     ATEST_RUN(test_sbuf_replace_resize);
     ATEST_RUN(test_sbuf_replace_error_checks);
+    ATEST_RUN(test_sbuf_sprintf);
+    ATEST_RUN(test_sbuf_sprintf_long_growth);
+    ATEST_RUN(test_sbuf_sprintf_long_growth_prebuild_buffer);
+    ATEST_RUN(test_sbuf_sprintf_static);
     
     ATEST_PRINT_FOOTER();  // ^^^^^ all tests runs are above
     return ATEST_EXITCODE();

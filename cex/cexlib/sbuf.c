@@ -1,8 +1,15 @@
 #include "sbuf.h"
-#include "cex/cex.h"
 #include "_stb_sprintf.c"
 #include "_stb_sprintf.h"
+#include "cex/cex.h"
 #include <stdarg.h>
+
+struct _sbuf__sprintf_ctx
+{
+    sbuf_head_s* head;
+    Exc err;
+    stbsp__context c;
+};
 
 static inline sbuf_head_s*
 sbuf__head(sbuf_c self)
@@ -65,7 +72,11 @@ sbuf_create(sbuf_c* self, u32 capacity, const Allocator_c* allocator)
     uassert(capacity != 0);
     uassert(allocator != NULL);
 
-    capacity = sbuf__alloc_capacity(capacity);
+    if (capacity < 512) {
+        // NOTE: if buffer is too small, allocate more size based on sbuf__alloc_capacity() formula
+        // otherwise use exact number from a user to build the initial buffer
+        capacity = sbuf__alloc_capacity(capacity);
+    }
 
     char* buf = allocator->alloc(capacity);
 
@@ -323,19 +334,98 @@ sbuf_destroy(sbuf_c* self)
     return NULL;
 }
 
+static char*
+sbuf__sprintf_callback(const char* buf, void* user, int len)
+{
+    struct _sbuf__sprintf_ctx* ctx = (struct _sbuf__sprintf_ctx*)user;
+    sbuf_c sbuf = ((char*)ctx->head + sizeof(sbuf_head_s));
+    uassert(ctx->head->header.magic == 0xf00e && "not a sbuf_head_s / bad pointer");
+
+    if (unlikely(ctx->err != EOK)) {
+        return ctx->c.tmp;
+    }
+
+    uassert(
+        (buf != ctx->c.buf) ||
+        (sbuf + ctx->c.length + len <= sbuf + ctx->c.count && "out of bounds")
+    );
+
+    if (unlikely(ctx->c.length + len > ctx->c.count)) {
+        bool buf_is_tmp = buf != ctx->c.buf;
+
+        if (len < 0 || ctx->c.length + len > INT32_MAX) {
+            ctx->err = Error.integrity;
+            return ctx->c.tmp;
+        }
+
+        // NOTE: sbuf likely changed after realloc
+        except(err, sbuf__grow_buffer(&sbuf, ctx->c.length + len + 1))
+        {
+            ctx->err = err;
+            return ctx->c.tmp;
+        }
+        // re-fetch head in case of realloc
+        ctx->head = (sbuf_head_s*)(sbuf - sizeof(sbuf_head_s));
+        uassert(ctx->head->header.magic == 0xf00e && "not a sbuf_head_s / bad pointer");
+
+        ctx->c.buf = sbuf + ctx->head->length;
+        ctx->c.count = ctx->head->capacity;
+
+        uassert(ctx->c.count >= ctx->c.length);
+
+        if (!buf_is_tmp) {
+            // If we use the same buffer for sprintf() prevent use-after-free issue
+            // if ctx->c.buf was reallocated to  another pointer
+            buf = ctx->c.buf;
+        }
+    }
+
+    ctx->c.length += len;
+    ctx->head->length += len;
+
+    if (len > 0) {
+        if (buf != ctx->c.buf) {
+            // NOTE: copy data only if previously c.tmp buffer used
+            memcpy(ctx->c.buf, buf, len);
+        }
+        ctx->c.buf += len;
+    }
+
+    // NOTE: if string buffer is small, uses stack-based c.tmp buffer (about 512bytes)
+    // // and then copy into sbuf_s buffer when ready. When string grows, uses heap allocated
+    // // sbuf_c directly without copy
+    return ((ctx->c.count - ctx->c.length) >= STB_SPRINTF_MIN) ? ctx->c.buf : ctx->c.tmp;
+}
+
 Exception
 sbuf_sprintf(sbuf_c* self, const char* format, ...)
 {
-    sbuf_head_s* head = sbuf__head(*self);
 
-    // TODO: implement!
+    sbuf_head_s* head = sbuf__head(*self);
+    // utracef("head s: %s, len: %d\n", *self, head->length);
+
+    struct _sbuf__sprintf_ctx ctx = {
+        .head = head,
+        .err = EOK,
+        .c = { .buf = *self + head->length, .length = head->length, .count = head->capacity }
+    };
+
     va_list va;
     va_start(va, format);
-    int result = stbsp_vsnprintf((*self + head->length), head->capacity, format, va);
-    uassert(result >= 0);
-    head->length += result;
+
+    STB_SPRINTF_DECORATE(vsprintfcb)
+    (sbuf__sprintf_callback, &ctx, sbuf__sprintf_callback(NULL, &ctx, 0), format, va);
+
+    // re-fetch self in case of realloc in sbuf__sprintf_callback
+    *self = ((char*)ctx.head + sizeof(sbuf_head_s));
+
+    // always null terminate
+    (*self)[ctx.head->length] = '\0';
+    (*self)[ctx.head->capacity] = '\0';
+
     va_end(va);
-    return Error.ok;
+
+    return ctx.err;
 }
 
 const struct __module__sbuf sbuf = {
