@@ -504,6 +504,11 @@ ATEST_F(test_strip)
     atassert_eqi(out.len, 14);
     atassert_eqs(out.buf, "123\n\t\r 456 \r\n\t");
 
+    s = sview.cstr("\n\t \r\r\n\t");
+    out = sview.lstrip(s);
+    atassert_eqi(out.len, 0);
+    atassert_eqs("", out.buf);
+
 
     // RIGHT
     out = sview.rstrip(sview.cstr(NULL));
@@ -519,6 +524,11 @@ ATEST_F(test_strip)
     atassert_eqi(out.len, 14);
     atassert_eqi(memcmp(out.buf, "\n\t \r123\n\t\r 456", out.len), 0);
 
+    s = sview.cstr("\n\t \r\r\n\t");
+    out = sview.rstrip(s);
+    atassert_eqi(out.len, 0);
+    atassert_eqi(sview.cmpc(out, ""), 0);
+
     // BOTH
     out = sview.strip(sview.cstr(NULL));
     atassert_eqi(out.len, 0);
@@ -533,6 +543,10 @@ ATEST_F(test_strip)
     atassert_eqi(out.len, 10);
     atassert_eqi(memcmp(out.buf, "123\n\t\r 456", out.len), 0);
 
+    s = sview.cstr("\n\t \r\r\n\t");
+    out = sview.strip(s);
+    atassert_eqi(out.len, 0);
+    atassert_eqs("", out.buf);
     return NULL;
 }
 
