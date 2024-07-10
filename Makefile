@@ -16,6 +16,9 @@ CEX_SRC_INCL = $(shell find ./cex -name '*.c')
 
 .PHONY: clean run test tests cex all
 
+all: cex tests
+
+
 cex:
 	@for cfile in $(CEX_SRC_INCL); do  (cat $$cfile | grep -E 'const struct __(class|module)__' > /dev/null) && cli/cex $$cfile --fakedir=tests/fake/; done 
 

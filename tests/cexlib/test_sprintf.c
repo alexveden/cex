@@ -8,9 +8,7 @@
 
 #define USE_STB 1
 #if USE_STB
-#define STB_SPRINTF_NOUNALIGNED 1
-#define STB_SPRINTF_IMPLEMENTATION 1
-# include <cex/cexlib/stb_sprintf.h>
+# include <cex/cexlib/_stb_sprintf.h>
 # define SPRINTF stbsp_sprintf
 # define SNPRINTF stbsp_snprintf
 #else

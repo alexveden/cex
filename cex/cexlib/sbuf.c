@@ -1,6 +1,7 @@
 #include "sbuf.h"
 #include "cex/cex.h"
-#include "stb_sprintf.h"
+#include "_stb_sprintf.c"
+#include "_stb_sprintf.h"
 #include <stdarg.h>
 
 static inline sbuf_head_s*
@@ -330,7 +331,7 @@ sbuf_sprintf(sbuf_c* self, const char* format, ...)
     // TODO: implement!
     va_list va;
     va_start(va, format);
-    int result = stbsp_vsnprintf((*self + head->length), head->capacity, format, va) ;
+    int result = stbsp_vsnprintf((*self + head->length), head->capacity, format, va);
     uassert(result >= 0);
     head->length += result;
     va_end(va);

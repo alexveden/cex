@@ -1,4 +1,3 @@
-#define STB_SPRINTF_IMPLEMENTATION 1
 #include <cex/cextest/cextest.h>
 #include <cex/cex.h>
 #include <cex/cexlib/sview.c>
