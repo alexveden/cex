@@ -5,11 +5,6 @@
 
 typedef struct hashmap dict_c;
 
-#define dict$get(self, item)                                                                           \
-    _Generic(item, u64: dict_geti, i64: dict_geti, i32: dict_geti, u32: dict_geti, default: dict_get)( \
-        (self),                                                                                        \
-        (item)                                                                                         \
-    )
 
 // Hack for getting hash/cmp functions by a type of key field
 // https://gustedt.wordpress.com/2015/05/11/the-controlling-expression-of-_generic/

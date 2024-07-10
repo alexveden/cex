@@ -43,7 +43,8 @@ ATEST_F(test_dict_int64)
         char val;
     } rec;
 
-    dict_c* hm = dict.create_u64(sizeof(rec), 20);
+    dict_c* hm;
+    atassert_eqs(EOK, dict$new(&hm, typeof(rec), key, allocator));
 
     atassert_eqs(dict.set(hm, &(struct s){ .key = 123, .val = 'z' }), EOK);
 
@@ -60,18 +61,18 @@ ATEST_F(test_dict_int64)
     u64 key = 9890080;
 
     key = 123;
-    const struct s* res = dict$get(hm, &key);
+    const struct s* res = dict.get(hm, &key);
     atassert(res != NULL);
     atassert(res->key == 123);
 
-    res = dict$get(hm, 133);
+    res = dict.geti(hm, 133);
     atassert(res != NULL);
     atassert(res->key == 133);
 
-    const struct s* res2 = dict$get(hm, &(struct s){ .key = 222 });
+    const struct s* res2 = dict.get(hm, &(struct s){ .key = 222 });
     atassert(res2 == NULL);
 
-    let res3 = (struct s*)dict$get(hm, &(struct s){ .key = 133 });
+    let res3 = (struct s*)dict.get(hm, &(struct s){ .key = 133 });
     atassert(res3 != NULL);
     atassert_eqi(res3->key, 133);
 
@@ -88,9 +89,10 @@ ATEST_F(test_dict_string)
     {
         char key[30];
         char val;
-    } rec;
+    };
 
-    dict_c* hm = dict.create_str(sizeof(rec), 20);
+    dict_c* hm;
+    atassert_eqs(EOK, dict$new(&hm, struct s, key, allocator));
 
     atassert_eqs(dict.set(hm, &(struct s){ .key = "abcd", .val = 'z' }), EOK);
 
@@ -104,19 +106,19 @@ ATEST_F(test_dict_string)
         atassert(false && "unexpected");
     }
 
-    const struct s* res = dict$get(hm, "abcd");
+    const struct s* res = dict.get(hm, "abcd");
     atassert(res != NULL);
     atassert_eqs(res->key, "abcd");
 
-    res = dict$get(hm, "xyz");
+    res = dict.gets(hm, "xyz");
     atassert(res != NULL);
     atassert_eqs(res->key, "xyz");
 
-    const struct s* res2 = dict$get(hm, &(struct s){ .key = "ffff" });
+    const struct s* res2 = dict.get(hm, &(struct s){ .key = "ffff" });
     atassert(res2 == NULL);
 
 
-    let res3 = (struct s*)dict$get(hm, &(struct s){ .key = "abcd" });
+    let res3 = (struct s*)dict.get(hm, &(struct s){ .key = "abcd" });
     atassert(res3 != NULL);
     atassert_eqs(res3->key, "abcd");
 
@@ -150,7 +152,7 @@ ATEST_F(test_dict_create_generic)
 
     atassert_eqi(dict.len(hm), 2);
 
-    const struct s* result = dict$get(hm, "xyz");
+    const struct s* result = dict.get(hm, "xyz");
     atassert(result != NULL);
     atassert_eqs(result->struct_first_key, "xyz");
     atassert_eqi(result->val, 'z');
@@ -171,7 +173,7 @@ ATEST_F(test_dict_create_generic)
     result = dict.get(hm, "foo");
     atassert(result == NULL);
     // WARNING: old key is also lost!
-    result = dict$get(hm, "xyz");
+    result = dict.gets(hm, "xyz");
     atassert(result == NULL);
 
     atassert_eqi(dict.len(hm), 2);
