@@ -336,7 +336,7 @@ typedef struct Allocator_c
     void* (*realloc)(void* ptr, size_t new_size);
     void* (*alloc_aligned)(size_t alignment, size_t size);
     void* (*realloc_aligned)(void* ptr, size_t alignment, size_t new_size);
-    void* (*free)(void* ptr);
+    void (*free)(void* ptr);
     FILE* (*fopen)(const char* filename, const char* mode);
     int (*fclose)(FILE* stream);
     // TODO: consider adding open/close - for tracking open handles

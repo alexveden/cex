@@ -185,9 +185,13 @@ ATEST_F(stb_sprintf_orig)
    atassert(strncmp(buf, "37778931862957161709568.000000", 17) == 0);
    n = SNPRINTF(buf, 10, "number %f", 123.456789);
    atassert(strcmp(buf, "number 12") == 0);
-   atassert(n == 17);  // written vs would-be written bytes
+   atassert_eqi(n, 9);  // written vs would-be written bytes
+   //
+   buf[0] = '\0';
    n = SNPRINTF(buf, 0, "7 chars");
-   atassert(n == 7);
+   atassert_eqi(n, -1);
+   atassert_eqi(strlen(buf), 0);
+
    // stb_sprintf uses internal buffer of 512 chars - test longer string
    atassert(SPRINTF(buf, "%d  %600s", 3, "abc") == 603);
    atassert(strlen(buf) == 603);

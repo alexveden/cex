@@ -93,7 +93,7 @@ _AllocatorHeap__aligned_realloc(void* ptr, size_t alignment, size_t size)
     return result;
 }
 
-static void*
+static void
 _AllocatorHeap__free(void* ptr)
 {
     uassert(_Allocator_c__heap.base.magic != 0 && "Allocator not initialized");
@@ -101,7 +101,6 @@ _AllocatorHeap__free(void* ptr)
 
     _Allocator_c__heap.n_free++;
     free(ptr);
-    return NULL; // always NULL
 }
 
 static FILE*
@@ -186,15 +185,12 @@ _AllocatorStaticArena__realloc(void* ptr, size_t size)
     return NULL;
 }
 
-static void*
+static void
 _AllocatorStaticArena__free(void* ptr)
 {
     (void)ptr;
     uassert(_Allocator_c__static_arena.base.magic != 0 && "Allocator not initialized");
     uassert(_Allocator_c__static_arena.base.magic == ALLOCATOR_STATIC_ARENA_MAGIC && "bad type!");
-
-    // Not supported by static arena allocator
-    return NULL; // always NULL
 }
 
 static void*
