@@ -209,7 +209,7 @@ sbuf_replace(sbuf_c* self, const str_c oldstr, const str_c newstr)
     u32 capacity = head->capacity;
 
     ssize_t idx = -1;
-    while ((idx = str.indexof(s, oldstr, idx + 1, 0)) != -1) {
+    while ((idx = str.find(s, oldstr, idx + 1, 0)) != -1) {
         // pointer to start of the found `old`
 
         char* f = &((*self)[idx]);

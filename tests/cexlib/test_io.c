@@ -345,7 +345,7 @@ ATEST_F(test_readall_realloc)
     atassert_eqs(Error.ok, io.readall(&file, &content));
     atassert_eqi(file._fbuf_size, 4095+4096+2+16);
     atassert(str.starts_with(content, str.cstr("4095")));
-    atassert_eqi(str.indexof(content, str.cstr("4096"), 0, 0), 4096);
+    atassert_eqi(str.find(content, str.cstr("4096"), 0, 0), 4096);
     atassert_eqi(content.len, 4095+4096+2);
 
     io.close(&file);

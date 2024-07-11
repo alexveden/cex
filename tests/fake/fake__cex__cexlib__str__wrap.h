@@ -24,13 +24,19 @@ FAKE_VALUE_FUNC(bool, __wrap_str_is_valid, str_c)bool __real_str_is_valid(str_c)
 
 FAKE_VALUE_FUNC(char*, __wrap_str_iter, str_c, cex_iterator_s*)char* __real_str_iter(str_c, cex_iterator_s*);
 
-FAKE_VALUE_FUNC(ssize_t, __wrap_str_indexof, str_c, str_c, size_t, size_t)ssize_t __real_str_indexof(str_c, str_c, size_t, size_t);
+FAKE_VALUE_FUNC(ssize_t, __wrap_str_find, str_c, str_c, size_t, size_t)ssize_t __real_str_find(str_c, str_c, size_t, size_t);
+
+FAKE_VALUE_FUNC(ssize_t, __wrap_str_rfind, str_c, str_c, size_t, size_t)ssize_t __real_str_rfind(str_c, str_c, size_t, size_t);
 
 FAKE_VALUE_FUNC(bool, __wrap_str_contains, str_c, str_c)bool __real_str_contains(str_c, str_c);
 
 FAKE_VALUE_FUNC(bool, __wrap_str_starts_with, str_c, str_c)bool __real_str_starts_with(str_c, str_c);
 
 FAKE_VALUE_FUNC(bool, __wrap_str_ends_with, str_c, str_c)bool __real_str_ends_with(str_c, str_c);
+
+FAKE_VALUE_FUNC(str_c, __wrap_str_remove_prefix, str_c, str_c)str_c __real_str_remove_prefix(str_c, str_c);
+
+FAKE_VALUE_FUNC(str_c, __wrap_str_remove_suffix, str_c, str_c)str_c __real_str_remove_suffix(str_c, str_c);
 
 FAKE_VOID_FUNC(__wrap_str__strip_left, str_c*)void __real_str__strip_left(str_c*);
 
@@ -44,7 +50,7 @@ FAKE_VALUE_FUNC(str_c, __wrap_str_strip, str_c)str_c __real_str_strip(str_c);
 
 FAKE_VALUE_FUNC(int, __wrap_str_cmp, str_c, str_c)int __real_str_cmp(str_c, str_c);
 
-FAKE_VALUE_FUNC(int, __wrap_str_cmpc, str_c, const char*)int __real_str_cmpc(str_c, const char*);
+FAKE_VALUE_FUNC(int, __wrap_str_cmpi, str_c, str_c)int __real_str_cmpi(str_c, str_c);
 
 FAKE_VALUE_FUNC(str_c*, __wrap_str_iter_split, str_c, const char*, cex_iterator_s*)str_c* __real_str_iter_split(str_c, const char*, cex_iterator_s*);
 
@@ -59,15 +65,18 @@ const struct __module__str str = {
     .len = str_len,
     .is_valid = str_is_valid,
     .iter = str_iter,
-    .indexof = str_indexof,
+    .find = str_find,
+    .rfind = str_rfind,
     .contains = str_contains,
     .starts_with = str_starts_with,
     .ends_with = str_ends_with,
+    .remove_prefix = str_remove_prefix,
+    .remove_suffix = str_remove_suffix,
     .lstrip = str_lstrip,
     .rstrip = str_rstrip,
     .strip = str_strip,
     .cmp = str_cmp,
-    .cmpc = str_cmpc,
+    .cmpi = str_cmpi,
     .iter_split = str_iter_split,
     // clang-format on
 };
@@ -84,17 +93,20 @@ static void fake__cex__cexlib__str__wrap__resetall(void) {
     RESET_FAKE(__wrap_str_len)
     RESET_FAKE(__wrap_str_is_valid)
     RESET_FAKE(__wrap_str_iter)
-    RESET_FAKE(__wrap_str_indexof)
+    RESET_FAKE(__wrap_str_find)
+    RESET_FAKE(__wrap_str_rfind)
     RESET_FAKE(__wrap_str_contains)
     RESET_FAKE(__wrap_str_starts_with)
     RESET_FAKE(__wrap_str_ends_with)
+    RESET_FAKE(__wrap_str_remove_prefix)
+    RESET_FAKE(__wrap_str_remove_suffix)
     RESET_FAKE(__wrap_str__strip_left)
     RESET_FAKE(__wrap_str__strip_right)
     RESET_FAKE(__wrap_str_lstrip)
     RESET_FAKE(__wrap_str_rstrip)
     RESET_FAKE(__wrap_str_strip)
     RESET_FAKE(__wrap_str_cmp)
-    RESET_FAKE(__wrap_str_cmpc)
+    RESET_FAKE(__wrap_str_cmpi)
     RESET_FAKE(__wrap_str_iter_split)
 }
 

@@ -15,17 +15,20 @@ FAKE_VALUE_FUNC(Exc, str_copy, str_c, char*, size_t)
 FAKE_VALUE_FUNC(size_t, str_len, str_c)
 FAKE_VALUE_FUNC(bool, str_is_valid, str_c)
 FAKE_VALUE_FUNC(char*, str_iter, str_c, cex_iterator_s*)
-FAKE_VALUE_FUNC(ssize_t, str_indexof, str_c, str_c, size_t, size_t)
+FAKE_VALUE_FUNC(ssize_t, str_find, str_c, str_c, size_t, size_t)
+FAKE_VALUE_FUNC(ssize_t, str_rfind, str_c, str_c, size_t, size_t)
 FAKE_VALUE_FUNC(bool, str_contains, str_c, str_c)
 FAKE_VALUE_FUNC(bool, str_starts_with, str_c, str_c)
 FAKE_VALUE_FUNC(bool, str_ends_with, str_c, str_c)
+FAKE_VALUE_FUNC(str_c, str_remove_prefix, str_c, str_c)
+FAKE_VALUE_FUNC(str_c, str_remove_suffix, str_c, str_c)
 FAKE_VOID_FUNC(str__strip_left, str_c*)
 FAKE_VOID_FUNC(str__strip_right, str_c*)
 FAKE_VALUE_FUNC(str_c, str_lstrip, str_c)
 FAKE_VALUE_FUNC(str_c, str_rstrip, str_c)
 FAKE_VALUE_FUNC(str_c, str_strip, str_c)
 FAKE_VALUE_FUNC(int, str_cmp, str_c, str_c)
-FAKE_VALUE_FUNC(int, str_cmpc, str_c, const char*)
+FAKE_VALUE_FUNC(int, str_cmpi, str_c, str_c)
 FAKE_VALUE_FUNC(str_c*, str_iter_split, str_c, const char*, cex_iterator_s*)
 
 const struct __module__str str = {
@@ -38,15 +41,18 @@ const struct __module__str str = {
     .len = str_len,
     .is_valid = str_is_valid,
     .iter = str_iter,
-    .indexof = str_indexof,
+    .find = str_find,
+    .rfind = str_rfind,
     .contains = str_contains,
     .starts_with = str_starts_with,
     .ends_with = str_ends_with,
+    .remove_prefix = str_remove_prefix,
+    .remove_suffix = str_remove_suffix,
     .lstrip = str_lstrip,
     .rstrip = str_rstrip,
     .strip = str_strip,
     .cmp = str_cmp,
-    .cmpc = str_cmpc,
+    .cmpi = str_cmpi,
     .iter_split = str_iter_split,
     // clang-format on
 };
@@ -63,17 +69,20 @@ static void fake__cex__cexlib__str__resetall(void) {
     RESET_FAKE(str_len)
     RESET_FAKE(str_is_valid)
     RESET_FAKE(str_iter)
-    RESET_FAKE(str_indexof)
+    RESET_FAKE(str_find)
+    RESET_FAKE(str_rfind)
     RESET_FAKE(str_contains)
     RESET_FAKE(str_starts_with)
     RESET_FAKE(str_ends_with)
+    RESET_FAKE(str_remove_prefix)
+    RESET_FAKE(str_remove_suffix)
     RESET_FAKE(str__strip_left)
     RESET_FAKE(str__strip_right)
     RESET_FAKE(str_lstrip)
     RESET_FAKE(str_rstrip)
     RESET_FAKE(str_strip)
     RESET_FAKE(str_cmp)
-    RESET_FAKE(str_cmpc)
+    RESET_FAKE(str_cmpi)
     RESET_FAKE(str_iter_split)
 }
 

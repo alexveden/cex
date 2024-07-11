@@ -397,7 +397,7 @@ ATEST_F(test_iter_split)
     {
         atassert_eqi(str.is_valid(*it.val), true);
         atassert_eqs(Error.ok, str.copy(*it.val, buf, arr$len(buf)));
-        atassert_eqi(str.cmpc(*it.val, expected1[nit]), 0);
+        atassert_eqi(str.cmp(*it.val, s$(expected1[nit])), 0);
         nit++;
     }
     atassert_eqi(nit, 1);
@@ -412,7 +412,7 @@ ATEST_F(test_iter_split)
     {
         atassert_eqi(str.is_valid(*it.val), true);
         atassert_eqs(Error.ok, str.copy(*it.val, buf, arr$len(buf)));
-        atassert_eqi(str.cmpc(*it.val, expected2[nit]), 0);
+        atassert_eqi(str.cmp(*it.val, s$(expected2[nit])), 0);
         nit++;
     }
     atassert_eqi(nit, 2);
@@ -429,7 +429,7 @@ ATEST_F(test_iter_split)
     {
         atassert_eqi(str.is_valid(*it.val), true);
         atassert_eqs(Error.ok, str.copy(*it.val, buf, arr$len(buf)));
-        atassert_eqi(str.cmpc(*it.val, expected3[nit]), 0);
+        atassert_eqi(str.cmp(*it.val, s$(expected3[nit])), 0);
         nit++;
     }
     atassert_eqi(nit, 4);
@@ -446,7 +446,7 @@ ATEST_F(test_iter_split)
     {
         atassert_eqi(str.is_valid(*it.val), true);
         atassert_eqs(Error.ok, str.copy(*it.val, buf, arr$len(buf)));
-        atassert_eqi(str.cmpc(*it.val, expected4[nit]), 0);
+        atassert_eqi(str.cmp(*it.val, s$(expected4[nit])), 0);
         nit++;
     }
     atassert_eqi(nit, 4);
@@ -463,66 +463,130 @@ ATEST_F(test_iter_split)
     {
         atassert_eqi(str.is_valid(*it.val), true);
         atassert_eqs(Error.ok, str.copy(*it.val, buf, arr$len(buf)));
-        atassert_eqi(str.cmpc(*it.val, expected5[nit]), 0);
+        atassert_eqi(str.cmp(*it.val, s$(expected5[nit])), 0);
         nit++;
     }
     atassert_eqi(nit, 4);
     return NULL;
 }
 
-ATEST_F(test_indexof)
+ATEST_F(test_find)
 {
 
     str_c s = str.cstr("123456");
     atassert_eqi(s.len, 6);
 
     // match first
-    atassert_eqi(0, str.indexof(s, str.cstr("1"), 0, 0));
+    atassert_eqi(0, str.find(s, str.cstr("1"), 0, 0));
 
     // match full
-    atassert_eqi(0, str.indexof(s, str.cstr("123456"), 0, 0));
+    atassert_eqi(0, str.find(s, str.cstr("123456"), 0, 0));
 
     // needle overflow s
-    atassert_eqi(-1, str.indexof(s, str.cstr("1234567"), 0, 0));
+    atassert_eqi(-1, str.find(s, str.cstr("1234567"), 0, 0));
 
     // match
-    atassert_eqi(1, str.indexof(s, str.cstr("23"), 0, 0));
+    atassert_eqi(1, str.find(s, str.cstr("23"), 0, 0));
 
     // empty needle
-    atassert_eqi(-1, str.indexof(s, str.cstr(""), 0, 0));
+    atassert_eqi(-1, str.find(s, str.cstr(""), 0, 0));
 
     // empty string
-    atassert_eqi(-1, str.indexof(str.cstr(""), str.cstr("23"), 0, 0));
+    atassert_eqi(-1, str.find(str.cstr(""), str.cstr("23"), 0, 0));
 
     // bad string
-    atassert_eqi(-1, str.indexof(str.cstr(NULL), str.cstr("23"), 0, 0));
+    atassert_eqi(-1, str.find(str.cstr(NULL), str.cstr("23"), 0, 0));
 
     // starts after match
-    atassert_eqi(-1, str.indexof(s, str.cstr("23"), 2, 0));
+    atassert_eqi(-1, str.find(s, str.cstr("23"), 2, 0));
 
     // bad needle
-    atassert_eqi(-1, str.indexof(s, str.cstr(NULL), 0, 0));
+    atassert_eqi(-1, str.find(s, str.cstr(NULL), 0, 0));
 
     // no match
-    atassert_eqi(-1, str.indexof(s, str.cstr("foo"), 0, 0));
+    atassert_eqi(-1, str.find(s, str.cstr("foo"), 0, 0));
 
     // match at the end
-    atassert_eqi(4, str.indexof(s, str.cstr("56"), 0, 0));
-    atassert_eqi(5, str.indexof(s, str.cstr("6"), 0, 0));
+    atassert_eqi(4, str.find(s, str.cstr("56"), 0, 0));
+    atassert_eqi(5, str.find(s, str.cstr("6"), 0, 0));
 
     // middle
-    atassert_eqi(3, str.indexof(s, str.cstr("45"), 0, 0));
+    atassert_eqi(3, str.find(s, str.cstr("45"), 0, 0));
 
     // ends before match
-    atassert_eqi(-1, str.indexof(s, str.cstr("56"), 0, 5));
+    atassert_eqi(-1, str.find(s, str.cstr("56"), 0, 5));
 
     // ends more than length ok
-    atassert_eqi(4, str.indexof(s, str.cstr("56"), 0, 500));
+    atassert_eqi(4, str.find(s, str.cstr("56"), 0, 500));
 
     // start >= len
-    atassert_eqi(-1, str.indexof(s, str.cstr("1"), 6, 5));
-    atassert_eqi(-1, str.indexof(s, str.cstr("1"), 7, 5));
+    atassert_eqi(-1, str.find(s, str.cstr("1"), 6, 5));
+    atassert_eqi(-1, str.find(s, str.cstr("1"), 7, 5));
 
+    // starts from left
+    atassert_eqi(0, str.find(s$("123123123"), str.cstr("123"), 0, 0));
+
+    return NULL;
+}
+
+ATEST_F(test_rfind)
+{
+
+    str_c s = str.cstr("123456");
+    atassert_eqi(s.len, 6);
+
+    // match first
+    atassert_eqi(0, str.rfind(s, str.cstr("1"), 0, 0));
+
+    // match last
+    atassert_eqi(5, str.rfind(s, str.cstr("6"), 0, 0));
+
+    // match full
+    atassert_eqi(0, str.rfind(s, str.cstr("123456"), 0, 0));
+
+    // needle overflow s
+    atassert_eqi(-1, str.rfind(s, str.cstr("1234567"), 0, 0));
+
+    // match
+    atassert_eqi(1, str.rfind(s, str.cstr("23"), 0, 0));
+
+    // empty needle
+    atassert_eqi(-1, str.rfind(s, str.cstr(""), 0, 0));
+
+    // empty string
+    atassert_eqi(-1, str.rfind(str.cstr(""), str.cstr("23"), 0, 0));
+
+    // bad string
+    atassert_eqi(-1, str.rfind(str.cstr(NULL), str.cstr("23"), 0, 0));
+
+    // starts after match
+    atassert_eqi(-1, str.rfind(s, str.cstr("23"), 2, 0));
+
+    // bad needle
+    atassert_eqi(-1, str.rfind(s, str.cstr(NULL), 0, 0));
+
+    // no match
+    atassert_eqi(-1, str.rfind(s, str.cstr("foo"), 0, 0));
+
+    // match at the end
+    atassert_eqi(4, str.rfind(s, str.cstr("56"), 0, 0));
+    atassert_eqi(5, str.rfind(s, str.cstr("6"), 0, 0));
+
+    // middle
+    atassert_eqi(3, str.rfind(s, str.cstr("45"), 0, 0));
+
+    // ends before match
+    atassert_eqi(-1, str.rfind(s, str.cstr("56"), 0, 5));
+
+    // ends more than length ok
+    atassert_eqi(4, str.rfind(s, str.cstr("56"), 0, 500));
+
+    // start >= len
+    atassert_eqi(-1, str.rfind(s, str.cstr("1"), 6, 5));
+    atassert_eqi(-1, str.rfind(s, str.cstr("1"), 7, 5));
+
+    // starts from right
+    atassert_eqi(6, str.rfind(s$("123123123"), str.cstr("123"), 0, 0));
 
     return NULL;
 }
@@ -557,6 +621,58 @@ ATEST_F(test_contains_starts_ends)
     atassert_eqi(0, str.ends_with(s, str.cstr(NULL)));
     atassert_eqi(0, str.ends_with(str.cstr(""), str.cstr("1")));
     atassert_eqi(0, str.ends_with(str.cstr(NULL), str.cstr("1")));
+
+    return NULL;
+}
+
+ATEST_F(test_remove_prefix)
+{
+    str_c out;
+
+    out = str.remove_prefix(s$("prefix_str_prefix"), s$("prefix"));
+    atassert_eqi(str.cmp(out, s$("_str_prefix")), 0);
+
+    // no exact match skipped
+    out = str.remove_prefix(s$(" prefix_str_prefix"), s$("prefix"));
+    atassert_eqi(str.cmp(out, s$(" prefix_str_prefix")), 0);
+
+    // empty prefix
+    out = str.remove_prefix(s$("prefix_str_prefix"), s$(""));
+    atassert_eqi(str.cmp(out, s$("prefix_str_prefix")), 0);
+
+    // bad prefix
+    out = str.remove_prefix(s$("prefix_str_prefix"), str.cstr(NULL));
+    atassert_eqi(str.cmp(out, s$("prefix_str_prefix")), 0);
+
+    // no match
+    out = str.remove_prefix(s$("prefix_str_prefix"), s$("prefi_"));
+    atassert_eqi(str.cmp(out, s$("prefix_str_prefix")), 0);
+
+    return NULL;
+}
+
+ATEST_F(test_remove_suffix)
+{
+    str_c out;
+
+    out = str.remove_suffix(s$("suffix_str_suffix"), s$("suffix"));
+    atassert_eqi(str.cmp(out, s$("suffix_str_")), 0);
+
+    // no exact match skipped
+    out = str.remove_suffix(s$("suffix_str_suffix "), s$("suffix"));
+    atassert_eqi(str.cmp(out, s$("suffix_str_suffix ")), 0);
+
+    // empty suffix
+    out = str.remove_suffix(s$("suffix_str_suffix"), s$(""));
+    atassert_eqi(str.cmp(out, s$("suffix_str_suffix")), 0);
+
+    // bad suffix
+    out = str.remove_suffix(s$("suffix_str_suffix"), str.cstr(NULL));
+    atassert_eqi(str.cmp(out, s$("suffix_str_suffix")), 0);
+
+    // no match
+    out = str.remove_suffix(s$("suffix_str_suffix"), s$("_uffix"));
+    atassert_eqi(str.cmp(out, s$("suffix_str_suffix")), 0);
 
     return NULL;
 }
@@ -603,7 +719,7 @@ ATEST_F(test_strip)
     s = str.cstr("\n\t \r\r\n\t");
     out = str.rstrip(s);
     atassert_eqi(out.len, 0);
-    atassert_eqi(str.cmpc(out, ""), 0);
+    atassert_eqi(str.cmp(out, s$("")), 0);
 
     // BOTH
     out = str.strip(str.cstr(NULL));
@@ -640,7 +756,29 @@ ATEST_F(test_cmp)
     atassert_eqi(str.cmp(str.cstr(""), str.cstr(NULL)), 1);
     atassert_eqi(str.cmp(str.cstr(NULL), str.cstr("ABC")), -1);
 
-    atassert_eqi(str.cmpc(str.cstr("ABC"), "AB"), 67);
+    return NULL;
+}
+
+ATEST_F(test_cmpi)
+{
+
+    atassert_eqi(str.cmpi(str.cstr("123456"), str.cstr("123456")), 0);
+    atassert_eqi(str.cmpi(str.cstr(NULL), str.cstr(NULL)), 0);
+    atassert_eqi(str.cmpi(str.cstr(""), str.cstr("")), 0);
+
+    atassert_eqi(str.cmpi(str.cstr("ABC"), str.cstr("ABC")), 0);
+    atassert_eqi(str.cmpi(str.cstr("abc"), str.cstr("ABC")), 0);
+    atassert_eqi(str.cmpi(str.cstr("ABc"), str.cstr("ABC")), 0);
+    atassert_eqi(str.cmpi(str.cstr("ABC"), str.cstr("aBC")), 0);
+
+    atassert_eqi(str.cmpi(str.cstr("ABC"), str.cstr("AB")), 67);
+    atassert_eqi(str.cmpi(str.cstr("ABA"), str.cstr("ABZ")), -25);
+    atassert_eqi(str.cmpi(str.cstr("AB"), str.cstr("ABC")), -67);
+    atassert_eqi(str.cmpi(str.cstr("A"), str.cstr("")), (int)'A');
+    atassert_eqi(str.cmpi(str.cstr(""), str.cstr("A")), -1*((int)'A'));
+    atassert_eqi(str.cmpi(str.cstr(""), str.cstr(NULL)), 1);
+    atassert_eqi(str.cmpi(str.cstr(NULL), str.cstr("ABC")), -1);
+
 
     return NULL;
 }
@@ -662,10 +800,14 @@ main(int argc, char* argv[])
     ATEST_RUN(test_sub_negative_start);
     ATEST_RUN(test_iter);
     ATEST_RUN(test_iter_split);
-    ATEST_RUN(test_indexof);
+    ATEST_RUN(test_find);
+    ATEST_RUN(test_rfind);
     ATEST_RUN(test_contains_starts_ends);
+    ATEST_RUN(test_remove_prefix);
+    ATEST_RUN(test_remove_suffix);
     ATEST_RUN(test_strip);
     ATEST_RUN(test_cmp);
+    ATEST_RUN(test_cmpi);
     
     ATEST_PRINT_FOOTER();  // ^^^^^ all tests runs are above
     return ATEST_EXITCODE();

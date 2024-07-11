@@ -118,7 +118,10 @@ char*
 (*iter)(str_c s, cex_iterator_s* iterator);
 
 ssize_t
-(*indexof)(str_c s, str_c needle, size_t start, size_t end);
+(*find)(str_c s, str_c needle, size_t start, size_t end);
+
+ssize_t
+(*rfind)(str_c s, str_c needle, size_t start, size_t end);
 
 bool
 (*contains)(str_c s, str_c needle);
@@ -128,6 +131,12 @@ bool
 
 bool
 (*ends_with)(str_c s, str_c needle);
+
+str_c
+(*remove_prefix)(str_c s, str_c prefix);
+
+str_c
+(*remove_suffix)(str_c s, str_c suffix);
 
 str_c
 (*lstrip)(str_c s);
@@ -142,7 +151,7 @@ int
 (*cmp)(str_c self, str_c other);
 
 int
-(*cmpc)(str_c self, const char* other);
+(*cmpi)(str_c self, str_c other);
 
 str_c*
 (*iter_split)(str_c s, const char* split_by, cex_iterator_s* iterator);

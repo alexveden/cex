@@ -1,4 +1,5 @@
 #include "str.h"
+#include <ctype.h>
 
 
 static inline bool
@@ -167,7 +168,7 @@ str_iter(str_c s, cex_iterator_s* iterator)
 }
 
 ssize_t
-str_indexof(str_c s, str_c needle, size_t start, size_t end)
+str_find(str_c s, str_c needle, size_t start, size_t end)
 {
     if (needle.len == 0 || needle.len > s.len) {
         return -1;
@@ -183,6 +184,41 @@ str_indexof(str_c s, str_c needle, size_t start, size_t end)
     for (size_t i = start; i < end - needle.len + 1; i++) {
         // check the 1st letter
         if (s.buf[i] == needle.buf[0]) {
+            // 1 char
+            if (needle.len == 1) {
+                return i;
+            }
+            // check whole word
+            if (memcmp(&s.buf[i], needle.buf, needle.len) == 0) {
+                return i;
+            }
+        }
+    }
+
+    return -1;
+}
+
+ssize_t
+str_rfind(str_c s, str_c needle, size_t start, size_t end)
+{
+    if (needle.len == 0 || needle.len > s.len) {
+        return -1;
+    }
+    if (start >= s.len) {
+        return -1;
+    }
+
+    if (end == 0 || end > s.len) {
+        end = s.len;
+    }
+
+    for (size_t i = end - needle.len + 1; i-- > start;) {
+        // check the 1st letter
+        if (s.buf[i] == needle.buf[0]) {
+            // 1 char
+            if (needle.len == 1) {
+                return i;
+            }
             // check whole word
             if (memcmp(&s.buf[i], needle.buf, needle.len) == 0) {
                 return i;
@@ -196,13 +232,13 @@ str_indexof(str_c s, str_c needle, size_t start, size_t end)
 bool
 str_contains(str_c s, str_c needle)
 {
-    return str_indexof(s, needle, 0, 0) != -1;
+    return str_find(s, needle, 0, 0) != -1;
 }
 
 bool
 str_starts_with(str_c s, str_c needle)
 {
-    return str_indexof(s, needle, 0, needle.len) != -1;
+    return str_find(s, needle, 0, needle.len) != -1;
 }
 
 bool
@@ -212,7 +248,40 @@ str_ends_with(str_c s, str_c needle)
         return false;
     }
 
-    return str_indexof(s, needle, s.len - needle.len, 0) != -1;
+    return str_find(s, needle, s.len - needle.len, 0) != -1;
+}
+
+str_c
+str_remove_prefix(str_c s, str_c prefix)
+{
+    ssize_t idx = str_find(s, prefix, 0, prefix.len);
+    if (idx == -1) {
+        return s;
+    }
+
+    return (str_c){
+        .buf = s.buf + prefix.len,
+        .len = s.len - prefix.len,
+    };
+}
+
+str_c
+str_remove_suffix(str_c s, str_c suffix)
+{
+    if (suffix.len > s.len) {
+        return s;
+    }
+
+    ssize_t idx = str_find(s, suffix, s.len - suffix.len, 0);
+
+    if (idx == -1) {
+        return s;
+    }
+
+    return (str_c){
+        .buf = s.buf,
+        .len = s.len - suffix.len,
+    };
 }
 
 
@@ -350,26 +419,60 @@ str_cmp(str_c self, str_c other)
         }
     }
 
-    size_t min_len = (self.len > other.len) ? self.len : other.len;
-
+    size_t min_len = MIN(self.len, other.len);
     int cmp = memcmp(self.buf, other.buf, min_len);
+
     if (cmp == 0 && self.len != other.len) {
-        if(self.len > other.len) {
+        if (self.len > other.len) {
             cmp = self.buf[min_len] - '\0';
         } else {
             cmp = '\0' - other.buf[min_len];
         }
-
     }
     return cmp;
 }
 
 int
-str_cmpc(str_c self, const char* other)
+str_cmpi(str_c self, str_c other)
 {
-    return str_cmp(self, str_cstr(other));
-}
+    if (unlikely(self.buf == NULL)) {
+        if (other.buf == NULL) {
+            return 0;
+        } else {
+            return -1;
+        }
+    }
 
+    if (unlikely(self.len == 0)) {
+        if (other.buf == NULL) {
+            return 1;
+        } else if (other.len == 0) {
+            return 0;
+        } else {
+            return -other.buf[0];
+        }
+    }
+
+    size_t min_len = MIN(self.len, other.len);
+
+    int cmp = 0;
+    char* s = self.buf;
+    char* o = other.buf;
+    for (size_t i = 0; i < min_len; i++) {
+        cmp = tolower(*s) - tolower(*o);
+        s++;
+        o++;
+    }
+
+    if (cmp == 0 && self.len != other.len) {
+        if (self.len > other.len) {
+            cmp = self.buf[min_len] - '\0';
+        } else {
+            cmp = '\0' - other.buf[min_len];
+        }
+    }
+    return cmp;
+}
 str_c*
 str_iter_split(str_c s, const char* split_by, cex_iterator_s* iterator)
 {
@@ -452,15 +555,18 @@ const struct __module__str str = {
     .len = str_len,
     .is_valid = str_is_valid,
     .iter = str_iter,
-    .indexof = str_indexof,
+    .find = str_find,
+    .rfind = str_rfind,
     .contains = str_contains,
     .starts_with = str_starts_with,
     .ends_with = str_ends_with,
+    .remove_prefix = str_remove_prefix,
+    .remove_suffix = str_remove_suffix,
     .lstrip = str_lstrip,
     .rstrip = str_rstrip,
     .strip = str_strip,
     .cmp = str_cmp,
-    .cmpc = str_cmpc,
+    .cmpi = str_cmpi,
     .iter_split = str_iter_split,
     // clang-format on
 };
