@@ -58,7 +58,19 @@ Exception
 (*create)(list_c* self, size_t capacity, size_t elsize, size_t elalign, const Allocator_c* allocator);
 
 Exception
+(*insert)(void* self, void* item, size_t index);
+
+Exception
+(*del)(void* self, size_t index);
+
+void
+(*sort)(void* self, int (*comp)(const void*, const void*));
+
+Exception
 (*append)(void* self, void* item);
+
+void
+(*clear)(void* self);
 
 Exception
 (*extend)(void* self, void* items, size_t nitems);

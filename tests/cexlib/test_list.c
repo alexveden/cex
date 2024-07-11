@@ -122,6 +122,168 @@ ATEST_F(testlist_append)
     return NULL; // Every ATEST_F() must return NULL to succeed!
 }
 
+ATEST_F(testlist_insert)
+{
+    const Allocator_c* allocator = AllocatorHeap_new();
+    list$define(int) a;
+
+    except_traceback(err, list$new(&a, 4, allocator))
+    {
+        atassert(false && "list$new fail");
+    }
+
+    // adding new elements into the end
+    atassert_eqs(EOK, list.append(&a, &(int){1}));
+    atassert_eqs(EOK, list.append(&a, &(int){2}));
+    atassert_eqs(EOK, list.append(&a, &(int){3}));
+    atassert_eqi(a.count, 3);
+
+    atassert_eqs(Error.argument, list.insert(&a, &(int){4}, 4));
+    atassert_eqs(Error.ok, list.insert(&a, &(int){4}, 3)); // same as append!
+    //
+    atassert_eqi(a.count, 4);
+    atassert_eqi(a.arr[0], 1);
+    atassert_eqi(a.arr[1], 2);
+    atassert_eqi(a.arr[2], 3);
+    atassert_eqi(a.arr[3], 4);
+
+
+    list.clear(&a);
+    atassert_eqi(a.count, 0);
+    atassert_eqs(EOK, list.append(&a, &(int){1}));
+    atassert_eqs(EOK, list.append(&a, &(int){2}));
+    atassert_eqs(EOK, list.append(&a, &(int){3}));
+    atassert_eqs(Error.ok, list.insert(&a, &(int){4}, 0)); // same as append!
+    atassert_eqi(a.count, 4);
+    atassert_eqi(a.arr[0], 4);
+    atassert_eqi(a.arr[1], 1);
+    atassert_eqi(a.arr[2], 2);
+    atassert_eqi(a.arr[3], 3);
+
+    list.clear(&a);
+    atassert_eqi(a.count, 0);
+    atassert_eqs(EOK, list.append(&a, &(int){1}));
+    atassert_eqs(EOK, list.append(&a, &(int){2}));
+    atassert_eqs(EOK, list.append(&a, &(int){3}));
+    atassert_eqs(Error.ok, list.insert(&a, &(int){4}, 1)); // same as append!
+    atassert_eqi(a.count, 4);
+    atassert_eqi(a.arr[0], 1);
+    atassert_eqi(a.arr[1], 4);
+    atassert_eqi(a.arr[2], 2);
+    atassert_eqi(a.arr[3], 3);
+
+    list.destroy(&a);
+    AllocatorHeap_free();
+
+    return NULL; // Every ATEST_F() must return NULL to succeed!
+}
+
+ATEST_F(testlist_del)
+{
+    const Allocator_c* allocator = AllocatorHeap_new();
+    list$define(int) a;
+
+    except_traceback(err, list$new(&a, 4, allocator))
+    {
+        atassert(false && "list$new fail");
+    }
+    atassert_eqs(Error.argument, list.del(&a, 0));
+
+    // adding new elements into the end
+    atassert_eqs(EOK, list.append(&a, &(int){1}));
+    atassert_eqs(EOK, list.append(&a, &(int){2}));
+    atassert_eqs(EOK, list.append(&a, &(int){3}));
+    atassert_eqi(a.count, 3);
+    atassert_eqs(Error.argument, list.del(&a, 3));
+    atassert_eqs(Error.ok, list.del(&a, 2));
+
+    atassert_eqi(a.count, 2);
+    atassert_eqi(a.arr[0], 1);
+    atassert_eqi(a.arr[1], 2);
+
+    list.clear(&a);
+    atassert_eqi(a.count, 0);
+    atassert_eqs(EOK, list.append(&a, &(int){1}));
+    atassert_eqs(EOK, list.append(&a, &(int){2}));
+    atassert_eqs(EOK, list.append(&a, &(int){3}));
+    atassert_eqs(EOK, list.append(&a, &(int){4})); 
+
+    atassert_eqi(a.arr[0], 1);
+    atassert_eqi(a.arr[1], 2);
+    atassert_eqi(a.arr[2], 3);
+    atassert_eqi(a.arr[3], 4);
+
+    atassert_eqs(Error.ok, list.del(&a, 2));
+
+    atassert_eqi(a.count, 3);
+    atassert_eqi(a.arr[0], 1);
+    atassert_eqi(a.arr[1], 2);
+    atassert_eqi(a.arr[2], 4);
+
+    list.clear(&a);
+    atassert_eqi(a.count, 0);
+    atassert_eqs(EOK, list.append(&a, &(int){1}));
+    atassert_eqs(EOK, list.append(&a, &(int){2}));
+    atassert_eqs(EOK, list.append(&a, &(int){3}));
+    atassert_eqs(EOK, list.append(&a, &(int){4})); 
+
+    atassert_eqi(a.arr[0], 1);
+    atassert_eqi(a.arr[1], 2);
+    atassert_eqi(a.arr[2], 3);
+    atassert_eqi(a.arr[3], 4);
+
+    atassert_eqs(Error.ok, list.del(&a, 0));
+
+    atassert_eqi(a.count, 3);
+    atassert_eqi(a.arr[0], 2);
+    atassert_eqi(a.arr[1], 3);
+    atassert_eqi(a.arr[2], 4);
+
+    list.destroy(&a);
+    AllocatorHeap_free();
+
+    return NULL; // Every ATEST_F() must return NULL to succeed!
+}
+
+int test_int_cmp(const void* a, const void* b){
+    return *(int*)a - *(int*)b; 
+}
+
+ATEST_F(testlist_sort)
+{
+    const Allocator_c* allocator = AllocatorHeap_new();
+    list$define(int) a;
+
+    except_traceback(err, list$new(&a, 4, allocator))
+    {
+        atassert(false && "list$new fail");
+    }
+
+    // adding new elements into the end
+    atassert_eqs(EOK, list.append(&a, &(int){5}));
+    atassert_eqs(EOK, list.append(&a, &(int){1}));
+    atassert_eqs(EOK, list.append(&a, &(int){3}));
+    atassert_eqs(EOK, list.append(&a, &(int){2}));
+    atassert_eqs(EOK, list.append(&a, &(int){4})); 
+    atassert_eqi(a.count, 5);
+
+
+    list.sort(&a, test_int_cmp);
+    atassert_eqi(a.count, 5);
+
+    atassert_eqi(a.arr[0], 1);
+    atassert_eqi(a.arr[1], 2);
+    atassert_eqi(a.arr[2], 3);
+    atassert_eqi(a.arr[3], 4);
+    atassert_eqi(a.arr[4], 5);
+
+
+    list.destroy(&a);
+    AllocatorHeap_free();
+
+    return NULL; // Every ATEST_F() must return NULL to succeed!
+}
+
 ATEST_F(testlist_extend)
 {
     const Allocator_c* allocator = AllocatorHeap_new();
@@ -373,6 +535,9 @@ main(int argc, char* argv[])
     ATEST_RUN(testlist_alloc_capacity);
     ATEST_RUN(testlist_new);
     ATEST_RUN(testlist_append);
+    ATEST_RUN(testlist_insert);
+    ATEST_RUN(testlist_del);
+    ATEST_RUN(testlist_sort);
     ATEST_RUN(testlist_extend);
     ATEST_RUN(testlist_iterator);
     ATEST_RUN(testlist_align64);
