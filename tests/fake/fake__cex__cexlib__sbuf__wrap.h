@@ -26,9 +26,9 @@ FAKE_VALUE_FUNC(Exc, __wrap_sbuf_append, sbuf_c*, str_c)Exception __real_sbuf_ap
 
 FAKE_VOID_FUNC(__wrap_sbuf_clear, sbuf_c*)void __real_sbuf_clear(sbuf_c*);
 
-FAKE_VALUE_FUNC(u32, __wrap_sbuf_len, const sbuf_c)u32 __real_sbuf_len(const sbuf_c);
+FAKE_VALUE_FUNC(u32, __wrap_sbuf_len, const sbuf_c*)u32 __real_sbuf_len(const sbuf_c*);
 
-FAKE_VALUE_FUNC(u32, __wrap_sbuf_capacity, const sbuf_c)u32 __real_sbuf_capacity(const sbuf_c);
+FAKE_VALUE_FUNC(u32, __wrap_sbuf_capacity, const sbuf_c*)u32 __real_sbuf_capacity(const sbuf_c*);
 
 FAKE_VALUE_FUNC(sbuf_c, __wrap_sbuf_destroy, sbuf_c*)sbuf_c __real_sbuf_destroy(sbuf_c*);
 
@@ -36,7 +36,7 @@ FAKE_VALUE_FUNC(char*, __wrap_sbuf__sprintf_callback, const char*, void*, int)ch
 
 FAKE_VALUE_FUNC_VARARG(Exc, __wrap_sbuf_sprintf, sbuf_c*, const char*, ...)Exception __real_sbuf_sprintf(sbuf_c*, const char*, ...);
 
-FAKE_VALUE_FUNC(str_c, __wrap_sbuf_toview, sbuf_c*)str_c __real_sbuf_toview(sbuf_c*);
+FAKE_VALUE_FUNC(str_c, __wrap_sbuf_tostr, sbuf_c*)str_c __real_sbuf_tostr(sbuf_c*);
 
 
 const struct __module__sbuf sbuf = {
@@ -54,7 +54,7 @@ const struct __module__sbuf sbuf = {
     .destroy = sbuf_destroy,
     ._sprintf_callback = sbuf__sprintf_callback,
     .sprintf = sbuf_sprintf,
-    .toview = sbuf_toview,
+    .tostr = sbuf_tostr,
     // clang-format on
 };
 // clang-format off
@@ -76,6 +76,6 @@ static void fake__cex__cexlib__sbuf__wrap__resetall(void) {
     RESET_FAKE(__wrap_sbuf_destroy)
     RESET_FAKE(__wrap_sbuf__sprintf_callback)
     RESET_FAKE(__wrap_sbuf_sprintf)
-    RESET_FAKE(__wrap_sbuf_toview)
+    RESET_FAKE(__wrap_sbuf_tostr)
 }
 

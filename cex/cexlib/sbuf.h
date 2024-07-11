@@ -50,10 +50,10 @@ void
 (*clear)(sbuf_c* self);
 
 u32
-(*len)(const sbuf_c self);
+(*len)(const sbuf_c* self);
 
 u32
-(*capacity)(const sbuf_c self);
+(*capacity)(const sbuf_c* self);
 
 sbuf_c
 (*destroy)(sbuf_c* self);
@@ -65,7 +65,7 @@ Exception
 (*sprintf)(sbuf_c* self, const char* format, ...);
 
 str_c
-(*toview)(sbuf_c* self);
+(*tostr)(sbuf_c* self);
 
     // clang-format on
 };

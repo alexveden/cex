@@ -152,6 +152,7 @@ sbuf_grow(sbuf_c* self, u32 capacity)
 Exception
 sbuf_append_c(sbuf_c* self, char* s)
 {
+    uassert(self != NULL);
     if (s == NULL) {
         return Error.argument;
     }
@@ -255,6 +256,7 @@ sbuf_replace(sbuf_c* self, const str_c oldstr, const str_c newstr)
 Exception
 sbuf_append(sbuf_c* self, str_c s)
 {
+    uassert(self != NULL);
     sbuf_head_s* head = sbuf__head(*self);
 
     if (s.buf == NULL) {
@@ -293,22 +295,25 @@ sbuf_append(sbuf_c* self, str_c s)
 void
 sbuf_clear(sbuf_c* self)
 {
+    uassert(self != NULL);
     sbuf_head_s* head = sbuf__head(*self);
     head->length = 0;
     (*self)[head->length] = '\0';
 }
 
 u32
-sbuf_len(const sbuf_c self)
+sbuf_len(const sbuf_c* self)
 {
-    sbuf_head_s* head = sbuf__head(self);
+    uassert(self != NULL);
+    sbuf_head_s* head = sbuf__head(*self);
     return head->length;
 }
 
 u32
-sbuf_capacity(const sbuf_c self)
+sbuf_capacity(const sbuf_c* self)
 {
-    sbuf_head_s* head = sbuf__head(self);
+    uassert(self != NULL);
+    sbuf_head_s* head = sbuf__head(*self);
     return head->capacity;
 }
 
@@ -400,7 +405,7 @@ sbuf__sprintf_callback(const char* buf, void* user, int len)
 Exception
 sbuf_sprintf(sbuf_c* self, const char* format, ...)
 {
-
+    uassert(self != NULL);
     sbuf_head_s* head = sbuf__head(*self);
     // utracef("head s: %s, len: %d\n", *self, head->length);
 
@@ -429,8 +434,9 @@ sbuf_sprintf(sbuf_c* self, const char* format, ...)
 }
 
 str_c
-sbuf_toview(sbuf_c* self)
+sbuf_tostr(sbuf_c* self)
 {
+    uassert(self != NULL);
     sbuf_head_s* head = sbuf__head(*self);
 
     return (str_c){
@@ -455,6 +461,6 @@ const struct __module__sbuf sbuf = {
     .destroy = sbuf_destroy,
     ._sprintf_callback = sbuf__sprintf_callback,
     .sprintf = sbuf_sprintf,
-    .toview = sbuf_toview,
+    .tostr = sbuf_tostr,
     // clang-format on
 };
