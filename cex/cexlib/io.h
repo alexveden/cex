@@ -1,5 +1,5 @@
 #pragma once
-#include "cex/cexlib/sview.h"
+#include "cex/cexlib/str.h"
 #include <cex/cex.h>
 #include <stdio.h>
 
@@ -55,10 +55,10 @@ Exception
 (*read)(io_c* self, void* restrict obj_buffer, size_t obj_el_size, size_t* obj_count);
 
 Exception
-(*readall)(io_c* self, sview_c* s);
+(*readall)(io_c* self, str_c* s);
 
 Exception
-(*readline)(io_c* self, sview_c* s);
+(*readline)(io_c* self, str_c* s);
 
 void
 (*close)(io_c* self);

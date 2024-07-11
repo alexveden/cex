@@ -16,8 +16,8 @@ FAKE_VOID_FUNC(io_rewind, io_c*)
 FAKE_VALUE_FUNC(Exc, io_tell, io_c*, size_t*)
 FAKE_VALUE_FUNC(size_t, io_size, io_c*)
 FAKE_VALUE_FUNC(Exc, io_read, io_c*, void* restrict, size_t, size_t*)
-FAKE_VALUE_FUNC(Exc, io_readall, io_c*, sview_c*)
-FAKE_VALUE_FUNC(Exc, io_readline, io_c*, sview_c*)
+FAKE_VALUE_FUNC(Exc, io_readall, io_c*, str_c*)
+FAKE_VALUE_FUNC(Exc, io_readline, io_c*, str_c*)
 FAKE_VOID_FUNC(io_close, io_c*)
 
 const struct __module__io io = {

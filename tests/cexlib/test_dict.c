@@ -201,6 +201,56 @@ ATEST_F(test_dict_generic_auto_cmp_hash)
     atassert(_dict$hashfunc(typeof(rec), key_ptr) == hm_str_hash);
     return NULL;
 }
+ 
+
+ATEST_F(test_dict_string_pointers)
+{
+    struct s
+    {
+        const char * key;
+        // int * key;
+        char val;
+    };
+
+    dict_c* hm;
+    atassert_eqs(EOK, dict$new(&hm, struct s, key, allocator));
+
+    atassert_eqs(dict.set(hm, &(struct s){ .key = "abcd", .val = 'z' }), EOK);
+
+    except(err, dict.set(hm, &(struct s){ .key = "abcd", .val = 'z' }))
+    {
+        atassert(false && "unexpected");
+    }
+
+    except(err, dict.set(hm, &(struct s){ .key = "xyz", .val = 'z' }))
+    {
+        atassert(false && "unexpected");
+    }
+
+    // TODO: implement const* pointer hash + compare functions!
+    atassert(false && "TODO: implement char* hash");
+    const struct s* res = dict.get(hm, "abcd");
+    atassert(res != NULL);
+    atassert_eqs(res->key, "abcd");
+
+    res = dict.gets(hm, "xyz");
+    atassert(res != NULL);
+    atassert_eqs(res->key, "xyz");
+
+    const struct s* res2 = dict.get(hm, &(struct s){ .key = "ffff" });
+    atassert(res2 == NULL);
+
+
+    let res3 = (struct s*)dict.get(hm, &(struct s){ .key = "abcd" });
+    atassert(res3 != NULL);
+    atassert_eqs(res3->key, "abcd");
+
+    atassert_eqi(dict.len(hm), 2);
+
+    hm = dict.destroy(&hm);
+
+    return NULL;
+}
 /*
  *
  * MAIN (AUTO GENERATED)
@@ -216,6 +266,7 @@ main(int argc, char* argv[])
     ATEST_RUN(test_dict_string);
     ATEST_RUN(test_dict_create_generic);
     ATEST_RUN(test_dict_generic_auto_cmp_hash);
+    ATEST_RUN(test_dict_string_pointers);
     
     ATEST_PRINT_FOOTER();  // ^^^^^ all tests runs are above
     return ATEST_EXITCODE();

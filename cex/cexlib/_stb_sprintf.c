@@ -404,9 +404,9 @@ STB_SPRINTF_DECORATE(vsprintfcb)(
                     }
 #if defined(__x86_64__) || defined(__x86_64)
                     else {
-                        // NOTE: cex is sview_c passed as %s, s will be length
+                        // NOTE: cex is str_c passed as %s, s will be length
                         // try to double check sensible value of pointer
-                        s = (char*)"(sview_c->%S)";
+                        s = (char*)"(str_c->%S)";
                     }
 #endif
                 }
@@ -421,8 +421,8 @@ STB_SPRINTF_DECORATE(vsprintfcb)(
                 // copy the string in
                 goto scopy;
             case 'S': {
-                // NOTE: CEX extra (support of sview_c)
-                sview_c sv = va_arg(va, sview_c);
+                // NOTE: CEX extra (support of str_c)
+                str_c sv = va_arg(va, str_c);
                 s = sv.buf;
                 if (s == 0) {
                     s = (char*)"(null)";

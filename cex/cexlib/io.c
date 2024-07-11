@@ -204,14 +204,14 @@ io_read(io_c* self, void* restrict obj_buffer, size_t obj_el_size, size_t* obj_c
 }
 
 Exception
-io_readall(io_c* self, sview_c* s)
+io_readall(io_c* self, str_c* s)
 {
     uassert(self != NULL);
     uassert(self->_fh != NULL);
     uassert(s != NULL);
 
     // invalidate result if early exit
-    *s = (sview_c){
+    *s = (str_c){
         .buf = NULL,
         .len = 0,
     };
@@ -225,7 +225,7 @@ io_readall(io_c* self, sview_c* s)
 
     if (unlikely(self->_fsize == 0)) {
 
-        *s = (sview_c){
+        *s = (str_c){
             .buf = "",
             .len = 0,
         };
@@ -264,7 +264,7 @@ io_readall(io_c* self, sview_c* s)
         return "File size changed";
     }
 
-    *s = (sview_c){
+    *s = (str_c){
         .buf = self->_fbuf,
         .len = read_size,
     };
@@ -276,7 +276,7 @@ io_readall(io_c* self, sview_c* s)
 }
 
 Exception
-io_readline(io_c* self, sview_c* s)
+io_readline(io_c* self, str_c* s)
 {
     uassert(self != NULL);
     uassert(self->_fh != NULL);
@@ -353,14 +353,14 @@ io_readline(io_c* self, sview_c* s)
     }
 
     if (cursor == 0) {
-        // return valid sview_c, but empty string
-        *s = (sview_c){
+        // return valid str_c, but empty string
+        *s = (str_c){
             .buf = "",
             .len = cursor,
         };
         return (feof(self->_fh) ? Error.eof : Error.ok);
     } else {
-        *s = (sview_c){
+        *s = (str_c){
             .buf = self->_fbuf,
             .len = cursor,
         };
@@ -368,7 +368,7 @@ io_readline(io_c* self, sview_c* s)
     }
 
 fail:
-    *s = (sview_c){
+    *s = (str_c){
         .buf = NULL,
         .len = 0,
     };

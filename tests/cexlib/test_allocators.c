@@ -139,8 +139,7 @@ ATEST_F(test_allocator_static_arena_stack)
   atassert(v1 == NULL);
 
   // Free is not needed but still acts well
-  v2 = allocator->free(v2);
-  atassert(v2 == NULL);
+  allocator->free(v2);
 
   v1 = allocator->alloc(0);
   atassert(v1 == NULL);
@@ -214,8 +213,7 @@ ATEST_F(test_allocator_static_arena_stack_aligned)
   atassert(v1 == NULL);
 
   // Free is not needed but still acts well
-  v2 = allocator->free(v2);
-  atassert(v2 == NULL);
+  allocator->free(v2);
 
   v1 = allocator->alloc(0);
   atassert(v1 == NULL);
@@ -274,8 +272,7 @@ ATEST_F(test_allocator_static_arena_heap)
   atassert(v1 == NULL);
 
   // Free is not needed but still acts well
-  v2 = allocator->free(v2);
-  atassert(v2 == NULL);
+  allocator->free(v2);
 
   // Arena cleanup
   AllocatorStaticArena_free();
@@ -299,14 +296,14 @@ int
 main(int argc, char* argv[])
 {
   ATEST_PARSE_MAINARGS(argc, argv);
-  ATEST_PRINT_HEAD(); // >>> all tests below
-
-  ATEST_RUN(test_allocator_heap);
-  ATEST_RUN(test_allocator_alloc_aligned);
-  ATEST_RUN(test_allocator_static_arena_stack);
-  ATEST_RUN(test_allocator_static_arena_stack_aligned);
-  ATEST_RUN(test_allocator_static_arena_heap);
-
-  ATEST_PRINT_FOOTER(); // ^^^^^ all tests runs are above
+    ATEST_PRINT_HEAD();  // >>> all tests below
+    
+    ATEST_RUN(test_allocator_heap);
+    ATEST_RUN(test_allocator_alloc_aligned);
+    ATEST_RUN(test_allocator_static_arena_stack);
+    ATEST_RUN(test_allocator_static_arena_stack_aligned);
+    ATEST_RUN(test_allocator_static_arena_heap);
+    
+    ATEST_PRINT_FOOTER();  // ^^^^^ all tests runs are above
   return ATEST_EXITCODE();
 }

@@ -1,29 +1,18 @@
-#include "sview.h"
+#include "str.h"
 
 
-// static inline size_t _str__len(sview_c* s){
-//     if (unlikely(s->_len == 0)) {
-//         if (unlikely(s->_buf == NULL))
-//             return 0;
-//         if(unlikely(s->_buf[0] == '\0'))
-//             return 0;
-//
-//         s->_len =
-//     }
-//     return s->_len;
-// }
 static inline bool
-sview__isvalid(const sview_c* s)
+str__isvalid(const str_c* s)
 {
     return s->buf != NULL;
 }
 
 static inline ssize_t
-sview__index(sview_c* s, const char* c, u8 clen)
+str__index(str_c* s, const char* c, u8 clen)
 {
     ssize_t result = -1;
 
-    if (!sview__isvalid(s)) {
+    if (!str__isvalid(s)) {
         return -1;
     }
 
@@ -42,40 +31,40 @@ sview__index(sview_c* s, const char* c, u8 clen)
     return result;
 }
 
-sview_c
-sview_cstr(const char* ccharptr)
+str_c
+str_cstr(const char* ccharptr)
 {
     if (unlikely(ccharptr == NULL)) {
-        return (sview_c){ 0 };
+        return (str_c){ 0 };
     }
 
-    return (sview_c){
+    return (str_c){
         .buf = (char*)ccharptr,
         .len = strlen(ccharptr),
     };
 }
 
-sview_c
-sview_cbuf(char* s, size_t length)
+str_c
+str_cbuf(char* s, size_t length)
 {
     if (unlikely(s == NULL)) {
-        return (sview_c){ 0 };
+        return (str_c){ 0 };
     }
 
-    return (sview_c){
+    return (str_c){
         .buf = s,
-        .len = length,
+        .len = strnlen(s, length),
     };
 }
 
-sview_c
-sview_sub(sview_c s, ssize_t start, ssize_t end)
+str_c
+str_sub(str_c s, ssize_t start, ssize_t end)
 {
     if (unlikely(s.len == 0)) {
         if (start == 0 && end == 0) {
             return s;
         } else {
-            return (sview_c){ 0 };
+            return (str_c){ 0 };
         }
     }
 
@@ -93,17 +82,17 @@ sview_sub(sview_c s, ssize_t start, ssize_t end)
     }
 
     if (unlikely((size_t)start >= s.len || end > (ssize_t)s.len || end < start)) {
-        return (sview_c){ 0 };
+        return (str_c){ 0 };
     }
 
-    return (sview_c){
+    return (str_c){
         .buf = s.buf + start,
         .len = (size_t)(end - start),
     };
 }
 
 Exception
-sview_copy(sview_c s, char* dest, size_t destlen)
+str_copy(str_c s, char* dest, size_t destlen)
 {
     uassert(dest != s.buf && "self copy is not allowed");
 
@@ -114,7 +103,7 @@ sview_copy(sview_c s, char* dest, size_t destlen)
     // If we fail next, it still writes empty string
     dest[0] = '\0';
 
-    if (unlikely(!sview__isvalid(&s))) {
+    if (unlikely(!str__isvalid(&s))) {
         return Error.check;
     }
 
@@ -133,19 +122,19 @@ sview_copy(sview_c s, char* dest, size_t destlen)
 }
 
 size_t
-sview_len(sview_c s)
+str_len(str_c s)
 {
     return s.len;
 }
 
 bool
-sview_is_valid(sview_c s)
+str_is_valid(str_c s)
 {
-    return sview__isvalid(&s);
+    return str__isvalid(&s);
 }
 
 char*
-sview_iter(sview_c s, cex_iterator_s* iterator)
+str_iter(str_c s, cex_iterator_s* iterator)
 {
     uassert(iterator != NULL && "null iterator");
 
@@ -159,7 +148,7 @@ sview_iter(sview_c s, cex_iterator_s* iterator)
 
     if (unlikely(iterator->val == NULL)) {
         // Iterator is not initialized set to 1st item
-        if (unlikely(!sview__isvalid(&s) || s.len == 0)) {
+        if (unlikely(!str__isvalid(&s) || s.len == 0)) {
             return NULL;
         }
         iterator->val = s.buf;
@@ -178,7 +167,7 @@ sview_iter(sview_c s, cex_iterator_s* iterator)
 }
 
 ssize_t
-sview_indexof(sview_c s, sview_c needle, size_t start, size_t end)
+str_indexof(str_c s, str_c needle, size_t start, size_t end)
 {
     if (needle.len == 0 || needle.len > s.len) {
         return -1;
@@ -205,30 +194,30 @@ sview_indexof(sview_c s, sview_c needle, size_t start, size_t end)
 }
 
 bool
-sview_contains(sview_c s, sview_c needle)
+str_contains(str_c s, str_c needle)
 {
-    return sview_indexof(s, needle, 0, 0) != -1;
+    return str_indexof(s, needle, 0, 0) != -1;
 }
 
 bool
-sview_starts_with(sview_c s, sview_c needle)
+str_starts_with(str_c s, str_c needle)
 {
-    return sview_indexof(s, needle, 0, needle.len) != -1;
+    return str_indexof(s, needle, 0, needle.len) != -1;
 }
 
 bool
-sview_ends_with(sview_c s, sview_c needle)
+str_ends_with(str_c s, str_c needle)
 {
     if (needle.len > s.len) {
         return false;
     }
 
-    return sview_indexof(s, needle, s.len - needle.len, 0) != -1;
+    return str_indexof(s, needle, s.len - needle.len, 0) != -1;
 }
 
 
 static inline void
-sview__strip_left(sview_c* s)
+str__strip_left(str_c* s)
 {
     char* cend = s->buf + s->len;
 
@@ -248,7 +237,7 @@ sview__strip_left(sview_c* s)
 }
 
 static inline void
-sview__strip_right(sview_c* s)
+str__strip_right(str_c* s)
 {
     while (s->len > 0) {
         switch (s->buf[s->len - 1]) {
@@ -264,84 +253,84 @@ sview__strip_right(sview_c* s)
     }
 }
 
-sview_c
-sview_lstrip(sview_c s)
+str_c
+str_lstrip(str_c s)
 {
     if (s.buf == NULL) {
-        return (sview_c){
+        return (str_c){
             .buf = NULL,
             .len = 0,
         };
     }
     if (unlikely(s.len == 0)) {
-        return (sview_c){
+        return (str_c){
             .buf = "",
             .len = 0,
         };
     }
 
-    sview_c result = (sview_c){
+    str_c result = (str_c){
         .buf = s.buf,
         .len = s.len,
     };
 
-    sview__strip_left(&result);
+    str__strip_left(&result);
     return result;
 }
 
-sview_c
-sview_rstrip(sview_c s)
+str_c
+str_rstrip(str_c s)
 {
     if (s.buf == NULL) {
-        return (sview_c){
+        return (str_c){
             .buf = NULL,
             .len = 0,
         };
     }
     if (unlikely(s.len == 0)) {
-        return (sview_c){
+        return (str_c){
             .buf = "",
             .len = 0,
         };
     }
 
-    sview_c result = (sview_c){
+    str_c result = (str_c){
         .buf = s.buf,
         .len = s.len,
     };
 
-    sview__strip_right(&result);
+    str__strip_right(&result);
     return result;
 }
 
-sview_c
-sview_strip(sview_c s)
+str_c
+str_strip(str_c s)
 {
     if (s.buf == NULL) {
-        return (sview_c){
+        return (str_c){
             .buf = NULL,
             .len = 0,
         };
     }
     if (unlikely(s.len == 0)) {
-        return (sview_c){
+        return (str_c){
             .buf = "",
             .len = 0,
         };
     }
 
-    sview_c result = (sview_c){
+    str_c result = (str_c){
         .buf = s.buf,
         .len = s.len,
     };
 
-    sview__strip_left(&result);
-    sview__strip_right(&result);
+    str__strip_left(&result);
+    str__strip_right(&result);
     return result;
 }
 
 int
-sview_cmp(sview_c self, sview_c other)
+str_cmp(str_c self, str_c other)
 {
     if (unlikely(self.buf == NULL)) {
         if (other.buf == NULL) {
@@ -376,13 +365,13 @@ sview_cmp(sview_c self, sview_c other)
 }
 
 int
-sview_cmpc(sview_c self, const char* other)
+str_cmpc(str_c self, const char* other)
 {
-    return sview_cmp(self, sview_cstr(other));
+    return str_cmp(self, str_cstr(other));
 }
 
-sview_c*
-sview_iter_split(sview_c s, const char* split_by, cex_iterator_s* iterator)
+str_c*
+str_iter_split(str_c s, const char* split_by, cex_iterator_s* iterator)
 {
     uassert(iterator != NULL && "null iterator");
     uassert(split_by != NULL && "null split_by");
@@ -392,14 +381,14 @@ sview_iter_split(sview_c s, const char* split_by, cex_iterator_s* iterator)
     {
         size_t cursor;
         size_t split_by_len;
-        sview_c str;
+        str_c str;
     }* ctx = (struct iter_ctx*)iterator->_ctx;
     _Static_assert(sizeof(*ctx) <= sizeof(iterator->_ctx), "ctx size overflow");
     _Static_assert(alignof(struct iter_ctx) <= alignof(size_t), "cex_iterator_s _ctx misalign");
 
     if (unlikely(iterator->val == NULL)) {
         // First run handling
-        if (unlikely(!sview__isvalid(&s))) {
+        if (unlikely(!str__isvalid(&s))) {
             return NULL;
         }
         ctx->split_by_len = strlen(split_by);
@@ -409,12 +398,12 @@ sview_iter_split(sview_c s, const char* split_by, cex_iterator_s* iterator)
         }
         uassert(ctx->split_by_len < UINT8_MAX && "split_by is suspiciously long!");
 
-        ssize_t idx = sview__index(&s, split_by, ctx->split_by_len);
+        ssize_t idx = str__index(&s, split_by, ctx->split_by_len);
         if (idx < 0) {
             idx = s.len;
         }
         ctx->cursor = idx;
-        ctx->str = sview.sub(s, 0, idx);
+        ctx->str = str.sub(s, 0, idx);
 
         iterator->val = &ctx->str;
         iterator->idx.i = 0;
@@ -429,13 +418,13 @@ sview_iter_split(sview_c s, const char* split_by, cex_iterator_s* iterator)
         if (unlikely(ctx->cursor == s.len)) {
             // edge case, we have separator at last col
             // it's not an error, return empty split token
-            ctx->str = sview.cstr("");
+            ctx->str = str.cstr("");
             return iterator->val;
         }
 
         // Get remaining string after prev split_by char
-        sview_c tok = sview.sub(s, ctx->cursor, 0);
-        ssize_t idx = sview__index(&tok, split_by, ctx->split_by_len);
+        str_c tok = str.sub(s, ctx->cursor, 0);
+        ssize_t idx = str__index(&tok, split_by, ctx->split_by_len);
 
         iterator->idx.i++;
 
@@ -445,7 +434,7 @@ sview_iter_split(sview_c s, const char* split_by, cex_iterator_s* iterator)
             ctx->cursor = s.len;
         } else {
             // Sub from prev cursor to idx (excluding split char)
-            ctx->str = sview.sub(tok, 0, idx);
+            ctx->str = str.sub(tok, 0, idx);
             ctx->cursor += idx;
         }
 
@@ -453,25 +442,25 @@ sview_iter_split(sview_c s, const char* split_by, cex_iterator_s* iterator)
     }
 }
 
-const struct __module__sview sview = {
+const struct __module__str str = {
     // Autogenerated by CEX
     // clang-format off
-    .cstr = sview_cstr,
-    .cbuf = sview_cbuf,
-    .sub = sview_sub,
-    .copy = sview_copy,
-    .len = sview_len,
-    .is_valid = sview_is_valid,
-    .iter = sview_iter,
-    .indexof = sview_indexof,
-    .contains = sview_contains,
-    .starts_with = sview_starts_with,
-    .ends_with = sview_ends_with,
-    .lstrip = sview_lstrip,
-    .rstrip = sview_rstrip,
-    .strip = sview_strip,
-    .cmp = sview_cmp,
-    .cmpc = sview_cmpc,
-    .iter_split = sview_iter_split,
+    .cstr = str_cstr,
+    .cbuf = str_cbuf,
+    .sub = str_sub,
+    .copy = str_copy,
+    .len = str_len,
+    .is_valid = str_is_valid,
+    .iter = str_iter,
+    .indexof = str_indexof,
+    .contains = str_contains,
+    .starts_with = str_starts_with,
+    .ends_with = str_ends_with,
+    .lstrip = str_lstrip,
+    .rstrip = str_rstrip,
+    .strip = str_strip,
+    .cmp = str_cmp,
+    .cmpc = str_cmpc,
+    .iter_split = str_iter_split,
     // clang-format on
 };

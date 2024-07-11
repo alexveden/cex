@@ -30,7 +30,7 @@
 #define STB_SPRINTF_H_INCLUDE
 
 // NOTE: CEX this file is slighly adjusted stb_sprintf.h,
-// with alignment fixed + support of sview_c as a parameter
+// with alignment fixed + support of str_c as a parameter
 #define STB_SPRINTF_NOUNALIGNED 1
 
 /*
@@ -196,7 +196,7 @@ PERFORMANCE vs MSVC 2008 32-/64-bit (GCC is even slower than MSVC):
 #define STBSP__NOTUSED(v) (void)sizeof(v)
 #endif
 
-#include "sview.h"  // NOTE: CEX
+#include "str.h"    // NOTE: CEX
 #include <stdarg.h> // for va_arg(), va_list()
 #include <stddef.h> // size_t, ptrdiff_t
 

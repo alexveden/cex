@@ -1,12 +1,12 @@
 #include <cex/cextest/cextest.h>
 #include <cex/cex.h>
-#include <cex/cexlib/sview.c>
+#include <cex/cexlib/str.c>
 #include <cex/cexlib/sbuf.c>
 #include <cex/cexlib/sbuf.h>
 #include <cex/cexlib/allocators.c>
-#include <stdio.h>
 
 #define USE_STB 1
+
 #if USE_STB
 # include <cex/cexlib/_stb_sprintf.h>
 # define SPRINTF stbsp_sprintf
@@ -54,7 +54,7 @@ ATEST_SETUP_F(void)
 *   TEST SUITE
 *
 */
-ATEST_F(stb_sprintf_sview)
+ATEST_F(stb_sprintf_str)
 {
 
    sbuf_c s;
@@ -62,17 +62,17 @@ ATEST_F(stb_sprintf_sview)
    atassert_eqs(EOK, sbuf.sprintf(&s, "%s11", "abcdefgh"));
    atassert_eqs(s, "abcdefgh11");
 
-   sview_c sv = sview.cstr("45678");
-   sview_c sv_sub = sview.sub(sv, 1, 3);
-   atassert_eqi(sview.cmpc(sv_sub, "56"), 0);
+   str_c sv = str.cstr("45678");
+   str_c sv_sub = str.sub(sv, 1, 3);
+   atassert_eqi(str.cmpc(sv_sub, "56"), 0);
 
    _Static_assert(sizeof(char*) == 8, "size");
 
    atassert_eqs(EOK, sbuf.sprintf(&s, "%s", sv_sub));
-   atassert_eqs(s, "abcdefgh11(sview_c->%S)");
+   atassert_eqs(s, "abcdefgh11(str_c->%S)");
 
    atassert_eqs(EOK, sbuf.sprintf(&s, "%S", sv_sub));
-   atassert_eqs(s, "abcdefgh11(sview_c->%S)56");
+   atassert_eqs(s, "abcdefgh11(str_c->%S)56");
 
    sbuf.destroy(&s);
    return NULL;
@@ -250,7 +250,7 @@ int main(int argc, char *argv[])
     ATEST_PARSE_MAINARGS(argc, argv);
     ATEST_PRINT_HEAD();  // >>> all tests below
     
-    ATEST_RUN(stb_sprintf_sview);
+    ATEST_RUN(stb_sprintf_str);
     ATEST_RUN(stb_sprintf_orig);
     
     ATEST_PRINT_FOOTER();  // ^^^^^ all tests runs are above

@@ -1,7 +1,7 @@
 #include <cex/cex.h>
 #include <cex/cexlib/allocators.c>
 #include <cex/cexlib/io.c>
-#include <cex/cexlib/sview.c>
+#include <cex/cexlib/str.c>
 #include <cex/cexlib/io.h>
 #include <cex/cextest/cextest.h>
 #include <stdio.h>
@@ -54,7 +54,7 @@ ATEST_F(test_readall)
     atassert(file._fbuf_size == 0);
     atassert(file._allocator == allocator);
 
-    sview_c content;
+    str_c content;
     atassert_eqs(Error.ok, io.readall(&file, &content));
 
     atassert_eqi(50, io.size(&file));
@@ -89,7 +89,7 @@ ATEST_F(test_readall_empty)
     atassert(file._fbuf_size == 0);
     atassert(file._allocator == allocator);
 
-    sview_c content;
+    str_c content;
     atassert_eqs(Error.eof, io.readall(&file, &content));
     atassert_eqi(0, io.size(&file));
     atassert(file._fbuf == NULL);
@@ -114,7 +114,7 @@ ATEST_F(test_readall_stdin)
     atassert(file._allocator == allocator);
     atassert_eqi(0, io.size(&file));
 
-    sview_c content;
+    str_c content;
     atassert_eqs(Error.io, io.readall(&file, &content));
     atassert_eql(file._fsize, 0); // not calculated yet!
     atassert(file._fbuf == NULL);
@@ -130,7 +130,7 @@ ATEST_F(test_read_line)
     io_c file = { 0 };
     atassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_50b.txt", "r", allocator));
 
-    sview_c content;
+    str_c content;
     atassert_eqs(Error.ok, io.readline(&file, &content));
     atassert_eqs(content.buf, "000000001");
     atassert_eqi(content.len, 9);
@@ -166,7 +166,7 @@ ATEST_F(test_read_line_empty_file)
     io_c file = { 0 };
     atassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_empty.txt", "r", allocator));
 
-    sview_c content;
+    str_c content;
     atassert_eqs(Error.eof, io.readline(&file, &content));
     atassert_eqs(content.buf, "");
     atassert_eqi(content.len, 0);
@@ -180,7 +180,7 @@ ATEST_F(test_read_line_binary_file_with_zero_char)
     io_c file = { 0 };
     atassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_zero_byte.txt", "r", allocator));
 
-    sview_c content;
+    str_c content;
     atassert_eqs(Error.ok, io.readline(&file, &content));
     atassert_eqs(content.buf, "000000001");
     atassert_eqi(content.len, 9);
@@ -198,7 +198,7 @@ ATEST_F(test_read_line_win_new_line)
     io_c file = { 0 };
     atassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_win_newline.txt", "r", allocator));
 
-    sview_c content;
+    str_c content;
     atassert_eqs(Error.ok, io.readline(&file, &content));
     atassert_eqs(content.buf, "000000001");
     atassert_eqi(content.len, 9);
@@ -232,7 +232,7 @@ ATEST_F(test_read_line_only_new_lines)
     io_c file = { 0 };
     atassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_only_newline.txt", "r", allocator));
 
-    sview_c content;
+    str_c content;
     atassert_eqs(Error.ok, io.readline(&file, &content));
     atassert_eqs(content.buf, "");
     atassert_eqi(content.len, 0);
@@ -267,7 +267,7 @@ ATEST_F(test_read_all_then_read_line)
     atassert(file._fbuf_size == 0);
     atassert(file._allocator == allocator);
 
-    sview_c content;
+    str_c content;
     atassert_eqs(Error.ok, io.readall(&file, &content));
     atassert_eqi(50, io.size(&file));
     atassert_eqi(file._fbuf_size, 66);
@@ -296,18 +296,18 @@ ATEST_F(test_read_long_line)
     atassert(file._fbuf_size == 0);
     atassert(file._allocator == allocator);
 
-    sview_c content;
+    str_c content;
     atassert_eqi(4096+4095+2, io.size(&file));
 
     atassert_eqs(Error.ok, io.readline(&file, &content));
     atassert_eqi(file._fbuf_size, 4096-1);
-    atassert(sview.starts_with(content, sview.cstr("4095")));
+    atassert(str.starts_with(content, str.cstr("4095")));
     atassert_eqi(content.len, 4095);
     atassert_eqi(0, content.buf[content.len]); // null term
 
     atassert_eqs(Error.ok, io.readline(&file, &content));
     atassert_eqi(file._fbuf_size, 4096*2-1); // buffer resized
-    atassert(sview.starts_with(content, sview.cstr("4096")));
+    atassert(str.starts_with(content, str.cstr("4096")));
     atassert_eqi(content.len, 4096);
     atassert_eqi(0, content.buf[content.len]); // null term
 
@@ -330,12 +330,12 @@ ATEST_F(test_readall_realloc)
     atassert(file._fbuf_size == 0);
     atassert(file._allocator == allocator);
 
-    sview_c content;
+    str_c content;
     atassert_eqi(4096+4095+2, io.size(&file));
 
     atassert_eqs(Error.ok, io.readline(&file, &content));
     atassert_eqi(file._fbuf_size, 4096-1);
-    atassert(sview.starts_with(content, sview.cstr("4095")));
+    atassert(str.starts_with(content, str.cstr("4095")));
     atassert_eqi(content.len, 4095);
     atassert_eqi(0, content.buf[content.len]); // null term
 
@@ -344,8 +344,8 @@ ATEST_F(test_readall_realloc)
 
     atassert_eqs(Error.ok, io.readall(&file, &content));
     atassert_eqi(file._fbuf_size, 4095+4096+2+16);
-    atassert(sview.starts_with(content, sview.cstr("4095")));
-    atassert_eqi(sview.indexof(content, sview.cstr("4096"), 0, 0), 4096);
+    atassert(str.starts_with(content, str.cstr("4095")));
+    atassert_eqi(str.indexof(content, str.cstr("4096"), 0, 0), 4096);
     atassert_eqi(content.len, 4095+4096+2);
 
     io.close(&file);

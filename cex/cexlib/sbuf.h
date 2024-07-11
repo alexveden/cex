@@ -1,11 +1,10 @@
 #pragma once
-#include "sview.h"
+#include "str.h"
 #include <cex/cex.h>
 #include <cex/cexlib/allocators.h>
 
-/**
- * @brief Dynamic array (list) implementation
- */
+typedef char* sbuf_c;
+
 typedef struct
 {
     struct
@@ -23,7 +22,6 @@ _Static_assert(sizeof(sbuf_head_s) == 20, "size");
 _Static_assert(alignof(sbuf_head_s) == 1, "align");
 _Static_assert(alignof(sbuf_head_s) == alignof(char), "align");
 
-typedef char* sbuf_c;
 
 struct __module__sbuf
 {
@@ -43,10 +41,10 @@ Exception
 (*append_c)(sbuf_c* self, char* s);
 
 Exception
-(*replace)(sbuf_c* self, const sview_c oldstr, const sview_c newstr);
+(*replace)(sbuf_c* self, const str_c oldstr, const str_c newstr);
 
 Exception
-(*append)(sbuf_c* self, sview_c s);
+(*append)(sbuf_c* self, str_c s);
 
 void
 (*clear)(sbuf_c* self);
@@ -65,6 +63,9 @@ char*
 
 Exception
 (*sprintf)(sbuf_c* self, const char* format, ...);
+
+str_c
+(*toview)(sbuf_c* self);
 
     // clang-format on
 };

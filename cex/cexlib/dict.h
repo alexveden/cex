@@ -9,15 +9,24 @@ typedef struct hashmap dict_c;
 // Hack for getting hash/cmp functions by a type of key field
 // https://gustedt.wordpress.com/2015/05/11/the-controlling-expression-of-_generic/
 // FIX: this is not compatible with MSVC
+// NOTE: list of generic types CEX has standard comp/hashfunc
 #define _dict$hashfunc_field(strucfield)                                                           \
-    _Generic(&(strucfield), u64 *: hm_int_hash, char(*)[]: hm_str_static_hash, char**: hm_str_hash)
+    _Generic(                                                                                      \
+        &(strucfield),                                                                             \
+        u64 *: hm_int_hash,                                                                        \
+        char(*)[]: hm_str_static_hash,                                                             \
+        char**: hm_str_hash,                                                                       \
+        const char**: hm_str_hash                                                                  \
+    )
 
+// NOTE: list of generic types CEX has standard comp/hashfunc
 #define _dict$cmpfunc_field(strucfield)                                                            \
     _Generic(                                                                                      \
         &(strucfield),                                                                             \
         u64 *: hm_int_compare,                                                                     \
         char(*)[]: hm_str_static_compare,                                                          \
-        char**: hm_str_compare                                                                     \
+        char**: hm_str_compare,                                                                    \
+        const char**: hm_str_compare                                                               \
     )
 
 #define _dict$hashfunc(struct, field) _dict$hashfunc_field(((struct){ 0 }.field))
