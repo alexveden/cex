@@ -1,8 +1,9 @@
+#include "cex/cexlib/list.h"
 #include <cex/cex.h>
-#include <cex/cexlib/_hashmap.c>
 #include <cex/cexlib/allocators.c>
 #include <cex/cexlib/dict.c>
 #include <cex/cexlib/dict.h>
+#include <cex/cexlib/list.c>
 #include <cex/cextest/cextest.h>
 #include <cex/cextest/fff.h>
 #include <stdalign.h>
@@ -43,17 +44,17 @@ ATEST_F(test_dict_int64)
         char val;
     } rec;
 
-    dict_c* hm;
+    dict_c hm;
     atassert_eqs(EOK, dict$new(&hm, typeof(rec), key, allocator));
 
-    atassert_eqs(dict.set(hm, &(struct s){ .key = 123, .val = 'z' }), EOK);
+    atassert_eqs(dict.set(&hm, &(struct s){ .key = 123, .val = 'z' }), EOK);
 
-    except(err, dict.set(hm, &(struct s){ .key = 123, .val = 'z' }))
+    except(err, dict.set(&hm, &(struct s){ .key = 123, .val = 'z' }))
     {
         atassert(false && "unexpected");
     }
 
-    except(err, dict.set(hm, &(struct s){ .key = 133, .val = 'z' }))
+    except(err, dict.set(&hm, &(struct s){ .key = 133, .val = 'z' }))
     {
         atassert(false && "unexpected");
     }
@@ -61,24 +62,34 @@ ATEST_F(test_dict_int64)
     u64 key = 9890080;
 
     key = 123;
-    const struct s* res = dict.get(hm, &key);
+    const struct s* res = dict.get(&hm, &key);
     atassert(res != NULL);
     atassert(res->key == 123);
 
-    res = dict.geti(hm, 133);
+    res = dict.geti(&hm, 133);
     atassert(res != NULL);
     atassert(res->key == 133);
 
-    const struct s* res2 = dict.get(hm, &(struct s){ .key = 222 });
+    const struct s* res2 = dict.get(&hm, &(struct s){ .key = 222 });
     atassert(res2 == NULL);
 
-    let res3 = (struct s*)dict.get(hm, &(struct s){ .key = 133 });
+    let res3 = (struct s*)dict.get(&hm, &(struct s){ .key = 133 });
     atassert(res3 != NULL);
     atassert_eqi(res3->key, 133);
 
-    atassert_eqi(dict.len(hm), 2);
+    atassert_eqi(dict.len(&hm), 2);
 
-    hm = dict.destroy(&hm);
+    atassert(dict.deli(&hm, 133) != NULL);
+    atassert(dict.geti(&hm, 133) == NULL);
+
+    atassert(dict.del(&hm, &(struct s){ .key = 123 }) != NULL);
+    atassert(dict.geti(&hm, 123) == NULL);
+
+    atassert(dict.deli(&hm, 12029381038) == NULL);
+
+    atassert_eqi(dict.len(&hm), 0);
+
+    dict.destroy(&hm);
 
     return NULL;
 }
@@ -91,40 +102,48 @@ ATEST_F(test_dict_string)
         char val;
     };
 
-    dict_c* hm;
+    dict_c hm;
     atassert_eqs(EOK, dict$new(&hm, struct s, key, allocator));
 
-    atassert_eqs(dict.set(hm, &(struct s){ .key = "abcd", .val = 'z' }), EOK);
+    atassert_eqs(dict.set(&hm, &(struct s){ .key = "abcd", .val = 'z' }), EOK);
 
-    except(err, dict.set(hm, &(struct s){ .key = "abcd", .val = 'z' }))
+    except(err, dict.set(&hm, &(struct s){ .key = "abcd", .val = 'z' }))
     {
         atassert(false && "unexpected");
     }
 
-    except(err, dict.set(hm, &(struct s){ .key = "xyz", .val = 'z' }))
+    except(err, dict.set(&hm, &(struct s){ .key = "xyz", .val = 'z' }))
     {
         atassert(false && "unexpected");
     }
 
-    const struct s* res = dict.get(hm, "abcd");
+    const struct s* res = dict.get(&hm, "abcd");
     atassert(res != NULL);
     atassert_eqs(res->key, "abcd");
 
-    res = dict.gets(hm, "xyz");
+    res = dict.get(&hm, "xyz");
     atassert(res != NULL);
     atassert_eqs(res->key, "xyz");
 
-    const struct s* res2 = dict.get(hm, &(struct s){ .key = "ffff" });
+    const struct s* res2 = dict.get(&hm, &(struct s){ .key = "ffff" });
     atassert(res2 == NULL);
 
 
-    let res3 = (struct s*)dict.get(hm, &(struct s){ .key = "abcd" });
+    let res3 = (struct s*)dict.get(&hm, &(struct s){ .key = "abcd" });
     atassert(res3 != NULL);
     atassert_eqs(res3->key, "abcd");
 
-    atassert_eqi(dict.len(hm), 2);
+    atassert_eqi(dict.len(&hm), 2);
 
-    hm = dict.destroy(&hm);
+    atassert(dict.del(&hm, "xyznotexisting") == NULL);
+    
+    atassert(dict.del(&hm, &(struct s){ .key = "abcd" }) != NULL);
+    atassert(dict.get(&hm, "abcd") == NULL);
+    atassert(dict.del(&hm, "xyz") != NULL);
+    atassert(dict.get(&hm, "xyz") == NULL);
+    atassert_eqi(dict.len(&hm), 0);
+
+    dict.destroy(&hm);
 
     return NULL;
 }
@@ -140,19 +159,19 @@ ATEST_F(test_dict_create_generic)
         char val;
     } rec;
 
-    dict_c* hm;
+    dict_c hm;
     // WARNING: default dict_c forces keys to be at the beginning of the struct,
     //  if such key passed -> Error.integrity
     atassert_eqs(Error.integrity, dict$new(&hm, typeof(rec), another_key, allocator));
 
     atassert_eqs(EOK, dict$new(&hm, typeof(rec), struct_first_key, allocator));
 
-    atassert_eqs(dict.set(hm, &(struct s){ .struct_first_key = "abcd", .val = 'a' }), EOK);
-    atassert_eqs(dict.set(hm, &(struct s){ .struct_first_key = "xyz", .val = 'z' }), EOK);
+    atassert_eqs(dict.set(&hm, &(struct s){ .struct_first_key = "abcd", .val = 'a' }), EOK);
+    atassert_eqs(dict.set(&hm, &(struct s){ .struct_first_key = "xyz", .val = 'z' }), EOK);
 
-    atassert_eqi(dict.len(hm), 2);
+    atassert_eqi(dict.len(&hm), 2);
 
-    const struct s* result = dict.get(hm, "xyz");
+    const struct s* result = dict.get(&hm, "xyz");
     atassert(result != NULL);
     atassert_eqs(result->struct_first_key, "xyz");
     atassert_eqi(result->val, 'z');
@@ -162,7 +181,7 @@ ATEST_F(test_dict_create_generic)
     // NOTE: it's possible to edit data in dict, as long as you don't touch key!
     res->val = 'f';
 
-    result = dict.gets(hm, "xyz");
+    result = dict.get(&hm, "xyz");
     atassert(result != NULL);
     atassert_eqs(result->struct_first_key, "xyz");
     atassert_eqi(result->val, 'f');
@@ -170,16 +189,16 @@ ATEST_F(test_dict_create_generic)
     // WARNING: If you try to edit the key it will be lost
     strcpy(res->struct_first_key, "foo");
 
-    result = dict.get(hm, "foo");
+    result = dict.get(&hm, "foo");
     atassert(result == NULL);
     // WARNING: old key is also lost!
-    result = dict.gets(hm, "xyz");
+    result = dict.get(&hm, "xyz");
     atassert(result == NULL);
 
-    atassert_eqi(dict.len(hm), 2);
+    atassert_eqi(dict.len(&hm), 2);
 
     dict.destroy(&hm);
-    atassert(hm == NULL);
+    atassert(hm.hashmap == NULL);
     return NULL;
 }
 
@@ -193,62 +212,82 @@ ATEST_F(test_dict_generic_auto_cmp_hash)
         u64 key_u64;
         char* key_ptr;
         char val;
+        str_c cexstr;
     } rec;
     (void)rec;
 
     atassert(_dict$hashfunc(typeof(rec), key_u64) == hm_int_hash);
     atassert(_dict$hashfunc(typeof(rec), key) == hm_str_static_hash);
-    atassert(_dict$hashfunc(typeof(rec), key_ptr) == hm_str_hash);
+
+    // NOTE: these are intentionally unsupported (because we store copy of data, and passing 
+    // but passing pointers may leave them dangling, or use-after-free)
+    // atassert(_dict$hashfunc(typeof(rec), cexstr) == NULL);
+    // atassert(_dict$hashfunc(typeof(rec), key_ptr) == NULL);
     return NULL;
 }
- 
 
-ATEST_F(test_dict_string_pointers)
+ATEST_F(test_dict_iter)
 {
     struct s
     {
-        const char * key;
-        // int * key;
+        char struct_first_key[30];
+        u64 another_key;
         char val;
-    };
+    } rec;
 
-    dict_c* hm;
-    atassert_eqs(EOK, dict$new(&hm, struct s, key, allocator));
+    dict_c hm;
+    atassert_eqs(EOK, dict$new(&hm, typeof(rec), struct_first_key, allocator));
 
-    atassert_eqs(dict.set(hm, &(struct s){ .key = "abcd", .val = 'z' }), EOK);
+    atassert_eqs(dict.set(&hm, &(struct s){ .struct_first_key = "foo", .val = 'a' }), EOK);
+    atassert_eqs(dict.set(&hm, &(struct s){ .struct_first_key = "abcd", .val = 'b' }), EOK);
+    atassert_eqs(dict.set(&hm, &(struct s){ .struct_first_key = "xyz", .val = 'c' }), EOK);
+    atassert_eqs(dict.set(&hm, &(struct s){ .struct_first_key = "bar", .val = 'd' }), EOK);
+    atassert_eqi(dict.len(&hm), 4);
 
-    except(err, dict.set(hm, &(struct s){ .key = "abcd", .val = 'z' }))
-    {
-        atassert(false && "unexpected");
+    u32 nit = 0;
+    for$iter(typeof(rec), it, dict.iter(&hm, &it.iterator)) {
+        struct s* r = dict.get(&hm, it.val->struct_first_key);
+        atassert(r != NULL);
+        atassert_eqi(it.idx.i, nit);
+        nit++;
     }
+    atassert_eqi(nit, 4);
 
-    except(err, dict.set(hm, &(struct s){ .key = "xyz", .val = 'z' }))
-    {
-        atassert(false && "unexpected");
+    nit = 0;
+    uassert_disable();
+    for$iter(typeof(rec), it, dict.iter(&hm, &it.iterator)) {
+        // WARNING: changing of dict during iterator is not allowed, you'll get assert
+        dict.clear(&hm);
+        nit++;
     }
+    atassert_eqi(nit, 1);
 
-    // TODO: implement const* pointer hash + compare functions!
-    atassert(false && "TODO: implement char* hash");
-    const struct s* res = dict.get(hm, "abcd");
-    atassert(res != NULL);
-    atassert_eqs(res->key, "abcd");
+    dict.destroy(&hm);
+    return NULL;
+}
 
-    res = dict.gets(hm, "xyz");
-    atassert(res != NULL);
-    atassert_eqs(res->key, "xyz");
+ATEST_F(test_dict_tolist)
+{
+    struct s
+    {
+        char struct_first_key[30];
+        u64 another_key;
+        char val;
+    } rec;
 
-    const struct s* res2 = dict.get(hm, &(struct s){ .key = "ffff" });
-    atassert(res2 == NULL);
+    dict_c hm;
+    atassert_eqs(EOK, dict$new(&hm, typeof(rec), struct_first_key, allocator));
 
+    atassert_eqs(dict.set(&hm, &(struct s){ .struct_first_key = "foo", .val = 'a' }), EOK);
+    atassert_eqs(dict.set(&hm, &(struct s){ .struct_first_key = "abcd", .val = 'b' }), EOK);
+    atassert_eqs(dict.set(&hm, &(struct s){ .struct_first_key = "xyz", .val = 'c' }), EOK);
+    atassert_eqs(dict.set(&hm, &(struct s){ .struct_first_key = "bar", .val = 'd' }), EOK);
+    atassert_eqi(dict.len(&hm), 4);
 
-    let res3 = (struct s*)dict.get(hm, &(struct s){ .key = "abcd" });
-    atassert(res3 != NULL);
-    atassert_eqs(res3->key, "abcd");
+    list$define(struct s) a;
+    atassert_eqs(EOK, dict.tolist(&hm, &a, allocator));
 
-    atassert_eqi(dict.len(hm), 2);
-
-    hm = dict.destroy(&hm);
-
+    dict.destroy(&hm);
     return NULL;
 }
 /*
@@ -266,7 +305,7 @@ main(int argc, char* argv[])
     ATEST_RUN(test_dict_string);
     ATEST_RUN(test_dict_create_generic);
     ATEST_RUN(test_dict_generic_auto_cmp_hash);
-    ATEST_RUN(test_dict_string_pointers);
+    ATEST_RUN(test_dict_iter);
     
     ATEST_PRINT_FOOTER();  // ^^^^^ all tests runs are above
     return ATEST_EXITCODE();

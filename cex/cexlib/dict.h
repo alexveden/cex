@@ -1,36 +1,32 @@
 #pragma once
-#include "_hashmap.h"
 #include <cex/cex.h>
+#include <cex/cexlib/str.h>
 #include <string.h>
 
-typedef struct hashmap dict_c;
+typedef struct dict_c
+{
+    void* hashmap; // any generic hashmap implementation
+} dict_c;
+
+typedef u64 (*dict_hash_func_f)(const void* item, u64 seed0, u64 seed1);
+typedef i32 (*dict_compare_func_f)(const void* a, const void* b, void* udata);
+typedef void (*dict_elfree_func_f)(void* item);
 
 
 // Hack for getting hash/cmp functions by a type of key field
 // https://gustedt.wordpress.com/2015/05/11/the-controlling-expression-of-_generic/
 // FIX: this is not compatible with MSVC
-// NOTE: list of generic types CEX has standard comp/hashfunc
 #define _dict$hashfunc_field(strucfield)                                                           \
-    _Generic(                                                                                      \
-        &(strucfield),                                                                             \
-        u64 *: hm_int_hash,                                                                        \
-        char(*)[]: hm_str_static_hash,                                                             \
-        char**: hm_str_hash,                                                                       \
-        const char**: hm_str_hash                                                                  \
-    )
+    _Generic(&(strucfield), u64 *: hm_int_hash, char(*)[]: hm_str_static_hash)
 
-// NOTE: list of generic types CEX has standard comp/hashfunc
 #define _dict$cmpfunc_field(strucfield)                                                            \
-    _Generic(                                                                                      \
-        &(strucfield),                                                                             \
-        u64 *: hm_int_compare,                                                                     \
-        char(*)[]: hm_str_static_compare,                                                          \
-        char**: hm_str_compare,                                                                    \
-        const char**: hm_str_compare                                                               \
-    )
+    _Generic(&(strucfield), u64 *: hm_int_compare, char(*)[]: hm_str_static_compare)
 
 #define _dict$hashfunc(struct, field) _dict$hashfunc_field(((struct){ 0 }.field))
+
 #define _dict$cmpfunc(struct, field) _dict$cmpfunc_field(((struct){ 0 }.field))
+
+
 
 #define dict$new(self, struct_type, key_field_name, allocator)                                     \
     dict.create(                                                                                   \
@@ -53,7 +49,7 @@ struct __module__dict
     // clang-format off
 
 Exception
-(*create)(dict_c** self, size_t item_size, size_t item_align, size_t item_key_offsetof, size_t capacity, u64 (*hash_func)(const void* item, u64 seed0, u64 seed1), i32 (*compare_func)(const void* a, const void* b, void* udata), const Allocator_c* allocator, void (*elfree)(void* item), void* udata);
+(*create)(dict_c* self, size_t item_size, size_t item_align, size_t item_key_offsetof, size_t capacity, dict_hash_func_f hash_func, dict_compare_func_f compare_func, const Allocator_c* allocator, dict_elfree_func_f elfree, void* udata);
 
 /**
  * @brief Set or replace dict item
@@ -75,16 +71,7 @@ void*
 (*geti)(dict_c* self, u64 key);
 
 /**
- * @brief Get item by string key
- *
- * @param self dict_c instance
- * @param key string key
- */
-void*
-(*gets)(dict_c* self, const char* key);
-
-/**
- * @brief Get item by generic key pointer
+ * @brief Get item by generic key pointer (including strings)
  *
  * @param self dict() instance
  * @param key generic pointer key
@@ -107,8 +94,8 @@ size_t
  * @param self  dict() instance
  * @return always NULL
  */
-dict_c*
-(*destroy)(dict_c** self);
+void
+(*destroy)(dict_c* self);
 
 /**
  * @brief Clear all elements in dict (but allocated capacity unchanged)
@@ -117,6 +104,30 @@ dict_c*
  */
 void
 (*clear)(dict_c* self);
+
+/**
+ * @brief Delete item by integer key
+ *
+ * @param self dict() instance
+ * @param key u64 key
+ */
+void*
+(*deli)(dict_c* self, u64 key);
+
+/**
+ * @brief Delete item by generic key pointer (including strings)
+ *
+ * @param self dict() instance
+ * @param key generic pointer key
+ */
+void*
+(*del)(dict_c* self, const void* key);
+
+void*
+(*iter)(dict_c* self, cex_iterator_s* iterator);
+
+Exception
+(*tolist)(dict_c* self, void** listptr, const Allocator_c* allocator);
 
     // clang-format on
 };

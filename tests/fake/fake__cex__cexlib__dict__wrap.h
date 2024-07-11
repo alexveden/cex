@@ -12,29 +12,31 @@ FAKE_VALUE_FUNC(int, __wrap_hm_int_compare, const void*, const void*, void*)int 
 
 FAKE_VALUE_FUNC(u64, __wrap_hm_int_hash, const void*, u64, u64)u64 __real_hm_int_hash(const void*, u64, u64);
 
-FAKE_VALUE_FUNC(int, __wrap_hm_str_compare, const void*, const void*, void*)int __real_hm_str_compare(const void*, const void*, void*);
-
 FAKE_VALUE_FUNC(int, __wrap_hm_str_static_compare, const void*, const void*, void*)int __real_hm_str_static_compare(const void*, const void*, void*);
-
-FAKE_VALUE_FUNC(u64, __wrap_hm_str_hash, const void*, u64, u64)u64 __real_hm_str_hash(const void*, u64, u64);
 
 FAKE_VALUE_FUNC(u64, __wrap_hm_str_static_hash, const void*, u64, u64)u64 __real_hm_str_static_hash(const void*, u64, u64);
 
-FAKE_VALUE_FUNC(Exc, __wrap_dict_create, dict_c**, size_t, size_t, size_t, size_t, u64 (*hash_func)(const void*, u64, u64, i32 (*compare_func)(const void*, const void*, void*, const Allocator_c*, void (*elfree)(void*, void*)Exception __real_dict_create(dict_c**, size_t, size_t, size_t, size_t, u64 (*hash_func)(const void*, u64, u64, i32 (*compare_func)(const void*, const void*, void*, const Allocator_c*, void (*elfree)(void*, void*);
+FAKE_VALUE_FUNC(Exc, __wrap_dict_create, dict_c*, size_t, size_t, size_t, size_t, dict_hash_func_f, dict_compare_func_f, const Allocator_c*, dict_elfree_func_f, void*)Exception __real_dict_create(dict_c*, size_t, size_t, size_t, size_t, dict_hash_func_f, dict_compare_func_f, const Allocator_c*, dict_elfree_func_f, void*);
 
 FAKE_VALUE_FUNC(Exc, __wrap_dict_set, dict_c*, const void*)Exception __real_dict_set(dict_c*, const void*);
 
 FAKE_VALUE_FUNC(void*, __wrap_dict_geti, dict_c*, u64)void* __real_dict_geti(dict_c*, u64);
 
-FAKE_VALUE_FUNC(void*, __wrap_dict_gets, dict_c*, const char*)void* __real_dict_gets(dict_c*, const char*);
-
 FAKE_VALUE_FUNC(void*, __wrap_dict_get, dict_c*, const void*)void* __real_dict_get(dict_c*, const void*);
 
 FAKE_VALUE_FUNC(size_t, __wrap_dict_len, dict_c*)size_t __real_dict_len(dict_c*);
 
-FAKE_VALUE_FUNC(dict_c*, __wrap_dict_destroy, dict_c**)dict_c* __real_dict_destroy(dict_c**);
+FAKE_VOID_FUNC(__wrap_dict_destroy, dict_c*)void __real_dict_destroy(dict_c*);
 
 FAKE_VOID_FUNC(__wrap_dict_clear, dict_c*)void __real_dict_clear(dict_c*);
+
+FAKE_VALUE_FUNC(void*, __wrap_dict_deli, dict_c*, u64)void* __real_dict_deli(dict_c*, u64);
+
+FAKE_VALUE_FUNC(void*, __wrap_dict_del, dict_c*, const void*)void* __real_dict_del(dict_c*, const void*);
+
+FAKE_VALUE_FUNC(void*, __wrap_dict_iter, dict_c*, cex_iterator_s*)void* __real_dict_iter(dict_c*, cex_iterator_s*);
+
+FAKE_VALUE_FUNC(Exc, __wrap_dict_tolist, dict_c*, void**, const Allocator_c*)Exception __real_dict_tolist(dict_c*, void**, const Allocator_c*);
 
 
 const struct __module__dict dict = {
@@ -43,11 +45,14 @@ const struct __module__dict dict = {
     .create = dict_create,
     .set = dict_set,
     .geti = dict_geti,
-    .gets = dict_gets,
     .get = dict_get,
     .len = dict_len,
     .destroy = dict_destroy,
     .clear = dict_clear,
+    .deli = dict_deli,
+    .del = dict_del,
+    .iter = dict_iter,
+    .tolist = dict_tolist,
     // clang-format on
 };
 // clang-format off
@@ -57,17 +62,18 @@ static void fake__cex__cexlib__dict__wrap__resetall(void) {
     RESET_FAKE(__wrap_hm_int_hash_simple)
     RESET_FAKE(__wrap_hm_int_compare)
     RESET_FAKE(__wrap_hm_int_hash)
-    RESET_FAKE(__wrap_hm_str_compare)
     RESET_FAKE(__wrap_hm_str_static_compare)
-    RESET_FAKE(__wrap_hm_str_hash)
     RESET_FAKE(__wrap_hm_str_static_hash)
     RESET_FAKE(__wrap_dict_create)
     RESET_FAKE(__wrap_dict_set)
     RESET_FAKE(__wrap_dict_geti)
-    RESET_FAKE(__wrap_dict_gets)
     RESET_FAKE(__wrap_dict_get)
     RESET_FAKE(__wrap_dict_len)
     RESET_FAKE(__wrap_dict_destroy)
     RESET_FAKE(__wrap_dict_clear)
+    RESET_FAKE(__wrap_dict_deli)
+    RESET_FAKE(__wrap_dict_del)
+    RESET_FAKE(__wrap_dict_iter)
+    RESET_FAKE(__wrap_dict_tolist)
 }
 

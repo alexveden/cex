@@ -473,6 +473,7 @@ str_cmpi(str_c self, str_c other)
     }
     return cmp;
 }
+
 str_c*
 str_iter_split(str_c s, const char* split_by, cex_iterator_s* iterator)
 {

@@ -1,5 +1,8 @@
 #include "dict.h"
+#include "_hashmap.c"
+#include <stdarg.h>
 #include <time.h>
+#include "list.h"
 
 static inline u64
 hm_int_hash_simple(u64 x)
@@ -50,20 +53,13 @@ hm_int_hash(const void* item, u64 seed0, u64 seed1)
 
 
 /**
- * @brief Hashmap: string value comparison (simply uses strcmp())
+ * @brief Compares static char[] buffer keys **must be null terminated**
  *
- * @param a  char* string
- * @param b  char* string
+ * @param a  char[N] string
+ * @param b  char[N] string
  * @param udata  (unused)
  * @return compared int value
  */
-static int
-hm_str_compare(const void* a, const void* b, void* udata)
-{
-    (void)udata;
-    return strcmp(a, b);
-}
-
 static int
 hm_str_static_compare(const void* a, const void* b, void* udata)
 {
@@ -73,19 +69,13 @@ hm_str_static_compare(const void* a, const void* b, void* udata)
 
 
 /**
- * @brief Hashmap: string hash function (uses SIP hash)
+ * @brief Compares static char[] buffer keys **must be null terminated**
  *
- * @param item char* string
- * @param seed0 hashmap_sip(..., seed0)
- * @param seed1 hashmap_sip(..., seed1)
- * @return string hash
+ * @param item
+ * @param seed0
+ * @param seed1
+ * @return
  */
-static u64
-hm_str_hash(const void* item, u64 seed0, u64 seed1)
-{
-    return hashmap_sip(item, strlen((char*)item), seed0, seed1);
-}
-
 static u64
 hm_str_static_hash(const void* item, u64 seed0, u64 seed1)
 {
@@ -95,15 +85,15 @@ hm_str_static_hash(const void* item, u64 seed0, u64 seed1)
 
 Exception
 dict_create(
-    dict_c** self,
+    dict_c* self,
     size_t item_size,
     size_t item_align,
     size_t item_key_offsetof,
     size_t capacity,
-    u64 (*hash_func)(const void* item, u64 seed0, u64 seed1),
-    i32 (*compare_func)(const void* a, const void* b, void* udata),
+    dict_hash_func_f hash_func,
+    dict_compare_func_f compare_func,
     const Allocator_c* allocator,
-    void (*elfree)(void* item),
+    dict_elfree_func_f elfree,
     void* udata
 )
 {
@@ -121,14 +111,14 @@ dict_create(
         return Error.argument;
     }
 
-    if (item_size <= sizeof(u64)){
+    if (item_size <= sizeof(u64)) {
         uassert(item_size > sizeof(u64) && "item_size is too small");
         return Error.argument;
     }
 
     time_t now = time(NULL);
 
-    *self = hashmap_new_with_allocator(
+    self->hashmap = hashmap_new_with_allocator(
         allocator->alloc,
         allocator->realloc,
         allocator->free,
@@ -141,7 +131,7 @@ dict_create(
         elfree,
         udata
     );
-    if (*self == NULL) {
+    if (self->hashmap == NULL) {
         return Error.memory;
     }
 
@@ -159,8 +149,11 @@ dict_create(
 Exception
 dict_set(dict_c* self, const void* item)
 {
-    const void* set_result = hashmap_set(self, item);
-    if (set_result == NULL && hashmap_oom(self)) {
+    uassert(self != NULL);
+    uassert(self->hashmap != NULL);
+
+    const void* set_result = hashmap_set(self->hashmap, item);
+    if (set_result == NULL && hashmap_oom(self->hashmap)) {
         return Error.memory;
     }
 
@@ -176,23 +169,13 @@ dict_set(dict_c* self, const void* item)
 void*
 dict_geti(dict_c* self, u64 key)
 {
-    return (void*)hashmap_get(self, &key);
+    uassert(self != NULL);
+    uassert(self->hashmap != NULL);
+    return (void*)hashmap_get(self->hashmap, &key);
 }
 
 /**
- * @brief Get item by string key
- *
- * @param self dict_c instance
- * @param key string key
- */
-void*
-dict_gets(dict_c* self, const char* key)
-{
-    return (void*)hashmap_get(self, key);
-}
-
-/**
- * @brief Get item by generic key pointer
+ * @brief Get item by generic key pointer (including strings)
  *
  * @param self dict() instance
  * @param key generic pointer key
@@ -200,7 +183,9 @@ dict_gets(dict_c* self, const char* key)
 void*
 dict_get(dict_c* self, const void* key)
 {
-    return (void*)hashmap_get(self, key);
+    uassert(self != NULL);
+    uassert(self->hashmap != NULL);
+    return (void*)hashmap_get(self->hashmap, key);
 }
 
 
@@ -213,7 +198,9 @@ dict_get(dict_c* self, const void* key)
 size_t
 dict_len(dict_c* self)
 {
-    return hashmap_count(self);
+    uassert(self != NULL);
+    uassert(self->hashmap != NULL);
+    return hashmap_count(self->hashmap);
 }
 
 
@@ -223,14 +210,15 @@ dict_len(dict_c* self)
  * @param self  dict() instance
  * @return always NULL
  */
-dict_c*
-dict_destroy(dict_c** self)
+void
+dict_destroy(dict_c* self)
 {
     if (self != NULL) {
-        hashmap_free(*self);
-        *self = NULL;
+        if (self->hashmap != NULL) {
+            hashmap_free(self->hashmap);
+            self->hashmap = NULL;
+        }
     }
-    return NULL;
 }
 
 
@@ -242,10 +230,121 @@ dict_destroy(dict_c** self)
 void
 dict_clear(dict_c* self)
 {
+    uassert(self != NULL);
+    uassert(self->hashmap != NULL);
     // clear all elements, but keeps old capacity unchanged
-    hashmap_clear(self, false);
+    hashmap_clear(self->hashmap, false);
 }
 
+/**
+ * @brief Delete item by integer key
+ *
+ * @param self dict() instance
+ * @param key u64 key
+ */
+void*
+dict_deli(dict_c* self, u64 key)
+{
+    uassert(self != NULL);
+    uassert(self->hashmap != NULL);
+    return (void*)hashmap_delete(self->hashmap, &key);
+}
+
+/**
+ * @brief Delete item by generic key pointer (including strings)
+ *
+ * @param self dict() instance
+ * @param key generic pointer key
+ */
+void*
+dict_del(dict_c* self, const void* key)
+{
+    uassert(self != NULL);
+    uassert(self->hashmap != NULL);
+    return (void*)hashmap_delete(self->hashmap, key);
+}
+
+
+void*
+dict_iter(dict_c* self, cex_iterator_s* iterator)
+{
+    uassert(self != NULL);
+    uassert(self->hashmap != NULL);
+    uassert(iterator != NULL);
+
+    struct hashmap* hm = self->hashmap;
+
+    // temporary struct based on _ctxbuffer
+    struct iter_ctx
+    {
+        size_t nbuckets;
+        size_t count;
+        size_t cursor;
+        size_t counter;
+    }* ctx = (struct iter_ctx*)iterator->_ctx;
+    _Static_assert(sizeof(*ctx) <= sizeof(iterator->_ctx), "ctx size overflow");
+    _Static_assert(alignof(struct iter_ctx) == 8, "ctx alignment mismatch");
+
+    if (unlikely(iterator->val == NULL)) {
+        if (hm->count == 0) {
+            return NULL;
+        }
+        *ctx = (struct iter_ctx){
+            .count = hm->count,
+            .nbuckets = hm->nbuckets,
+        };
+    } else {
+        ctx->counter++;
+    }
+
+    if (unlikely(ctx->count != hm->count || ctx->nbuckets != hm->nbuckets)) {
+        uassert(ctx->count == hm->count && "hashmap changed during iteration");
+        uassert(ctx->nbuckets == hm->nbuckets && "hashmap changed during iteration");
+        return NULL;
+    }
+
+    if (hashmap_iter(self->hashmap, &ctx->cursor, &iterator->val)) {
+        iterator->idx.i = ctx->counter;
+        return iterator->val;
+    } else {
+        return NULL;
+    }
+}
+
+Exception
+dict_tolist(dict_c* self, void** listptr, const Allocator_c* allocator)
+{
+    uassert(self != NULL);
+    if(self->hashmap == NULL){
+        uassert(self->hashmap == NULL);
+        return Error.integrity;
+    }
+
+    if(listptr == NULL || allocator == NULL) {
+        return Error.argument;
+    }
+
+    // preventive NULL, for early failure
+    *listptr = NULL;
+
+    struct hashmap* hm = self->hashmap;
+
+    except_traceback(err, list.create((list_c*)*listptr, hm->count, hm->elsize, alignof(size_t), allocator)){
+        return err;
+    }
+    char* list_buf = *listptr;
+    uassert(list_buf != NULL);
+
+    size_t hm_cursor = 0;
+    void* item = NULL;
+    
+    while(hashmap_iter(self->hashmap, &hm_cursor, &item)) {
+        memcpy(list_buf, item, hm->elsize);
+        list_buf += hm->elsize;
+    };
+
+    return Error.ok;
+}
 
 const struct __module__dict dict = {
     // Autogenerated by CEX
@@ -253,10 +352,13 @@ const struct __module__dict dict = {
     .create = dict_create,
     .set = dict_set,
     .geti = dict_geti,
-    .gets = dict_gets,
     .get = dict_get,
     .len = dict_len,
     .destroy = dict_destroy,
     .clear = dict_clear,
+    .deli = dict_deli,
+    .del = dict_del,
+    .iter = dict_iter,
+    .tolist = dict_tolist,
     // clang-format on
 };
