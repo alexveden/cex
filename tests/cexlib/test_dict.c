@@ -1,9 +1,9 @@
-#include "cex/cexlib/list.h"
 #include <cex/cex.h>
 #include <cex/cexlib/allocators.c>
 #include <cex/cexlib/dict.c>
 #include <cex/cexlib/dict.h>
 #include <cex/cexlib/list.c>
+#include <cex/cexlib/list.h>
 #include <cex/cextest/cextest.h>
 #include <cex/cextest/fff.h>
 #include <stdalign.h>
@@ -136,7 +136,7 @@ ATEST_F(test_dict_string)
     atassert_eqi(dict.len(&hm), 2);
 
     atassert(dict.del(&hm, "xyznotexisting") == NULL);
-    
+
     atassert(dict.del(&hm, &(struct s){ .key = "abcd" }) != NULL);
     atassert(dict.get(&hm, "abcd") == NULL);
     atassert(dict.del(&hm, "xyz") != NULL);
@@ -147,7 +147,6 @@ ATEST_F(test_dict_string)
 
     return NULL;
 }
-
 
 
 ATEST_F(test_dict_create_generic)
@@ -219,7 +218,7 @@ ATEST_F(test_dict_generic_auto_cmp_hash)
     atassert(_dict$hashfunc(typeof(rec), key_u64) == hm_int_hash);
     atassert(_dict$hashfunc(typeof(rec), key) == hm_str_static_hash);
 
-    // NOTE: these are intentionally unsupported (because we store copy of data, and passing 
+    // NOTE: these are intentionally unsupported (because we store copy of data, and passing
     // but passing pointers may leave them dangling, or use-after-free)
     // atassert(_dict$hashfunc(typeof(rec), cexstr) == NULL);
     // atassert(_dict$hashfunc(typeof(rec), key_ptr) == NULL);
@@ -245,7 +244,8 @@ ATEST_F(test_dict_iter)
     atassert_eqi(dict.len(&hm), 4);
 
     u32 nit = 0;
-    for$iter(typeof(rec), it, dict.iter(&hm, &it.iterator)) {
+    for$iter(typeof(rec), it, dict.iter(&hm, &it.iterator))
+    {
         struct s* r = dict.get(&hm, it.val->struct_first_key);
         atassert(r != NULL);
         atassert_eqi(it.idx.i, nit);
@@ -255,7 +255,8 @@ ATEST_F(test_dict_iter)
 
     nit = 0;
     uassert_disable();
-    for$iter(typeof(rec), it, dict.iter(&hm, &it.iterator)) {
+    for$iter(typeof(rec), it, dict.iter(&hm, &it.iterator))
+    {
         // WARNING: changing of dict during iterator is not allowed, you'll get assert
         dict.clear(&hm);
         nit++;
@@ -286,8 +287,24 @@ ATEST_F(test_dict_tolist)
 
     list$define(struct s) a;
     atassert_eqs(EOK, dict.tolist(&hm, &a, allocator));
+    atassert_eqi(list.len(&a), 4);
+
+    atassert_eqs(Error.argument, dict.tolist(NULL, &a, allocator));
+    atassert_eqs(Error.argument, dict.tolist(&hm, NULL, allocator));
+    atassert_eqs(Error.argument, dict.tolist(&hm, &a, NULL));
+
+    for$array(it, a.arr, a.count) {
+        atassert(dict.get(&hm, it.val) != NULL);
+        atassert(dict.get(&hm, it.val->struct_first_key) != NULL);
+        // same elements buf different pointer - means copy!
+        atassert(dict.get(&hm, it.val->struct_first_key) != it.val);
+    }
 
     dict.destroy(&hm);
+    atassert_eqs(Error.integrity, dict.tolist(&hm, &a, allocator));
+
+    list.destroy(&a);
+
     return NULL;
 }
 /*
@@ -306,6 +323,7 @@ main(int argc, char* argv[])
     ATEST_RUN(test_dict_create_generic);
     ATEST_RUN(test_dict_generic_auto_cmp_hash);
     ATEST_RUN(test_dict_iter);
+    ATEST_RUN(test_dict_tolist);
     
     ATEST_PRINT_FOOTER();  // ^^^^^ all tests runs are above
     return ATEST_EXITCODE();

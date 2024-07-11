@@ -312,35 +312,31 @@ dict_iter(dict_c* self, cex_iterator_s* iterator)
 }
 
 Exception
-dict_tolist(dict_c* self, void** listptr, const Allocator_c* allocator)
+dict_tolist(dict_c* self, void* listptr, const Allocator_c* allocator)
 {
-    uassert(self != NULL);
+    if(self == NULL || listptr == NULL || allocator == NULL) {
+        return Error.argument;
+    }
+
     if(self->hashmap == NULL){
         uassert(self->hashmap == NULL);
         return Error.integrity;
     }
 
-    if(listptr == NULL || allocator == NULL) {
-        return Error.argument;
-    }
-
-    // preventive NULL, for early failure
-    *listptr = NULL;
 
     struct hashmap* hm = self->hashmap;
 
-    except_traceback(err, list.create((list_c*)*listptr, hm->count, hm->elsize, alignof(size_t), allocator)){
+    except_traceback(err, list.create((list_c*)listptr, hm->count, hm->elsize, alignof(size_t), allocator)){
         return err;
     }
-    char* list_buf = *listptr;
-    uassert(list_buf != NULL);
 
     size_t hm_cursor = 0;
     void* item = NULL;
     
     while(hashmap_iter(self->hashmap, &hm_cursor, &item)) {
-        memcpy(list_buf, item, hm->elsize);
-        list_buf += hm->elsize;
+        except_traceback(err, list.append(listptr, item)){
+            return err;
+        }
     };
 
     return Error.ok;

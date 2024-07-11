@@ -64,7 +64,7 @@ ATEST_F(stb_sprintf_str)
 
    str_c sv = str.cstr("45678");
    str_c sv_sub = str.sub(sv, 1, 3);
-   atassert_eqi(str.cmpc(sv_sub, "56"), 0);
+   atassert_eqi(str.cmp(sv_sub, s$("56")), 0);
 
    _Static_assert(sizeof(char*) == 8, "size");
 

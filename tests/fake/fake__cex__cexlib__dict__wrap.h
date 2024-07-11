@@ -36,7 +36,7 @@ FAKE_VALUE_FUNC(void*, __wrap_dict_del, dict_c*, const void*)void* __real_dict_d
 
 FAKE_VALUE_FUNC(void*, __wrap_dict_iter, dict_c*, cex_iterator_s*)void* __real_dict_iter(dict_c*, cex_iterator_s*);
 
-FAKE_VALUE_FUNC(Exc, __wrap_dict_tolist, dict_c*, void**, const Allocator_c*)Exception __real_dict_tolist(dict_c*, void**, const Allocator_c*);
+FAKE_VALUE_FUNC(Exc, __wrap_dict_tolist, dict_c*, void*, const Allocator_c*)Exception __real_dict_tolist(dict_c*, void*, const Allocator_c*);
 
 
 const struct __module__dict dict = {

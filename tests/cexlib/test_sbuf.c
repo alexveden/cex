@@ -395,9 +395,7 @@ ATEST_F(test_sbuf_sprintf_long_growth)
         str_c sub1 = str.sub(sv, i*4, i*4+4);
 
         atassert_eqs(EOK, str.copy(sub1, svbuf, 16));
-        // atassert_eqs(svbuf, buf);
-        // atassert_eqs(sub1.buf, buf);
-        atassertf(str.cmpc(sub1, buf) == 0, "i=%d, buf=%s sub1=%s", i, buf, sub1.buf);
+        atassertf(str.cmp(sub1, s$(buf)) == 0, "i=%d, buf=%s sub1=%s", i, buf, sub1.buf);
     }
 
     sbuf.destroy(&s);
@@ -431,7 +429,7 @@ ATEST_F(test_sbuf_sprintf_long_growth_prebuild_buffer)
         snprintf(buf, arr$len(buf), "%04d", i);
         str_c sub1 = str.sub(sv, i*4, i*4+4);
         atassert_eqs(EOK, str.copy(sub1, svbuf, 16));
-        atassertf(str.cmpc(sub1, buf) == 0, "i=%d, buf=%s sub1=%s", i, buf, sub1.buf);
+        atassertf(str.cmp(sub1, s$(buf)) == 0, "i=%d, buf=%s sub1=%s", i, buf, sub1.buf);
     }
 
     sbuf.destroy(&s);

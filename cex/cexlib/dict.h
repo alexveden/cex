@@ -127,7 +127,7 @@ void*
 (*iter)(dict_c* self, cex_iterator_s* iterator);
 
 Exception
-(*tolist)(dict_c* self, void** listptr, const Allocator_c* allocator);
+(*tolist)(dict_c* self, void* listptr, const Allocator_c* allocator);
 
     // clang-format on
 };
