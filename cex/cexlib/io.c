@@ -1,8 +1,8 @@
 #include "io.h"
+#include "_stb_sprintf.h"
 #include "cex/cex.h"
 #include <errno.h>
 #include <unistd.h>
-
 
 Exception
 io_fopen(io_c* self, const char* filename, const char* mode, const Allocator_c* allocator)
@@ -375,6 +375,49 @@ fail:
     return result;
 }
 
+Exception
+io_fprintf(io_c* self, const char* format, ...)
+{
+    uassert(self != NULL);
+    uassert(self->_fh != NULL);
+
+    va_list va;
+    va_start(va, format);
+    int result = STB_SPRINTF_DECORATE(vfprintf)(self->_fh, format, va);
+    va_end(va);
+
+    if (result == -1) {
+        return Error.io;
+    } else {
+        return Error.ok;
+    }
+}
+
+Exception
+io_write(io_c* self, void* restrict obj_buffer, size_t obj_el_size, size_t obj_count)
+{
+    uassert(self != NULL);
+    uassert(self->_fh != NULL);
+
+    if (obj_buffer == NULL) {
+        return Error.argument;
+    }
+    if (obj_el_size == 0) {
+        return Error.argument;
+    }
+    if (obj_count == 0) {
+        return Error.argument;
+    }
+
+    const size_t ret_count = fwrite(obj_buffer, obj_el_size, obj_count, self->_fh);
+
+    if (ret_count != obj_count) {
+        return Error.io;
+    } else {
+        return Error.ok;
+    }
+}
+
 void
 io_close(io_c* self)
 {
@@ -410,6 +453,8 @@ const struct __module__io io = {
     .read = io_read,
     .readall = io_readall,
     .readline = io_readline,
+    .fprintf = io_fprintf,
+    .write = io_write,
     .close = io_close,
     // clang-format on
 };

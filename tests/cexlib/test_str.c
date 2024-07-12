@@ -2,6 +2,7 @@
 #include <cex/cexlib/list.h>
 #include <cex/cexlib/str.c>
 #include <cex/cexlib/sbuf.c>
+#include <cex/cexlib/_stb_sprintf.c>
 #include <cex/cextest/cextest.h>
 #include <cex/cexlib/allocators.c>
 #include <stdio.h>

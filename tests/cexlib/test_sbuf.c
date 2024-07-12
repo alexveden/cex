@@ -3,6 +3,7 @@
 #include <cex/cexlib/str.c>
 #include <cex/cexlib/sbuf.c>
 #include <cex/cexlib/sbuf.h>
+#include <cex/cexlib/_stb_sprintf.c>
 #include <cex/cexlib/allocators.c>
 #include <stdio.h>
 #include <stdio.h>

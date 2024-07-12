@@ -60,6 +60,12 @@ Exception
 Exception
 (*readline)(io_c* self, str_c* s);
 
+Exception
+(*fprintf)(io_c* self, const char* format, ...);
+
+Exception
+(*write)(io_c* self, void* restrict obj_buffer, size_t obj_el_size, size_t obj_count);
+
 void
 (*close)(io_c* self);
 

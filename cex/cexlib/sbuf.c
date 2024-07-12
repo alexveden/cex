@@ -1,5 +1,4 @@
 #include "sbuf.h"
-#include "_stb_sprintf.c"
 #include "_stb_sprintf.h"
 #include "cex/cex.h"
 #include <stdarg.h>
@@ -7,8 +6,11 @@
 struct _sbuf__sprintf_ctx
 {
     sbuf_head_s* head;
+    char* buf;
     Exc err;
-    stbsp__context c;
+    int count;
+    int length;
+    char tmp[STB_SPRINTF_MIN];
 };
 
 static inline sbuf_head_s*
@@ -347,59 +349,56 @@ sbuf__sprintf_callback(const char* buf, void* user, int len)
     uassert(ctx->head->header.magic == 0xf00e && "not a sbuf_head_s / bad pointer");
 
     if (unlikely(ctx->err != EOK)) {
-        return ctx->c.tmp;
+        return ctx->tmp;
     }
 
-    uassert(
-        (buf != ctx->c.buf) ||
-        (sbuf + ctx->c.length + len <= sbuf + ctx->c.count && "out of bounds")
-    );
+    uassert((buf != ctx->buf) || (sbuf + ctx->length + len <= sbuf + ctx->count && "out of bounds"));
 
-    if (unlikely(ctx->c.length + len > ctx->c.count)) {
-        bool buf_is_tmp = buf != ctx->c.buf;
+    if (unlikely(ctx->length + len > ctx->count)) {
+        bool buf_is_tmp = buf != ctx->buf;
 
-        if (len < 0 || ctx->c.length + len > INT32_MAX) {
+        if (len < 0 || ctx->length + len > INT32_MAX) {
             ctx->err = Error.integrity;
-            return ctx->c.tmp;
+            return ctx->tmp;
         }
 
         // NOTE: sbuf likely changed after realloc
-        except(err, sbuf__grow_buffer(&sbuf, ctx->c.length + len + 1))
+        except(err, sbuf__grow_buffer(&sbuf, ctx->length + len + 1))
         {
             ctx->err = err;
-            return ctx->c.tmp;
+            return ctx->tmp;
         }
         // re-fetch head in case of realloc
         ctx->head = (sbuf_head_s*)(sbuf - sizeof(sbuf_head_s));
         uassert(ctx->head->header.magic == 0xf00e && "not a sbuf_head_s / bad pointer");
 
-        ctx->c.buf = sbuf + ctx->head->length;
-        ctx->c.count = ctx->head->capacity;
+        ctx->buf = sbuf + ctx->head->length;
+        ctx->count = ctx->head->capacity;
 
-        uassert(ctx->c.count >= ctx->c.length);
+        uassert(ctx->count >= ctx->length);
 
         if (!buf_is_tmp) {
             // If we use the same buffer for sprintf() prevent use-after-free issue
-            // if ctx->c.buf was reallocated to  another pointer
-            buf = ctx->c.buf;
+            // if ctx->buf was reallocated to  another pointer
+            buf = ctx->buf;
         }
     }
 
-    ctx->c.length += len;
+    ctx->length += len;
     ctx->head->length += len;
 
     if (len > 0) {
-        if (buf != ctx->c.buf) {
-            // NOTE: copy data only if previously c.tmp buffer used
-            memcpy(ctx->c.buf, buf, len);
+        if (buf != ctx->buf) {
+            // NOTE: copy data only if previously tmp buffer used
+            memcpy(ctx->buf, buf, len);
         }
-        ctx->c.buf += len;
+        ctx->buf += len;
     }
 
-    // NOTE: if string buffer is small, uses stack-based c.tmp buffer (about 512bytes)
+    // NOTE: if string buffer is small, uses stack-based tmp buffer (about 512bytes)
     // // and then copy into sbuf_s buffer when ready. When string grows, uses heap allocated
     // // sbuf_c directly without copy
-    return ((ctx->c.count - ctx->c.length) >= STB_SPRINTF_MIN) ? ctx->c.buf : ctx->c.tmp;
+    return ((ctx->count - ctx->length) >= STB_SPRINTF_MIN) ? ctx->buf : ctx->tmp;
 }
 
 Exception
@@ -412,7 +411,9 @@ sbuf_sprintf(sbuf_c* self, const char* format, ...)
     struct _sbuf__sprintf_ctx ctx = {
         .head = head,
         .err = EOK,
-        .c = { .buf = *self + head->length, .length = head->length, .count = head->capacity }
+        .buf = *self + head->length,
+        .length = head->length,
+        .count = head->capacity,
     };
 
     va_list va;

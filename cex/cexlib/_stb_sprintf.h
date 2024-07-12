@@ -210,6 +210,11 @@ typedef char* STBSP_SPRINTFCB(const char* buf, void* user, int len);
     stbsp_##name // define this before including if you want to change the names
 #endif
 
+STBSP__PUBLICDEF int
+STB_SPRINTF_DECORATE(vfprintf)(FILE* stream, const char* format, va_list va);
+STBSP__PUBLICDEF int
+STB_SPRINTF_DECORATE(fprintf)(FILE* stream, const char* format, ...);
+
 STBSP__PUBLICDEC int STB_SPRINTF_DECORATE(vsprintf)(char* buf, char const* fmt, va_list va);
 STBSP__PUBLICDEC int
     STB_SPRINTF_DECORATE(vsnprintf)(char* buf, int count, char const* fmt, va_list va);

@@ -30,6 +30,10 @@ FAKE_VALUE_FUNC(Exc, __wrap_io_readall, io_c*, str_c*)Exception __real_io_readal
 
 FAKE_VALUE_FUNC(Exc, __wrap_io_readline, io_c*, str_c*)Exception __real_io_readline(io_c*, str_c*);
 
+FAKE_VALUE_FUNC_VARARG(Exc, __wrap_io_fprintf, io_c*, const char*, ...)Exception __real_io_fprintf(io_c*, const char*, ...);
+
+FAKE_VALUE_FUNC(Exc, __wrap_io_write, io_c*, void* restrict, size_t, size_t)Exception __real_io_write(io_c*, void* restrict, size_t, size_t);
+
 FAKE_VOID_FUNC(__wrap_io_close, io_c*)void __real_io_close(io_c*);
 
 
@@ -48,6 +52,8 @@ const struct __module__io io = {
     .read = io_read,
     .readall = io_readall,
     .readline = io_readline,
+    .fprintf = io_fprintf,
+    .write = io_write,
     .close = io_close,
     // clang-format on
 };
@@ -67,6 +73,8 @@ static void fake__cex__cexlib__io__wrap__resetall(void) {
     RESET_FAKE(__wrap_io_read)
     RESET_FAKE(__wrap_io_readall)
     RESET_FAKE(__wrap_io_readline)
+    RESET_FAKE(__wrap_io_fprintf)
+    RESET_FAKE(__wrap_io_write)
     RESET_FAKE(__wrap_io_close)
 }
 

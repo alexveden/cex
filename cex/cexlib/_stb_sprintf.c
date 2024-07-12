@@ -1280,8 +1280,10 @@ STB_SPRINTF_DECORATE(sprintf)(char* buf, char const* fmt, ...)
 typedef struct stbsp__context
 {
     char* buf;
+    FILE* file;
     int count;
     int length;
+    int has_error;
     char tmp[STB_SPRINTF_MIN];
 } stbsp__context;
 
@@ -1374,6 +1376,41 @@ STBSP__PUBLICDEF int
 STB_SPRINTF_DECORATE(vsprintf)(char* buf, char const* fmt, va_list va)
 {
     return STB_SPRINTF_DECORATE(vsprintfcb)(0, 0, buf, fmt, va);
+}
+
+static char*
+stbsp__fprintf_callback(const char* buf, void* user, int len)
+{
+    stbsp__context* c = (stbsp__context*)user;
+    c->length += len;
+    if (len) {
+        if(fwrite(buf, sizeof(char), len, c->file) != (size_t)len){
+            c->has_error = 1;
+        }
+    }
+    return c->tmp;
+}
+
+STBSP__PUBLICDEF int
+STB_SPRINTF_DECORATE(vfprintf)(FILE* stream, const char* format, va_list va)
+{
+    stbsp__context c = {.file = stream, .length = 0};
+
+    STB_SPRINTF_DECORATE(vsprintfcb)
+    (stbsp__fprintf_callback, &c, stbsp__fprintf_callback(0, &c, 0), format, va);
+
+    return c.has_error == 0 ? c.length : -1;
+}
+
+STBSP__PUBLICDEF int
+STB_SPRINTF_DECORATE(fprintf)(FILE* stream, const char* format, ...)
+{
+    int result;
+    va_list va;
+    va_start(va, format);
+    result = STB_SPRINTF_DECORATE(vfprintf)(stream, format, va);
+    va_end(va);
+    return result;
 }
 
 // =======================================================================

@@ -1,6 +1,7 @@
 #include <cex/cex.h>
 #include <cex/cexlib/allocators.c>
 #include <cex/cexlib/io.c>
+#include <cex/cexlib/_stb_sprintf.c>
 #include <cex/cexlib/str.c>
 #include <cex/cexlib/io.h>
 #include <cex/cextest/cextest.h>
@@ -418,6 +419,63 @@ ATEST_F(test_read_not_all)
     io.close(&file);
     return NULL; // Every ATEST_F() must return NULL to succeed!
 }
+
+ATEST_F(test_fprintf)
+{
+    io_c file = { 0 };
+    atassert_eqs(Error.ok, io.fattach(&file, stdout, allocator));
+    atassert(file._fh == stdout);
+    atassert(file._fbuf == NULL);
+    atassert(file._fbuf_size == 0);
+    atassert(file._allocator == allocator);
+    atassert_eqi(0, io.size(&file));
+
+
+    atassert_eqs(EOK, io.fprintf(&file, "Hi there it's a io.fprintf\n"));
+
+    io.close(&file);
+    return NULL; // Every ATEST_F() must return NULL to succeed!
+}
+
+ATEST_F(test_fprintf_to_file)
+{
+    io_c file = { 0 };
+    atassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_fprintf.txt", "w+", allocator));
+
+    char buf[4] = {"1234"};
+    str_c s1 = str.cbuf(buf, 4);
+    atassert_eqi(s1.len, 4);
+    atassert_eqi(s1.buf[3], '4');
+    atassert_eqs(EOK, io.fprintf(&file, "io.fprintf: str_c: %S\n", s1));
+
+    str_c content;
+    io.rewind(&file);
+
+    atassert_eqs(EOK, io.readall(&file, &content));
+    atassert_eqi(0, str.cmp(content, s$("io.fprintf: str_c: 1234\n")));
+
+
+    io.close(&file);
+    return NULL; // Every ATEST_F() must return NULL to succeed!
+}
+
+ATEST_F(test_write)
+{
+    io_c file = { 0 };
+    atassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_write.txt", "w+", allocator));
+
+    char buf[4] = {"1234"};
+
+    atassert_eqs(EOK, io.write(&file, buf, sizeof(char), arr$len(buf)));
+
+    str_c content;
+    io.rewind(&file);
+    atassert_eqs(EOK, io.readall(&file, &content));
+    atassert_eqi(0, str.cmp(content, s$("1234")));
+
+    io.close(&file);
+    return NULL; // Every ATEST_F() must return NULL to succeed!
+}
 /*
  *
  * MAIN (AUTO GENERATED)
@@ -444,6 +502,9 @@ main(int argc, char* argv[])
     ATEST_RUN(test_read);
     ATEST_RUN(test_read_empty);
     ATEST_RUN(test_read_not_all);
+    ATEST_RUN(test_fprintf);
+    ATEST_RUN(test_fprintf_to_file);
+    ATEST_RUN(test_write);
     
     ATEST_PRINT_FOOTER();  // ^^^^^ all tests runs are above
     return ATEST_EXITCODE();
