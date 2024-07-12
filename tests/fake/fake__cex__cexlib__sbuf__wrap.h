@@ -6,12 +6,6 @@
 #include <cex/cexlib/sbuf.h>
 
 // IMPORTANT: wrapping works only with gcc  `-Wl,--wrap=Shmem_new,--wrap=Protocol_event_emitter_new`  flag
-FAKE_VALUE_FUNC(sbuf_head_s*, __wrap_sbuf__head, sbuf_c)sbuf_head_s* __real_sbuf__head(sbuf_c);
-
-FAKE_VALUE_FUNC(size_t, __wrap_sbuf__alloc_capacity, size_t)size_t __real_sbuf__alloc_capacity(size_t);
-
-FAKE_VALUE_FUNC(Exc, __wrap_sbuf__grow_buffer, sbuf_c*, u32)Exception __real_sbuf__grow_buffer(sbuf_c*, u32);
-
 FAKE_VALUE_FUNC(Exc, __wrap_sbuf_create, sbuf_c*, u32, const Allocator_c*)Exception __real_sbuf_create(sbuf_c*, u32, const Allocator_c*);
 
 FAKE_VALUE_FUNC(Exc, __wrap_sbuf_create_static, sbuf_c*, char*, size_t)Exception __real_sbuf_create_static(sbuf_c*, char*, size_t);
@@ -32,8 +26,6 @@ FAKE_VALUE_FUNC(u32, __wrap_sbuf_capacity, const sbuf_c*)u32 __real_sbuf_capacit
 
 FAKE_VALUE_FUNC(sbuf_c, __wrap_sbuf_destroy, sbuf_c*)sbuf_c __real_sbuf_destroy(sbuf_c*);
 
-FAKE_VALUE_FUNC(char*, __wrap_sbuf__sprintf_callback, const char*, void*, int)char* __real_sbuf__sprintf_callback(const char*, void*, int);
-
 FAKE_VALUE_FUNC_VARARG(Exc, __wrap_sbuf_sprintf, sbuf_c*, const char*, ...)Exception __real_sbuf_sprintf(sbuf_c*, const char*, ...);
 
 FAKE_VALUE_FUNC(str_c, __wrap_sbuf_tostr, sbuf_c*)str_c __real_sbuf_tostr(sbuf_c*);
@@ -52,7 +44,6 @@ const struct __module__sbuf sbuf = {
     .len = sbuf_len,
     .capacity = sbuf_capacity,
     .destroy = sbuf_destroy,
-    ._sprintf_callback = sbuf__sprintf_callback,
     .sprintf = sbuf_sprintf,
     .tostr = sbuf_tostr,
     // clang-format on
@@ -61,9 +52,6 @@ const struct __module__sbuf sbuf = {
 
 
 static void fake__cex__cexlib__sbuf__wrap__resetall(void) {
-    RESET_FAKE(__wrap_sbuf__head)
-    RESET_FAKE(__wrap_sbuf__alloc_capacity)
-    RESET_FAKE(__wrap_sbuf__grow_buffer)
     RESET_FAKE(__wrap_sbuf_create)
     RESET_FAKE(__wrap_sbuf_create_static)
     RESET_FAKE(__wrap_sbuf_grow)
@@ -74,7 +62,6 @@ static void fake__cex__cexlib__sbuf__wrap__resetall(void) {
     RESET_FAKE(__wrap_sbuf_len)
     RESET_FAKE(__wrap_sbuf_capacity)
     RESET_FAKE(__wrap_sbuf_destroy)
-    RESET_FAKE(__wrap_sbuf__sprintf_callback)
     RESET_FAKE(__wrap_sbuf_sprintf)
     RESET_FAKE(__wrap_sbuf_tostr)
 }

@@ -6,16 +6,6 @@
 #include <cex/cexlib/list.h>
 
 // IMPORTANT: wrapping works only with gcc  `-Wl,--wrap=Shmem_new,--wrap=Protocol_event_emitter_new`  flag
-FAKE_VALUE_FUNC(list_head_s*, __wrap_list__head, list_c*)list_head_s* __real_list__head(list_c*);
-
-FAKE_VALUE_FUNC(size_t, __wrap_list__alloc_capacity, size_t)size_t __real_list__alloc_capacity(size_t);
-
-FAKE_VALUE_FUNC(void*, __wrap_list__elidx, list_head_s*, size_t)void* __real_list__elidx(list_head_s*, size_t);
-
-FAKE_VALUE_FUNC(list_head_s*, __wrap_list__realloc, list_head_s*, size_t)list_head_s* __real_list__realloc(list_head_s*, size_t);
-
-FAKE_VALUE_FUNC(size_t, __wrap_list__alloc_size, size_t, size_t, size_t)size_t __real_list__alloc_size(size_t, size_t, size_t);
-
 FAKE_VALUE_FUNC(Exc, __wrap_list_create, list_c*, size_t, size_t, size_t, const Allocator_c*)Exception __real_list_create(list_c*, size_t, size_t, size_t, const Allocator_c*);
 
 FAKE_VALUE_FUNC(Exc, __wrap_list_create_static, list_c*, void*, size_t, size_t, size_t)Exception __real_list_create_static(list_c*, void*, size_t, size_t, size_t);
@@ -62,11 +52,6 @@ const struct __module__list list = {
 
 
 static void fake__cex__cexlib__list__wrap__resetall(void) {
-    RESET_FAKE(__wrap_list__head)
-    RESET_FAKE(__wrap_list__alloc_capacity)
-    RESET_FAKE(__wrap_list__elidx)
-    RESET_FAKE(__wrap_list__realloc)
-    RESET_FAKE(__wrap_list__alloc_size)
     RESET_FAKE(__wrap_list_create)
     RESET_FAKE(__wrap_list_create_static)
     RESET_FAKE(__wrap_list_insert)

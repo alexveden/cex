@@ -6,14 +6,6 @@
 #include <cex/cexlib/deque.h>
 
 // IMPORTANT: wrapping works only with gcc  `-Wl,--wrap=Shmem_new,--wrap=Protocol_event_emitter_new`  flag
-FAKE_VALUE_FUNC(deque_head_s*, __wrap_deque__head, deque_c)deque_head_s* __real_deque__head(deque_c);
-
-FAKE_VALUE_FUNC(size_t, __wrap_deque__alloc_capacity, size_t)size_t __real_deque__alloc_capacity(size_t);
-
-FAKE_VALUE_FUNC(void*, __wrap_deque__get_byindex, deque_head_s*, size_t)void* __real_deque__get_byindex(deque_head_s*, size_t);
-
-FAKE_VALUE_FUNC(size_t, __wrap_deque__alloc_size, size_t, size_t, size_t)size_t __real_deque__alloc_size(size_t, size_t, size_t);
-
 FAKE_VALUE_FUNC(Exc, __wrap_deque_validate, deque_c)Exception __real_deque_validate(deque_c);
 
 FAKE_VALUE_FUNC(Exc, __wrap_deque_create, deque_c*, size_t, bool, size_t, size_t, const Allocator_c*)Exception __real_deque_create(deque_c*, size_t, bool, size_t, size_t, const Allocator_c*);
@@ -66,10 +58,6 @@ const struct __module__deque deque = {
 
 
 static void fake__cex__cexlib__deque__wrap__resetall(void) {
-    RESET_FAKE(__wrap_deque__head)
-    RESET_FAKE(__wrap_deque__alloc_capacity)
-    RESET_FAKE(__wrap_deque__get_byindex)
-    RESET_FAKE(__wrap_deque__alloc_size)
     RESET_FAKE(__wrap_deque_validate)
     RESET_FAKE(__wrap_deque_create)
     RESET_FAKE(__wrap_deque_create_static)

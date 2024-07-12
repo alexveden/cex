@@ -6,9 +6,6 @@
 #include <cex/cexlib/sbuf.h>
 
 
-FAKE_VALUE_FUNC(sbuf_head_s*, sbuf__head, sbuf_c)
-FAKE_VALUE_FUNC(size_t, sbuf__alloc_capacity, size_t)
-FAKE_VALUE_FUNC(Exc, sbuf__grow_buffer, sbuf_c*, u32)
 FAKE_VALUE_FUNC(Exc, sbuf_create, sbuf_c*, u32, const Allocator_c*)
 FAKE_VALUE_FUNC(Exc, sbuf_create_static, sbuf_c*, char*, size_t)
 FAKE_VALUE_FUNC(Exc, sbuf_grow, sbuf_c*, u32)
@@ -19,7 +16,6 @@ FAKE_VOID_FUNC(sbuf_clear, sbuf_c*)
 FAKE_VALUE_FUNC(u32, sbuf_len, const sbuf_c*)
 FAKE_VALUE_FUNC(u32, sbuf_capacity, const sbuf_c*)
 FAKE_VALUE_FUNC(sbuf_c, sbuf_destroy, sbuf_c*)
-FAKE_VALUE_FUNC(char*, sbuf__sprintf_callback, const char*, void*, int)
 FAKE_VALUE_FUNC_VARARG(Exc, sbuf_sprintf, sbuf_c*, const char*, ...)
 FAKE_VALUE_FUNC(str_c, sbuf_tostr, sbuf_c*)
 
@@ -36,7 +32,6 @@ const struct __module__sbuf sbuf = {
     .len = sbuf_len,
     .capacity = sbuf_capacity,
     .destroy = sbuf_destroy,
-    ._sprintf_callback = sbuf__sprintf_callback,
     .sprintf = sbuf_sprintf,
     .tostr = sbuf_tostr,
     // clang-format on
@@ -45,9 +40,6 @@ const struct __module__sbuf sbuf = {
 
 
 static void fake__cex__cexlib__sbuf__resetall(void) {
-    RESET_FAKE(sbuf__head)
-    RESET_FAKE(sbuf__alloc_capacity)
-    RESET_FAKE(sbuf__grow_buffer)
     RESET_FAKE(sbuf_create)
     RESET_FAKE(sbuf_create_static)
     RESET_FAKE(sbuf_grow)
@@ -58,7 +50,6 @@ static void fake__cex__cexlib__sbuf__resetall(void) {
     RESET_FAKE(sbuf_len)
     RESET_FAKE(sbuf_capacity)
     RESET_FAKE(sbuf_destroy)
-    RESET_FAKE(sbuf__sprintf_callback)
     RESET_FAKE(sbuf_sprintf)
     RESET_FAKE(sbuf_tostr)
 }

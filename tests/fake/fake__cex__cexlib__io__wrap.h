@@ -24,7 +24,7 @@ FAKE_VALUE_FUNC(Exc, __wrap_io_tell, io_c*, size_t*)Exception __real_io_tell(io_
 
 FAKE_VALUE_FUNC(size_t, __wrap_io_size, io_c*)size_t __real_io_size(io_c*);
 
-FAKE_VALUE_FUNC(Exc, __wrap_io_read, io_c*, void* restrict, size_t, size_t*)Exception __real_io_read(io_c*, void* restrict, size_t, size_t*);
+FAKE_VALUE_FUNC(Exc, __wrap_io_read, io_c*, void*, size_t, size_t*)Exception __real_io_read(io_c*, void*, size_t, size_t*);
 
 FAKE_VALUE_FUNC(Exc, __wrap_io_readall, io_c*, str_c*)Exception __real_io_readall(io_c*, str_c*);
 
@@ -32,7 +32,7 @@ FAKE_VALUE_FUNC(Exc, __wrap_io_readline, io_c*, str_c*)Exception __real_io_readl
 
 FAKE_VALUE_FUNC_VARARG(Exc, __wrap_io_fprintf, io_c*, const char*, ...)Exception __real_io_fprintf(io_c*, const char*, ...);
 
-FAKE_VALUE_FUNC(Exc, __wrap_io_write, io_c*, void* restrict, size_t, size_t)Exception __real_io_write(io_c*, void* restrict, size_t, size_t);
+FAKE_VALUE_FUNC(Exc, __wrap_io_write, io_c*, void*, size_t, size_t)Exception __real_io_write(io_c*, void*, size_t, size_t);
 
 FAKE_VOID_FUNC(__wrap_io_close, io_c*)void __real_io_close(io_c*);
 

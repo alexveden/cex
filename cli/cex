@@ -253,21 +253,20 @@ class Func:
             self.is_inline = True
             typedef = RE_INLINE.sub(" ", typedef)
 
+        self.ifc_prefix = ifc_prefix
         self.typedef = typedef.strip()
         self.name = g.group(2).strip()
         self.args = g.group(3).strip()
+
+        self.args = self.args.replace(" restrict ", " ")
         self.docstr = ""
 
-        g = re.match(
-            rf"^{ifc_prefix}__([\w]+)__(\w+)", self.name, re.MULTILINE
-        )
+        g = re.match(rf"^{ifc_prefix}__([\w]+)__(\w+)", self.name, re.MULTILINE)
         if g:
             self.sub_module = g.group(1)
             self.ifc_name = g.group(2)
             assert self.ifc_name
-        elif g := re.match(
-            rf"^{ifc_prefix}_(\w+)", self.name, re.MULTILINE
-        ):
+        elif g := re.match(rf"^{ifc_prefix}_(\w+)", self.name, re.MULTILINE):
             self.sub_module = None
             self.ifc_name = g.group(1)
             assert self.ifc_name
@@ -279,6 +278,18 @@ class Func:
         assert (
             "(" not in self.typedef and ")" not in self.typedef
         ), f"function pointers?? {self}"
+
+    @property
+    def is_public_cex(self) -> bool:
+        if self.is_inline and self.is_static:
+            return False
+
+        g = re.match(rf"^{self.ifc_prefix}__([\w]+)__(\w+)", self.name, re.MULTILINE)
+        if not g and f"{self.ifc_prefix}__" in self.name:
+            # private function, and not second level namespace
+            return False
+
+        return True
 
     def to_pointer_decl(self, indent: bool) -> str:
         """Function declaration for .h struct
@@ -322,9 +333,7 @@ class CEXBuilder:
         namespace: module namespace (i.e. expected function prefix _<namespace>_)
     """
 
-    def __init__(
-        self, c_file: str, h_file: str, namespace: str = None
-    ):
+    def __init__(self, c_file: str, h_file: str, namespace: str = None):
         """CEX Module generator initializer
 
         Args:
@@ -430,15 +439,7 @@ class CEXBuilder:
             if isinstance(b, Code):
                 if self.is_func_code(b):
                     f = Func(b.buf.getvalue(), ns)
-                    if f.ifc_name:
-                        if f.is_inline and not f.is_static:
-                            raise ValueError(
-                                f"Function: {f.name} must be have static with inline"
-                            )
-
-                        if f.is_inline and f.is_static:
-                            continue
-
+                    if f.ifc_name and f.is_public_cex:
                         if i > 0 and isinstance(blocks[i - 1], Comment):
                             f.docstr = blocks[i - 1].buf.getvalue()
                         flist = functions.setdefault(f.sub_module, [])
@@ -495,13 +496,11 @@ class CEXBuilder:
             if isinstance(b, Code):
                 if self.is_func_code(b):
                     f = Func(b.buf.getvalue(), ns)
-                    if f.ifc_name:
+                    if f.ifc_name and f.is_public_cex:
                         if f.is_inline and not f.is_static:
                             raise ValueError(
                                 f"Function: {f.name} must be have static with inline"
                             )
-                        if f.is_inline and f.is_static:
-                            continue
                         if i > 0 and isinstance(blocks[i - 1], Comment):
                             f.docstr = blocks[i - 1].buf.getvalue()
                         flist = functions.setdefault(f.sub_module, [])
@@ -544,7 +543,7 @@ class CEXBuilder:
 
         for b in reversed(existing):
             # print(f"exists at: {b}")
-            del src_lines[int(b.line_start) : int(b.line_end) + 1]
+            del src_lines[int(b.line_start): int(b.line_end) + 1]
 
         for i, line in enumerate(reversed(src_lines)):
             if line.strip() == "":
@@ -555,7 +554,9 @@ class CEXBuilder:
             break
         return last_ifndef
 
-    def make_fff_fake(self, fake_dir: str, h_file: str, blocks: list[Block], sub_module: str = ""):
+    def make_fff_fake(
+        self, fake_dir: str, h_file: str, blocks: list[Block], sub_module: str = ""
+    ):
         assert os.path.exists(fake_dir), f"{fake_dir} not exists"
 
         if h_file.startswith("./"):
@@ -602,6 +603,8 @@ class CEXBuilder:
                 continue
 
             f = Func(block.buf.getvalue(), "")
+            if not f.is_public_cex:
+                continue
 
             is_var_args = False
 
@@ -732,6 +735,8 @@ class CEXBuilder:
                     continue
 
                 f = Func(block.buf.getvalue(), self.namespace)
+                if not f.is_public_cex:
+                    continue
                 sub_mod = f.sub_module if f.sub_module else ""
                 flist = sub_module_blocks.setdefault(sub_mod, [])
                 flist.append(block)
@@ -747,14 +752,18 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("source_file", help="File path .c (code mode) or .h (lib mode)")
     parser.add_argument("--fakedir", help="fff.h fake directory", default="")
-    parser.add_argument("--namespace", help="module/class namespace, inferred from file name", default=None)
+    parser.add_argument(
+        "--namespace",
+        help="module/class namespace, inferred from file name",
+        default=None,
+    )
     args = parser.parse_args()
 
-    if args.source_file.endswith('.c'):
+    if args.source_file.endswith(".c"):
         c_file = args.source_file
         h_file = args.source_file.replace(".c", ".h")
     else:
-        assert args.source_file.endswith('.h')
+        assert args.source_file.endswith(".h")
         h_file = args.source_file
         c_file = None
 

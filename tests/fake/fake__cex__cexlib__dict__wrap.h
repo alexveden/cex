@@ -6,8 +6,6 @@
 #include <cex/cexlib/dict.h>
 
 // IMPORTANT: wrapping works only with gcc  `-Wl,--wrap=Shmem_new,--wrap=Protocol_event_emitter_new`  flag
-FAKE_VALUE_FUNC(u64, __wrap_hm_int_hash_simple, u64)u64 __real_hm_int_hash_simple(u64);
-
 FAKE_VALUE_FUNC(int, __wrap_hm_int_compare, const void*, const void*, void*)int __real_hm_int_compare(const void*, const void*, void*);
 
 FAKE_VALUE_FUNC(u64, __wrap_hm_int_hash, const void*, u64, u64)u64 __real_hm_int_hash(const void*, u64, u64);
@@ -59,7 +57,6 @@ const struct __module__dict dict = {
 
 
 static void fake__cex__cexlib__dict__wrap__resetall(void) {
-    RESET_FAKE(__wrap_hm_int_hash_simple)
     RESET_FAKE(__wrap_hm_int_compare)
     RESET_FAKE(__wrap_hm_int_hash)
     RESET_FAKE(__wrap_hm_str_static_compare)

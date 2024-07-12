@@ -6,8 +6,6 @@
 #include <cex/cexlib/str.h>
 
 
-FAKE_VALUE_FUNC(bool, str__isvalid, const str_c*)
-FAKE_VALUE_FUNC(ssize_t, str__index, str_c*, const char*, u8)
 FAKE_VALUE_FUNC(str_c, str_cstr, const char*)
 FAKE_VALUE_FUNC(str_c, str_cbuf, char*, size_t)
 FAKE_VALUE_FUNC(str_c, str_sub, str_c, ssize_t, ssize_t)
@@ -22,8 +20,6 @@ FAKE_VALUE_FUNC(bool, str_starts_with, str_c, str_c)
 FAKE_VALUE_FUNC(bool, str_ends_with, str_c, str_c)
 FAKE_VALUE_FUNC(str_c, str_remove_prefix, str_c, str_c)
 FAKE_VALUE_FUNC(str_c, str_remove_suffix, str_c, str_c)
-FAKE_VOID_FUNC(str__strip_left, str_c*)
-FAKE_VOID_FUNC(str__strip_right, str_c*)
 FAKE_VALUE_FUNC(str_c, str_lstrip, str_c)
 FAKE_VALUE_FUNC(str_c, str_rstrip, str_c)
 FAKE_VALUE_FUNC(str_c, str_strip, str_c)
@@ -60,8 +56,6 @@ const struct __module__str str = {
 
 
 static void fake__cex__cexlib__str__resetall(void) {
-    RESET_FAKE(str__isvalid)
-    RESET_FAKE(str__index)
     RESET_FAKE(str_cstr)
     RESET_FAKE(str_cbuf)
     RESET_FAKE(str_sub)
@@ -76,8 +70,6 @@ static void fake__cex__cexlib__str__resetall(void) {
     RESET_FAKE(str_ends_with)
     RESET_FAKE(str_remove_prefix)
     RESET_FAKE(str_remove_suffix)
-    RESET_FAKE(str__strip_left)
-    RESET_FAKE(str__strip_right)
     RESET_FAKE(str_lstrip)
     RESET_FAKE(str_rstrip)
     RESET_FAKE(str_strip)

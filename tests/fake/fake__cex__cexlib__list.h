@@ -6,11 +6,6 @@
 #include <cex/cexlib/list.h>
 
 
-FAKE_VALUE_FUNC(list_head_s*, list__head, list_c*)
-FAKE_VALUE_FUNC(size_t, list__alloc_capacity, size_t)
-FAKE_VALUE_FUNC(void*, list__elidx, list_head_s*, size_t)
-FAKE_VALUE_FUNC(list_head_s*, list__realloc, list_head_s*, size_t)
-FAKE_VALUE_FUNC(size_t, list__alloc_size, size_t, size_t, size_t)
 FAKE_VALUE_FUNC(Exc, list_create, list_c*, size_t, size_t, size_t, const Allocator_c*)
 FAKE_VALUE_FUNC(Exc, list_create_static, list_c*, void*, size_t, size_t, size_t)
 FAKE_VALUE_FUNC(Exc, list_insert, void*, void*, size_t)
@@ -45,11 +40,6 @@ const struct __module__list list = {
 
 
 static void fake__cex__cexlib__list__resetall(void) {
-    RESET_FAKE(list__head)
-    RESET_FAKE(list__alloc_capacity)
-    RESET_FAKE(list__elidx)
-    RESET_FAKE(list__realloc)
-    RESET_FAKE(list__alloc_size)
     RESET_FAKE(list_create)
     RESET_FAKE(list_create_static)
     RESET_FAKE(list_insert)

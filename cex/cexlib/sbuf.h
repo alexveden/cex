@@ -58,9 +58,6 @@ u32
 sbuf_c
 (*destroy)(sbuf_c* self);
 
-char*
-(*_sprintf_callback)(const char* buf, void* user, int len);
-
 Exception
 (*sprintf)(sbuf_c* self, const char* format, ...);
 

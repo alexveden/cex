@@ -6,7 +6,6 @@
 #include <cex/cexlib/dict.h>
 
 
-FAKE_VALUE_FUNC(u64, hm_int_hash_simple, u64)
 FAKE_VALUE_FUNC(int, hm_int_compare, const void*, const void*, void*)
 FAKE_VALUE_FUNC(u64, hm_int_hash, const void*, u64, u64)
 FAKE_VALUE_FUNC(int, hm_str_static_compare, const void*, const void*, void*)
@@ -43,7 +42,6 @@ const struct __module__dict dict = {
 
 
 static void fake__cex__cexlib__dict__resetall(void) {
-    RESET_FAKE(hm_int_hash_simple)
     RESET_FAKE(hm_int_compare)
     RESET_FAKE(hm_int_hash)
     RESET_FAKE(hm_str_static_compare)

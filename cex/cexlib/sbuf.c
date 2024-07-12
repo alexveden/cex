@@ -460,7 +460,6 @@ const struct __module__sbuf sbuf = {
     .len = sbuf_len,
     .capacity = sbuf_capacity,
     .destroy = sbuf_destroy,
-    ._sprintf_callback = sbuf__sprintf_callback,
     .sprintf = sbuf_sprintf,
     .tostr = sbuf_tostr,
     // clang-format on

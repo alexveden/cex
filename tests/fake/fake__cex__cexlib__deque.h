@@ -6,10 +6,6 @@
 #include <cex/cexlib/deque.h>
 
 
-FAKE_VALUE_FUNC(deque_head_s*, deque__head, deque_c)
-FAKE_VALUE_FUNC(size_t, deque__alloc_capacity, size_t)
-FAKE_VALUE_FUNC(void*, deque__get_byindex, deque_head_s*, size_t)
-FAKE_VALUE_FUNC(size_t, deque__alloc_size, size_t, size_t, size_t)
 FAKE_VALUE_FUNC(Exc, deque_validate, deque_c)
 FAKE_VALUE_FUNC(Exc, deque_create, deque_c*, size_t, bool, size_t, size_t, const Allocator_c*)
 FAKE_VALUE_FUNC(Exc, deque_create_static, deque_c*, void*, size_t, bool, size_t, size_t)
@@ -48,10 +44,6 @@ const struct __module__deque deque = {
 
 
 static void fake__cex__cexlib__deque__resetall(void) {
-    RESET_FAKE(deque__head)
-    RESET_FAKE(deque__alloc_capacity)
-    RESET_FAKE(deque__get_byindex)
-    RESET_FAKE(deque__alloc_size)
     RESET_FAKE(deque_validate)
     RESET_FAKE(deque_create)
     RESET_FAKE(deque_create_static)

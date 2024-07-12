@@ -6,10 +6,6 @@
 #include <cex/cexlib/str.h>
 
 // IMPORTANT: wrapping works only with gcc  `-Wl,--wrap=Shmem_new,--wrap=Protocol_event_emitter_new`  flag
-FAKE_VALUE_FUNC(bool, __wrap_str__isvalid, const str_c*)bool __real_str__isvalid(const str_c*);
-
-FAKE_VALUE_FUNC(ssize_t, __wrap_str__index, str_c*, const char*, u8)ssize_t __real_str__index(str_c*, const char*, u8);
-
 FAKE_VALUE_FUNC(str_c, __wrap_str_cstr, const char*)str_c __real_str_cstr(const char*);
 
 FAKE_VALUE_FUNC(str_c, __wrap_str_cbuf, char*, size_t)str_c __real_str_cbuf(char*, size_t);
@@ -37,10 +33,6 @@ FAKE_VALUE_FUNC(bool, __wrap_str_ends_with, str_c, str_c)bool __real_str_ends_wi
 FAKE_VALUE_FUNC(str_c, __wrap_str_remove_prefix, str_c, str_c)str_c __real_str_remove_prefix(str_c, str_c);
 
 FAKE_VALUE_FUNC(str_c, __wrap_str_remove_suffix, str_c, str_c)str_c __real_str_remove_suffix(str_c, str_c);
-
-FAKE_VOID_FUNC(__wrap_str__strip_left, str_c*)void __real_str__strip_left(str_c*);
-
-FAKE_VOID_FUNC(__wrap_str__strip_right, str_c*)void __real_str__strip_right(str_c*);
 
 FAKE_VALUE_FUNC(str_c, __wrap_str_lstrip, str_c)str_c __real_str_lstrip(str_c);
 
@@ -84,8 +76,6 @@ const struct __module__str str = {
 
 
 static void fake__cex__cexlib__str__wrap__resetall(void) {
-    RESET_FAKE(__wrap_str__isvalid)
-    RESET_FAKE(__wrap_str__index)
     RESET_FAKE(__wrap_str_cstr)
     RESET_FAKE(__wrap_str_cbuf)
     RESET_FAKE(__wrap_str_sub)
@@ -100,8 +90,6 @@ static void fake__cex__cexlib__str__wrap__resetall(void) {
     RESET_FAKE(__wrap_str_ends_with)
     RESET_FAKE(__wrap_str_remove_prefix)
     RESET_FAKE(__wrap_str_remove_suffix)
-    RESET_FAKE(__wrap_str__strip_left)
-    RESET_FAKE(__wrap_str__strip_right)
     RESET_FAKE(__wrap_str_lstrip)
     RESET_FAKE(__wrap_str_rstrip)
     RESET_FAKE(__wrap_str_strip)
