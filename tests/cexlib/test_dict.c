@@ -274,10 +274,10 @@ ATEST_F(test_dict_tolist)
         char struct_first_key[30];
         u64 another_key;
         char val;
-    } rec;
+    };
 
     dict_c hm;
-    atassert_eqs(EOK, dict$new(&hm, typeof(rec), struct_first_key, allocator));
+    atassert_eqs(EOK, dict$new(&hm, struct s, struct_first_key, allocator));
 
     atassert_eqs(dict.set(&hm, &(struct s){ .struct_first_key = "foo", .val = 'a' }), EOK);
     atassert_eqs(dict.set(&hm, &(struct s){ .struct_first_key = "abcd", .val = 'b' }), EOK);
@@ -293,7 +293,7 @@ ATEST_F(test_dict_tolist)
     atassert_eqs(Error.argument, dict.tolist(&hm, NULL, allocator));
     atassert_eqs(Error.argument, dict.tolist(&hm, &a, NULL));
 
-    for$array(it, a.arr, a.count) {
+    for$array(it, a.arr, a.len) {
         atassert(dict.get(&hm, it.val) != NULL);
         atassert(dict.get(&hm, it.val->struct_first_key) != NULL);
         // same elements buf different pointer - means copy!

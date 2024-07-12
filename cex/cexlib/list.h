@@ -1,6 +1,6 @@
 #pragma once
-#include <cex/cex.h>
 #include "allocators.h"
+#include <cex/cex.h>
 
 /**
  * @brief Dynamic array (list) implementation
@@ -10,25 +10,34 @@ typedef struct
     // NOTE: do not assign this pointer to local variables, is can become dangling after dlist
     // operations (e.g. after realloc()). So local pointers can be pointing to invalid area!
     void* arr;
-    size_t count;
+    size_t len;
 } list_c;
 
-#define list$define(eltype)                                                                       \
-    /* NOTE: shadow struct the same as list_c, only used for type safety. const  prevents user to \
+#define list$define(eltype)                                                                        \
+    /* NOTE: shadow struct the same as list_c, only used for type safety. const  prevents user to  \
      * overwrite struct arr.arr pointer (elements are ok), and also arr.count */                   \
-    struct __CEX_TMPNAME(__cexlist__)                                                            \
+    struct __CEX_TMPNAME(__cexlist__)                                                              \
     {                                                                                              \
         eltype* const arr;                                                                         \
-        const size_t count;                                                                        \
+        const size_t len;                                                                          \
     }
 
-#define list$new(self, capacity, allocator)                                                       \
-    (list.create(                                                                                 \
-        (list_c*)self,                                                                            \
+#define list$new(self, capacity, allocator)                                                        \
+    (list.create(                                                                                  \
+        (list_c*)self,                                                                             \
         capacity,                                                                                  \
         sizeof(typeof(*(((self))->arr))),                                                          \
         alignof(typeof(*(((self))->arr))),                                                         \
         allocator                                                                                  \
+    ))
+
+#define list$new_static(self, buf, buf_len)                                                        \
+    (list.create_static(                                                                           \
+        (list_c*)self,                                                                             \
+        buf,                                                                                       \
+        buf_len,                                                                                   \
+        sizeof(typeof(*(((self))->arr))),                                                          \
+        alignof(typeof(*(((self))->arr)))                                                          \
     ))
 
 typedef struct
@@ -37,7 +46,7 @@ typedef struct
     {
         size_t magic : 16;
         size_t elsize : 16;
-        size_t elalign : 8;
+        size_t elalign : 16;
     } header;
     size_t count;
     size_t capacity;
@@ -56,6 +65,9 @@ struct __module__list
 
 Exception
 (*create)(list_c* self, size_t capacity, size_t elsize, size_t elalign, const Allocator_c* allocator);
+
+Exception
+(*create_static)(list_c* self, void* buf, size_t buf_len, size_t elsize, size_t elalign);
 
 Exception
 (*insert)(void* self, void* item, size_t index);
@@ -77,6 +89,9 @@ Exception
 
 size_t
 (*len)(void* self);
+
+size_t
+(*capacity)(void* self);
 
 void*
 (*destroy)(void* self);

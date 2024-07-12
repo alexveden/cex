@@ -4,6 +4,7 @@ static inline list_head_s*
 list__head(list_c* self)
 {
     uassert(self != NULL);
+    uassert(self->arr != NULL && "array is not initialized");
     list_head_s* head = (list_head_s*)((char*)self->arr - sizeof(list_head_s));
     uassert(head->header.magic == 0x1eed && "not a dlist / bad pointer");
     uassert(head->capacity > 0 && "zero capacity or memory corruption");
@@ -108,8 +109,7 @@ list_create(
         uassert(elsize < INT16_MAX && "element size if too high");
         return Error.argument;
     }
-    if (elalign == 0 || elalign > 64 || (elalign & (elalign - 1)) != 0) {
-        uassert(elalign <= 64 && "el align is too high");
+    if (elalign == 0 || (elalign & (elalign - 1)) != 0) {
         uassert((elalign & (elalign - 1)) == 0 && "elalign must be power of 2");
         uassert(elsize > 0 && "zero elsize");
         uassert(elalign > 0 && "zero elalign");
@@ -144,7 +144,60 @@ list_create(
     };
 
     list_c* d = (list_c*)self;
-    d->count = 0;
+    d->len = 0;
+    d->arr = list__elidx(head, 0);
+
+    return Error.ok;
+}
+
+Exception
+list_create_static(list_c* self, void* buf, size_t buf_len, size_t elsize, size_t elalign)
+{
+    if (self == NULL) {
+        uassert(self != NULL && "must not be NULL");
+        return Error.argument;
+    }
+
+    if (elsize == 0 || elsize > INT16_MAX) {
+        uassert(elsize > 0 && "zero elsize");
+        uassert(elsize < INT16_MAX && "element size if too high");
+        return Error.argument;
+    }
+    if (elalign == 0 || elalign > 64 || (elalign & (elalign - 1)) != 0) {
+        uassert(elalign <= 64 && "el align is too high");
+        uassert((elalign & (elalign - 1)) == 0 && "elalign must be power of 2");
+        uassert(elsize > 0 && "zero elsize");
+        uassert(elalign > 0 && "zero elalign");
+        return Error.argument;
+    }
+
+    // Clear dlist pointer
+    memset(self, 0, sizeof(list_c));
+
+    size_t offset = ((size_t)buf + sizeof(list_head_s)) % elalign;
+    if (offset != 0) {
+        offset = elalign - offset;
+    }
+
+    if (buf_len < sizeof(list_head_s) + offset + elsize) {
+        return Error.overflow;
+    }
+    size_t max_capacity = (buf_len - sizeof(list_head_s) - offset) / elsize;
+
+    list_head_s* head = (list_head_s*)((char*)buf + offset);
+    *head = (list_head_s){
+        .header = {
+            .magic = 0x1eed,
+            .elsize = elsize,
+            .elalign = elalign,
+        }, 
+        .count = 0, 
+        .capacity = max_capacity,
+        .allocator = NULL,
+    };
+
+    list_c* d = (list_c*)self;
+    d->len = 0;
     d->arr = list__elidx(head, 0);
 
     return Error.ok;
@@ -163,13 +216,16 @@ list_insert(void* self, void* item, size_t index)
     }
 
     if (head->count == head->capacity) {
+        if (head->allocator == NULL) {
+            return Error.overflow;
+        }
         size_t new_cap = list__alloc_capacity(head->capacity + 1);
         size_t alloc_size = list__alloc_size(new_cap, head->header.elsize, head->header.elalign);
         head = list__realloc(head, alloc_size);
         uassert(head->header.magic == 0x1eed && "head missing after realloc");
 
         if (head == NULL) {
-            d->count = 0;
+            d->len = 0;
             return Error.memory;
         }
 
@@ -188,7 +244,7 @@ list_insert(void* self, void* item, size_t index)
     memcpy(list__elidx(head, index), item, head->header.elsize);
 
     head->count++;
-    d->count = head->count;
+    d->len = head->count;
 
     return Error.ok;
 }
@@ -213,7 +269,7 @@ list_del(void* self, size_t index)
     }
 
     head->count--;
-    d->count = head->count;
+    d->len = head->count;
 
     return Error.ok;
 }
@@ -245,7 +301,7 @@ list_clear(void* self)
     list_c* d = (list_c*)self;
     list_head_s* head = list__head(self);
     head->count = 0;
-    d->count = 0;
+    d->len = 0;
 }
 
 Exception
@@ -261,6 +317,10 @@ list_extend(void* self, void* items, size_t nitems)
     }
 
     if (head->count + nitems > head->capacity) {
+        if (head->allocator == NULL) {
+            return Error.overflow;
+        }
+
         size_t new_cap = list__alloc_capacity(head->capacity + nitems);
 
         size_t alloc_size = list__alloc_size(new_cap, head->header.elsize, head->header.elalign);
@@ -268,16 +328,16 @@ list_extend(void* self, void* items, size_t nitems)
         uassert(head->header.magic == 0x1eed && "head missing after realloc");
 
         if (d->arr == NULL) {
-            d->count = 0;
+            d->len = 0;
             return Error.memory;
         }
 
         d->arr = list__elidx(head, 0);
         head->capacity = new_cap;
     }
-    memcpy(list__elidx(head, d->count), items, head->header.elsize * nitems);
+    memcpy(list__elidx(head, d->len), items, head->header.elsize * nitems);
     head->count += nitems;
-    d->count = head->count;
+    d->len = head->count;
 
     return Error.ok;
 }
@@ -287,8 +347,15 @@ list_len(void* self)
 {
     list_c* d = (list_c*)self;
     list_head_s* head = list__head(self);
-    d->count = head->count;
+    d->len = head->count;
     return head->count;
+}
+
+size_t
+list_capacity(void* self)
+{
+    list_head_s* head = list__head(self);
+    return head->capacity;
 }
 
 void*
@@ -299,14 +366,22 @@ list_destroy(void* self)
     if (self != NULL) {
         if (d->arr != NULL) {
             list_head_s* head = list__head(self);
+
             size_t offset = 0;
             if (head->header.elalign > sizeof(list_head_s)) {
                 offset = head->header.elalign - sizeof(list_head_s);
             }
+
             void* mptr = (char*)head - offset;
-            head->allocator->free(mptr);
+            if (head->allocator != NULL) {
+                // free only if it's a dynamic array
+                head->allocator->free(mptr);
+            } else {
+                // in static list reset head
+                memset(head, 0, sizeof(*head));
+            }
             d->arr = NULL;
-            d->count = 0;
+            d->len = 0;
         }
     }
 
@@ -336,7 +411,7 @@ list_iter(void* self, cex_iterator_s* iterator)
         ctx->cursor++;
     }
 
-    if (ctx->cursor >= d->count) {
+    if (ctx->cursor >= d->len) {
         return NULL;
     }
 
@@ -349,6 +424,7 @@ const struct __module__list list = {
     // Autogenerated by CEX
     // clang-format off
     .create = list_create,
+    .create_static = list_create_static,
     .insert = list_insert,
     .del = list_del,
     .sort = list_sort,
@@ -356,6 +432,7 @@ const struct __module__list list = {
     .clear = list_clear,
     .extend = list_extend,
     .len = list_len,
+    .capacity = list_capacity,
     .destroy = list_destroy,
     .iter = list_iter,
     // clang-format on
