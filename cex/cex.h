@@ -157,12 +157,17 @@ _uhf_errors_is_error__system(int syscall_res, int* out_result)
  */
 
 #ifdef CEXTEST
-// this prevents spamming on stderr (i.e. atest.h output stream in silent mode)
-#define UPERRORF_OUT__ stdout
+// this prevents spamming on stderr (i.e. cextest.h output stream in silent mode)
+#define CEXERRORF_OUT__ stdout
+#define uassert_disable() __cex_test_uassert_enabled = 0
+#define uassert_enable() __cex_test_uassert_enabled = 1
+#define uassert_is_enabled() (__cex_test_uassert_enabled)
 #else
-#define UPERRORF_OUT__ stderr
+#define uassert_disable() (void)0
+#define uassert_enable() (void)0
+#define uassert_is_enabled() true
+#define CEXERRORF_OUT__ stderr
 #endif
-
 
 #ifdef NDEBUG
 #define utracef(format, ...) ((void)(0))
@@ -181,15 +186,6 @@ _uhf_errors_is_error__system(int syscall_res, int* out_result)
 
 int __cex_test_uassert_enabled = 1;
 
-#ifdef CEXTEST
-#define uassert_disable() __cex_test_uassert_enabled = 0
-#define uassert_enable() __cex_test_uassert_enabled = 1
-#define uassert_is_enabled() (__cex_test_uassert_enabled)
-#else
-#define uassert_disable() (void)0
-#define uassert_enable() (void)0
-#define uassert_is_enabled() true
-#endif
 
 #ifdef __SANITIZE_ADDRESS__
 // This should be linked when gcc sanitizer enabled
@@ -204,7 +200,7 @@ void __sanitizer_print_stack_trace();
         if (unlikely(!((A)))) {                                                                    \
             if (uassert_is_enabled()) {                                                            \
                 __cex__fprintf(                                                                    \
-                    uassert_is_enabled() ? stderr : UPERRORF_OUT__,                                \
+                    uassert_is_enabled() ? stderr : CEXERRORF_OUT__,                                \
                     "[ASSERT] ( %s:%d %s() ) %s\n",                                                \
                     __FILENAME__,                                                                  \
                     __LINE__,                                                                      \
@@ -222,7 +218,7 @@ void __sanitizer_print_stack_trace();
         if (unlikely(!((A)))) {                                                                    \
             if (uassert_is_enabled()) {                                                            \
                 __cex__fprintf(                                                                    \
-                    uassert_is_enabled() ? stderr : UPERRORF_OUT__,                                \
+                    uassert_is_enabled() ? stderr : CEXERRORF_OUT__,                                \
                     "[ASSERT] ( %s:%d %s() ) " format "\n",                                        \
                     __FILENAME__,                                                                  \
                     __LINE__,                                                                      \
@@ -240,7 +236,7 @@ void __sanitizer_print_stack_trace();
     do {                                                                                           \
         if (unlikely(!((condition)))) {                                                            \
             __cex__fprintf(                                                                        \
-                UPERRORF_OUT__,                                                                    \
+                CEXERRORF_OUT__,                                                                    \
                 "[UERRCHK] ( %s:%d %s() ) Check failed: %s\n",                                     \
                 __FILENAME__,                                                                      \
                 __LINE__,                                                                          \

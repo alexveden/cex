@@ -11,6 +11,8 @@
 typedef struct
 {
     alignas(64) const Allocator_i base;
+    // below goes sanity check stuff
+    u64 magic;
     struct
     {
         u32 n_allocs;
@@ -21,7 +23,6 @@ typedef struct
         u32 n_open;
         u32 n_close;
     } stats;
-    u64 magic;
 } allocator_heap_s;
 _Static_assert(sizeof(allocator_heap_s) == 128, "size!");
 _Static_assert(offsetof(allocator_heap_s, base) == 0, "base must be the 1st struct member");
@@ -32,6 +33,7 @@ typedef struct
     void* mem;
     void* next;
     void* max;
+    // below goes sanity check stuff for debug builds
     u64 magic;
     struct
     {

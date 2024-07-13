@@ -9,7 +9,7 @@
 #define ALLOCATOR_STATIC_ARENA_MAGIC 0xFEED0003U
 
 static void* allocator_heap__malloc(size_t size);
-static void* allocator_heap__calloc(size_t nmemb,  size_t size);
+static void* allocator_heap__calloc(size_t nmemb, size_t size);
 static void* allocator_heap__aligned_malloc(size_t alignment, size_t size);
 static void* allocator_heap__realloc(void* ptr, size_t size);
 static void* allocator_heap__aligned_realloc(void* ptr, size_t alignment, size_t size);
@@ -20,7 +20,7 @@ static int allocator_heap__open(const char* pathname, int flags, mode_t mode);
 static int allocator_heap__close(int fd);
 
 static void* allocator_staticarena__malloc(size_t size);
-static void* allocator_staticarena__calloc(size_t nmemb,  size_t size);
+static void* allocator_staticarena__calloc(size_t nmemb, size_t size);
 static void* allocator_staticarena__aligned_malloc(size_t alignment, size_t size);
 static void* allocator_staticarena__realloc(void* ptr, size_t size);
 static void* allocator_staticarena__aligned_realloc(void* ptr, size_t alignment, size_t size);
@@ -71,7 +71,9 @@ allocators__heap__create(void)
 
     _allocator_c__heap.magic = ALLOCATOR_HEAP_MAGIC;
 
+#ifndef NDEBUG
     memset(&_allocator_c__heap.stats, 0, sizeof(_allocator_c__heap.stats));
+#endif
 
     return &_allocator_c__heap.base;
 }
@@ -83,7 +85,27 @@ allocators__heap__destroy(void)
     uassert(_allocator_c__heap.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
 
     _allocator_c__heap.magic = 0;
+
+#ifndef NDEBUG
     memset(&_allocator_c__heap.stats, 0, sizeof(_allocator_c__heap.stats));
+    allocator_heap_s* a = &_allocator_c__heap;
+    // NOTE: this message only shown if no DNDEBUG
+    if (a->stats.n_allocs != a->stats.n_free) {
+        utracef(
+            "Allocator: Possible memory leaks: number or memory allocs don't match with number of frees! "
+        );
+    }
+    if (a->stats.n_fopen != a->stats.n_fclose) {
+        utracef(
+            "Allocator: Possible FILE* leaks: number or allocator->fopen() != allocator->fclose()!"
+        );
+    }
+    if (a->stats.n_open != a->stats.n_close) {
+        utracef(
+            "Allocator: Possible file descriptor leaks: number or allocator->open() != allocator->close()!"
+        );
+    }
+#endif
 
     return NULL;
 }
@@ -94,16 +116,22 @@ allocator_heap__malloc(size_t size)
     uassert(_allocator_c__heap.magic != 0 && "Allocator not initialized");
     uassert(_allocator_c__heap.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
 
+#ifndef NDEBUG
     _allocator_c__heap.stats.n_allocs++;
+#endif
 
     return malloc(size);
 }
 
-static void* allocator_heap__calloc(size_t nmemb,  size_t size) {
+static void*
+allocator_heap__calloc(size_t nmemb, size_t size)
+{
     uassert(_allocator_c__heap.magic != 0 && "Allocator not initialized");
     uassert(_allocator_c__heap.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
 
+#ifndef NDEBUG
     _allocator_c__heap.stats.n_allocs++;
+#endif
 
     return calloc(nmemb, size);
 }
@@ -117,7 +145,9 @@ allocator_heap__aligned_malloc(size_t alignment, size_t size)
     uassert((alignment & (alignment - 1)) == 0 && "alignment must be power of 2");
     uassert(size % alignment == 0 && "size must be rounded to align");
 
+#ifndef NDEBUG
     _allocator_c__heap.stats.n_allocs++;
+#endif
 
     return aligned_alloc(alignment, size);
 }
@@ -128,7 +158,9 @@ allocator_heap__realloc(void* ptr, size_t size)
     uassert(_allocator_c__heap.magic != 0 && "Allocator not initialized");
     uassert(_allocator_c__heap.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
 
+#ifndef NDEBUG
     _allocator_c__heap.stats.n_reallocs++;
+#endif
 
     return realloc(ptr, size);
 }
@@ -143,7 +175,9 @@ allocator_heap__aligned_realloc(void* ptr, size_t alignment, size_t size)
     uassert(((size_t)ptr % alignment) == 0 && "aligned_realloc existing pointer unaligned");
     uassert(size % alignment == 0 && "size must be rounded to align");
 
+#ifndef NDEBUG
     _allocator_c__heap.stats.n_reallocs++;
+#endif
 
     // TODO: implement #ifdef MSVC it supports _aligned_realloc()
 
@@ -189,7 +223,10 @@ allocator_heap__free(void* ptr)
     uassert(_allocator_c__heap.magic != 0 && "Allocator not initialized");
     uassert(_allocator_c__heap.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
 
+#ifndef NDEBUG
     _allocator_c__heap.stats.n_free++;
+#endif
+
     free(ptr);
 }
 
@@ -202,9 +239,13 @@ allocator_heap__fopen(const char* filename, const char* mode)
     uassert(mode != NULL);
 
     FILE* res = fopen(filename, mode);
+
+#ifndef NDEBUG
     if (res != NULL) {
         _allocator_c__heap.stats.n_fopen++;
     }
+#endif
+
     return res;
 }
 
@@ -216,9 +257,13 @@ allocator_heap__open(const char* pathname, int flags, mode_t mode)
     uassert(pathname != NULL);
 
     int fd = open(pathname, flags, mode);
+
+#ifndef NDEBUG
     if (fd != -1) {
         _allocator_c__heap.stats.n_open++;
     }
+#endif
+
     return fd;
 }
 
@@ -229,9 +274,12 @@ allocator_heap__close(int fd)
     uassert(_allocator_c__heap.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
 
     int ret = close(fd);
+
+#ifndef NDEBUG
     if (ret != -1) {
         _allocator_c__heap.stats.n_close++;
     }
+#endif
 
     return ret;
 }
@@ -247,7 +295,10 @@ allocator_heap__fclose(FILE* f)
     uassert(f != stdout && "closing stdout");
     uassert(f != stderr && "closing stderr");
 
+#ifndef NDEBUG
     _allocator_c__heap.stats.n_fclose++;
+#endif
+
     return fclose(f);
 }
 
@@ -314,9 +365,26 @@ allocators__staticarena__destroy(void)
     a->mem = NULL;
     a->next = NULL;
     a->max = NULL;
+
+#ifndef NDEBUG
     memset(&_Allocator_i__static_arena.stats, 0, sizeof(_Allocator_i__static_arena.stats));
 
-    
+    if (a->stats.n_allocs != a->stats.n_free) {
+        utracef(
+            "Allocator: Possible memory leaks: number or memory allocs don't match with number of frees! "
+        );
+    }
+    if (a->stats.n_fopen != a->stats.n_fclose) {
+        utracef(
+            "Allocator: Possible FILE* leaks: number or allocator->fopen() != allocator->fclose()!"
+        );
+    }
+    if (a->stats.n_open != a->stats.n_close) {
+        utracef(
+            "Allocator: Possible file descriptor leaks: number or allocator->open() != allocator->close()!"
+        );
+    }
+#endif
 
     return NULL;
 }
@@ -362,6 +430,7 @@ allocator_staticarena__aligned_malloc(size_t alignment, size_t size)
 
     AllocatorStaticArena_c* a = &_Allocator_i__static_arena;
 
+
     if (size == 0) {
         uassert(size > 0 && "zero size");
         return NULL;
@@ -382,8 +451,14 @@ allocator_staticarena__aligned_malloc(size_t alignment, size_t size)
 
     void* ptr = (char*)a->next + alignment;
     a->next = (char*)ptr + size;
+
+#ifndef NDEBUG
+    a->stats.n_allocs++;
+#endif
+
     return ptr;
 }
+
 static void*
 allocator_staticarena__malloc(size_t size)
 {
@@ -404,6 +479,10 @@ allocator_staticarena__malloc(size_t size)
 
     u32 offset = (size % sizeof(size_t));
     a->next = (char*)a->next + size + (offset ? sizeof(size_t) - offset : 0);
+
+#ifndef NDEBUG
+    a->stats.n_allocs++;
+#endif
 
     return ptr;
 }
@@ -437,6 +516,10 @@ allocator_staticarena__calloc(size_t nmemb, size_t size)
 
     memset(ptr, 0, alloc_size);
 
+#ifndef NDEBUG
+    a->stats.n_allocs++;
+#endif
+
     return ptr;
 }
 
@@ -447,11 +530,15 @@ allocator_staticarena__fopen(const char* filename, const char* mode)
     uassert(filename != NULL);
     uassert(mode != NULL);
 
-    AllocatorStaticArena_c* a = &_Allocator_i__static_arena;
     FILE* res = fopen(filename, mode);
+
+#ifndef NDEBUG
     if (res != NULL) {
+        AllocatorStaticArena_c* a = &_Allocator_i__static_arena;
         a->stats.n_fopen++;
     }
+#endif
+
     return res;
 }
 
@@ -464,8 +551,11 @@ allocator_staticarena__fclose(FILE* f)
     uassert(f != stdout && "closing stdout");
     uassert(f != stderr && "closing stderr");
 
+#ifndef NDEBUG
     AllocatorStaticArena_c* a = &_Allocator_i__static_arena;
     a->stats.n_fclose++;
+#endif
+
     return fclose(f);
 }
 static int
@@ -476,9 +566,12 @@ allocator_staticarena__open(const char* pathname, int flags, mode_t mode)
     uassert(pathname != NULL);
 
     int fd = open(pathname, flags, mode);
+
+#ifndef NDEBUG
     if (fd != -1) {
         _Allocator_i__static_arena.stats.n_open++;
     }
+#endif
     return fd;
 }
 
@@ -489,9 +582,12 @@ allocator_staticarena__close(int fd)
     uassert(_Allocator_i__static_arena.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
 
     int ret = close(fd);
+
+#ifndef NDEBUG
     if (ret != -1) {
         _Allocator_i__static_arena.stats.n_close++;
     }
+#endif
 
     return ret;
 }
