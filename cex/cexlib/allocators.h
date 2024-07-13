@@ -46,9 +46,9 @@ typedef struct
         u32 n_close;
     } stats;
 
-} AllocatorStaticArena_c;
-_Static_assert(sizeof(AllocatorStaticArena_c) == 192, "size!");
-_Static_assert(offsetof(AllocatorStaticArena_c, base) == 0, "base must be the 1st struct member");
+} allocator_staticarena_s;
+_Static_assert(sizeof(allocator_staticarena_s) == 192, "size!");
+_Static_assert(offsetof(allocator_staticarena_s, base) == 0, "base must be the 1st struct member");
 
 struct __module__allocators
 {

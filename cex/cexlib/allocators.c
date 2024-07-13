@@ -31,31 +31,31 @@ static int allocator_staticarena__open(const char* pathname, int flags, mode_t m
 static int allocator_staticarena__close(int fd);
 
 static allocator_heap_s
-    _allocator_c__heap = { .base = {
-                               .malloc = allocator_heap__malloc,
-                               .malloc_aligned = allocator_heap__aligned_malloc,
-                               .realloc = allocator_heap__realloc,
-                               .realloc_aligned = allocator_heap__aligned_realloc,
-                               .calloc = allocator_heap__calloc,
-                               .free = allocator_heap__free,
-                               .fopen = allocator_heap__fopen,
-                               .fclose = allocator_heap__fclose,
-                               .open = allocator_heap__open,
-                               .close = allocator_heap__close,
-                           } };
-static AllocatorStaticArena_c
-    _Allocator_i__static_arena = { .base = {
-                                       .malloc = allocator_staticarena__malloc,
-                                       .malloc_aligned = allocator_staticarena__aligned_malloc,
-                                       .calloc = allocator_staticarena__calloc,
-                                       .realloc = allocator_staticarena__realloc,
-                                       .realloc_aligned = allocator_staticarena__aligned_realloc,
-                                       .free = allocator_staticarena__free,
-                                       .fopen = allocator_staticarena__fopen,
-                                       .fclose = allocator_staticarena__fclose,
-                                       .open = allocator_staticarena__open,
-                                       .close = allocator_staticarena__close,
-                                   } };
+    allocator__heap_data = { .base = {
+                                 .malloc = allocator_heap__malloc,
+                                 .malloc_aligned = allocator_heap__aligned_malloc,
+                                 .realloc = allocator_heap__realloc,
+                                 .realloc_aligned = allocator_heap__aligned_realloc,
+                                 .calloc = allocator_heap__calloc,
+                                 .free = allocator_heap__free,
+                                 .fopen = allocator_heap__fopen,
+                                 .fclose = allocator_heap__fclose,
+                                 .open = allocator_heap__open,
+                                 .close = allocator_heap__close,
+                             } };
+static allocator_staticarena_s
+    allocator__staticarena_data = { .base = {
+                                         .malloc = allocator_staticarena__malloc,
+                                         .malloc_aligned = allocator_staticarena__aligned_malloc,
+                                         .calloc = allocator_staticarena__calloc,
+                                         .realloc = allocator_staticarena__realloc,
+                                         .realloc_aligned = allocator_staticarena__aligned_realloc,
+                                         .free = allocator_staticarena__free,
+                                         .fopen = allocator_staticarena__fopen,
+                                         .fclose = allocator_staticarena__fclose,
+                                         .open = allocator_staticarena__open,
+                                         .close = allocator_staticarena__close,
+                                     } };
 
 /*
  *                  HEAP ALLOCATOR
@@ -67,44 +67,45 @@ static AllocatorStaticArena_c
 const Allocator_i*
 allocators__heap__create(void)
 {
-    uassert(_allocator_c__heap.magic == 0 && "Already initialized");
+    uassert(allocator__heap_data.magic == 0 && "Already initialized");
 
-    _allocator_c__heap.magic = ALLOCATOR_HEAP_MAGIC;
+    allocator__heap_data.magic = ALLOCATOR_HEAP_MAGIC;
 
 #ifndef NDEBUG
-    memset(&_allocator_c__heap.stats, 0, sizeof(_allocator_c__heap.stats));
+    memset(&allocator__heap_data.stats, 0, sizeof(allocator__heap_data.stats));
 #endif
 
-    return &_allocator_c__heap.base;
+    return &allocator__heap_data.base;
 }
 
 const Allocator_i*
 allocators__heap__destroy(void)
 {
-    uassert(_allocator_c__heap.magic != 0 && "Already destroyed");
-    uassert(_allocator_c__heap.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
+    uassert(allocator__heap_data.magic != 0 && "Already destroyed");
+    uassert(allocator__heap_data.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
 
-    _allocator_c__heap.magic = 0;
+    allocator__heap_data.magic = 0;
 
 #ifndef NDEBUG
-    memset(&_allocator_c__heap.stats, 0, sizeof(_allocator_c__heap.stats));
-    allocator_heap_s* a = &_allocator_c__heap;
+    allocator_heap_s* a = &allocator__heap_data;
     // NOTE: this message only shown if no DNDEBUG
     if (a->stats.n_allocs != a->stats.n_free) {
         utracef(
-            "Allocator: Possible memory leaks: number or memory allocs don't match with number of frees! "
+            "Allocator: Possible memory leaks: number or memory allocs don't match with number of frees! \n"
         );
     }
     if (a->stats.n_fopen != a->stats.n_fclose) {
         utracef(
-            "Allocator: Possible FILE* leaks: number or allocator->fopen() != allocator->fclose()!"
+            "Allocator: Possible FILE* leaks: number or allocator->fopen() != allocator->fclose()!\n"
         );
     }
     if (a->stats.n_open != a->stats.n_close) {
         utracef(
-            "Allocator: Possible file descriptor leaks: number or allocator->open() != allocator->close()!"
+            "Allocator: Possible file descriptor leaks: number or allocator->open() != allocator->close()!\n"
         );
     }
+
+    memset(&allocator__heap_data.stats, 0, sizeof(allocator__heap_data.stats));
 #endif
 
     return NULL;
@@ -113,11 +114,11 @@ allocators__heap__destroy(void)
 static void*
 allocator_heap__malloc(size_t size)
 {
-    uassert(_allocator_c__heap.magic != 0 && "Allocator not initialized");
-    uassert(_allocator_c__heap.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
+    uassert(allocator__heap_data.magic != 0 && "Allocator not initialized");
+    uassert(allocator__heap_data.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
 
 #ifndef NDEBUG
-    _allocator_c__heap.stats.n_allocs++;
+    allocator__heap_data.stats.n_allocs++;
 #endif
 
     return malloc(size);
@@ -126,11 +127,11 @@ allocator_heap__malloc(size_t size)
 static void*
 allocator_heap__calloc(size_t nmemb, size_t size)
 {
-    uassert(_allocator_c__heap.magic != 0 && "Allocator not initialized");
-    uassert(_allocator_c__heap.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
+    uassert(allocator__heap_data.magic != 0 && "Allocator not initialized");
+    uassert(allocator__heap_data.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
 
 #ifndef NDEBUG
-    _allocator_c__heap.stats.n_allocs++;
+    allocator__heap_data.stats.n_allocs++;
 #endif
 
     return calloc(nmemb, size);
@@ -139,14 +140,14 @@ allocator_heap__calloc(size_t nmemb, size_t size)
 static void*
 allocator_heap__aligned_malloc(size_t alignment, size_t size)
 {
-    uassert(_allocator_c__heap.magic != 0 && "Allocator not initialized");
-    uassert(_allocator_c__heap.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
+    uassert(allocator__heap_data.magic != 0 && "Allocator not initialized");
+    uassert(allocator__heap_data.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
     uassert(alignment > 0 && "alignment == 0");
     uassert((alignment & (alignment - 1)) == 0 && "alignment must be power of 2");
     uassert(size % alignment == 0 && "size must be rounded to align");
 
 #ifndef NDEBUG
-    _allocator_c__heap.stats.n_allocs++;
+    allocator__heap_data.stats.n_allocs++;
 #endif
 
     return aligned_alloc(alignment, size);
@@ -155,11 +156,11 @@ allocator_heap__aligned_malloc(size_t alignment, size_t size)
 static void*
 allocator_heap__realloc(void* ptr, size_t size)
 {
-    uassert(_allocator_c__heap.magic != 0 && "Allocator not initialized");
-    uassert(_allocator_c__heap.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
+    uassert(allocator__heap_data.magic != 0 && "Allocator not initialized");
+    uassert(allocator__heap_data.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
 
 #ifndef NDEBUG
-    _allocator_c__heap.stats.n_reallocs++;
+    allocator__heap_data.stats.n_reallocs++;
 #endif
 
     return realloc(ptr, size);
@@ -168,15 +169,15 @@ allocator_heap__realloc(void* ptr, size_t size)
 static void*
 allocator_heap__aligned_realloc(void* ptr, size_t alignment, size_t size)
 {
-    uassert(_allocator_c__heap.magic != 0 && "Allocator not initialized");
-    uassert(_allocator_c__heap.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
+    uassert(allocator__heap_data.magic != 0 && "Allocator not initialized");
+    uassert(allocator__heap_data.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
     uassert(alignment > 0 && "alignment == 0");
     uassert((alignment & (alignment - 1)) == 0 && "alignment must be power of 2");
     uassert(((size_t)ptr % alignment) == 0 && "aligned_realloc existing pointer unaligned");
     uassert(size % alignment == 0 && "size must be rounded to align");
 
 #ifndef NDEBUG
-    _allocator_c__heap.stats.n_reallocs++;
+    allocator__heap_data.stats.n_reallocs++;
 #endif
 
     // TODO: implement #ifdef MSVC it supports _aligned_realloc()
@@ -220,11 +221,13 @@ allocator_heap__aligned_realloc(void* ptr, size_t alignment, size_t size)
 static void
 allocator_heap__free(void* ptr)
 {
-    uassert(_allocator_c__heap.magic != 0 && "Allocator not initialized");
-    uassert(_allocator_c__heap.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
+    uassert(allocator__heap_data.magic != 0 && "Allocator not initialized");
+    uassert(allocator__heap_data.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
 
 #ifndef NDEBUG
-    _allocator_c__heap.stats.n_free++;
+    if (ptr != NULL) {
+        allocator__heap_data.stats.n_free++;
+    }
 #endif
 
     free(ptr);
@@ -233,8 +236,8 @@ allocator_heap__free(void* ptr)
 static FILE*
 allocator_heap__fopen(const char* filename, const char* mode)
 {
-    uassert(_allocator_c__heap.magic != 0 && "Allocator not initialized");
-    uassert(_allocator_c__heap.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
+    uassert(allocator__heap_data.magic != 0 && "Allocator not initialized");
+    uassert(allocator__heap_data.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
     uassert(filename != NULL);
     uassert(mode != NULL);
 
@@ -242,7 +245,7 @@ allocator_heap__fopen(const char* filename, const char* mode)
 
 #ifndef NDEBUG
     if (res != NULL) {
-        _allocator_c__heap.stats.n_fopen++;
+        allocator__heap_data.stats.n_fopen++;
     }
 #endif
 
@@ -252,15 +255,15 @@ allocator_heap__fopen(const char* filename, const char* mode)
 static int
 allocator_heap__open(const char* pathname, int flags, mode_t mode)
 {
-    uassert(_allocator_c__heap.magic != 0 && "Allocator not initialized");
-    uassert(_allocator_c__heap.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
+    uassert(allocator__heap_data.magic != 0 && "Allocator not initialized");
+    uassert(allocator__heap_data.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
     uassert(pathname != NULL);
 
     int fd = open(pathname, flags, mode);
 
 #ifndef NDEBUG
     if (fd != -1) {
-        _allocator_c__heap.stats.n_open++;
+        allocator__heap_data.stats.n_open++;
     }
 #endif
 
@@ -270,14 +273,14 @@ allocator_heap__open(const char* pathname, int flags, mode_t mode)
 static int
 allocator_heap__close(int fd)
 {
-    uassert(_allocator_c__heap.magic != 0 && "Allocator not initialized");
-    uassert(_allocator_c__heap.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
+    uassert(allocator__heap_data.magic != 0 && "Allocator not initialized");
+    uassert(allocator__heap_data.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
 
     int ret = close(fd);
 
 #ifndef NDEBUG
     if (ret != -1) {
-        _allocator_c__heap.stats.n_close++;
+        allocator__heap_data.stats.n_close++;
     }
 #endif
 
@@ -287,8 +290,8 @@ allocator_heap__close(int fd)
 static int
 allocator_heap__fclose(FILE* f)
 {
-    uassert(_allocator_c__heap.magic != 0 && "Allocator not initialized");
-    uassert(_allocator_c__heap.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
+    uassert(allocator__heap_data.magic != 0 && "Allocator not initialized");
+    uassert(allocator__heap_data.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
 
     uassert(f != NULL);
     uassert(f != stdin && "closing stdin");
@@ -296,7 +299,7 @@ allocator_heap__fclose(FILE* f)
     uassert(f != stderr && "closing stderr");
 
 #ifndef NDEBUG
-    _allocator_c__heap.stats.n_fclose++;
+    allocator__heap_data.stats.n_fclose++;
 #endif
 
     return fclose(f);
@@ -325,12 +328,12 @@ allocator_heap__fclose(FILE* f)
 const Allocator_i*
 allocators__staticarena__create(char* buffer, size_t capacity)
 {
-    uassert(_Allocator_i__static_arena.magic == 0 && "Already initialized");
+    uassert(allocator__staticarena_data.magic == 0 && "Already initialized");
 
     uassert(capacity >= 1024 && "capacity is too low");
     uassert(((capacity & (capacity - 1)) == 0) && "must be power of 2");
 
-    AllocatorStaticArena_c* a = &_Allocator_i__static_arena;
+    allocator_staticarena_s* a = &allocator__staticarena_data;
 
     a->magic = ALLOCATOR_STATIC_ARENA_MAGIC;
 
@@ -356,34 +359,40 @@ allocators__staticarena__create(char* buffer, size_t capacity)
 const Allocator_i*
 allocators__staticarena__destroy(void)
 {
-    uassert(_Allocator_i__static_arena.magic != 0 && "Allocator not initialized");
-    uassert(_Allocator_i__static_arena.magic == ALLOCATOR_STATIC_ARENA_MAGIC && "bad type!");
+    uassert(allocator__staticarena_data.magic != 0 && "Allocator not initialized");
+    uassert(allocator__staticarena_data.magic == ALLOCATOR_STATIC_ARENA_MAGIC && "bad type!");
 
 
-    AllocatorStaticArena_c* a = &_Allocator_i__static_arena;
+    allocator_staticarena_s* a = &allocator__staticarena_data;
     a->magic = 0;
     a->mem = NULL;
     a->next = NULL;
     a->max = NULL;
 
 #ifndef NDEBUG
-    memset(&_Allocator_i__static_arena.stats, 0, sizeof(_Allocator_i__static_arena.stats));
-
     if (a->stats.n_allocs != a->stats.n_free) {
         utracef(
-            "Allocator: Possible memory leaks: number or memory allocs don't match with number of frees! "
+            "Allocator: Possible memory leaks/double free: memory allocator->allocs() [%d] != allocator->free() [%d] count! \n",
+            a->stats.n_allocs,
+            a->stats.n_free
         );
     }
     if (a->stats.n_fopen != a->stats.n_fclose) {
         utracef(
-            "Allocator: Possible FILE* leaks: number or allocator->fopen() != allocator->fclose()!"
+            "Allocator: Possible FILE* leaks: allocator->fopen() [%d] != allocator->fclose() [%d]!\n",
+            a->stats.n_fopen,
+            a->stats.n_fclose
         );
     }
     if (a->stats.n_open != a->stats.n_close) {
         utracef(
-            "Allocator: Possible file descriptor leaks: number or allocator->open() != allocator->close()!"
+            "Allocator: Possible file descriptor leaks: allocator->open() [%d] != allocator->close() [%d]!\n",
+            a->stats.n_open,
+            a->stats.n_close
         );
     }
+
+    memset(&allocator__staticarena_data.stats, 0, sizeof(allocator__staticarena_data.stats));
 #endif
 
     return NULL;
@@ -396,8 +405,8 @@ allocator_staticarena__aligned_realloc(void* ptr, size_t alignment, size_t size)
     (void)ptr;
     (void)size;
     (void)alignment;
-    uassert(_Allocator_i__static_arena.magic != 0 && "Allocator not initialized");
-    uassert(_Allocator_i__static_arena.magic == ALLOCATOR_STATIC_ARENA_MAGIC && "bad type!");
+    uassert(allocator__staticarena_data.magic != 0 && "Allocator not initialized");
+    uassert(allocator__staticarena_data.magic == ALLOCATOR_STATIC_ARENA_MAGIC && "bad type!");
     uassert(false && "realloc is not supported by static arena allocator");
 
     return NULL;
@@ -407,8 +416,8 @@ allocator_staticarena__realloc(void* ptr, size_t size)
 {
     (void)ptr;
     (void)size;
-    uassert(_Allocator_i__static_arena.magic != 0 && "Allocator not initialized");
-    uassert(_Allocator_i__static_arena.magic == ALLOCATOR_STATIC_ARENA_MAGIC && "bad type!");
+    uassert(allocator__staticarena_data.magic != 0 && "Allocator not initialized");
+    uassert(allocator__staticarena_data.magic == ALLOCATOR_STATIC_ARENA_MAGIC && "bad type!");
     uassert(false && "realloc is not supported by static arena allocator");
 
     return NULL;
@@ -418,17 +427,26 @@ static void
 allocator_staticarena__free(void* ptr)
 {
     (void)ptr;
-    uassert(_Allocator_i__static_arena.magic != 0 && "Allocator not initialized");
-    uassert(_Allocator_i__static_arena.magic == ALLOCATOR_STATIC_ARENA_MAGIC && "bad type!");
+    uassert(allocator__staticarena_data.magic != 0 && "Allocator not initialized");
+    uassert(allocator__staticarena_data.magic == ALLOCATOR_STATIC_ARENA_MAGIC && "bad type!");
+
+#ifndef NDEBUG
+    allocator_staticarena_s* a = &allocator__staticarena_data;
+    if(ptr != NULL){
+        a->stats.n_free++;
+    }
+#endif
 }
 
 static void*
 allocator_staticarena__aligned_malloc(size_t alignment, size_t size)
 {
+    uassert(allocator__staticarena_data.magic != 0 && "not initialized");
+    uassert(allocator__staticarena_data.magic == ALLOCATOR_STATIC_ARENA_MAGIC && "Allocator type!");
     uassert(alignment > 0 && "alignment == 0");
     uassert((alignment & (alignment - 1)) == 0 && "alignment must be power of 2");
 
-    AllocatorStaticArena_c* a = &_Allocator_i__static_arena;
+    allocator_staticarena_s* a = &allocator__staticarena_data;
 
 
     if (size == 0) {
@@ -462,9 +480,10 @@ allocator_staticarena__aligned_malloc(size_t alignment, size_t size)
 static void*
 allocator_staticarena__malloc(size_t size)
 {
-    uassert(_Allocator_i__static_arena.magic != 0 && "not initialized");
+    uassert(allocator__staticarena_data.magic != 0 && "not initialized");
+    uassert(allocator__staticarena_data.magic == ALLOCATOR_STATIC_ARENA_MAGIC && "Allocator type!");
 
-    AllocatorStaticArena_c* a = &_Allocator_i__static_arena;
+    allocator_staticarena_s* a = &allocator__staticarena_data;
 
     if (size == 0) {
         uassert(size > 0 && "zero size");
@@ -490,9 +509,10 @@ allocator_staticarena__malloc(size_t size)
 static void*
 allocator_staticarena__calloc(size_t nmemb, size_t size)
 {
-    uassert(_Allocator_i__static_arena.magic != 0 && "not initialized");
+    uassert(allocator__staticarena_data.magic != 0 && "not initialized");
+    uassert(allocator__staticarena_data.magic == ALLOCATOR_STATIC_ARENA_MAGIC && "Allocator type!");
 
-    AllocatorStaticArena_c* a = &_Allocator_i__static_arena;
+    allocator_staticarena_s* a = &allocator__staticarena_data;
 
     size_t alloc_size = nmemb * size;
     if (nmemb != 0 && alloc_size / nmemb != size) {
@@ -511,8 +531,8 @@ allocator_staticarena__calloc(size_t nmemb, size_t size)
         return NULL;
     }
 
-    u32 offset = (size % sizeof(size_t));
-    a->next = (char*)a->next + size + (offset ? sizeof(size_t) - offset : 0);
+    u32 offset = (alloc_size % sizeof(size_t));
+    a->next = (char*)a->next + alloc_size + (offset ? sizeof(size_t) - offset : 0);
 
     memset(ptr, 0, alloc_size);
 
@@ -526,7 +546,8 @@ allocator_staticarena__calloc(size_t nmemb, size_t size)
 static FILE*
 allocator_staticarena__fopen(const char* filename, const char* mode)
 {
-    uassert(_Allocator_i__static_arena.magic != 0 && "not initialized");
+    uassert(allocator__staticarena_data.magic != 0 && "Allocator not initialized");
+    uassert(allocator__staticarena_data.magic == ALLOCATOR_STATIC_ARENA_MAGIC && "Allocator type!");
     uassert(filename != NULL);
     uassert(mode != NULL);
 
@@ -534,7 +555,7 @@ allocator_staticarena__fopen(const char* filename, const char* mode)
 
 #ifndef NDEBUG
     if (res != NULL) {
-        AllocatorStaticArena_c* a = &_Allocator_i__static_arena;
+        allocator_staticarena_s* a = &allocator__staticarena_data;
         a->stats.n_fopen++;
     }
 #endif
@@ -545,14 +566,16 @@ allocator_staticarena__fopen(const char* filename, const char* mode)
 static int
 allocator_staticarena__fclose(FILE* f)
 {
-    uassert(_Allocator_i__static_arena.magic != 0 && "not initialized");
+    uassert(allocator__staticarena_data.magic != 0 && "Allocator not initialized");
+    uassert(allocator__staticarena_data.magic == ALLOCATOR_STATIC_ARENA_MAGIC && "Allocator type!");
+
     uassert(f != NULL);
     uassert(f != stdin && "closing stdin");
     uassert(f != stdout && "closing stdout");
     uassert(f != stderr && "closing stderr");
 
 #ifndef NDEBUG
-    AllocatorStaticArena_c* a = &_Allocator_i__static_arena;
+    allocator_staticarena_s* a = &allocator__staticarena_data;
     a->stats.n_fclose++;
 #endif
 
@@ -561,15 +584,15 @@ allocator_staticarena__fclose(FILE* f)
 static int
 allocator_staticarena__open(const char* pathname, int flags, mode_t mode)
 {
-    uassert(_Allocator_i__static_arena.magic != 0 && "Allocator not initialized");
-    uassert(_Allocator_i__static_arena.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
+    uassert(allocator__staticarena_data.magic != 0 && "Allocator not initialized");
+    uassert(allocator__staticarena_data.magic == ALLOCATOR_STATIC_ARENA_MAGIC && "Allocator type!");
     uassert(pathname != NULL);
 
     int fd = open(pathname, flags, mode);
 
 #ifndef NDEBUG
     if (fd != -1) {
-        _Allocator_i__static_arena.stats.n_open++;
+        allocator__staticarena_data.stats.n_open++;
     }
 #endif
     return fd;
@@ -578,14 +601,14 @@ allocator_staticarena__open(const char* pathname, int flags, mode_t mode)
 static int
 allocator_staticarena__close(int fd)
 {
-    uassert(_Allocator_i__static_arena.magic != 0 && "Allocator not initialized");
-    uassert(_Allocator_i__static_arena.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
+    uassert(allocator__staticarena_data.magic != 0 && "Allocator not initialized");
+    uassert(allocator__staticarena_data.magic == ALLOCATOR_STATIC_ARENA_MAGIC && "Allocator type!");
 
     int ret = close(fd);
 
 #ifndef NDEBUG
     if (ret != -1) {
-        _Allocator_i__static_arena.stats.n_close++;
+        allocator__staticarena_data.stats.n_close++;
     }
 #endif
 
