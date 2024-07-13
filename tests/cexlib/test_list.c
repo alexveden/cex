@@ -52,7 +52,7 @@ ATEST_F(testlist_alloc_capacity)
 
 ATEST_F(testlist_new)
 {
-    const Allocator_c* allocator = AllocatorHeap_new();
+    const Allocator_i* allocator = AllocatorHeap_new();
     list$define(int) a;
 
     except_traceback(err, list$new(&a, 5, allocator))
@@ -79,7 +79,7 @@ ATEST_F(testlist_new)
 
 ATEST_F(testlist_append)
 {
-    const Allocator_c* allocator = AllocatorHeap_new();
+    const Allocator_i* allocator = AllocatorHeap_new();
     list$define(int) a;
 
     except_traceback(err, list$new(&a, 4, allocator))
@@ -124,7 +124,7 @@ ATEST_F(testlist_append)
 
 ATEST_F(testlist_insert)
 {
-    const Allocator_c* allocator = AllocatorHeap_new();
+    const Allocator_i* allocator = AllocatorHeap_new();
     list$define(int) a;
 
     except_traceback(err, list$new(&a, 4, allocator))
@@ -180,7 +180,7 @@ ATEST_F(testlist_insert)
 
 ATEST_F(testlist_del)
 {
-    const Allocator_c* allocator = AllocatorHeap_new();
+    const Allocator_i* allocator = AllocatorHeap_new();
     list$define(int) a;
 
     except_traceback(err, list$new(&a, 4, allocator))
@@ -251,7 +251,7 @@ int test_int_cmp(const void* a, const void* b){
 
 ATEST_F(testlist_sort)
 {
-    const Allocator_c* allocator = AllocatorHeap_new();
+    const Allocator_i* allocator = AllocatorHeap_new();
     list$define(int) a;
 
     except_traceback(err, list$new(&a, 4, allocator))
@@ -286,7 +286,7 @@ ATEST_F(testlist_sort)
 
 ATEST_F(testlist_extend)
 {
-    const Allocator_c* allocator = AllocatorHeap_new();
+    const Allocator_i* allocator = AllocatorHeap_new();
 
     list$define(int) a;
     except_traceback(err, list$new(&a, 4, allocator))
@@ -331,7 +331,7 @@ ATEST_F(testlist_extend)
 
 ATEST_F(testlist_iterator)
 {
-    const Allocator_c* allocator = AllocatorHeap_new();
+    const Allocator_i* allocator = AllocatorHeap_new();
 
     list$define(int) a;
     except_traceback(err, list$new(&a,  4, allocator))
@@ -411,7 +411,7 @@ ATEST_F(testlist_iterator)
 
 ATEST_F(testlist_align256)
 {
-    const Allocator_c* allocator = AllocatorHeap_new();
+    const Allocator_i* allocator = AllocatorHeap_new();
 
     struct foo64
     {
@@ -470,7 +470,7 @@ ATEST_F(testlist_align256)
 
 ATEST_F(testlist_align64)
 {
-    const Allocator_c* allocator = AllocatorHeap_new();
+    const Allocator_i* allocator = AllocatorHeap_new();
 
     struct foo64
     {
@@ -529,7 +529,7 @@ ATEST_F(testlist_align64)
 
 ATEST_F(testlist_align16)
 {
-    const Allocator_c* allocator = AllocatorHeap_new();
+    const Allocator_i* allocator = AllocatorHeap_new();
 
     struct foo64
     {

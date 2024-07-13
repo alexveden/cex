@@ -326,19 +326,23 @@ _Static_assert(sizeof(cex_iterator_s) == 64, "cex size");
 
 
 /*
- *                 ALLOCATORS
+ *                 RESOURCE ALLOCATORS
  */
 
-typedef struct Allocator_c
+typedef struct Allocator_i
 {
-    u64 magic;
-    void* (*alloc)(size_t size);
+    // >>> cacheline
+    void* (*malloc)(size_t size);
+    void* (*calloc)(size_t nmemb, size_t size);
     void* (*realloc)(void* ptr, size_t new_size);
-    void* (*alloc_aligned)(size_t alignment, size_t size);
+    void* (*malloc_aligned)(size_t alignment, size_t size);
     void* (*realloc_aligned)(void* ptr, size_t alignment, size_t new_size);
     void (*free)(void* ptr);
     FILE* (*fopen)(const char* filename, const char* mode);
+    int (*open)(const char *pathname, int flags, mode_t mode);
+    //<<< 64 byte cacheline
     int (*fclose)(FILE* stream);
-    // TODO: consider adding open/close - for tracking open handles
-} Allocator_c;
-_Static_assert(sizeof(Allocator_c) == 64, "size!");
+    int (*close)(int fd);
+} Allocator_i;
+_Static_assert(sizeof(Allocator_i) == 80, "size");
+_Static_assert(alignof(Allocator_i) == 8, "size");

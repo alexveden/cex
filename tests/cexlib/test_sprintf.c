@@ -35,7 +35,7 @@
 #define CHECK1(str, v1                                ) { int ret = SPRINTF(buf, v1                                ); CHECK_END(str); }
 
 
-const Allocator_c* allocator;
+const Allocator_i* allocator;
 /*
 * SUITE INIT / SHUTDOWN
 */

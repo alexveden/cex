@@ -92,7 +92,7 @@ dict_create(
     size_t capacity,
     dict_hash_func_f hash_func,
     dict_compare_func_f compare_func,
-    const Allocator_c* allocator,
+    const Allocator_i* allocator,
     dict_elfree_func_f elfree,
     void* udata
 )
@@ -312,7 +312,7 @@ dict_iter(dict_c* self, cex_iterator_s* iterator)
 }
 
 Exception
-dict_tolist(dict_c* self, void* listptr, const Allocator_c* allocator)
+dict_tolist(dict_c* self, void* listptr, const Allocator_i* allocator)
 {
     if(self == NULL || listptr == NULL || allocator == NULL) {
         return Error.argument;

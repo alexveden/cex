@@ -6,7 +6,7 @@
 #include <cex/cexlib/sbuf.h>
 
 
-FAKE_VALUE_FUNC(Exc, sbuf_create, sbuf_c*, u32, const Allocator_c*)
+FAKE_VALUE_FUNC(Exc, sbuf_create, sbuf_c*, u32, const Allocator_i*)
 FAKE_VALUE_FUNC(Exc, sbuf_create_static, sbuf_c*, char*, size_t)
 FAKE_VALUE_FUNC(Exc, sbuf_grow, sbuf_c*, u32)
 FAKE_VALUE_FUNC(Exc, sbuf_append_c, sbuf_c*, char*)

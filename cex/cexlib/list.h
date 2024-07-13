@@ -50,7 +50,7 @@ typedef struct
     } header;
     size_t count;
     size_t capacity;
-    const Allocator_c* allocator;
+    const Allocator_i* allocator;
     // NOTE: we must use packed struct, because elements of the list my have absolutely different
     // alignment, so the list_head_s takes place at (void*)1st_el - sizeof(list_head_s)
 } __attribute__((packed)) list_head_s;
@@ -64,7 +64,7 @@ struct __module__list
     // clang-format off
 
 Exception
-(*create)(list_c* self, size_t capacity, size_t elsize, size_t elalign, const Allocator_c* allocator);
+(*create)(list_c* self, size_t capacity, size_t elsize, size_t elalign, const Allocator_i* allocator);
 
 Exception
 (*create_static)(list_c* self, void* buf, size_t buf_len, size_t elsize, size_t elalign);

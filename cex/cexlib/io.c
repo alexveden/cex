@@ -5,7 +5,7 @@
 #include <unistd.h>
 
 Exception
-io_fopen(io_c* self, const char* filename, const char* mode, const Allocator_c* allocator)
+io_fopen(io_c* self, const char* filename, const char* mode, const Allocator_i* allocator)
 {
     if (self == NULL) {
         uassert(self != NULL);
@@ -39,7 +39,7 @@ io_fopen(io_c* self, const char* filename, const char* mode, const Allocator_c* 
 }
 
 Exception
-io_fattach(io_c* self, FILE* fh, const Allocator_c* allocator)
+io_fattach(io_c* self, FILE* fh, const Allocator_i* allocator)
 {
     if (self == NULL) {
         uassert(self != NULL);

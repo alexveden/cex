@@ -14,7 +14,7 @@ FAKE_VALUE_FUNC(int, __wrap_hm_str_static_compare, const void*, const void*, voi
 
 FAKE_VALUE_FUNC(u64, __wrap_hm_str_static_hash, const void*, u64, u64)u64 __real_hm_str_static_hash(const void*, u64, u64);
 
-FAKE_VALUE_FUNC(Exc, __wrap_dict_create, dict_c*, size_t, size_t, size_t, size_t, dict_hash_func_f, dict_compare_func_f, const Allocator_c*, dict_elfree_func_f, void*)Exception __real_dict_create(dict_c*, size_t, size_t, size_t, size_t, dict_hash_func_f, dict_compare_func_f, const Allocator_c*, dict_elfree_func_f, void*);
+FAKE_VALUE_FUNC(Exc, __wrap_dict_create, dict_c*, size_t, size_t, size_t, size_t, dict_hash_func_f, dict_compare_func_f, const Allocator_i*, dict_elfree_func_f, void*)Exception __real_dict_create(dict_c*, size_t, size_t, size_t, size_t, dict_hash_func_f, dict_compare_func_f, const Allocator_i*, dict_elfree_func_f, void*);
 
 FAKE_VALUE_FUNC(Exc, __wrap_dict_set, dict_c*, const void*)Exception __real_dict_set(dict_c*, const void*);
 
@@ -34,7 +34,7 @@ FAKE_VALUE_FUNC(void*, __wrap_dict_del, dict_c*, const void*)void* __real_dict_d
 
 FAKE_VALUE_FUNC(void*, __wrap_dict_iter, dict_c*, cex_iterator_s*)void* __real_dict_iter(dict_c*, cex_iterator_s*);
 
-FAKE_VALUE_FUNC(Exc, __wrap_dict_tolist, dict_c*, void*, const Allocator_c*)Exception __real_dict_tolist(dict_c*, void*, const Allocator_c*);
+FAKE_VALUE_FUNC(Exc, __wrap_dict_tolist, dict_c*, void*, const Allocator_i*)Exception __real_dict_tolist(dict_c*, void*, const Allocator_i*);
 
 
 const struct __module__dict dict = {

@@ -16,7 +16,7 @@ typedef struct
     size_t idx_tail;
     size_t max_capacity; // maximum capacity when deque stops growing (must be pow of 2!)
     size_t capacity;
-    const Allocator_c* allocator; // can be NULL for static deque
+    const Allocator_i* allocator; // can be NULL for static deque
 } deque_head_s;
 _Static_assert(sizeof(deque_head_s) == 64, "size");
 _Static_assert(alignof(deque_head_s) == 64, "align");
@@ -51,7 +51,7 @@ Exception
 (*validate)(deque_c *self);
 
 Exception
-(*create)(deque_c* self, size_t max_capacity, bool rewrite_overflowed, size_t elsize, size_t elalign, const Allocator_c* allocator);
+(*create)(deque_c* self, size_t max_capacity, bool rewrite_overflowed, size_t elsize, size_t elalign, const Allocator_i* allocator);
 
 Exception
 (*create_static)(deque_c* self, void* buf, size_t buf_len, bool rewrite_overflowed, size_t elsize, size_t elalign);

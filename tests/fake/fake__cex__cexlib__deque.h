@@ -7,7 +7,7 @@
 
 
 FAKE_VALUE_FUNC(Exc, deque_validate, deque_c)
-FAKE_VALUE_FUNC(Exc, deque_create, deque_c*, size_t, bool, size_t, size_t, const Allocator_c*)
+FAKE_VALUE_FUNC(Exc, deque_create, deque_c*, size_t, bool, size_t, size_t, const Allocator_i*)
 FAKE_VALUE_FUNC(Exc, deque_create_static, deque_c*, void*, size_t, bool, size_t, size_t)
 FAKE_VALUE_FUNC(Exc, deque_append, deque_c*, const void*)
 FAKE_VALUE_FUNC(Exc, deque_enqueue, deque_c*, const void*)

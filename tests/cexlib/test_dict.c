@@ -13,7 +13,7 @@ DEFINE_FFF_GLOBALS
 
 FAKE_VALUE_FUNC(void*, my_alloc, size_t)
 
-const Allocator_c* allocator;
+const Allocator_i* allocator;
 /*
  * SUITE INIT / SHUTDOWN
  */

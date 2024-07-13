@@ -7,7 +7,7 @@
 #include <cex/cextest/cextest.h>
 #include <stdio.h>
 
-const Allocator_c* allocator;
+const Allocator_i* allocator;
 /*
  * SUITE INIT / SHUTDOWN
  */

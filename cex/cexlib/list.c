@@ -91,7 +91,7 @@ list_create(
     size_t capacity,
     size_t elsize,
     size_t elalign,
-    const Allocator_c* allocator
+    const Allocator_i* allocator
 )
 {
     if (self == NULL) {

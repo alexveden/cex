@@ -106,7 +106,7 @@ deque_create(
     bool rewrite_overflowed,
     size_t elsize,
     size_t elalign,
-    const Allocator_c* allocator
+    const Allocator_i* allocator
 )
 {
     if (self == NULL) {

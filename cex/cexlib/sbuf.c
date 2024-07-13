@@ -68,7 +68,7 @@ sbuf__grow_buffer(sbuf_c* self, u32 length)
 }
 
 Exception
-sbuf_create(sbuf_c* self, u32 capacity, const Allocator_c* allocator)
+sbuf_create(sbuf_c* self, u32 capacity, const Allocator_i* allocator)
 {
     uassert(self != NULL);
     uassert(capacity != 0);

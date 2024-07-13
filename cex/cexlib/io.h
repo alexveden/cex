@@ -10,7 +10,7 @@ typedef struct io_c
     size_t _fsize;
     char* _fbuf;
     size_t _fbuf_size;
-    const Allocator_c* _allocator;
+    const Allocator_i* _allocator;
     struct
     {
         u32 is_attached : 1;
@@ -25,10 +25,10 @@ struct __module__io
     // clang-format off
 
 Exception
-(*fopen)(io_c* self, const char* filename, const char* mode, const Allocator_c* allocator);
+(*fopen)(io_c* self, const char* filename, const char* mode, const Allocator_i* allocator);
 
 Exception
-(*fattach)(io_c* self, FILE* fh, const Allocator_c* allocator);
+(*fattach)(io_c* self, FILE* fh, const Allocator_i* allocator);
 
 int
 (*fileno)(io_c* self);

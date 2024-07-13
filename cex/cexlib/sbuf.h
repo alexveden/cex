@@ -15,7 +15,7 @@ typedef struct
     } header;
     u32 length;
     u32 capacity;
-    const Allocator_c* allocator;
+    const Allocator_i* allocator;
 } __attribute__((packed)) sbuf_head_s;
 
 _Static_assert(sizeof(sbuf_head_s) == 20, "size");
@@ -29,7 +29,7 @@ struct __module__sbuf
     // clang-format off
 
 Exception
-(*create)(sbuf_c* self, u32 capacity, const Allocator_c* allocator);
+(*create)(sbuf_c* self, u32 capacity, const Allocator_i* allocator);
 
 Exception
 (*create_static)(sbuf_c* self, char* buf, size_t buf_size);

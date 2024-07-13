@@ -49,7 +49,7 @@ struct __module__dict
     // clang-format off
 
 Exception
-(*create)(dict_c* self, size_t item_size, size_t item_align, size_t item_key_offsetof, size_t capacity, dict_hash_func_f hash_func, dict_compare_func_f compare_func, const Allocator_c* allocator, dict_elfree_func_f elfree, void* udata);
+(*create)(dict_c* self, size_t item_size, size_t item_align, size_t item_key_offsetof, size_t capacity, dict_hash_func_f hash_func, dict_compare_func_f compare_func, const Allocator_i* allocator, dict_elfree_func_f elfree, void* udata);
 
 /**
  * @brief Set or replace dict item
@@ -127,7 +127,7 @@ void*
 (*iter)(dict_c* self, cex_iterator_s* iterator);
 
 Exception
-(*tolist)(dict_c* self, void* listptr, const Allocator_c* allocator);
+(*tolist)(dict_c* self, void* listptr, const Allocator_i* allocator);
 
     // clang-format on
 };
