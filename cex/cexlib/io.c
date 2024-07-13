@@ -240,7 +240,7 @@ io_readall(io_c* self, str_c* s)
     size_t exp_size = self->_fsize + 1 + 15;
 
     if (self->_fbuf == NULL) {
-        self->_fbuf = self->_allocator->alloc(exp_size);
+        self->_fbuf = self->_allocator->malloc(exp_size);
         self->_fbuf_size = exp_size;
     } else {
         if (self->_fbuf_size < exp_size) {
@@ -308,7 +308,7 @@ io_readline(io_c* self, str_c* s)
             if (self->_fbuf == NULL) {
                 uassert(cursor == 0 && "no buf, cursor expected 0");
 
-                self->_fbuf = buf = self->_allocator->alloc(4096);
+                self->_fbuf = buf = self->_allocator->malloc(4096);
                 if (self->_fbuf == NULL) {
                     result = Error.memory;
                     goto fail;

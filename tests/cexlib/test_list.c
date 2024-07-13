@@ -5,21 +5,21 @@
 #include <cex/cexlib/allocators.c>
 #include <stdio.h>
 
+const Allocator_i* allocator;
 /*
  * SUITE INIT / SHUTDOWN
  */
 void
 my_test_shutdown_func(void)
 {
-    // instead of printf(....) consider to use alogf() it's more structural and contains line
-    // source:lnumber reference atlogf("atest_shutdown()\n");
+    allocator = allocators.heap.destroy();
 }
 
 ATEST_SETUP_F(void)
 {
-    // atlogf("atest_setup()\n");
+    uassert_enable();
+    allocator = allocators.heap.create();
 
-    // return NULL;   // if no shutdown logic needed
     return &my_test_shutdown_func; // return pointer to void some_shutdown_func(void)
 }
 
@@ -52,7 +52,6 @@ ATEST_F(testlist_alloc_capacity)
 
 ATEST_F(testlist_new)
 {
-    const Allocator_i* allocator = AllocatorHeap_new();
     list$define(int) a;
 
     except_traceback(err, list$new(&a, 5, allocator))
@@ -72,14 +71,12 @@ ATEST_F(testlist_new)
     atassert(head->allocator == allocator);
 
     list.destroy(&a);
-    AllocatorHeap_free();
 
     return NULL; // Every ATEST_F() must return NULL to succeed!
 }
 
 ATEST_F(testlist_append)
 {
-    const Allocator_i* allocator = AllocatorHeap_new();
     list$define(int) a;
 
     except_traceback(err, list$new(&a, 4, allocator))
@@ -117,14 +114,12 @@ ATEST_F(testlist_append)
     atassert_eqi(head->capacity, 8);
 
     list.destroy(&a);
-    AllocatorHeap_free();
 
     return NULL; // Every ATEST_F() must return NULL to succeed!
 }
 
 ATEST_F(testlist_insert)
 {
-    const Allocator_i* allocator = AllocatorHeap_new();
     list$define(int) a;
 
     except_traceback(err, list$new(&a, 4, allocator))
@@ -173,14 +168,12 @@ ATEST_F(testlist_insert)
     atassert_eqi(a.arr[3], 3);
 
     list.destroy(&a);
-    AllocatorHeap_free();
 
     return NULL; // Every ATEST_F() must return NULL to succeed!
 }
 
 ATEST_F(testlist_del)
 {
-    const Allocator_i* allocator = AllocatorHeap_new();
     list$define(int) a;
 
     except_traceback(err, list$new(&a, 4, allocator))
@@ -240,7 +233,6 @@ ATEST_F(testlist_del)
     atassert_eqi(a.arr[2], 4);
 
     list.destroy(&a);
-    AllocatorHeap_free();
 
     return NULL; // Every ATEST_F() must return NULL to succeed!
 }
@@ -251,7 +243,6 @@ int test_int_cmp(const void* a, const void* b){
 
 ATEST_F(testlist_sort)
 {
-    const Allocator_i* allocator = AllocatorHeap_new();
     list$define(int) a;
 
     except_traceback(err, list$new(&a, 4, allocator))
@@ -279,14 +270,12 @@ ATEST_F(testlist_sort)
 
 
     list.destroy(&a);
-    AllocatorHeap_free();
 
     return NULL; // Every ATEST_F() must return NULL to succeed!
 }
 
 ATEST_F(testlist_extend)
 {
-    const Allocator_i* allocator = AllocatorHeap_new();
 
     list$define(int) a;
     except_traceback(err, list$new(&a, 4, allocator))
@@ -324,14 +313,12 @@ ATEST_F(testlist_extend)
     atassert_eqi(head->capacity, 8);
 
     list.destroy(&a);
-    AllocatorHeap_free();
 
     return NULL; // Every ATEST_F() must return NULL to succeed!
 }
 
 ATEST_F(testlist_iterator)
 {
-    const Allocator_i* allocator = AllocatorHeap_new();
 
     list$define(int) a;
     except_traceback(err, list$new(&a,  4, allocator))
@@ -404,14 +391,12 @@ ATEST_F(testlist_iterator)
     atassert_eqi(nit, 4);
 
     list.destroy(&a);
-    AllocatorHeap_free();
 
     return NULL;
 }
 
 ATEST_F(testlist_align256)
 {
-    const Allocator_i* allocator = AllocatorHeap_new();
 
     struct foo64
     {
@@ -463,14 +448,12 @@ ATEST_F(testlist_align256)
     atassert_eqi(head->capacity, 8);
 
     list.destroy(&a);
-    AllocatorHeap_free();
 
     return NULL; // Every ATEST_F() must return NULL to succeed!
 }
 
 ATEST_F(testlist_align64)
 {
-    const Allocator_i* allocator = AllocatorHeap_new();
 
     struct foo64
     {
@@ -522,14 +505,12 @@ ATEST_F(testlist_align64)
     atassert_eqi(head->capacity, 8);
 
     list.destroy(&a);
-    AllocatorHeap_free();
 
     return NULL; // Every ATEST_F() must return NULL to succeed!
 }
 
 ATEST_F(testlist_align16)
 {
-    const Allocator_i* allocator = AllocatorHeap_new();
 
     struct foo64
     {
@@ -578,7 +559,6 @@ ATEST_F(testlist_align16)
     atassert_eqi(head->capacity, 8);
 
     list.destroy(&a);
-    AllocatorHeap_free();
 
     return NULL; // Every ATEST_F() must return NULL to succeed!
 }

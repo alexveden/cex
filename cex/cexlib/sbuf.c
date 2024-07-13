@@ -80,7 +80,7 @@ sbuf_create(sbuf_c* self, u32 capacity, const Allocator_i* allocator)
         capacity = sbuf__alloc_capacity(capacity);
     }
 
-    char* buf = allocator->alloc(capacity);
+    char* buf = allocator->malloc(capacity);
 
     if (buf == NULL) {
         return Error.memory;

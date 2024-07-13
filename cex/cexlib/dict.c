@@ -119,7 +119,7 @@ dict_create(
     time_t now = time(NULL);
 
     self->hashmap = hashmap_new_with_allocator(
-        allocator->alloc,
+        allocator->malloc,
         allocator->realloc,
         allocator->free,
         item_size,

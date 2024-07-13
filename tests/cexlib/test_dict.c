@@ -20,12 +20,13 @@ const Allocator_i* allocator;
 void
 my_test_shutdown_func(void)
 {
-    AllocatorHeap_free();
+    allocator = allocators.heap.destroy();
 }
 
 ATEST_SETUP_F(void)
 {
-    allocator = AllocatorHeap_new();
+    allocator = allocators.heap.create();
+
     uassert_enable();
     return &my_test_shutdown_func; // return pointer to void some_shutdown_func(void)
 }

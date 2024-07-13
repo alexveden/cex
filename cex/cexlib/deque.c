@@ -144,7 +144,7 @@ deque_create(
     size_t alloc_size = deque__alloc_size(capacity, elsize, elalign);
 
     _Static_assert(alignof(deque_head_s) == 64, "align");
-    deque_head_s* que = allocator->alloc_aligned(alignof(deque_head_s), alloc_size);
+    deque_head_s* que = allocator->malloc_aligned(alignof(deque_head_s), alloc_size);
 
     if (que == NULL) {
         return Error.memory;

@@ -121,7 +121,7 @@ list_create(
 
     capacity = list__alloc_capacity(capacity);
     size_t alloc_size = list__alloc_size(capacity, elsize, elalign);
-    char* buf = allocator->alloc_aligned(elalign, alloc_size);
+    char* buf = allocator->malloc_aligned(elalign, alloc_size);
 
     if (buf == NULL) {
         return Error.memory;
