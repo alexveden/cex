@@ -363,7 +363,7 @@ atest_shutdown_ptr __atest_setup_func();
 //  MUST return NULL on test success, or char* with error message when failed!
 //
 // #define ATEST_F(TESTNAME) char* TESTNAME()
-#define ATEST_F(TESTNAME) __attribute__((optimize("O0"))) char* TESTNAME()
+#define ATEST_F(TESTNAME) __attribute__((optimize("O0"))) const char* TESTNAME()
 
 //
 // To be used in main() test launching function
@@ -380,7 +380,7 @@ atest_shutdown_ptr __atest_setup_func();
         }                                                                                          \
         __ATestContext.in_test = #TESTNAME;                                                        \
         atest_shutdown_ptr shutdown_fun_p = __atest_setup_func();                                  \
-        char* result = (TESTNAME());                                                               \
+        const char* result = (TESTNAME());                                                               \
         __ATestContext.tests_run++;                                                                \
         if (result == NULL) {                                                                      \
             if (__ATestContext.verbosity > 0) {                                                    \

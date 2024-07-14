@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+
 typedef int8_t i8;
 typedef uint8_t u8;
 typedef int16_t i16;
@@ -21,7 +22,7 @@ typedef float f32;
 typedef double f64;
 
 #define arr$len(arr) (sizeof(arr) / sizeof(arr[0]))
-#define let __auto_type
+#define var __auto_type
 
 #define unlikely(expr) __builtin_expect(!!(expr), 0)
 #define likely(expr) __builtin_expect(!!(expr), 1)
@@ -41,7 +42,7 @@ typedef const char* Exc;
 #define Exception Exc __attribute__((warn_unused_result))
 #define ExceptionSkip Exc __attribute__((warn_unused_result))
 
-const struct
+extern const struct _CEX_Error_struct
 {
     Exc ok; // must be the 1st
     Exc memory;
@@ -55,42 +56,21 @@ const struct
     Exc check;
     Exc empty;
     Exc eof;
-} Error = {
-    // FIX: implement Error struct validation func/macro
-    .ok = EOK,                     // Success
-    .memory = "MemoryError",       // memory allocation error
-    .io = "IOError",               // IO error
-    .overflow = "OverflowError",   // buffer overflow
-    .argument = "ArgumentError",   // function argument error
-    .integrity = "IntegrityError", // data integrity error
-    .exists = "ExistsError",       // entity or key already exists
-    .not_found = "NotFoundError",  // entity or key already exists
-    .skip = "ShouldBeSkipped",     // NOT an error, function result must be skipped
-    .check = "SanityCheckError",   // uerrcheck() failed
-    .empty = "EmptyError",         // resource is empty
-    .eof = "EOF",                  // end of file reached
-};
-
+} Error;
 
 /// Strips full path of __FILENAME__ to the file basename
 #define __FILENAME__ (strrchr("/" __FILE__, '/') + 1)
 
 
+#ifndef __cex__fprintf
 /// analog of fprintf, but preserves errno for user space
-static inline bool
-__cex__fprintf(FILE* stream, const char* format, ...)
-{
-    //
-    int _errno = errno;
+// NOTE: you may try to define our own fprintf
+#define __cex__fprintf fprintf
 
-    va_list args;
-    va_start(args, format);
-    vfprintf(stream, format, args);
-    va_end(args);
+// If you define this macro it will turn off all debug printing
+//#define __cex__fprintf(stream, format, ...) (true)
 
-    errno = _errno;
-    return true;
-}
+#endif
 
 
 #define uptraceback(uerr, fail_func)                                                               \
@@ -122,14 +102,6 @@ _uhf_errors_is_error__uerr(Exc* e)
     return *e != NULL;
 }
 
-static inline bool
-_uhf_errors_is_error__system(int syscall_res, int* out_result)
-{
-    if (out_result != NULL) {
-        *out_result = syscall_res;
-    }
-    return syscall_res == -1;
-}
 
 // WARNING: DO NOT USE break/continue inside except* {scope!}
 #define except(_var_name, _func)                                                                   \
@@ -139,11 +111,22 @@ _uhf_errors_is_error__system(int syscall_res, int* out_result)
     for (Exc _var_name = _func; unlikely(_var_name != NULL && (uptraceback(_var_name, #_func)));   \
          _var_name = EOK)
 
-#define except_system(_result_out_ptr, _func)                                                      \
-    for (int __ctr = 0, __except_system_var = _func;                                               \
-         __ctr == 0 &&                                                                             \
-         unlikely(_uhf_errors_is_error__system(__except_system_var, _result_out_ptr));             \
-         __ctr++)
+#define e$(_func)                                                                                  \
+    for (Exc __CEX_TMPNAME(__cex_err_traceback_) = _func; unlikely(                                \
+             __CEX_TMPNAME(__cex_err_traceback_) != NULL &&                                        \
+             (uptraceback(__CEX_TMPNAME(__cex_err_traceback_), #_func))                            \
+         );                                                                                        \
+         __CEX_TMPNAME(__cex_err_traceback_) = EOK)                                                \
+    return __CEX_TMPNAME(__cex_err_traceback_)
+
+#define except_errno(_expression)                                                                  \
+    errno = 0;                                                                                     \
+    for (int __CEX_TMPNAME(__cex_errno_traceback_ctr) = 0,                                         \
+             __CEX_TMPNAME(__cex_errno_traceback_) = (_expression);                                \
+         __CEX_TMPNAME(__cex_errno_traceback_ctr) == 0 &&                                          \
+         __CEX_TMPNAME(__cex_errno_traceback_) == -1 &&                                            \
+         uperrorf("`%s` failed errno: %d, msg: %s\n", #_expression, errno, strerror(errno));       \
+         __CEX_TMPNAME(__cex_errno_traceback_ctr)++)
 
 #define except_null(_expression)                                                                   \
     if (((_expression) == NULL) && uperrorf("`%s` returned NULL\n", #_expression))
@@ -200,7 +183,7 @@ void __sanitizer_print_stack_trace();
         if (unlikely(!((A)))) {                                                                    \
             if (uassert_is_enabled()) {                                                            \
                 __cex__fprintf(                                                                    \
-                    uassert_is_enabled() ? stderr : CEXERRORF_OUT__,                                \
+                    stderr,                                                                        \
                     "[ASSERT] ( %s:%d %s() ) %s\n",                                                \
                     __FILENAME__,                                                                  \
                     __LINE__,                                                                      \
@@ -218,7 +201,7 @@ void __sanitizer_print_stack_trace();
         if (unlikely(!((A)))) {                                                                    \
             if (uassert_is_enabled()) {                                                            \
                 __cex__fprintf(                                                                    \
-                    uassert_is_enabled() ? stderr : CEXERRORF_OUT__,                                \
+                    stderr,                                                                        \
                     "[ASSERT] ( %s:%d %s() ) " format "\n",                                        \
                     __FILENAME__,                                                                  \
                     __LINE__,                                                                      \
@@ -236,7 +219,7 @@ void __sanitizer_print_stack_trace();
     do {                                                                                           \
         if (unlikely(!((condition)))) {                                                            \
             __cex__fprintf(                                                                        \
-                CEXERRORF_OUT__,                                                                    \
+                CEXERRORF_OUT__,                                                                   \
                 "[UERRCHK] ( %s:%d %s() ) Check failed: %s\n",                                     \
                 __FILENAME__,                                                                      \
                 __LINE__,                                                                          \
@@ -335,10 +318,19 @@ typedef struct Allocator_i
     void* (*realloc_aligned)(void* ptr, size_t alignment, size_t new_size);
     void (*free)(void* ptr);
     FILE* (*fopen)(const char* filename, const char* mode);
-    int (*open)(const char *pathname, int flags, mode_t mode);
+    int (*open)(const char* pathname, int flags, mode_t mode);
     //<<< 64 byte cacheline
     int (*fclose)(FILE* stream);
     int (*close)(int fd);
 } Allocator_i;
 _Static_assert(sizeof(Allocator_i) == 80, "size");
 _Static_assert(alignof(Allocator_i) == 8, "size");
+
+#include "cexlib/_stb_sprintf.h"
+#include "cexlib/allocators.h"
+#include "cexlib/deque.h"
+#include "cexlib/dict.h"
+#include "cexlib/io.h"
+#include "cexlib/list.h"
+#include "cexlib/sbuf.h"
+#include "cexlib/str.h"
