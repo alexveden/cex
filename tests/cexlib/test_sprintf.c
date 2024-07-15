@@ -1,4 +1,4 @@
-#include <cex/cex.h>
+#include <cex/cexlib/cex.c>
 #include <cex/cexlib/allocators.c>
 #include <cex/cexlib/sbuf.c>
 #include <cex/cexlib/sbuf.h>

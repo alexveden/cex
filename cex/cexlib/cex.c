@@ -15,16 +15,3 @@ const struct _CEX_Error_struct Error = {
     .eof = "EOF",                  // end of file reached
 };
 
-
-#ifndef CEXTEST
-
-#include "cexlib/allocators.c"
-#include "cexlib/list.c"
-#include "cexlib/dict.c"
-#include "cexlib/deque.c"
-#include "cexlib/io.c"
-#include "cexlib/sbuf.c"
-#include "cexlib/str.c"
-#include "cexlib/_stb_sprintf.c"
-
-#endif

@@ -1,5 +1,4 @@
-#include <cex/cex.c>
-#include <cex/cex.h>
+#include <cex/cexlib/cex.c>
 #include <cex/cextest/cextest.h>
 #include <errno.h>
 #include <stdio.h>
@@ -104,12 +103,14 @@ Exception check_optimized(int e){
     {
         return Error.io;
     }
+    (void)nit;
+    (void)e;
 
     // except(err, check(e))
     // {
     //     return err;
     // }
-    // e$(check(e));
+    e$(check(e));
     // except_traceback(err, check(e))
     // {
     //     return err;
@@ -126,11 +127,13 @@ Exception check_optimized(int e){
 ATEST_F(test_e_dollar_macro)
 {
 
-    if (check_optimized(-1) == Error.io){
-        return "foo";
-    }
-    // atassert_eqs(EOK, check(true));
-    // atassert_eqs(Error.io, check(false));
+    // if (check_optimized(-1) == Error.io){
+    //     return "foo";
+    // }
+    atassert(false && "TODO: fix this");
+
+    atassert_eqs(EOK, check(true));
+    atassert_eqs(Error.io, check(false));
     return NULL;
 }
 
@@ -175,12 +178,12 @@ int
 main(int argc, char* argv[])
 {
     ATEST_PARSE_MAINARGS(argc, argv);
-    ATEST_PRINT_HEAD(); // >>> all tests below
-
+    ATEST_PRINT_HEAD();  // >>> all tests below
+    
     ATEST_RUN(test_sysfunc);
     ATEST_RUN(test_e_dollar_macro);
     ATEST_RUN(test_null_ptr);
-
-    ATEST_PRINT_FOOTER(); // ^^^^^ all tests runs are above
+    
+    ATEST_PRINT_FOOTER();  // ^^^^^ all tests runs are above
     return ATEST_EXITCODE();
 }

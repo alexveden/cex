@@ -1,6 +1,6 @@
 #pragma once
-#include <cex/cex.h>
-#include <cex/cexlib/allocators.h>
+#include "cex.h"
+#include "allocators.h"
 
 typedef struct
 {

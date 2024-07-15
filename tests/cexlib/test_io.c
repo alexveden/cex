@@ -1,4 +1,4 @@
-#include <cex/cex.h>
+#include <cex/cexlib/cex.c>
 #include <cex/cexlib/allocators.c>
 #include <cex/cexlib/io.c>
 #include <cex/cexlib/_stb_sprintf.c>

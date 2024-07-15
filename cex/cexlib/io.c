@@ -1,6 +1,6 @@
 #include "io.h"
 #include "_stb_sprintf.h"
-#include "cex/cex.h"
+#include "cex.h"
 #include <errno.h>
 #include <unistd.h>
 

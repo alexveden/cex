@@ -1,6 +1,6 @@
 #pragma once
-#include <cex/cex.h>
-#include <cex/cexlib/str.h>
+#include "cex.h"
+#include "str.h"
 #include <string.h>
 
 typedef struct dict_c

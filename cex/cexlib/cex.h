@@ -1,4 +1,3 @@
-
 #pragma once
 #include <errno.h>
 #include <stdalign.h>
@@ -21,15 +20,18 @@ typedef uint64_t u64;
 typedef float f32;
 typedef double f64;
 
-#define arr$len(arr) (sizeof(arr) / sizeof(arr[0]))
 #define var __auto_type
 
 #define unlikely(expr) __builtin_expect(!!(expr), 0)
 #define likely(expr) __builtin_expect(!!(expr), 1)
 
+// __CEX_TMPNAME - internal macro for generating temporary variable names (unique__line_num)
 #define __CEX_CONCAT_INNER(a, b) a##b
 #define __CEX_CONCAT(a, b) __CEX_CONCAT_INNER(a, b)
 #define __CEX_TMPNAME(base) __CEX_CONCAT(base, __LINE__)
+
+
+// TODO: decide what to do with it
 #define MIN(X, Y) ((X) < (Y) ? (X) : (Y))
 #define MAX(X, Y) ((X) > (Y) ? (X) : (Y))
 
@@ -234,6 +236,7 @@ void __sanitizer_print_stack_trace();
  *                  ARRAY / ITERATORS INTERFACE
  */
 
+#define arr$len(arr) (sizeof(arr) / sizeof(arr[0]))
 
 /**
  * @brief Iterates through array: itvar is struct {eltype* val, size_t index}
@@ -325,12 +328,3 @@ typedef struct Allocator_i
 } Allocator_i;
 _Static_assert(sizeof(Allocator_i) == 80, "size");
 _Static_assert(alignof(Allocator_i) == 8, "size");
-
-#include "cexlib/_stb_sprintf.h"
-#include "cexlib/allocators.h"
-#include "cexlib/deque.h"
-#include "cexlib/dict.h"
-#include "cexlib/io.h"
-#include "cexlib/list.h"
-#include "cexlib/sbuf.h"
-#include "cexlib/str.h"

@@ -1,7 +1,7 @@
 #pragma once
 #include "str.h"
-#include <cex/cex.h>
-#include <cex/cexlib/allocators.h>
+#include "cex.h"
+#include "allocators.h"
 
 typedef char* sbuf_c;
 

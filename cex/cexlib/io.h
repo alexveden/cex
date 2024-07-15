@@ -1,6 +1,6 @@
 #pragma once
-#include "cex/cexlib/str.h"
-#include <cex/cex.h>
+#include "str.h"
+#include "cex.h"
 #include <stdio.h>
 
 

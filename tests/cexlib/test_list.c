@@ -1,5 +1,5 @@
 #include <cex/cextest/cextest.h>
-#include <cex/cex.h>
+#include <cex/cexlib/cex.c>
 #include <cex/cexlib/list.c>
 #include <cex/cexlib/list.h>
 #include <cex/cexlib/allocators.c>

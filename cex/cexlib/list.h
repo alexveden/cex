@@ -1,6 +1,6 @@
 #pragma once
 #include "allocators.h"
-#include <cex/cex.h>
+#include "cex.h"
 
 /**
  * @brief Dynamic array (list) implementation

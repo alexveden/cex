@@ -1,6 +1,6 @@
 // #gcc_args -Wl,--wrap=malloc
 #include <alloca.h>
-#include <cex/cex.h>
+#include <cex/cexlib/cex.c>
 #include <cex/cexlib/allocators.c>
 #include <cex/cextest/cextest.h>
 #include <cex/cextest/fff.h>

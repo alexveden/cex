@@ -1,6 +1,6 @@
 #include "sbuf.h"
 #include "_stb_sprintf.h"
-#include "cex/cex.h"
+#include "cex.h"
 #include <stdarg.h>
 
 struct _sbuf__sprintf_ctx

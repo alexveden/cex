@@ -1,4 +1,4 @@
-#include <cex/cex.h>
+#include <cex/cexlib/cex.c>
 #include <cex/cexlib/list.h>
 #include <cex/cexlib/str.c>
 #include <cex/cexlib/sbuf.c>
@@ -71,7 +71,7 @@ ATEST_F(test_cstr_sdollar)
     sbuf.destroy(&sb);
 
     // auto-type also works!
-    let s = s$(cstr);
+    var s = s$(cstr);
     atassert_eqs(s.buf, cstr);
     atassert_eqi(s.len, 5); // lazy init until str.length() is called
     atassert(s.buf == cstr);
@@ -265,7 +265,7 @@ ATEST_F(test_sub_negative_start)
     atassert_eqi(s.len, 6);
     atassert_eqi(str.is_valid(s), true);
 
-    let sub = str.sub(s, -3, -1);
+    var sub = str.sub(s, -3, -1);
     atassert_eqi(str.is_valid(sub), true);
     atassert_eqi(sub.len, 2);
     atassert_eqi(s.len, 6);

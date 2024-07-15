@@ -1,5 +1,5 @@
 #include <cex/cextest/cextest.h>
-#include <cex/cex.h>
+#include <cex/cexlib/cex.c>
 #include <cex/cexlib/str.c>
 #include <cex/cexlib/sbuf.c>
 #include <cex/cexlib/sbuf.h>
@@ -424,7 +424,7 @@ ATEST_F(test_sbuf_sprintf_long_growth_prebuild_buffer)
     }
     atassert_eqi(n_max*4, sbuf.len(&s));
 
-    let sv2 = sbuf.tostr(&s);
+    var sv2 = sbuf.tostr(&s);
     str_c sv = str.cstr(s);
     atassert_eqi(str.cmp(sv2, sv), 0);
     atassert_eqi(sv2.len, sv.len);

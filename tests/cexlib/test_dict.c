@@ -1,4 +1,4 @@
-#include <cex/cex.h>
+#include <cex/cexlib/cex.c>
 #include <cex/cexlib/allocators.c>
 #include <cex/cexlib/dict.c>
 #include <cex/cexlib/dict.h>
@@ -74,7 +74,7 @@ ATEST_F(test_dict_int64)
     const struct s* res2 = dict.get(&hm, &(struct s){ .key = 222 });
     atassert(res2 == NULL);
 
-    let res3 = (struct s*)dict.get(&hm, &(struct s){ .key = 133 });
+    var res3 = (struct s*)dict.get(&hm, &(struct s){ .key = 133 });
     atassert(res3 != NULL);
     atassert_eqi(res3->key, 133);
 
@@ -130,7 +130,7 @@ ATEST_F(test_dict_string)
     atassert(res2 == NULL);
 
 
-    let res3 = (struct s*)dict.get(&hm, &(struct s){ .key = "abcd" });
+    var res3 = (struct s*)dict.get(&hm, &(struct s){ .key = "abcd" });
     atassert(res3 != NULL);
     atassert_eqs(res3->key, "abcd");
 
