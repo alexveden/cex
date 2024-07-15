@@ -58,6 +58,7 @@ extern const struct _CEX_Error_struct
     Exc check;
     Exc empty;
     Exc eof;
+    Exc argsparse;
 } Error;
 
 /// Strips full path of __FILENAME__ to the file basename

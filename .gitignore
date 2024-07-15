@@ -68,5 +68,3 @@ __pycache__/
 perf.data
 *.csv
 tmux_run.sh
-
-
