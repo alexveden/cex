@@ -88,6 +88,7 @@ class Bundler:
             "dict.h",
             "io.h",
             "deque.h",
+            "argparse.h",
         ]
         print(f"Bundling: {headers}")
         hbuf = io.StringIO()

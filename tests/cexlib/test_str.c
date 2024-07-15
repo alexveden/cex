@@ -160,7 +160,7 @@ ATEST_F(test_copy)
     atassert_eqs("", buf);
 
     memset(buf, 'a', arr$len(buf));
-    atassert_eqs(Error.check, str.copy(str.cstr(NULL), buf, arr$len(buf)));
+    atassert_eqs(Error.sanity_check, str.copy(str.cstr(NULL), buf, arr$len(buf)));
     // buffer reset to "" string
     atassert_eqs("", buf);
 

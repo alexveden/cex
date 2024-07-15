@@ -21,6 +21,8 @@ all: cex tests
 
 cex:
 	@for cfile in $(CEX_SRC_INCL); do  (cat $$cfile | grep -E 'const struct __(class|module)__' > /dev/null) && cli/cex $$cfile --fakedir=tests/fake/; done 
+	./cli/cex_bundler
+	
 
 $(BUILD_DIR):
 	mkdir -p $@
