@@ -22,6 +22,19 @@
 #define ATEST_CRED "\033[0;31m"
 #define ATEST_CGREEN "\033[0;32m"
 #define ATEST_CNONE "\033[0m"
+#ifdef _WIN32
+#define ATEST_NULL_DEVICE "NUL:"
+#else
+#define ATEST_NULL_DEVICE "/dev/null"
+#endif
+
+#if defined(__clang__)
+#define ATEST_NOOPT __attribute__((optnone))
+#elif defined(__GNUC__) || defined(__GNUG__)
+#define ATEST_NOOPT __attribute__((optimize("O0")))
+#elif defined(_MSC_VER)
+#warning "MSVS is untested"
+#endif
 
 //
 //  atest.h settings, you can alter them in main() function, for example replace
@@ -39,134 +52,7 @@ struct __ATestContext_s
     // Internal buffer for aassertf() string formatting
     char _str_buf[ATEST_AMSG_MAX_LEN];
 };
-extern struct __ATestContext_s __ATestContext;
 
-/*
- *
- * Benchmarking
- *
- */
-#ifndef WIN32
-// Windows sorry :)
-#include <asm/unistd.h>
-#include <linux/perf_event.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/ioctl.h>
-#include <time.h>
-#include <unistd.h>
-#include <x86intrin.h>
-#define ATEST_NOOPT __attribute__((optimize("O0")))
-#define ATEST_MIN(X, Y) ((X) < (Y) ? (X) : (Y))
-// #define ATEST_NOOPT __attribute__((optnone))
-
-#define ATEST_BENCH(N, __FUNC)                                                                     \
-    do {                                                                                           \
-        if (N < 0) {                                                                               \
-            printf("N < 0, skipping");                                                             \
-        } else {                                                                                   \
-            struct timespec __atest_tv;                                                            \
-            clock_gettime(CLOCK_MONOTONIC_RAW, &__atest_tv);                                       \
-            f64 tv_start = __atest_tv.tv_nsec * 1.0 / 1000000000 + __atest_tv.tv_sec;              \
-            clock_t __atest_start_time = clock();                                                  \
-            u64 rdtsc_s, rdtsc_e;                                                                  \
-            u64 rdtsc_min = UINT64_MAX;                                                            \
-            for (int __atest_i = 0; __atest_i < (N); __atest_i++) {                                \
-                rdtsc_s = __rdtsc();                                                               \
-                (__FUNC);                                                                          \
-                rdtsc_e = __rdtsc();                                                               \
-                if (rdtsc_e - rdtsc_s > 10) {                                                      \
-                    rdtsc_min = ATEST_MIN(rdtsc_min, rdtsc_e - rdtsc_s);                           \
-                }                                                                                  \
-            }                                                                                      \
-            f64 __atest_elapsed_time = (f64)(clock() - __atest_start_time) / CLOCKS_PER_SEC;       \
-            clock_gettime(CLOCK_MONOTONIC_RAW, &__atest_tv);                                       \
-            f64 tv_end = __atest_tv.tv_nsec * 1.0 / 1000000000 + __atest_tv.tv_sec;                \
-            f64 __atest_wall_elapsed = tv_end - tv_start;                                          \
-            struct perf_event_attr pe = { 0 };                                                     \
-            long long clock_count = 0;                                                             \
-            pe.type = PERF_TYPE_HARDWARE;                                                          \
-            pe.size = sizeof(struct perf_event_attr);                                              \
-            pe.config = PERF_COUNT_HW_INSTRUCTIONS;                                                \
-            pe.disabled = 1;                                                                       \
-            pe.exclude_kernel = 1;                                                                 \
-            pe.exclude_hv = 1;                                                                     \
-            int fd = syscall(__NR_perf_event_open, &pe, 0, -1, -1, 0);                             \
-            if (fd == -1) {                                                                        \
-                perror("ATEST_BENCH: ERROR perf counter setup failed (must be run as "             \
-                       "root)");                                                                   \
-            } else {                                                                               \
-                printf("ATEST_BENCH: calling function again for calculating CPU "                  \
-                       "instructions\n");                                                          \
-                ioctl(fd, PERF_EVENT_IOC_RESET, 0);                                                \
-                ioctl(fd, PERF_EVENT_IOC_ENABLE, 0);                                               \
-                (__FUNC);                                                                          \
-                ioctl(fd, PERF_EVENT_IOC_DISABLE, 0);                                              \
-                read(fd, &clock_count, sizeof(long long));                                         \
-                close(fd);                                                                         \
-            }                                                                                      \
-            const char* duration = "sec";                                                          \
-            f64 factor = 1;                                                                        \
-            f64 sec = __atest_elapsed_time / N;                                                    \
-            if (sec < 1) {                                                                         \
-                if (sec < 10e-4) {                                                                 \
-                    if (sec < 10e-7) {                                                             \
-                        duration = "ns ";                                                          \
-                        factor = 10e8;                                                             \
-                    } else {                                                                       \
-                        duration = "mcs";                                                          \
-                        factor = 10e5;                                                             \
-                    }                                                                              \
-                } else {                                                                           \
-                    duration = "ms ";                                                              \
-                    factor = 10e2;                                                                 \
-                }                                                                                  \
-            }                                                                                      \
-            printf("ATEST_BENCH: %s: \n", #__FUNC);                                                \
-            printf("\t| Clock   |   Total(sec) |   Steps    |      Avg      |  "                   \
-                   "AvgPerSec  \n");                                                               \
-            printf(                                                                                \
-                "\t| CPU     |   %7.4f    |    %*d |   %7.3f %s |  %0.3f  \n",                     \
-                __atest_elapsed_time,                                                              \
-                6,                                                                                 \
-                N,                                                                                 \
-                sec* factor,                                                                       \
-                duration,                                                                          \
-                1 / sec                                                                            \
-            );                                                                                     \
-            duration = "sec";                                                                      \
-            factor = 1;                                                                            \
-            sec = __atest_wall_elapsed / N;                                                        \
-            if (sec < 1) {                                                                         \
-                if (sec < 10e-4) {                                                                 \
-                    if (sec < 10e-7) {                                                             \
-                        duration = "ns ";                                                          \
-                        factor = 10e8;                                                             \
-                    } else {                                                                       \
-                        duration = "mcs";                                                          \
-                        factor = 10e5;                                                             \
-                    }                                                                              \
-                } else {                                                                           \
-                    duration = "ms ";                                                              \
-                    factor = 10e2;                                                                 \
-                }                                                                                  \
-            }                                                                                      \
-            printf(                                                                                \
-                "\t| WALL    |   %7.4f    |    %*d |   %7.3f %s |  %0.3f  \n",                     \
-                __atest_wall_elapsed,                                                              \
-                6,                                                                                 \
-                N,                                                                                 \
-                sec* factor,                                                                       \
-                duration,                                                                          \
-                1 / sec                                                                            \
-            );                                                                                     \
-            printf("\t| RDTSC (cycles per call)  min: %010ld\n", rdtsc_min);                       \
-            printf("\t| CPU Instructions (per call) : %010lld\n", clock_count);                    \
-        }                                                                                          \
-    } while (0);
-
-#endif
 
 /*
  *
@@ -221,6 +107,39 @@ extern struct __ATestContext_s __ATestContext;
                 __ATestContext._str_buf,                                                           \
                 ATEST_AMSG_MAX_LEN - 1,                                                            \
                 __ATEST_LOG_ERR("'%s' != NULL"),                                                   \
+                (char*)(ac)                                                                        \
+            );                                                                                     \
+            return __ATestContext._str_buf;                                                        \
+        } else if (((ac) != NULL && (ex) != NULL) &&                                               \
+                   (strcmp(__ATEST_NON_NULL((ac)), __ATEST_NON_NULL((ex))) != 0)) {                \
+            snprintf(                                                                              \
+                __ATestContext._str_buf,                                                           \
+                ATEST_AMSG_MAX_LEN - 1,                                                            \
+                __ATEST_LOG_ERR("'%s' != '%s'"),                                                   \
+                (char*)(ac),                                                                       \
+                (char*)(ex)                                                                        \
+            );                                                                                     \
+            return __ATestContext._str_buf;                                                        \
+        }                                                                                          \
+    } while (0)
+
+#define atassert_eqe(_ac, _ex)                                                                     \
+    do {                                                                                           \
+        const char* ac = (_ac);                                                                    \
+        const char* ex = (_ex);                                                                    \
+        if ((ac) == NULL && (ex) != NULL) {                                                        \
+            snprintf(                                                                              \
+                __ATestContext._str_buf,                                                           \
+                ATEST_AMSG_MAX_LEN - 1,                                                            \
+                __ATEST_LOG_ERR("Error.ok != '%s'"),                                               \
+                (char*)(ex)                                                                        \
+            );                                                                                     \
+            return __ATestContext._str_buf;                                                        \
+        } else if ((ac) != NULL && (ex) == NULL) {                                                 \
+            snprintf(                                                                              \
+                __ATestContext._str_buf,                                                           \
+                ATEST_AMSG_MAX_LEN - 1,                                                            \
+                __ATEST_LOG_ERR("'%s' != Error.ok"),                                               \
                 (char*)(ac)                                                                        \
             );                                                                                     \
             return __ATestContext._str_buf;                                                        \
@@ -362,8 +281,7 @@ atest_shutdown_ptr __atest_setup_func();
 // Typical test function template
 //  MUST return NULL on test success, or char* with error message when failed!
 //
-// #define ATEST_F(TESTNAME) char* TESTNAME()
-#define ATEST_F(TESTNAME) __attribute__((optimize("O0"))) const char* TESTNAME()
+#define ATEST_F(TESTNAME) ATEST_NOOPT char* TESTNAME()
 
 //
 // To be used in main() test launching function
@@ -380,7 +298,7 @@ atest_shutdown_ptr __atest_setup_func();
         }                                                                                          \
         __ATestContext.in_test = #TESTNAME;                                                        \
         atest_shutdown_ptr shutdown_fun_p = __atest_setup_func();                                  \
-        const char* result = (TESTNAME());                                                               \
+        char* result = (TESTNAME());                                                               \
         __ATestContext.tests_run++;                                                                \
         if (result == NULL) {                                                                      \
             if (__ATestContext.verbosity > 0) {                                                    \
@@ -493,7 +411,7 @@ atest_shutdown_ptr __atest_setup_func();
         }                                                                                          \
         __ATestContext.verbosity = _has_quiet ? 0 : _verb;                                         \
         if (__ATestContext.verbosity == 0) {                                                       \
-            freopen("/dev/null", "w", stdout);                                                     \
+            freopen(ATEST_NULL_DEVICE, "w", stdout);                                               \
         }                                                                                          \
     } while (0);
 

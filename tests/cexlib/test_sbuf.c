@@ -455,6 +455,7 @@ ATEST_F(test_sbuf_sprintf_static)
     atassert_eqi(s[sbuf.len(&s)], -1);
     atassert_eqi(s[sbuf.capacity(&s)], -1);
 
+
     atassert_eqs(EOK, sbuf.sprintf(&s, "%s", "123"));
     atassert_eqs("123", s);
     atassert_eqi(sbuf.len(&s), 3);

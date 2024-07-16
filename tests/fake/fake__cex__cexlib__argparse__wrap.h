@@ -6,13 +6,13 @@
 #include <cex/cexlib/argparse.h>
 
 // IMPORTANT: wrapping works only with gcc  `-Wl,--wrap=Shmem_new,--wrap=Protocol_event_emitter_new`  flag
-FAKE_VALUE_FUNC(const char*, __wrap_prefix_skip, const char*, const char*)const char* __real_prefix_skip(const char*, const char*);
-
-FAKE_VALUE_FUNC(int, __wrap_prefix_cmp, const char*, const char*)int __real_prefix_cmp(const char*, const char*);
-
 FAKE_VOID_FUNC(__wrap_argparse_usage, argparse_c*)void __real_argparse_usage(argparse_c*);
 
 FAKE_VALUE_FUNC(Exc, __wrap_argparse_parse, argparse_c*, int, char**)Exception __real_argparse_parse(argparse_c*, int, char**);
+
+FAKE_VALUE_FUNC(u32, __wrap_argparse_argc, argparse_c*)u32 __real_argparse_argc(argparse_c*);
+
+FAKE_VALUE_FUNC(char**, __wrap_argparse_argv, argparse_c*)char** __real_argparse_argv(argparse_c*);
 
 
 const struct __module__argparse argparse = {
@@ -20,15 +20,17 @@ const struct __module__argparse argparse = {
     // clang-format off
     .usage = argparse_usage,
     .parse = argparse_parse,
+    .argc = argparse_argc,
+    .argv = argparse_argv,
     // clang-format on
 };
 // clang-format off
 
 
 static void fake__cex__cexlib__argparse__wrap__resetall(void) {
-    RESET_FAKE(__wrap_prefix_skip)
-    RESET_FAKE(__wrap_prefix_cmp)
     RESET_FAKE(__wrap_argparse_usage)
     RESET_FAKE(__wrap_argparse_parse)
+    RESET_FAKE(__wrap_argparse_argc)
+    RESET_FAKE(__wrap_argparse_argv)
 }
 

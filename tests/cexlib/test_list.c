@@ -679,7 +679,7 @@ ATEST_F(testlist_static_with_alignment)
  * MAIN (AUTO GENERATED)
  *
  */
-__attribute__((optimize("O0"))) int
+int
 main(int argc, char* argv[])
 {
     ATEST_PARSE_MAINARGS(argc, argv);

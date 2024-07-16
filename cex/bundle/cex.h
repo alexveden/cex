@@ -40,13 +40,15 @@ typedef double f64;
  */
 
 typedef const char* Exc;
-#define EOK (Exc) NULL
+
 #define Exception Exc __attribute__((warn_unused_result))
 #define ExceptionSkip Exc __attribute__((warn_unused_result))
 
+
+#define EOK (Exc) NULL
 extern const struct _CEX_Error_struct
 {
-    Exc ok; // must be the 1st
+    Exc ok; // NOTE: must be the 1st, same as EOK
     Exc memory;
     Exc io;
     Exc overflow;
@@ -1033,27 +1035,8 @@ extern const struct __module__deque deque; // CEX Autogen
 struct argparse_c;
 struct argparse_opt_s;
 
-typedef Exception argparse_callback(struct argparse_c* self, const struct argparse_opt_s* option);
+typedef Exception argparse_callback_f(struct argparse_c* self, const struct argparse_opt_s* option);
 
-
-enum argparse_flag
-{
-    ARGPARSE_STOP_AT_NON_OPTION = 1 << 0,
-    ARGPARSE_IGNORE_UNKNOWN_ARGS = 1 << 1,
-};
-
-enum argparse_option_type
-{
-    /* special */
-    ARGPARSE_OPT_GROUP,
-    /* options with no arguments */
-    ARGPARSE_OPT_BOOLEAN,
-    ARGPARSE_OPT_BIT,
-    /* options with arguments (optional or required) */
-    ARGPARSE_OPT_INTEGER,
-    ARGPARSE_OPT_FLOAT,
-    ARGPARSE_OPT_STRING,
-};
 
 enum argparse_option_flags
 {
@@ -1063,8 +1046,7 @@ enum argparse_option_flags
  *  argparse option
  *
  *  `type`:
- *    holds the type of the option, you must have an ARGPARSE_OPT_END last in your
- *    array.
+ *    holds the type of the option
  *
  *  `short_name`:
  *    the character to use as a short option name, '\0' if none.
@@ -1097,16 +1079,16 @@ enum argparse_option_flags
  */
 typedef struct argparse_opt_s
 {
-    enum argparse_option_type type;
+    u8 type;
     const char short_name;
     const char* long_name;
     void* value;
     const char* help;
     bool required;
-    argparse_callback* callback;
+    argparse_callback_f* callback;
     intptr_t data;
     int flags;
-    bool is_present;  // also setting in in argparse$opt* macro, allows optional parameter sugar
+    bool is_present; // also setting in in argparse$opt* macro, allows optional parameter sugar
 } argparse_opt_s;
 
 /**
@@ -1114,14 +1096,22 @@ typedef struct argparse_opt_s
  */
 typedef struct argparse_c
 {
-    // user supplied
+    // user supplied options
     argparse_opt_s* options;
     u32 options_len;
 
-    const char* usage;
-    int flags;
-    const char* description; // a description after usage
-    const char* epilog;      // a description at the end
+    const char* usage;        // usage text (can be multiline), each line prepended by program_name
+    const char* description;  // a description after usage
+    const char* epilog;       // a description at the end
+    const char* program_name; // program name in usage (by default: argv[0])
+
+    struct
+    {
+        u32 stop_at_non_option : 1;
+        u32 ignore_unknown_args : 1;
+    } flags;
+    //
+    //
     // internal context
     struct
     {
@@ -1130,21 +1120,22 @@ typedef struct argparse_c
         char** out;
         int cpidx;
         const char* optvalue; // current option value
+        bool has_argument;
     } _ctx;
 } argparse_c;
 
 
 // built-in option macros
 // clang-format off
-#define argparse$opt_bool(...)    { ARGPARSE_OPT_BOOLEAN, __VA_ARGS__, .is_present=0}
-#define argparse$opt_bit(...)     { ARGPARSE_OPT_BIT, __VA_ARGS__, .is_present=0 }
-#define argparse$opt_integer(...) { ARGPARSE_OPT_INTEGER, __VA_ARGS__, .is_present=0 }
-#define argparse$opt_float(...)   { ARGPARSE_OPT_FLOAT, __VA_ARGS__, .is_present=0 }
-#define argparse$opt_string(...)  { ARGPARSE_OPT_STRING, __VA_ARGS__, .is_present=0 }
-#define argparse$opt_group(h)     { ARGPARSE_OPT_GROUP, 0, NULL, NULL, h, false, NULL, 0, 0, .is_present=0 }
-#define argparse$opt_help()       argparse$opt_bool('h', "help", NULL,                  \
-                                     "show this help message and exit", false, \
-                                     argparse__help_cb, 0, OPT_NONEG)
+#define argparse$opt_bool(...)    { 2 /*ARGPARSE_OPT_BOOLEAN*/, __VA_ARGS__, .is_present=0}
+#define argparse$opt_bit(...)     { 3 /*ARGPARSE_OPT_BIT*/, __VA_ARGS__, .is_present=0 }
+#define argparse$opt_integer(...) { 4 /*ARGPARSE_OPT_INTEGER*/, __VA_ARGS__, .is_present=0 }
+#define argparse$opt_float(...)   { 5 /*ARGPARSE_OPT_FLOAT*/, __VA_ARGS__, .is_present=0 }
+#define argparse$opt_string(...)  { 6 /*ARGPARSE_OPT_STRING*/, __VA_ARGS__, .is_present=0 }
+#define argparse$opt_group(h)     { 1 /*ARGPARSE_OPT_GROUP*/, 0, NULL, NULL, h, false, NULL, 0, 0, .is_present=0 }
+#define argparse$opt_help()       argparse$opt_bool('h', "help", NULL,                           \
+                                                    "show this help message and exit", false,    \
+                                                    NULL, 0, OPT_NONEG)
 // clang-format on
 
 struct __module__argparse
@@ -1157,6 +1148,12 @@ void
 
 Exception
 (*parse)(argparse_c* self, int argc, char** argv);
+
+u32
+(*argc)(argparse_c* self);
+
+char**
+(*argv)(argparse_c* self);
 
     // clang-format on
 };

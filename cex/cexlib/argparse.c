@@ -7,24 +7,33 @@
  */
 #include "argparse.h"
 #include "cex.h"
+#include "str.h"
 #include <assert.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#define OPT_UNSET 1
-#define OPT_LONG (1 << 1)
+
+const u32 OPT_UNSET = 1;
+const u32 OPT_LONG = (1 << 1);
+
+// static const u8 1 /*ARGPARSE_OPT_GROUP*/  = 1;
+// static const u8 2 /*ARGPARSE_OPT_BOOLEAN*/ = 2;
+// static const u8 3 /*ARGPARSE_OPT_BIT*/ = 3;
+// static const u8 4 /*ARGPARSE_OPT_INTEGER*/ = 4;
+// static const u8 5 /*ARGPARSE_OPT_FLOAT*/ = 5;
+// static const u8 6 /*ARGPARSE_OPT_STRING*/ = 6;
 
 static const char*
-prefix_skip(const char* str, const char* prefix)
+argparse__prefix_skip(const char* str, const char* prefix)
 {
     size_t len = strlen(prefix);
     return strncmp(str, prefix, len) ? NULL : str + len;
 }
 
 static int
-prefix_cmp(const char* str, const char* prefix)
+argparse__prefix_cmp(const char* str, const char* prefix)
 {
     for (;; str++, prefix++) {
         if (!*prefix) {
@@ -48,6 +57,117 @@ argparse__error(argparse_c* self, const argparse_opt_s* opt, const char* reason,
     return Error.argument;
 }
 
+void
+argparse_usage(argparse_c* self)
+{
+    uassert(self->_ctx.argv != NULL && "usage before parse!");
+
+    fprintf(stdout, "Usage:\n");
+    if (self->usage) {
+
+        for$iter(str_c, it, str.iter_split(s$(self->usage), "\n", &it.iterator))
+        {
+            if (it.val->len == 0) {
+                break;
+            }
+
+            char* fn = strrchr(self->program_name, '/');
+            if (fn != NULL) {
+                fprintf(stdout, "%s ", fn + 1);
+            } else {
+                fprintf(stdout, "%s ", self->program_name);
+            }
+
+            if (fwrite(it.val->buf, sizeof(char), it.val->len, stdout)) {
+                ;
+            }
+
+            fputc('\n', stdout);
+        }
+    } else {
+        fprintf(stdout, "%s [options] [--] [arg1 argN]\n", self->program_name);
+    }
+
+    // print description
+    if (self->description) {
+        fprintf(stdout, "%s\n", self->description);
+    }
+
+    fputc('\n', stdout);
+
+    const argparse_opt_s* options;
+
+    // figure out best width
+    size_t usage_opts_width = 0;
+    size_t len;
+    options = self->options;
+    for (u32 i = 0; i < self->options_len; i++, options++) {
+        len = 0;
+        if ((options)->short_name) {
+            len += 2;
+        }
+        if ((options)->short_name && (options)->long_name) {
+            len += 2; // separator ", "
+        }
+        if ((options)->long_name) {
+            len += strlen((options)->long_name) + 2;
+        }
+        if (options->type == 4 /*ARGPARSE_OPT_INTEGER*/) {
+            len += strlen("=<int>");
+        }
+        if (options->type == 5 /*ARGPARSE_OPT_FLOAT*/) {
+            len += strlen("=<flt>");
+        } else if (options->type == 6 /*ARGPARSE_OPT_STRING*/) {
+            len += strlen("=<str>");
+        }
+        len = (len + 3) - ((len + 3) & 3);
+        if (usage_opts_width < len) {
+            usage_opts_width = len;
+        }
+    }
+    usage_opts_width += 4; // 4 spaces prefix
+
+    options = self->options;
+    for (u32 i = 0; i < self->options_len; i++, options++) {
+        size_t pos = 0;
+        size_t pad = 0;
+        if (options->type == 1 /*ARGPARSE_OPT_GROUP*/) {
+            fputc('\n', stdout);
+            fprintf(stdout, "%s", options->help);
+            fputc('\n', stdout);
+            continue;
+        }
+        pos = fprintf(stdout, "    ");
+        if (options->short_name) {
+            pos += fprintf(stdout, "-%c", options->short_name);
+        }
+        if (options->long_name && options->short_name) {
+            pos += fprintf(stdout, ", ");
+        }
+        if (options->long_name) {
+            pos += fprintf(stdout, "--%s", options->long_name);
+        }
+        if (options->type == 4 /*ARGPARSE_OPT_INTEGER*/) {
+            pos += fprintf(stdout, "=<int>");
+        } else if (options->type == 5 /*ARGPARSE_OPT_FLOAT*/) {
+            pos += fprintf(stdout, "=<flt>");
+        } else if (options->type == 6 /*ARGPARSE_OPT_STRING*/) {
+            pos += fprintf(stdout, "=<str>");
+        }
+        if (pos <= usage_opts_width) {
+            pad = usage_opts_width - pos;
+        } else {
+            fputc('\n', stdout);
+            pad = usage_opts_width;
+        }
+        fprintf(stdout, "%*s%s\n", (int)pad + 2, "", options->help);
+    }
+
+    // print epilog
+    if (self->epilog) {
+        fprintf(stdout, "%s\n", self->epilog);
+    }
+}
 static Exception
 argparse__getvalue(argparse_c* self, argparse_opt_s* opt, int flags)
 {
@@ -57,18 +177,15 @@ argparse__getvalue(argparse_c* self, argparse_opt_s* opt, int flags)
     }
 
     switch (opt->type) {
-        case ARGPARSE_OPT_BOOLEAN:
+        case 2 /*ARGPARSE_OPT_BOOLEAN*/:
             if (flags & OPT_UNSET) {
-                *(int*)opt->value = *(int*)opt->value - 1;
-            } else {
-                *(int*)opt->value = *(int*)opt->value + 1;
-            }
-            if (*(int*)opt->value < 0) {
                 *(int*)opt->value = 0;
+            } else {
+                *(int*)opt->value = 1;
             }
             opt->is_present = true;
             break;
-        case ARGPARSE_OPT_BIT:
+        case 3 /*ARGPARSE_OPT_BIT*/:
             if (flags & OPT_UNSET) {
                 *(int*)opt->value &= ~opt->data;
             } else {
@@ -76,7 +193,7 @@ argparse__getvalue(argparse_c* self, argparse_opt_s* opt, int flags)
             }
             opt->is_present = true;
             break;
-        case ARGPARSE_OPT_STRING:
+        case 6 /*ARGPARSE_OPT_STRING*/:
             if (self->_ctx.optvalue) {
                 *(const char**)opt->value = self->_ctx.optvalue;
                 self->_ctx.optvalue = NULL;
@@ -88,7 +205,7 @@ argparse__getvalue(argparse_c* self, argparse_opt_s* opt, int flags)
             }
             opt->is_present = true;
             break;
-        case ARGPARSE_OPT_INTEGER:
+        case 4 /*ARGPARSE_OPT_INTEGER*/:
             errno = 0;
             if (self->_ctx.optvalue) {
                 *(int*)opt->value = strtol(self->_ctx.optvalue, (char**)&s, 0);
@@ -107,7 +224,7 @@ argparse__getvalue(argparse_c* self, argparse_opt_s* opt, int flags)
             }
             opt->is_present = true;
             break;
-        case ARGPARSE_OPT_FLOAT:
+        case 5 /*ARGPARSE_OPT_FLOAT*/:
             errno = 0;
             if (self->_ctx.optvalue) {
                 *(float*)opt->value = strtof(self->_ctx.optvalue, (char**)&s);
@@ -135,6 +252,12 @@ skipped:
     if (opt->callback) {
         opt->is_present = true;
         return opt->callback(self, opt);
+    } else {
+        if (opt->short_name == 'h'){
+            argparse_usage(self);
+            return Error.argsparse;
+        }
+
     }
 
     return Error.ok;
@@ -147,13 +270,13 @@ argparse__options_check(argparse_c* self, bool reset)
 
     for (u32 i = 0; i < self->options_len; i++, options++) {
         switch (options->type) {
-            case ARGPARSE_OPT_GROUP:
+            case 1 /*ARGPARSE_OPT_GROUP*/:
                 continue;
-            case ARGPARSE_OPT_BOOLEAN:
-            case ARGPARSE_OPT_BIT:
-            case ARGPARSE_OPT_INTEGER:
-            case ARGPARSE_OPT_FLOAT:
-            case ARGPARSE_OPT_STRING:
+            case 2 /*ARGPARSE_OPT_BOOLEAN*/:
+            case 3 /*ARGPARSE_OPT_BIT*/:
+            case 4 /*ARGPARSE_OPT_INTEGER*/:
+            case 5 /*ARGPARSE_OPT_FLOAT*/:
+            case 6 /*ARGPARSE_OPT_STRING*/:
                 if (reset) {
                     options->is_present = 0;
                     if (!(options->short_name || options->long_name)) {
@@ -201,7 +324,7 @@ argparse__short_opt(argparse_c* self, argparse_opt_s* options)
             return argparse__getvalue(self, options, 0);
         }
     }
-    return Error.sanity_check;
+    return Error.not_found;
 }
 
 static Exception
@@ -214,21 +337,22 @@ argparse__long_opt(argparse_c* self, argparse_opt_s* options)
             continue;
         }
 
-        rest = prefix_skip(self->_ctx.argv[0] + 2, options->long_name);
+        rest = argparse__prefix_skip(self->_ctx.argv[0] + 2, options->long_name);
         if (!rest) {
             // negation disabled?
             if (options->flags & OPT_NONEG) {
                 continue;
             }
             // only OPT_BOOLEAN/OPT_BIT supports negation
-            if (options->type != ARGPARSE_OPT_BOOLEAN && options->type != ARGPARSE_OPT_BIT) {
+            if (options->type != 2 /*ARGPARSE_OPT_BOOLEAN*/ &&
+                options->type != 3 /*ARGPARSE_OPT_BIT*/) {
                 continue;
             }
 
-            if (prefix_cmp(self->_ctx.argv[0] + 2, "no-")) {
+            if (argparse__prefix_cmp(self->_ctx.argv[0] + 2, "no-")) {
                 continue;
             }
-            rest = prefix_skip(self->_ctx.argv[0] + 2 + 3, options->long_name);
+            rest = argparse__prefix_skip(self->_ctx.argv[0] + 2 + 3, options->long_name);
             if (!rest) {
                 continue;
             }
@@ -242,97 +366,23 @@ argparse__long_opt(argparse_c* self, argparse_opt_s* options)
         }
         return argparse__getvalue(self, options, opt_flags | OPT_LONG);
     }
-    return Error.argument;
+    return Error.not_found;
 }
 
-void
-argparse_usage(argparse_c* self)
+
+
+static Exception
+argparse__report_error(argparse_c* self, Exc err)
 {
-    if (self->usage) {
-        fprintf(stdout, "Usage: \n%s\n", self->usage);
-    } else {
-        fprintf(stdout, "Usage:\n");
+    // invalidate argc
+    self->_ctx.argc = 0;
+
+    if (err == Error.not_found) {
+        fprintf(stdout, "error: unknown option `%s`\n", self->_ctx.argv[0]);
+    } else if (err == Error.integrity) {
+        fprintf(stdout, "error: option `%s` follows argument\n", self->_ctx.argv[0]);
     }
-
-    // print description
-    if (self->description) {
-        fprintf(stdout, "%s\n", self->description);
-    }
-
-    fputc('\n', stdout);
-
-    const argparse_opt_s* options;
-
-    // figure out best width
-    size_t usage_opts_width = 0;
-    size_t len;
-    options = self->options;
-    for (u32 i = 0; i < self->options_len; i++, options++) {
-        len = 0;
-        if ((options)->short_name) {
-            len += 2;
-        }
-        if ((options)->short_name && (options)->long_name) {
-            len += 2; // separator ", "
-        }
-        if ((options)->long_name) {
-            len += strlen((options)->long_name) + 2;
-        }
-        if (options->type == ARGPARSE_OPT_INTEGER) {
-            len += strlen("=<int>");
-        }
-        if (options->type == ARGPARSE_OPT_FLOAT) {
-            len += strlen("=<flt>");
-        } else if (options->type == ARGPARSE_OPT_STRING) {
-            len += strlen("=<str>");
-        }
-        len = (len + 3) - ((len + 3) & 3);
-        if (usage_opts_width < len) {
-            usage_opts_width = len;
-        }
-    }
-    usage_opts_width += 4; // 4 spaces prefix
-
-    options = self->options;
-    for (u32 i = 0; i < self->options_len; i++, options++) {
-        size_t pos = 0;
-        size_t pad = 0;
-        if (options->type == ARGPARSE_OPT_GROUP) {
-            fputc('\n', stdout);
-            fprintf(stdout, "%s", options->help);
-            fputc('\n', stdout);
-            continue;
-        }
-        pos = fprintf(stdout, "    ");
-        if (options->short_name) {
-            pos += fprintf(stdout, "-%c", options->short_name);
-        }
-        if (options->long_name && options->short_name) {
-            pos += fprintf(stdout, ", ");
-        }
-        if (options->long_name) {
-            pos += fprintf(stdout, "--%s", options->long_name);
-        }
-        if (options->type == ARGPARSE_OPT_INTEGER) {
-            pos += fprintf(stdout, "=<int>");
-        } else if (options->type == ARGPARSE_OPT_FLOAT) {
-            pos += fprintf(stdout, "=<flt>");
-        } else if (options->type == ARGPARSE_OPT_STRING) {
-            pos += fprintf(stdout, "=<str>");
-        }
-        if (pos <= usage_opts_width) {
-            pad = usage_opts_width - pos;
-        } else {
-            fputc('\n', stdout);
-            pad = usage_opts_width;
-        }
-        fprintf(stdout, "%*s%s\n", (int)pad + 2, "", options->help);
-    }
-
-    // print epilog
-    if (self->epilog) {
-        fprintf(stdout, "%s\n", self->epilog);
-    }
+    return Error.argsparse;
 }
 
 Exception
@@ -344,6 +394,14 @@ argparse_parse(argparse_c* self, int argc, char** argv)
             "zero options provided or self.options_len field not set\n"
         );
     }
+    uassert(argc > 0);
+    uassert(argv != NULL);
+    uassert(argv[0] != NULL);
+
+    if (self->program_name == NULL) {
+        self->program_name = argv[0];
+    }
+
     // reset if we have several runs
     memset(&self->_ctx, 0, sizeof(self->_ctx));
 
@@ -359,31 +417,32 @@ argparse_parse(argparse_c* self, int argc, char** argv)
     for (; self->_ctx.argc; self->_ctx.argc--, self->_ctx.argv++) {
         const char* arg = self->_ctx.argv[0];
         if (arg[0] != '-' || !arg[1]) {
-            if (self->flags & ARGPARSE_STOP_AT_NON_OPTION) {
-                goto end;
+            self->_ctx.has_argument = true;
+
+            if (self->flags.stop_at_non_option) {
+                self->_ctx.argc--;
+                self->_ctx.argv++;
+                break;
             }
-            // if it's not option or is a single char '-', copy verbatim
-            self->_ctx.out[self->_ctx.cpidx++] = self->_ctx.argv[0];
             continue;
         }
         // short option
         if (arg[1] != '-') {
+            if (self->_ctx.has_argument) {
+                // options are not allowed after arguments
+                return argparse__report_error(self, Error.integrity);
+            }
+
             self->_ctx.optvalue = arg + 1;
+            self->_ctx.cpidx++;
             except(err, argparse__short_opt(self, self->options))
             {
-                // return err;
-                // case -1:
-                //     break;
-                // case -2:
-                goto unknown;
+                return argparse__report_error(self, err);
             }
             while (self->_ctx.optvalue) {
                 except(err, argparse__short_opt(self, self->options))
                 {
-                    // case -1:
-                    //     break;
-                    // case -2:
-                    goto unknown;
+                    return argparse__report_error(self, err);
                 }
             }
             continue;
@@ -392,63 +451,54 @@ argparse_parse(argparse_c* self, int argc, char** argv)
         if (!arg[2]) {
             self->_ctx.argc--;
             self->_ctx.argv++;
+            self->_ctx.cpidx++;
             break;
         }
         // long option
+        if (self->_ctx.has_argument) {
+            // options are not allowed after arguments
+            return argparse__report_error(self, Error.integrity);
+        }
         except(err, argparse__long_opt(self, self->options))
         {
-            // case -1:
-            //     break;
-            // case -2:
-            goto unknown;
+            return argparse__report_error(self, err);
         }
+        self->_ctx.cpidx++;
         continue;
-
-    unknown:
-        fprintf(stdout, "error: unknown option `%s`\n", self->_ctx.argv[0]);
-        argparse_usage(self);
-        if (!(self->flags & ARGPARSE_IGNORE_UNKNOWN_ARGS)) {
-            return Error.argsparse;
-        }
     }
-
-end:
-    memmove(
-        self->_ctx.out + self->_ctx.cpidx,
-        self->_ctx.argv,
-        self->_ctx.argc * sizeof(*self->_ctx.out)
-    );
-    self->_ctx.out[self->_ctx.cpidx + self->_ctx.argc] = NULL;
 
     except(err, argparse__options_check(self, false))
     {
         return err;
     }
-    // return self->cpidx + self->argc;
+
+    self->_ctx.out += self->_ctx.cpidx + 1; // excludes 1st argv[0], program_name
+    self->_ctx.argc = argc - self->_ctx.cpidx - 1;
+
     return Error.ok;
 }
 
-
-static Exception
-argparse__help_cb_no_exit(argparse_c* self, const argparse_opt_s* option)
+u32
+argparse_argc(argparse_c* self)
 {
-    (void)option;
-    argparse_usage(self);
-    return Error.ok;
+    uassert(self->_ctx.out != NULL && "argparse.parse() not called?");
+    return self->_ctx.argc;
 }
 
-static Exception
-argparse__help_cb(argparse_c* self, const argparse_opt_s* option)
+char**
+argparse_argv(argparse_c* self)
 {
-    if (argparse__help_cb_no_exit(self, option)) {
-        ; // ignore result
-    }
-    return Error.argsparse;
+    uassert(self->_ctx.out != NULL && "argparse.parse() not called?");
+    return self->_ctx.out;
 }
+
+
 const struct __module__argparse argparse = {
     // Autogenerated by CEX
     // clang-format off
     .usage = argparse_usage,
     .parse = argparse_parse,
+    .argc = argparse_argc,
+    .argv = argparse_argv,
     // clang-format on
 };

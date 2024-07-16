@@ -468,6 +468,21 @@ ATEST_F(test_iter_split)
         nit++;
     }
     atassert_eqi(nit, 4);
+
+    nit = 0;
+    const char* expected6[] = {
+        "123",
+        "456",
+    };
+    s = str.cstr("123\n456\n");
+    for$iter(str_c, it, str.iter_split(s, "\n", &it.iterator))
+    {
+        atassert_eqi(str.is_valid(*it.val), true);
+        atassert_eqs(Error.ok, str.copy(*it.val, buf, arr$len(buf)));
+        atassert_eqi(str.cmp(*it.val, s$(expected6[nit])), 0);
+        nit++;
+    }
+    atassert_eqi(nit, 3);
     return NULL;
 }
 

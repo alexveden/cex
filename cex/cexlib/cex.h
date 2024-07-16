@@ -40,13 +40,15 @@ typedef double f64;
  */
 
 typedef const char* Exc;
-#define EOK (Exc) NULL
+
 #define Exception Exc __attribute__((warn_unused_result))
 #define ExceptionSkip Exc __attribute__((warn_unused_result))
 
+
+#define EOK (Exc) NULL
 extern const struct _CEX_Error_struct
 {
-    Exc ok; // must be the 1st
+    Exc ok; // NOTE: must be the 1st, same as EOK
     Exc memory;
     Exc io;
     Exc overflow;
