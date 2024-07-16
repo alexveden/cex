@@ -208,6 +208,10 @@ argparse__getvalue(argparse_c* self, argparse_opt_s* opt, int flags)
         case 4 /*ARGPARSE_OPT_INTEGER*/:
             errno = 0;
             if (self->_ctx.optvalue) {
+                if (self->_ctx.optvalue[0] == '\0') {
+                    return argparse__error(self, opt, "requires a value", flags);
+                }
+
                 *(int*)opt->value = strtol(self->_ctx.optvalue, (char**)&s, 0);
                 self->_ctx.optvalue = NULL;
             } else if (self->_ctx.argc > 1) {
@@ -226,7 +230,11 @@ argparse__getvalue(argparse_c* self, argparse_opt_s* opt, int flags)
             break;
         case 5 /*ARGPARSE_OPT_FLOAT*/:
             errno = 0;
+
             if (self->_ctx.optvalue) {
+                if (self->_ctx.optvalue[0] == '\0') {
+                    return argparse__error(self, opt, "requires a value", flags);
+                }
                 *(float*)opt->value = strtof(self->_ctx.optvalue, (char**)&s);
                 self->_ctx.optvalue = NULL;
             } else if (self->_ctx.argc > 1) {
@@ -253,11 +261,10 @@ skipped:
         opt->is_present = true;
         return opt->callback(self, opt);
     } else {
-        if (opt->short_name == 'h'){
+        if (opt->short_name == 'h') {
             argparse_usage(self);
             return Error.argsparse;
         }
-
     }
 
     return Error.ok;
@@ -368,7 +375,6 @@ argparse__long_opt(argparse_c* self, argparse_opt_s* options)
     }
     return Error.not_found;
 }
-
 
 
 static Exception

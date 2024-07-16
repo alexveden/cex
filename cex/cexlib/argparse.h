@@ -108,9 +108,9 @@ typedef struct argparse_c
 // clang-format off
 #define argparse$opt_bool(...)    { 2 /*ARGPARSE_OPT_BOOLEAN*/, __VA_ARGS__, .is_present=0}
 #define argparse$opt_bit(...)     { 3 /*ARGPARSE_OPT_BIT*/, __VA_ARGS__, .is_present=0 }
-#define argparse$opt_integer(...) { 4 /*ARGPARSE_OPT_INTEGER*/, __VA_ARGS__, .is_present=0 }
-#define argparse$opt_float(...)   { 5 /*ARGPARSE_OPT_FLOAT*/, __VA_ARGS__, .is_present=0 }
-#define argparse$opt_string(...)  { 6 /*ARGPARSE_OPT_STRING*/, __VA_ARGS__, .is_present=0 }
+#define argparse$opt_i64(...)     { 4 /*ARGPARSE_OPT_INTEGER*/, __VA_ARGS__, .is_present=0 }
+#define argparse$opt_f32(...)     { 5 /*ARGPARSE_OPT_FLOAT*/, __VA_ARGS__, .is_present=0 }
+#define argparse$opt_str(...)     { 6 /*ARGPARSE_OPT_STRING*/, __VA_ARGS__, .is_present=0 }
 #define argparse$opt_group(h)     { 1 /*ARGPARSE_OPT_GROUP*/, 0, NULL, NULL, h, false, NULL, 0, 0, .is_present=0 }
 #define argparse$opt_help()       argparse$opt_bool('h', "help", NULL,                           \
                                                     "show this help message and exit", false,    \

@@ -41,9 +41,9 @@ ATEST_F(test_argparse_init_short)
         argparse$opt_group("Basic options"),
         argparse$opt_bool('f', "force", &force, "force to do", false, NULL, 0, 0),
         argparse$opt_bool('t', "test", &test, "test only", false, NULL, 0, 0),
-        argparse$opt_string('p', "path", &path, "path to read", .required = true, NULL, 0, 0),
-        argparse$opt_integer('i', "int", &int_num, "selected integer", false, NULL, 0, 0),
-        argparse$opt_float('s', "float", &flt_num, "selected float", false, NULL, 0, 0),
+        argparse$opt_str('p', "path", &path, "path to read", .required = true, NULL, 0, 0),
+        argparse$opt_i64('i', "int", &int_num, "selected integer", false, NULL, 0, 0),
+        argparse$opt_f32('s', "float", &flt_num, "selected float", false, NULL, 0, 0),
         argparse$opt_group("Bits options"),
         argparse$opt_bit(0, "read", &perms, "read perm", false, NULL, PERM_READ, OPT_NONEG),
         argparse$opt_bit(0, "write", &perms, "write perm", false, NULL, PERM_WRITE, 0),
@@ -90,9 +90,9 @@ ATEST_F(test_argparse_init_long)
         argparse$opt_group("Basic options"),
         argparse$opt_bool('f', "force", &force, "force to do"),
         argparse$opt_bool('t', "test", &test, "test only", NULL, 0, 0),
-        argparse$opt_string('p', "path", &path, "path to read", .callback = NULL, 0, 0),
-        argparse$opt_integer('i', "int", &int_num, .help = "selected integer", NULL, 0, 0),
-        argparse$opt_float('s', "float", .value = &flt_num, "selected float", NULL, 0, 0),
+        argparse$opt_str('p', "path", &path, "path to read", .callback = NULL, 0, 0),
+        argparse$opt_i64('i', "int", &int_num, .help = "selected integer", NULL, 0, 0),
+        argparse$opt_f32('s', "float", .value = &flt_num, "selected float", NULL, 0, 0),
         argparse$opt_group("Bits options"),
         argparse$opt_bit(0, "read", &perms, "read perm", false, NULL, PERM_READ, OPT_NONEG),
         argparse$opt_bit(0, "write", &perms, "write perm", false, NULL, PERM_WRITE, 0),
@@ -373,7 +373,7 @@ ATEST_F(test_argparse_arguments_after_options)
         argparse$opt_help(),
         argparse$opt_group("Basic options"),
         argparse$opt_bool('f', "force", &force, "force to do"),
-        argparse$opt_integer('i', "int", &int_num, "selected integer", false, NULL, 0, 0),
+        argparse$opt_i64('i', "int", &int_num, "selected integer", false, NULL, 0, 0),
     };
 
     argparse_c args = {
@@ -413,7 +413,7 @@ ATEST_F(test_argparse_arguments_stacked_short_opt)
         argparse$opt_group("Basic options"),
         argparse$opt_bool('f', "force", &force, "force to do"),
         argparse$opt_bool('i', "int_flag", &int_num, "selected integer", false, NULL, 0, 0),
-        argparse$opt_integer('z', "int", &int_num2, "selected integer", false, NULL, 0, 0),
+        argparse$opt_i64('z', "int", &int_num2, "selected integer", false, NULL, 0, 0),
     };
 
     argparse_c args = {
@@ -454,7 +454,7 @@ ATEST_F(test_argparse_arguments_double_dash)
         argparse$opt_group("Basic options"),
         argparse$opt_bool('f', "force", &force, "force to do"),
         argparse$opt_bool('i', "int_flag", &int_num, "selected integer", false, NULL, 0, 0),
-        argparse$opt_integer('z', "int", &int_num2, "selected integer", false, NULL, 0, 0),
+        argparse$opt_i64('z', "int", &int_num2, "selected integer", false, NULL, 0, 0),
     };
 
     argparse_c args = {
@@ -498,7 +498,7 @@ ATEST_F(test_argparse_arguments__option_follows_argument_not_allowed)
         argparse$opt_group("Basic options"),
         argparse$opt_bool('f', "force", &force, "force to do"),
         argparse$opt_bool('i', "int_flag", &int_num, "selected integer", false, NULL, 0, 0),
-        argparse$opt_integer('z', "int", &int_num2, "selected integer", false, NULL, 0, 0),
+        argparse$opt_i64('z', "int", &int_num2, "selected integer", false, NULL, 0, 0),
     };
 
     argparse_c args = {
@@ -535,7 +535,7 @@ ATEST_F(test_argparse_arguments__parsing_error)
 
     argparse_opt_s options[] = {
         argparse$opt_help(),
-        argparse$opt_integer('z', "int", &int_num2, "selected integer", false, NULL, 0, 0),
+        argparse$opt_i64('z', "int", &int_num2, "selected integer", false, NULL, 0, 0),
     };
 
     argparse_c args = {
@@ -563,7 +563,7 @@ ATEST_F(test_argparse_arguments__option_follows_argument__allowed)
         argparse$opt_group("Basic options"),
         argparse$opt_bool('f', "force", &force, "force to do"),
         argparse$opt_bool('i', "int_flag", &int_num, "selected integer", false, NULL, 0, 0),
-        argparse$opt_integer('z', "int", &int_num2, "selected integer", false, NULL, 0, 0),
+        argparse$opt_i64('z', "int", &int_num2, "selected integer", false, NULL, 0, 0),
     };
 
     argparse_c
@@ -597,7 +597,7 @@ ATEST_F(test_argparse_arguments__command_mode)
         argparse$opt_group("Basic options"),
         argparse$opt_bool('f', "force", &force, "force to do"),
         argparse$opt_bool('i', "int_flag", &int_num, "selected integer", false, NULL, 0, 0),
-        argparse$opt_integer('z', "int", &int_num2, "selected integer", false, NULL, 0, 0),
+        argparse$opt_i64('z', "int", &int_num2, "selected integer", false, NULL, 0, 0),
     };
 
     argparse_c
@@ -651,13 +651,13 @@ ATEST_F(test_argparse_arguments__command__help)
         argparse$opt_group("Basic options"),
         argparse$opt_bool('f', "force", &force, "force to do"),
         argparse$opt_bool('i', "int_flag", &int_num, "selected integer", false, NULL, 0, 0),
-        argparse$opt_integer('z', "int", &int_num2, "selected integer", false, NULL, 0, 0),
+        argparse$opt_i64('z', "int", &int_num2, "selected integer", false, NULL, 0, 0),
     };
 
     argparse_opt_s cmd_options[] = {
         argparse$opt_help(),
         argparse$opt_group("Command  options"),
-        argparse$opt_integer('z', "int", &int_num2, "some cmd int", false, NULL, 0, 0),
+        argparse$opt_i64('z', "int", &int_num2, "some cmd int", false, NULL, 0, 0),
     };
 
     argparse_c
@@ -683,6 +683,118 @@ ATEST_F(test_argparse_arguments__command__help)
 
     return NULL;
 }
+
+ATEST_F(test_argparse_arguments__int_parsing)
+{
+    int int_num2 = -100;
+
+    argparse_opt_s options[] = {
+        argparse$opt_help(),
+        argparse$opt_i64('i', "int", &int_num2, "selected integer", false, NULL, 0, 0),
+    };
+
+    argparse_c args = {
+        .options = options,
+        .options_len = arr$len(options),
+    };
+
+    char* argv0[] = { "program_name", "--int=99"};
+    int argc = arr$len(argv0);
+
+    atassert_eqe(Error.ok, argparse.parse(&args, argc, argv0));
+
+    char* argv[] = { "program_name", "--int=foo1" };
+
+    atassert_eqe(Error.argsparse, argparse.parse(&args, argc, argv));
+    atassert_eqi(int_num2, 0);
+
+    int_num2 = -100;
+    char* argv2[] = { "program_name", "--int=1foo" };
+    atassert_eqe(Error.argsparse, argparse.parse(&args, argc, argv2));
+    atassert_eqi(int_num2, 1); // still set, but its strtol() issue
+
+    int_num2 = -100;
+    char* argv3[] = { "program_name", "--int=9999999999999999999999999999999999999999999999999999" };
+    atassert_eqe(Error.argsparse, argparse.parse(&args, argc, argv3));
+
+    int_num2 = -100;
+    char* argv4[] = { "program_name", "-i"};
+    atassert_eqe(Error.argsparse, argparse.parse(&args, argc, argv4));
+    atassert_eqi(int_num2, -100); 
+
+    int_num2 = -100;
+    char* argv5[] = { "program_name", "--int="};
+    atassert_eqe(Error.argsparse, argparse.parse(&args, argc, argv5));
+    atassert_eqi(int_num2, -100); 
+
+    int_num2 = -100;
+    char* argv6[] = { "program_name", "--int", "-6"};
+    atassert_eqe(Error.ok, argparse.parse(&args, 3, argv6));
+    atassert_eqi(int_num2, -6); 
+
+    int_num2 = -100;
+    char* argv7[] = { "program_name", "--int=9.8"};
+    atassert_eqe(Error.argsparse, argparse.parse(&args, argc, argv7));
+    atassert_eqi(int_num2, 9); 
+
+    return NULL;
+}
+
+ATEST_F(test_argparse_arguments__float_parsing)
+{
+    f32 fnum = -100;
+
+    argparse_opt_s options[] = {
+        argparse$opt_help(),
+        argparse$opt_f32('f', "flt", &fnum, "selected float", false, NULL, 0, 0),
+    };
+
+    argparse_c args = {
+        .options = options,
+        .options_len = arr$len(options),
+    };
+
+    char* argv0[] = { "program_name", "--flt=99"};
+    int argc = arr$len(argv0);
+    atassert_eqe(Error.ok, argparse.parse(&args, argc, argv0));
+
+    char* argv[] = { "program_name", "--flt=foo1" };
+
+    atassert_eqe(Error.argsparse, argparse.parse(&args, argc, argv));
+    atassert_eqi(fnum, 0);
+
+    fnum = -100;
+    char* argv2[] = { "program_name", "--flt=1foo" };
+    atassert_eqe(Error.argsparse, argparse.parse(&args, argc, argv2));
+    atassert_eqi(fnum, 1); // still set, but its strtol() issue
+
+    fnum = -100;
+    char* argv3[] = { "program_name", "--flt=9999999999999999999999999999999999999999999999999999" };
+    atassert_eqe(Error.argsparse, argparse.parse(&args, argc, argv3));
+
+    fnum = -100;
+    char* argv4[] = { "program_name", "-f"};
+    atassert_eqe(Error.argsparse, argparse.parse(&args, argc, argv4));
+    atassert_eqi(fnum, -100); 
+
+    fnum = -100;
+    char* argv5[] = { "program_name", "--flt="};
+    atassert_eqe(Error.argsparse, argparse.parse(&args, argc, argv5));
+    atassert_eqi(fnum, -100); 
+
+    fnum = -100;
+    char* argv6[] = { "program_name", "--flt", "6"};
+    atassert_eqe(Error.ok, argparse.parse(&args, 3, argv6));
+    atassert_eqi(fnum, 6); 
+
+    fnum = -100;
+    char* argv7[] = { "program_name", "--flt=-9.8"};
+    atassert_eqe(Error.ok, argparse.parse(&args, argc, argv7));
+    atassert_eqi(fnum*100, -9.8*100); 
+
+    return NULL;
+}
+
 /*
  *
  * MAIN (AUTO GENERATED)
@@ -713,6 +825,8 @@ main(int argc, char* argv[])
     ATEST_RUN(test_argparse_arguments__option_follows_argument__allowed);
     ATEST_RUN(test_argparse_arguments__command_mode);
     ATEST_RUN(test_argparse_arguments__command__help);
+    ATEST_RUN(test_argparse_arguments__int_parsing);
+    ATEST_RUN(test_argparse_arguments__float_parsing);
     
     ATEST_PRINT_FOOTER();  // ^^^^^ all tests runs are above
     return ATEST_EXITCODE();
