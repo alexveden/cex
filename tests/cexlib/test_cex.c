@@ -1,5 +1,5 @@
 #include <cex/cexlib/cex.c>
-#include <cex/cextest/cextest.h>
+#include <cex/cexlib/cextest.h>
 #include <errno.h>
 #include <stdio.h>
 #include <x86intrin.h>
@@ -7,24 +7,16 @@
 /*
  * SUITE INIT / SHUTDOWN
  */
-void
-my_test_shutdown_func(void)
-{
-    // instead of printf(....) consider to use alogf() it's more structural and contains
-    // line source:lnumber reference
-
-    // atlogf("atest_shutdown()\n");
+cextest$teardown(){
+    return EOK;
 }
 
-ATEST_SETUP_F(void)
-{
-    // atlogf("atest_setup()\n");
-
-    // return NULL;   // if no shutdown logic needed
-    return &my_test_shutdown_func; // return pointer to void some_shutdown_func(void)
+cextest$setup(){
+    return EOK;
 }
 
-ATEST_NOOPT Exception
+
+cextest$NOOPT Exception
 foo(int condition)
 {
     if (condition == 0) {
@@ -34,29 +26,26 @@ foo(int condition)
     return EOK;
 }
 
-ATEST_NOOPT int
+cextest$NOOPT int
 sys_func(int condition)
 {
     if (condition == -1) {
         errno = 999;
     }
-
-    // e$(foo(condition));
     return condition;
 }
 
-ATEST_NOOPT void*
+cextest$NOOPT void*
 void_ptr_func(int condition)
 {
     if (condition == -1) {
         return NULL;
     }
-    // e$(foo(condition));
     return &errno;
 }
 
 
-ATEST_F(test_sysfunc)
+cextest$case(test_sysfunc)
 {
 
     int ret = 0;
@@ -66,23 +55,23 @@ ATEST_F(test_sysfunc)
     except_errno(ret = sys_func(-1))
     {
         printf("Except: ret=%d errno=%d\n", ret, errno);
-        atassert_eqi(errno, 999);
-        atassert_eqi(ret, -1);
+        tassert_eqi(errno, 999);
+        tassert_eqi(ret, -1);
         nit++;
     }
-    atassert_eqi(nit, 1);
+    tassert_eqi(nit, 1);
 
     errno = 777;
     nit = 0;
     except_errno(ret = sys_func(100))
     {
-        atassert(false && "not expected");
+        tassert(false && "not expected");
         nit++;
     }
-    atassert_eqi(nit, 0);
-    atassert_eqi(errno, 0); // errno is reset before except_errno() starts!
-    atassert_eqi(ret, 100);
-    return NULL;
+    tassert_eqi(nit, 0);
+    tassert_eqi(errno, 0); // errno is reset before except_errno() starts!
+    tassert_eqi(ret, 100);
+    return EOK;
 }
 
 Exception
@@ -114,63 +103,39 @@ Exception check_optimized(int e){
     (void)nit;
     (void)e;
 
-    // except(err, check(e))
-    // {
-    //     return err;
-    // }
     e$(check(e));
-    // except_traceback(err, check(e))
-    // {
-    //     return err;
-    // }
-    //
-    // Exc err = NULL;
-    // if((err = check(e))){
-    //     return err;
-    // } 
 
     return EOK;
 }
 
-ATEST_F(test_e_dollar_macro)
+cextest$case(test_e_dollar_macro)
 {
-    atassert_eqs(EOK, check_with_dollar(true));
-    atassert_eqs(Error.memory, check_with_dollar(-1));
+    tassert_eqs(EOK, check_with_dollar(true));
+    tassert_eqs(Error.memory, check_with_dollar(-1));
     return NULL;
 }
 
-ATEST_F(test_null_ptr)
+cextest$case(test_null_ptr)
 {
     void* res = NULL;
     except_null(res = void_ptr_func(1))
     {
-        atassert(false && "not expected");
+        tassert(false && "not expected");
     }
-    atassert(res != NULL);
+    tassert(res != NULL);
 
     except_null(res = void_ptr_func(-1))
     {
-        atassert(res == NULL);
+        tassert(res == NULL);
     }
-    atassert(res == NULL);
+    tassert(res == NULL);
 
     except_null(void_ptr_func(-1))
     {
-        atassert(res == NULL);
+        tassert(res == NULL);
     }
     return NULL;
 }
-
-// ATEST_F(test_error_change)
-// {
-//     char ** err = (char**)(&Error.integrity);
-//     printf("err=%p\n", *err);
-//     *err = "foo";
-//     atassert_eqs(Error.integrity, "foo");
-//
-//     atassert_eqs(Error.integrity, "foo");
-//     return NULL;
-// }
 /*
  *
  * MAIN (AUTO GENERATED)
@@ -179,13 +144,13 @@ ATEST_F(test_null_ptr)
 int
 main(int argc, char* argv[])
 {
-    ATEST_PARSE_MAINARGS(argc, argv);
-    ATEST_PRINT_HEAD();  // >>> all tests below
+    cextest$args_parse(argc, argv);
+    cextest$print_header();  // >>> all tests below
     
-    ATEST_RUN(test_sysfunc);
-    ATEST_RUN(test_e_dollar_macro);
-    ATEST_RUN(test_null_ptr);
+    cextest$run(test_sysfunc);
+    cextest$run(test_e_dollar_macro);
+    cextest$run(test_null_ptr);
     
-    ATEST_PRINT_FOOTER();  // ^^^^^ all tests runs are above
-    return ATEST_EXITCODE();
+    cextest$print_footer();  // ^^^^^ all tests runs are above
+    return cextest$exit_code();
 }

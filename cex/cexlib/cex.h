@@ -73,7 +73,7 @@ extern const struct _CEX_Error_struct
 #define __cex__fprintf fprintf
 
 // If you define this macro it will turn off all debug printing
-//#define __cex__fprintf(stream, format, ...) (true)
+// #define __cex__fprintf(stream, format, ...) (true)
 
 #endif
 
@@ -144,18 +144,7 @@ _uhf_errors_is_error__uerr(Exc* e)
  *                 ASSERTIONS MACROS
  */
 
-#ifdef CEXTEST
-// this prevents spamming on stderr (i.e. cextest.h output stream in silent mode)
-#define CEXERRORF_OUT__ stdout
-#define uassert_disable() __cex_test_uassert_enabled = 0
-#define uassert_enable() __cex_test_uassert_enabled = 1
-#define uassert_is_enabled() (__cex_test_uassert_enabled)
-#else
-#define uassert_disable() (void)0
-#define uassert_enable() (void)0
-#define uassert_is_enabled() true
-#define CEXERRORF_OUT__ stderr
-#endif
+
 
 #ifdef NDEBUG
 #define utracef(format, ...) ((void)(0))
@@ -171,8 +160,6 @@ _uhf_errors_is_error__uerr(Exc* e)
         __func__,                                                                                  \
         ##__VA_ARGS__                                                                              \
     ))
-
-int __cex_test_uassert_enabled = 1;
 
 
 #ifdef __SANITIZE_ADDRESS__
@@ -220,20 +207,22 @@ void __sanitizer_print_stack_trace();
     } while (0)
 #endif
 
-#define uerrcheck(condition)                                                                       \
-    do {                                                                                           \
-        if (unlikely(!((condition)))) {                                                            \
-            __cex__fprintf(                                                                        \
-                CEXERRORF_OUT__,                                                                   \
-                "[UERRCHK] ( %s:%d %s() ) Check failed: %s\n",                                     \
-                __FILENAME__,                                                                      \
-                __LINE__,                                                                          \
-                __func__,                                                                          \
-                #condition                                                                         \
-            );                                                                                     \
-            return Error.check;                                                                    \
-        }                                                                                          \
-    } while (0)
+
+#ifdef CEXTEST
+// this prevents spamming on stderr (i.e. cextest.h output stream in silent mode)
+#define CEXERRORF_OUT__ stdout
+
+int __cex_test_uassert_enabled = 0;
+#define uassert_disable() __cex_test_uassert_enabled = 0
+#define uassert_enable() __cex_test_uassert_enabled = 1
+#define uassert_is_enabled() (__cex_test_uassert_enabled)
+#else
+#define uassert_disable()                                                                          \
+    uassert(false && "uassert_disable() allowed only when compiled with -DCEXTEST")
+#define uassert_enable() (void)0
+#define uassert_is_enabled() true
+#define CEXERRORF_OUT__ stderr
+#endif
 
 /*
  *                  ARRAY / ITERATORS INTERFACE
