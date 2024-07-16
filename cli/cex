@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import subprocess
 from textwrap import indent, dedent
 import os
 import shutil
@@ -58,33 +59,19 @@ class CEXTestBuilder:
     }
     """
 
-    def __init__(self, action: str, src_path: str, test_dir: str):
+    def __init__(
+        self, action: str, src_path: str, test_dir: str, force_rebuild: bool = False
+    ):
         self.test_dir = test_dir
         self.src_path = os.path.normpath(src_path)
         self.action = action
         self.include_path_cache = {}
+        self.force_rebuild = force_rebuild
 
         if not os.path.exists(test_dir):
             raise FileNotFoundError(
                 f"test_dir={test_dir} not exist in current dir: {os.getcwd()}"
             )
-
-    def action_create(self):
-        assert self.src_path != "all", "all not supported for `create` action"
-        assert not os.path.exists(self.src_path), f"path already exist: {self.src_path}"
-        assert self.src_path.endswith(".c"), "path must end with .c"
-
-        test_file = self.src_path
-
-        if not self.src_path.startswith(self.test_dir):
-            test_file = os.path.join(self.test_dir, test_file)
-
-        print(f"making: {test_file}")
-
-        os.makedirs(os.path.dirname(test_file), exist_ok=True)
-
-        with open(test_file, "w") as fh:
-            fh.write(dedent(CEXTestBuilder.TEMPLATE))
 
     def search_include_fn(self, incl_fn):
         incl_fn = os.path.normpath(incl_fn)
@@ -129,13 +116,17 @@ class CEXTestBuilder:
 
         build_mtime = None
         if os.path.exists(test_exe):
-            build_mtime = os.path.getmtime(test_exe)
+            build_mtime = int(os.path.getmtime(test_exe))
 
         fh = open(test_src, "r")
+
+        test_mtime = int(os.path.getmtime(test_src))
+
+        # print(f"{build_mtime=} {test_mtime=}")
+
         lines = fh.readlines()
 
         all_tests = []
-        test_calls = set()
 
         re_test_definition = re.compile(
             r"^cextest\$case\((?P<test_name>\w+)\)", re.MULTILINE
@@ -160,13 +151,13 @@ class CEXTestBuilder:
 
         has_setup = False
         has_insert_here = False
-        has_c_changes = False
+        has_c_changes = build_mtime is None
         has_print_head = False
         has_parse_args = False
         has_print_footer = False
         has_exit_code = False
         is_in_main = False
-        force_rewrite = False
+        is_in_test_case = False
         n_tests = 0
 
         buf = io.StringIO()
@@ -175,6 +166,7 @@ class CEXTestBuilder:
             # print(l)
             if re_test_definition.match(line):
                 all_tests.append(re_test_definition.match(line)["test_name"])
+                is_in_test_case = True
             elif re_test_setup_f_definition.match(line):
                 has_setup = True
             elif re_includes_c.search(line) and not has_c_changes:
@@ -183,13 +175,12 @@ class CEXTestBuilder:
                 incl_fn = self.search_include_fn(fn)
 
                 if build_mtime and incl_fn:
-                    mtime = os.path.getmtime(incl_fn)
+                    mtime = int(os.path.getmtime(incl_fn))
                     if (
                         not os.path.basename(incl_fn).startswith("fake_")
                         and mtime > build_mtime
                     ):
-                        if os.path.exists(args.data):
-                            print(f"{test_src} changed {incl_fn}")
+                        print(f"{test_src} changed {incl_fn}")
                         has_c_changes = True
 
             elif re_print_head.match(line):
@@ -199,17 +190,17 @@ class CEXTestBuilder:
                 buf.write("    \n")
 
                 if len(all_tests) == 0:
-                    print(
-                        f"No tests found in {test_src}"
-                    )
-                    sys.exit(1)
+                    print(f"No tests found in {test_src}")
+                    return
 
                 for t in all_tests:
                     n_tests += 1
                     buf.write(f"    cextest$run({t});\n")
             elif re_print_footer.match(line):
                 buf.write("    \n")
-                line = "    cextest$print_footer();  // ^^^^^ all tests runs are above"
+                line = (
+                    "    cextest$print_footer();  // ^^^^^ all tests runs are above\n"
+                )
                 has_print_footer = True
                 has_insert_here = False
             elif re_exit_code.match(line):
@@ -224,54 +215,87 @@ class CEXTestBuilder:
                     continue
                 if not line.strip():
                     continue
+            elif is_in_test_case and " return " in line:
+                is_in_test_case = False
+                line = "    return EOK;\n"
+                has_insert_here = False
 
             if not has_insert_here:
                 buf.write(line)
 
         if not has_parse_args:
-            print("No cextest$args_parse(...) in main")
+            print(f"No cextest$args_parse(...) in main: {test_src}")
             sys.exit(1)
         if not has_exit_code:
-            print("No return cextest$exit_code(); in main")
+            print(f"No return cextest$exit_code(); in main: {test_src}")
             sys.exit(1)
         if not has_print_footer:
-            print("No cextest$print_footer() found")
+            print(f"No cextest$print_footer() found: {test_src}")
             sys.exit(1)
         if not has_print_head:
-            print("No cextest$print_header() found")
+            print(f"No cextest$print_header() found: {test_src}")
             sys.exit(1)
         if not has_setup:
-            print("No cextest$setup() found")
+            print(f"No cextest$setup() found: {test_src}")
             sys.exit(1)
         fh.close()
 
-        if (
-            not force_rewrite
-            and not has_c_changes
-            and set(all_tests) == set(test_calls)
-        ):
-            # print(f"No changes: {all_tests=} {test_calls=} ")
+        if not self.force_rebuild and not has_c_changes and test_mtime <= build_mtime:
             # No new tests added or changed, prevent touching the source code then
-            sys.exit(0)
+            # print(f"No changes: {all_tests=} {test_calls=} ")
+            return False
 
         if n_tests == 0:
-            print("No tests selected")
-
+            print(f"No tests found in: {test_src}")
+            return False
         else:
             with open(test_src, "w") as fh:
                 fh.write(buf.getvalue())
+            return True
 
-    def action_clean(self):
-        build_dir = os.path.join(self.test_dir, "build")
-        if self.src_path == "all":
-            if os.path.exists(build_dir):
-                shutil.rmtree(build_dir)
-        else:
-            assert os.path.exists(self.src_path), f"test not exist: {self.src_path}"
-            assert self.src_path.endswith(".c"), "path must end with .c"
-            test_exe = self.make_test_exe(self.src_path)
-            if os.path.exists(test_exe):
-                os.unlink(test_exe)
+    def compile(self, test_src: str):
+        assert os.path.exists(test_src)
+
+        test_exe = self.make_test_exe(test_src)
+
+        args = [
+            "cc",
+            "-DCEXTEST",
+            "-O3",
+            "-g3",
+            "-ggdb3",
+            "-Wall",
+            "-Wextra",
+            "-Werror",
+            "-Wuninitialized",
+            "-Wno-format-overflow",
+            "-Wno-unused-function",
+            "-Wdouble-promotion",
+            "-fsanitize-address-use-after-scope",
+            "-fsanitize=address",
+            "-fsanitize=undefined",
+            "-fsanitize=leak",
+            "-fstack-protector-strong",
+            f"-I{os.getcwd()}/",
+            "-Isrc",
+            "-Iinclude",
+            f"-I{self.test_dir}",
+            test_src,
+            "-o",
+            test_exe,
+        ]
+
+        process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = process.communicate()
+
+        if process.wait(60) != 0:
+            print("Process error:")
+            print(" ".join(args))
+            print("stdout:")
+            print(stdout.decode())
+            print("stderr:")
+            print(stderr.decode())
+            raise RuntimeError("Compilation error")
 
     def action_build(self):
         test_files_list = []
@@ -285,7 +309,70 @@ class CEXTestBuilder:
             test_files_list.append(self.src_path)
 
         for fn in test_files_list:
-            self.action_build_test(fn)
+            if self.action_build_test(fn):
+                print(f"Building: {fn}")
+                self.compile(fn)
+
+    def action_run(self):
+        test_exe_list = []
+
+        # Rebuild new before run
+        self.action_build()
+
+        if self.src_path == "all":
+            for fn in glob.glob(os.path.join(self.test_dir, "**/*c")):
+                test_exe_list.append(self.make_test_exe(fn))
+        else:
+            assert os.path.exists(self.src_path), f"test not exist: {self.src_path}"
+            assert self.src_path.endswith(".c"), "path must end with .c"
+            test_exe_list.append(self.make_test_exe(self.src_path))
+
+        for fn in test_exe_list:
+            args = [
+                fn,
+            ]
+
+            if self.src_path == "all":
+                args.extend(["q"])  # run cex test in quiet mode
+
+            process = subprocess.Popen(
+                args,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                # universal_newlines=True,
+                # shell=True,
+            )
+            for line in iter(process.stdout.readline, b""):
+                print(line.decode().rstrip())
+
+    def action_clean(self):
+        build_dir = os.path.join(self.test_dir, "build")
+        if self.src_path == "all":
+            if os.path.exists(build_dir):
+                shutil.rmtree(build_dir)
+        else:
+            assert os.path.exists(self.src_path), f"test not exist: {self.src_path}"
+            assert self.src_path.endswith(".c"), "path must end with .c"
+            test_exe = self.make_test_exe(self.src_path)
+            if os.path.exists(test_exe):
+                os.unlink(test_exe)
+
+    def action_create(self):
+        assert self.src_path != "all", "all not supported for `create` action"
+        assert not os.path.exists(self.src_path), f"path already exist: {self.src_path}"
+        assert self.src_path.endswith(".c"), "path must end with .c"
+
+        test_file = self.src_path
+
+        if not self.src_path.startswith(self.test_dir):
+            test_file = os.path.join(self.test_dir, test_file)
+
+        print(f"making: {test_file}")
+
+        os.makedirs(os.path.dirname(test_file), exist_ok=True)
+
+        with open(test_file, "w") as fh:
+            fh.write(dedent(CEXTestBuilder.TEMPLATE))
 
     def build(self):
         if self.action == "create":
@@ -294,6 +381,8 @@ class CEXTestBuilder:
             self.action_build()
         elif self.action == "clean":
             self.action_clean()
+        elif self.action == "run":
+            self.action_run()
         else:
             raise ValueError(
                 f"Incorrect action: {self.action}, expected one of (build, create, run, clean)"
@@ -1038,7 +1127,10 @@ class CEXBuilder:
 
 def action_test(args):
     builder = CEXTestBuilder(
-        args.action, src_path=args.test_file, test_dir=args.testdir
+        args.action,
+        src_path=args.test_file,
+        test_dir=args.testdir,
+        force_rebuild=args.force,
     )
     builder.build()
 
@@ -1093,8 +1185,15 @@ if __name__ == "__main__":
     test_parser.add_argument(
         "-d", "--testdir", help="Root directory of tests", default="tests"
     )
+    test_parser.add_argument(
+        "-f",
+        "--force",
+        help="Force test rebuild befor command",
+        default=False,
+        action="store_true",
+    )
     test_parser.add_argument("test_file", help="File path to cex test .c file")
     test_parser.set_defaults(func=action_test)
 
-    args = global_parser.parse_args()
-    args.func(args)
+    cli_arguments = global_parser.parse_args()
+    cli_arguments.func(cli_arguments)

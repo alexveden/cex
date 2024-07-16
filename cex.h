@@ -789,6 +789,9 @@ struct __CexTestContext_s
             );                                                                                     \
         }                                                                                          \
         __CexTestContext.in_test = NULL;                                                           \
+        fflush(__atest_stream);                                                                    \
+        fflush(stdout);                                                                            \
+        fflush(stderr);                                                                            \
     } while (0)
 
 //
@@ -802,7 +805,8 @@ struct __CexTestContext_s
             fprintf(__atest_stream, "Running Tests: %s\n", __FILE__);                              \
             fprintf(__atest_stream, "-------------------------------------\n\n");                  \
         }                                                                                          \
-        fflush(0);                                                                                 \
+        fflush(stdout);                                                                            \
+        fflush(stderr);                                                                            \
     } while (0)
 
 //
@@ -831,6 +835,9 @@ struct __CexTestContext_s
                 __CexTestContext.tests_run                                                         \
             );                                                                                     \
         }                                                                                          \
+        fflush(__atest_stream);                                                                    \
+        fflush(stdout);                                                                            \
+        fflush(stderr);                                                                            \
     } while (0)
 
 //

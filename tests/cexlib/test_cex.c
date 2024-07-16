@@ -2,6 +2,7 @@
 #include <cex/cexlib/cextest.h>
 #include <errno.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <x86intrin.h>
 
 /*
@@ -112,7 +113,7 @@ cextest$case(test_e_dollar_macro)
 {
     tassert_eqs(EOK, check_with_dollar(true));
     tassert_eqs(Error.memory, check_with_dollar(-1));
-    return NULL;
+    return EOK;
 }
 
 cextest$case(test_null_ptr)
@@ -134,7 +135,8 @@ cextest$case(test_null_ptr)
     {
         tassert(res == NULL);
     }
-    return NULL;
+
+    return EOK;
 }
 /*
  *

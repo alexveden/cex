@@ -54,9 +54,9 @@ main(int argc, char* argv[])
 {
     cextest$args_parse(argc, argv);
     cextest$print_header();  // >>> all tests below
-    
+
     cextest$run(my_test);
-    
+
     cextest$print_footer();  // ^^^^^ all tests runs are above
     return cextest$exit_code();
 }
@@ -366,6 +366,9 @@ struct __CexTestContext_s
             );                                                                                     \
         }                                                                                          \
         __CexTestContext.in_test = NULL;                                                           \
+        fflush(__atest_stream);                                                                    \
+        fflush(stdout);                                                                            \
+        fflush(stderr);                                                                            \
     } while (0)
 
 //
@@ -379,7 +382,8 @@ struct __CexTestContext_s
             fprintf(__atest_stream, "Running Tests: %s\n", __FILE__);                              \
             fprintf(__atest_stream, "-------------------------------------\n\n");                  \
         }                                                                                          \
-        fflush(0);                                                                                 \
+        fflush(stdout);                                                                            \
+        fflush(stderr);                                                                            \
     } while (0)
 
 //
@@ -408,6 +412,9 @@ struct __CexTestContext_s
                 __CexTestContext.tests_run                                                         \
             );                                                                                     \
         }                                                                                          \
+        fflush(__atest_stream);                                                                    \
+        fflush(stdout);                                                                            \
+        fflush(stderr);                                                                            \
     } while (0)
 
 //
