@@ -1,337 +1,623 @@
 #!/usr/bin/env python3
 import argparse
-from textwrap import indent
+from textwrap import indent, dedent
 import os
+import shutil
+import glob
+import sys
 import io
 import re
 
-RE_COMMENT_LINE = re.compile(r"^\s*//", re.MULTILINE)
-RE_COMMENT_ML_START = re.compile(r"^\s*\/\*", re.MULTILINE)
-RE_COMMENT_ML_END = re.compile(r".*\*\/", re.MULTILINE)
-RE_CODE_START_LINE = re.compile(r"^[a-zA-Z_0-9\*]+\s+", re.MULTILINE)
-RE_FUNC = re.compile(r"(.*)\s+(\w+)\({1}([\w,\[\]\(\)\s\*\.]+)\)", re.MULTILINE)
-RE_STATIC = re.compile(r"(^static\s|\sstatic\s|\sstatic$)", re.MULTILINE)
-RE_INLINE = re.compile(r"(^inline\s|\sinline\s|\sinline$)", re.MULTILINE)
 
+class CEXTestBuilder:
+    TEMPLATE = r"""
+    #include <cex.c>
 
-class Block:
-    """Generic code block
+    const Allocator_i* allocator;
 
-    Attributes:
-        buf: code buffer
-        line_start: start line of block
-        line_end: end line of block
+    cextest$teardown(){
+        allocator = allocators.heap.destroy(); // this also nullifies allocator
+        return EOK;
+    }
+
+    cextest$setup(){
+        uassert_enable(); // re-enable if you disabled it in some test case
+        allocator = allocators.heap.create();
+        return EOK;
+    }
+
+    cextest$case(my_test)
+    {
+        // Has malloc, but no free(), allocator will send memory leak warning
+        void* a = allocator->malloc(100);
+
+        tassert(true == 1);
+        tassert_eqi(1, 1);
+        tassert_eql(1, 1L);
+        tassert_eqf(1.0, 1.0);
+        tassert_eqe(EOK, Error.ok);
+
+        uassert_disable();
+        uassert(false && "this will be disabled, no abort!");
+
+        tassertf(true == 0, "true != %d", false);
+
+        return EOK;
+    }
+
+    int
+    main(int argc, char* argv[])
+    {
+        cextest$args_parse(argc, argv);
+        cextest$print_header();  // >>> all tests below
+
+        cextest$run(my_test);
+
+        cextest$print_footer();  // ^^^^^ all tests runs are above
+        return cextest$exit_code();
+    }
     """
 
-    def __init__(self, line_start: int):
-        self.buf = io.StringIO()
-        self.line_start = line_start
-        self.line_end = None
+    def __init__(self, action: str, src_path: str, test_dir: str):
+        self.test_dir = test_dir
+        self.src_path = os.path.normpath(src_path)
+        self.action = action
+        self.include_path_cache = {}
 
-    def __str__(self):
-        return self.__class__.__qualname__
+        if not os.path.exists(test_dir):
+            raise FileNotFoundError(
+                f"test_dir={test_dir} not exist in current dir: {os.getcwd()}"
+            )
 
-    def __repr__(self):
-        return f"Block: {str(self)} [{self.line_start}:{self.line_end}]\n{self.buf.getvalue()}"
+    def action_create(self):
+        assert self.src_path != "all", "all not supported for `create` action"
+        assert not os.path.exists(self.src_path), f"path already exist: {self.src_path}"
+        assert self.src_path.endswith(".c"), "path must end with .c"
 
-    @staticmethod
-    def probe(line: str) -> bool:
-        """Probes new block type based on line of code"""
-        return False
+        test_file = self.src_path
 
-    def process_line(self, line: str) -> bool:
-        """Process line of code in initialized block"""
-        raise NotImplementedError()
+        if not self.src_path.startswith(self.test_dir):
+            test_file = os.path.join(self.test_dir, test_file)
 
+        print(f"making: {test_file}")
 
-class Comment(Block):
-    """Commentary block
+        os.makedirs(os.path.dirname(test_file), exist_ok=True)
 
-    Attributes:
-        comment_type: 'm' - multi line, 's' - single line
-    """
+        with open(test_file, "w") as fh:
+            fh.write(dedent(CEXTestBuilder.TEMPLATE))
 
-    def __init__(self, line_start):
-        self.comment_type = None
-        super().__init__(line_start)
+    def search_include_fn(self, incl_fn):
+        incl_fn = os.path.normpath(incl_fn)
 
-    def __str__(self):
-        return f"Comment({self.comment_type}) [{self.line_start}:{self.line_end}]"
+        if incl_fn not in self.include_path_cache:
+            tpath = incl_fn
+            if os.path.exists(tpath):
+                self.include_path_cache[incl_fn] = tpath
+                return tpath
 
-    @staticmethod
-    def probe(line: str) -> bool:
-        return RE_COMMENT_LINE.search(line) or RE_COMMENT_ML_START.search(line)
+            tpath = os.path.join(self.test_dir, incl_fn)
+            if os.path.exists(tpath):
+                self.include_path_cache[incl_fn] = tpath
+                return tpath
 
-    def process_line(self, line: str) -> bool | None:
-        if self.comment_type is None:
-            if RE_COMMENT_ML_START.search(line):
-                self.comment_type = "m"
-            elif RE_COMMENT_LINE.search(line):
-                self.comment_type = "s"
-            else:
-                raise ValueError("Unsupproted commet")
+            tpath = os.path.join(os.getcwd(), incl_fn)
+            if os.path.exists(tpath):
+                self.include_path_cache[incl_fn] = tpath
+                return tpath
 
-            self.buf.write(line)
+            tpath = os.path.join(os.getcwd(), "src", incl_fn)
+            if os.path.exists(tpath):
+                self.include_path_cache[incl_fn] = tpath
+                return tpath
 
-            # Single line contains comment end mark
-            if RE_COMMENT_ML_END.search(line):
-                return False
+            tpath = os.path.join(os.getcwd(), "include", incl_fn)
+            if os.path.exists(tpath):
+                self.include_path_cache[incl_fn] = tpath
+                return tpath
 
-            return True
+            self.include_path_cache[incl_fn] = None
+            return tpath
+
+        return self.include_path_cache[incl_fn]
+
+    def make_test_exe(self, test_src: str):
+        return os.path.join(self.test_dir, "build", test_src + ".test")
+
+    def action_build_test(self, test_src: str):
+        test_exe = self.make_test_exe(test_src)
+        os.makedirs(os.path.dirname(test_exe), exist_ok=True)
+
+        build_mtime = None
+        if os.path.exists(test_exe):
+            build_mtime = os.path.getmtime(test_exe)
+
+        fh = open(test_src, "r")
+        lines = fh.readlines()
+
+        all_tests = []
+        test_calls = set()
+
+        re_test_definition = re.compile(
+            r"^cextest\$case\((?P<test_name>\w+)\)", re.MULTILINE
+        )
+        re_test_setup_f_definition = re.compile(r"^cextest\$setup\(\w*\)", re.MULTILINE)
+        re_parse_main_args = re.compile(
+            r"^\s*cextest\$args_parse\(.*\);.*", re.MULTILINE
+        )
+        re_print_head = re.compile(r"^\s*cextest\$print_header\(.*\);.*", re.MULTILINE)
+        re_print_footer = re.compile(
+            r"^\s*cextest\$print_footer\(.*\);.*", re.MULTILINE
+        )
+        re_exit_code = re.compile(
+            r"^\s*return\s+cextest\$exit_code\(.*\);.*", re.MULTILINE
+        )
+        re_in_main = re.compile(
+            r".*\s*main\(int\s+argc,\s+char\*\s+argv\[\s*\]\)", re.MULTILINE
+        )
+        re_includes_c = re.compile(
+            r"^#include\s+\"([.\/\\\w-]+\.(h|c))\"", re.MULTILINE
+        )
+
+        has_setup = False
+        has_insert_here = False
+        has_c_changes = False
+        has_print_head = False
+        has_parse_args = False
+        has_print_footer = False
+        has_exit_code = False
+        is_in_main = False
+        force_rewrite = False
+        n_tests = 0
+
+        buf = io.StringIO()
+
+        for line in lines:
+            # print(l)
+            if re_test_definition.match(line):
+                all_tests.append(re_test_definition.match(line)["test_name"])
+            elif re_test_setup_f_definition.match(line):
+                has_setup = True
+            elif re_includes_c.search(line) and not has_c_changes:
+                m = re_includes_c.search(line)
+                fn = m[1]
+                incl_fn = self.search_include_fn(fn)
+
+                if build_mtime and incl_fn:
+                    mtime = os.path.getmtime(incl_fn)
+                    if (
+                        not os.path.basename(incl_fn).startswith("fake_")
+                        and mtime > build_mtime
+                    ):
+                        if os.path.exists(args.data):
+                            print(f"{test_src} changed {incl_fn}")
+                        has_c_changes = True
+
+            elif re_print_head.match(line):
+                has_insert_here = True
+                has_print_head = True
+                buf.write("    cextest$print_header();  // >>> all tests below\n")
+                buf.write("    \n")
+
+                if len(all_tests) == 0:
+                    print(
+                        f"No tests found in {test_src}"
+                    )
+                    sys.exit(1)
+
+                for t in all_tests:
+                    n_tests += 1
+                    buf.write(f"    cextest$run({t});\n")
+            elif re_print_footer.match(line):
+                buf.write("    \n")
+                line = "    cextest$print_footer();  // ^^^^^ all tests runs are above"
+                has_print_footer = True
+                has_insert_here = False
+            elif re_exit_code.match(line):
+                has_exit_code = True
+                has_insert_here = False
+            elif re_in_main.match(line):
+                is_in_main = True
+            elif re_parse_main_args.match(line):
+                has_parse_args = True
+            elif is_in_main:
+                if line.strip().startswith("//"):
+                    continue
+                if not line.strip():
+                    continue
+
+            if not has_insert_here:
+                buf.write(line)
+
+        if not has_parse_args:
+            print("No cextest$args_parse(...) in main")
+            sys.exit(1)
+        if not has_exit_code:
+            print("No return cextest$exit_code(); in main")
+            sys.exit(1)
+        if not has_print_footer:
+            print("No cextest$print_footer() found")
+            sys.exit(1)
+        if not has_print_head:
+            print("No cextest$print_header() found")
+            sys.exit(1)
+        if not has_setup:
+            print("No cextest$setup() found")
+            sys.exit(1)
+        fh.close()
+
+        if (
+            not force_rewrite
+            and not has_c_changes
+            and set(all_tests) == set(test_calls)
+        ):
+            # print(f"No changes: {all_tests=} {test_calls=} ")
+            # No new tests added or changed, prevent touching the source code then
+            sys.exit(0)
+
+        if n_tests == 0:
+            print("No tests selected")
+
         else:
-            if self.comment_type == "s":
-                if RE_COMMENT_LINE.search(line):
-                    self.buf.write(line)
-                    return True
-                else:
-                    return None  # Unknown line, probe next block
-            else:
-                # In multiline comment, write all until end
+            with open(test_src, "w") as fh:
+                fh.write(buf.getvalue())
 
-                if RE_COMMENT_ML_END.search(line):
-                    self.buf.write(line.replace("\n", ""))
-                    return False  # Block ended
-                else:
-                    self.buf.write(line)
-                    return True  # Block continues
-
-
-class Code(Block):
-    """Code block
-
-    Attributes:
-        code_type: "func", "var", "struct"
-    """
-
-    def __init__(self, line_start):
-        self.code_type = None
-        self._is_signature = True
-        self._brstack = []
-        self._brackets: dict = {
-            "[": "]",
-            "]": None,
-            "(": ")",
-            ")": None,
-            "{": "}",
-            "}": None,
-        }
-        self._comment = None
-        super().__init__(line_start)
-
-    def __str__(self):
-        return f"Code({self.code_type})[{self.line_start}:{self.line_end}]"
-
-    @staticmethod
-    def probe(line: str) -> bool:
-        assert not RE_COMMENT_LINE.search(line)
-        assert not RE_COMMENT_ML_START.search(line)
-        return RE_CODE_START_LINE.search(line)
-
-    def process_brackets(self, c: str):
-        assert len(c) == 1
-        assert c in self._brackets
-        if not self._brstack:
-            assert (
-                self._brackets[c] is not None
-            ), f"Must me opening bracket: c={c}\n{self.buf.getvalue()}"
-            self._brstack.append(c)
+    def action_clean(self):
+        build_dir = os.path.join(self.test_dir, "build")
+        if self.src_path == "all":
+            if os.path.exists(build_dir):
+                shutil.rmtree(build_dir)
         else:
-            if self._brackets[self._brstack[-1]] == c:
-                # c is closing bracket
-                self._brstack.pop(-1)
+            assert os.path.exists(self.src_path), f"test not exist: {self.src_path}"
+            assert self.src_path.endswith(".c"), "path must end with .c"
+            test_exe = self.make_test_exe(self.src_path)
+            if os.path.exists(test_exe):
+                os.unlink(test_exe)
+
+    def action_build(self):
+        test_files_list = []
+
+        if self.src_path == "all":
+            for fn in glob.glob(os.path.join(self.test_dir, "**/*c")):
+                test_files_list.append(fn)
+        else:
+            assert os.path.exists(self.src_path), f"test not exist: {self.src_path}"
+            assert self.src_path.endswith(".c"), "path must end with .c"
+            test_files_list.append(self.src_path)
+
+        for fn in test_files_list:
+            self.action_build_test(fn)
+
+    def build(self):
+        if self.action == "create":
+            self.action_create()
+        elif self.action == "build":
+            self.action_build()
+        elif self.action == "clean":
+            self.action_clean()
+        else:
+            raise ValueError(
+                f"Incorrect action: {self.action}, expected one of (build, create, run, clean)"
+            )
+
+
+class CEXBuilder:
+    RE_COMMENT_LINE = re.compile(r"^\s*//", re.MULTILINE)
+    RE_COMMENT_ML_START = re.compile(r"^\s*\/\*", re.MULTILINE)
+    RE_COMMENT_ML_END = re.compile(r".*\*\/", re.MULTILINE)
+    RE_CODE_START_LINE = re.compile(r"^[a-zA-Z_0-9\*]+\s+", re.MULTILINE)
+    RE_FUNC = re.compile(r"(.*)\s+(\w+)\({1}([\w,\[\]\(\)\s\*\.]+)\)", re.MULTILINE)
+    RE_STATIC = re.compile(r"(^static\s|\sstatic\s|\sstatic$)", re.MULTILINE)
+    RE_INLINE = re.compile(r"(^inline\s|\sinline\s|\sinline$)", re.MULTILINE)
+
+    class Block:
+        """Generic code block
+
+        Attributes:
+            buf: code buffer
+            line_start: start line of block
+            line_end: end line of block
+        """
+
+        def __init__(self, line_start: int):
+            self.buf = io.StringIO()
+            self.line_start = line_start
+            self.line_end = None
+
+        def __str__(self):
+            return self.__class__.__qualname__
+
+        def __repr__(self):
+            return f"Block: {str(self)} [{self.line_start}:{self.line_end}]\n{self.buf.getvalue()}"
+
+        @staticmethod
+        def probe(line: str) -> bool:
+            """Probes new block type based on line of code"""
+            return False
+
+        def process_line(self, line: str) -> bool:
+            """Process line of code in initialized block"""
+            raise NotImplementedError()
+
+    class Comment(Block):
+        """Commentary block
+
+        Attributes:
+            comment_type: 'm' - multi line, 's' - single line
+        """
+
+        def __init__(self, line_start):
+            self.comment_type = None
+            super().__init__(line_start)
+
+        def __str__(self):
+            return f"Comment({self.comment_type}) [{self.line_start}:{self.line_end}]"
+
+        @staticmethod
+        def probe(line: str) -> bool:
+            return CEXBuilder.RE_COMMENT_LINE.search(
+                line
+            ) or CEXBuilder.RE_COMMENT_ML_START.search(line)
+
+        def process_line(self, line: str) -> bool | None:
+            if self.comment_type is None:
+                if CEXBuilder.RE_COMMENT_ML_START.search(line):
+                    self.comment_type = "m"
+                elif CEXBuilder.RE_COMMENT_LINE.search(line):
+                    self.comment_type = "s"
+                else:
+                    raise ValueError("Unsupproted commet")
+
+                self.buf.write(line)
+
+                # Single line contains comment end mark
+                if CEXBuilder.RE_COMMENT_ML_END.search(line):
+                    return False
+
+                return True
             else:
-                # new bracket level
+                if self.comment_type == "s":
+                    if CEXBuilder.RE_COMMENT_LINE.search(line):
+                        self.buf.write(line)
+                        return True
+                    else:
+                        return None  # Unknown line, probe next block
+                else:
+                    # In multiline comment, write all until end
+
+                    if CEXBuilder.RE_COMMENT_ML_END.search(line):
+                        self.buf.write(line.replace("\n", ""))
+                        return False  # Block ended
+                    else:
+                        self.buf.write(line)
+                        return True  # Block continues
+
+    class Code(Block):
+        """Code block
+
+        Attributes:
+            code_type: "func", "var", "struct"
+        """
+
+        def __init__(self, line_start):
+            self.code_type = None
+            self._is_signature = True
+            self._brstack = []
+            self._brackets: dict = {
+                "[": "]",
+                "]": None,
+                "(": ")",
+                ")": None,
+                "{": "}",
+                "}": None,
+            }
+            self._comment = None
+            super().__init__(line_start)
+
+        def __str__(self):
+            return f"Code({self.code_type})[{self.line_start}:{self.line_end}]"
+
+        @staticmethod
+        def probe(line: str) -> bool:
+            assert not CEXBuilder.RE_COMMENT_LINE.search(line)
+            assert not CEXBuilder.RE_COMMENT_ML_START.search(line)
+            return CEXBuilder.RE_CODE_START_LINE.search(line)
+
+        def process_brackets(self, c: str):
+            assert len(c) == 1
+            assert c in self._brackets
+            if not self._brstack:
                 assert (
                     self._brackets[c] is not None
                 ), f"Must me opening bracket: c={c}\n{self.buf.getvalue()}"
                 self._brstack.append(c)
-        pass
-
-    def process_line(self, line: str) -> bool | None:
-        if not self._comment:
-            if Comment.probe(line):
-                self._comment = Comment(-1)
-                if not self._comment.process_line(line):
-                    self._comment = None
-                return True
-        else:
-            cmt = self._comment.process_line(line)
-            if cmt:
-                return True
             else:
-                self._comment = None
-                if cmt is not None:
+                if self._brackets[self._brstack[-1]] == c:
+                    # c is closing bracket
+                    self._brstack.pop(-1)
+                else:
+                    # new bracket level
+                    assert (
+                        self._brackets[c] is not None
+                    ), f"Must me opening bracket: c={c}\n{self.buf.getvalue()}"
+                    self._brstack.append(c)
+            pass
+
+        def process_line(self, line: str) -> bool | None:
+            if not self._comment:
+                if CEXBuilder.Comment.probe(line):
+                    self._comment = CEXBuilder.Comment(-1)
+                    if not self._comment.process_line(line):
+                        self._comment = None
                     return True
-
-        for c in line.strip():
-            # We are in signature
-            if self._is_signature:
-                # Decide definition type based on signature
-                if c in self._brackets:
-
-                    if c == "(":
-                        self.code_type = "func"
-                    elif c == "{":
-                        assert (
-                            not self._brstack
-                        ), f"No all brackets closed: {self._brstack}"
-                        # Function signature is completed, started implementation
-                        self._is_signature = False
-                        if self.code_type is None:
-                            if "struct " in self.buf.getvalue():
-                                self.code_type = "struct"
-
-                    self.process_brackets(c)
-                elif c == "=":
-                    self.code_type = "var"
-                elif c == ";":
-                    # Reached the end while in signature
-                    # assert self.code_type == "func", f"{self.code_type}"
-                    if self.code_type is None:
-                        if "extern " in self.buf.getvalue():
-                            self.code_type = "var"
-                    if self.code_type == "func":
-                        if "typedef " in self.buf.getvalue():
-                            self.code_type = "type"
-                        else:
-                            self.code_type = "decl"
-                    # Return block end
-                    return False
-
-                if self._is_signature:
-                    self.buf.write(c)
             else:
+                cmt = self._comment.process_line(line)
+                if cmt:
+                    return True
+                else:
+                    self._comment = None
+                    if cmt is not None:
+                        return True
 
-                if c in self._brackets:
-                    self.process_brackets(c)
+            for c in line.strip():
+                # We are in signature
+                if self._is_signature:
+                    # Decide definition type based on signature
+                    if c in self._brackets:
 
-                if len(self._brstack) == 0:
+                        if c == "(":
+                            self.code_type = "func"
+                        elif c == "{":
+                            assert (
+                                not self._brstack
+                            ), f"No all brackets closed: {self._brstack}"
+                            # Function signature is completed, started implementation
+                            self._is_signature = False
+                            if self.code_type is None:
+                                if "struct " in self.buf.getvalue():
+                                    self.code_type = "struct"
 
-                    # Handle last closing bracket of a function
-                    if self.code_type == "func":
-                        if c == "}":
-                            return False
-                    elif self.code_type == "var":
-                        if c == ";":
-                            return False
-                    else:
-                        if c == ";":
-                            return False
+                        self.process_brackets(c)
+                    elif c == "=":
+                        self.code_type = "var"
+                    elif c == ";":
+                        # Reached the end while in signature
+                        # assert self.code_type == "func", f"{self.code_type}"
+                        if self.code_type is None:
+                            if "extern " in self.buf.getvalue():
+                                self.code_type = "var"
+                        if self.code_type == "func":
+                            if "typedef " in self.buf.getvalue():
+                                self.code_type = "type"
+                            else:
+                                self.code_type = "decl"
+                        # Return block end
+                        return False
 
-                pass
+                    if self._is_signature:
+                        self.buf.write(c)
+                else:
 
-        if self._is_signature:
-            self.buf.write(" ")
-        return True
+                    if c in self._brackets:
+                        self.process_brackets(c)
 
+                    if len(self._brstack) == 0:
 
-class Func:
-    """Function metadata
+                        # Handle last closing bracket of a function
+                        if self.code_type == "func":
+                            if c == "}":
+                                return False
+                        elif self.code_type == "var":
+                            if c == ";":
+                                return False
+                        else:
+                            if c == ";":
+                                return False
 
-    Attributes:
-        is_static: function defined as static
-        is_inline: function defined as inline
-        typedef: function type definition part
-        name: function full name
-        args: function full arguments
-        docstr: comment block prior function
-        sub_module: function sub module, typically _<namespace>__<sub_module>__<name>
-        ifc_name: function interface short name
-    """
+                    pass
 
-    def __init__(self, decl: str, ifc_prefix: str):
-        g = RE_FUNC.match(decl)
-        assert g, f"Function regex not matched: {decl}"
-        self.is_static = False
-        self.is_inline = False
-        typedef = g.group(1)
+            if self._is_signature:
+                self.buf.write(" ")
+            return True
 
-        if RE_STATIC.search(typedef):
-            self.is_static = True
-            typedef = RE_STATIC.sub(" ", typedef)
-        if RE_INLINE.search(typedef):
-            self.is_inline = True
-            typedef = RE_INLINE.sub(" ", typedef)
+    class Func:
+        """Function metadata
 
-        self.ifc_prefix = ifc_prefix
-        self.typedef = typedef.strip()
-        self.name = g.group(2).strip()
-        self.args = g.group(3).strip()
-
-        self.args = self.args.replace(" restrict ", " ")
-        self.docstr = ""
-
-        g = re.match(rf"^{ifc_prefix}__([\w]+)__(\w+)", self.name, re.MULTILINE)
-        if g:
-            self.sub_module = g.group(1)
-            self.ifc_name = g.group(2)
-            assert self.ifc_name
-        elif g := re.match(rf"^{ifc_prefix}_(\w+)", self.name, re.MULTILINE):
-            self.sub_module = None
-            self.ifc_name = g.group(1)
-            assert self.ifc_name
-        else:
-            # Not in namespace
-            self.ifc_name = None
-            self.sub_module = None
-
-        assert (
-            "(" not in self.typedef and ")" not in self.typedef
-        ), f"function pointers?? {self}"
-
-    @property
-    def is_public_cex(self) -> bool:
-        if self.is_inline and self.is_static:
-            return False
-
-        g = re.match(rf"^{self.ifc_prefix}__([\w]+)__(\w+)", self.name, re.MULTILINE)
-        if not g and f"{self.ifc_prefix}__" in self.name:
-            # private function, and not second level namespace
-            return False
-
-        return True
-
-    def to_pointer_decl(self, indent: bool) -> str:
-        """Function declaration for .h struct
-
-        Args:
-            indent: indent type def and name
-
-        Returns:
-
+        Attributes:
+            is_static: function defined as static
+            is_inline: function defined as inline
+            typedef: function type definition part
+            name: function full name
+            args: function full arguments
+            docstr: comment block prior function
+            sub_module: function sub module, typically _<namespace>__<sub_module>__<name>
+            ifc_name: function interface short name
         """
-        assert self.ifc_name, "not in namespace"
 
-        if indent:
-            return f"{self.typedef}\n(*{self.ifc_name})({self.args});\n"
-        else:
-            return f"{self.typedef} (*{self.ifc_name})({self.args});\n"
+        def __init__(self, decl: str, ifc_prefix: str):
+            g = CEXBuilder.RE_FUNC.match(decl)
+            assert g, f"Function regex not matched: {decl}"
+            self.is_static = False
+            self.is_inline = False
+            typedef = g.group(1)
 
-    def to_pointer_def(self) -> str:
-        """Function .c struct field definition"""
-        assert self.ifc_name, "not in namespace"
+            if CEXBuilder.RE_STATIC.search(typedef):
+                self.is_static = True
+                typedef = CEXBuilder.RE_STATIC.sub(" ", typedef)
+            if CEXBuilder.RE_INLINE.search(typedef):
+                self.is_inline = True
+                typedef = CEXBuilder.RE_INLINE.sub(" ", typedef)
 
-        return f"    .{self.ifc_name} = {self.name},"
+            self.ifc_prefix = ifc_prefix
+            self.typedef = typedef.strip()
+            self.name = g.group(2).strip()
+            self.args = g.group(3).strip()
 
-    def __repr__(self):
-        return f"""
-Function:
-    typedef: {self.typedef}
-    is_static: {self.is_static}
-    is_inline: {self.is_inline}
-    name: {self.name}
-    args: {self.args}
-    """
+            self.args = self.args.replace(" restrict ", " ")
+            self.docstr = ""
 
+            g = re.match(rf"^{ifc_prefix}__([\w]+)__(\w+)", self.name, re.MULTILINE)
+            if g:
+                self.sub_module = g.group(1)
+                self.ifc_name = g.group(2)
+                assert self.ifc_name
+            elif g := re.match(rf"^{ifc_prefix}_(\w+)", self.name, re.MULTILINE):
+                self.sub_module = None
+                self.ifc_name = g.group(1)
+                assert self.ifc_name
+            else:
+                # Not in namespace
+                self.ifc_name = None
+                self.sub_module = None
 
-class CEXBuilder:
-    """CEX Module generator
+            assert (
+                "(" not in self.typedef and ")" not in self.typedef
+            ), f"function pointers?? {self}"
 
-    Attributes:
-        c_file: .c file path
-        h_file: .h file path
-        namespace: module namespace (i.e. expected function prefix _<namespace>_)
-    """
+        @property
+        def is_public_cex(self) -> bool:
+            if self.is_inline and self.is_static:
+                return False
+
+            g = re.match(
+                rf"^{self.ifc_prefix}__([\w]+)__(\w+)", self.name, re.MULTILINE
+            )
+            if not g and f"{self.ifc_prefix}__" in self.name:
+                # private function, and not second level namespace
+                return False
+
+            return True
+
+        def to_pointer_decl(self, indent: bool) -> str:
+            """Function declaration for .h struct
+
+            Args:
+                indent: indent type def and name
+
+            Returns:
+
+            """
+            assert self.ifc_name, "not in namespace"
+
+            if indent:
+                return f"{self.typedef}\n(*{self.ifc_name})({self.args});\n"
+            else:
+                return f"{self.typedef} (*{self.ifc_name})({self.args});\n"
+
+        def to_pointer_def(self) -> str:
+            """Function .c struct field definition"""
+            assert self.ifc_name, "not in namespace"
+
+            return f"    .{self.ifc_name} = {self.name},"
+
+        def __repr__(self):
+            return f"""
+    Function:
+        typedef: {self.typedef}
+        is_static: {self.is_static}
+        is_inline: {self.is_inline}
+        name: {self.name}
+        args: {self.args}
+        """
 
     def __init__(self, c_file: str, h_file: str, namespace: str = None):
         """CEX Module generator initializer
@@ -372,10 +658,10 @@ class CEXBuilder:
     @staticmethod
     def block_probe(line: str, lineno: int) -> Block | None:
         """Probed block type"""
-        if Comment.probe(line):
-            return Comment(lineno)
-        if Code.probe(line):
-            return Code(lineno)
+        if CEXBuilder.Comment.probe(line):
+            return CEXBuilder.Comment(lineno)
+        if CEXBuilder.Code.probe(line):
+            return CEXBuilder.Code(lineno)
         return None
 
     def parse_source(self, c_file) -> tuple[list[str], list[Block]]:
@@ -386,7 +672,7 @@ class CEXBuilder:
             lines = fh.readlines()
 
         blocks = []
-        current_block: Block | None = None
+        current_block: CEXBuilder.Block | None = None
         for i, line in enumerate(lines):
             while True:
                 if current_block is None:
@@ -413,7 +699,7 @@ class CEXBuilder:
         return lines, blocks
 
     def is_func_code(self, block: Code):
-        isinstance(block, Code)
+        isinstance(block, CEXBuilder.Code)
 
         if self.is_public_header:
             if block.code_type == "decl":
@@ -432,15 +718,15 @@ class CEXBuilder:
         ifc_contents.append("{")
         ifc_contents.append("    // Autogenerated by CEX")
         ifc_contents.append("    // clang-format off\n")
-        functions: dict[str | None, list[Func]] = {}
+        functions: dict[str | None, list[CEXBuilder.Func]] = {}
         for i, b in enumerate(blocks):
 
             # print(repr(b))
-            if isinstance(b, Code):
+            if isinstance(b, CEXBuilder.Code):
                 if self.is_func_code(b):
-                    f = Func(b.buf.getvalue(), ns)
+                    f = CEXBuilder.Func(b.buf.getvalue(), ns)
                     if f.ifc_name and f.is_public_cex:
-                        if i > 0 and isinstance(blocks[i - 1], Comment):
+                        if i > 0 and isinstance(blocks[i - 1], CEXBuilder.Comment):
                             f.docstr = blocks[i - 1].buf.getvalue()
                         flist = functions.setdefault(f.sub_module, [])
                         flist.append(f)
@@ -491,17 +777,17 @@ class CEXBuilder:
         ifc_contents.append(f"const struct {ns_struct_name} {ns} = {{")
         ifc_contents.append("    // Autogenerated by CEX")
         ifc_contents.append("    // clang-format off")
-        functions: dict[str | None, list[Func]] = {}
+        functions: dict[str | None, list[CEXBuilder.Func]] = {}
         for i, b in enumerate(blocks):
-            if isinstance(b, Code):
+            if isinstance(b, CEXBuilder.Code):
                 if self.is_func_code(b):
-                    f = Func(b.buf.getvalue(), ns)
+                    f = CEXBuilder.Func(b.buf.getvalue(), ns)
                     if f.ifc_name and f.is_public_cex:
                         if f.is_inline and not f.is_static:
                             raise ValueError(
                                 f"Function: {f.name} must be have static with inline"
                             )
-                        if i > 0 and isinstance(blocks[i - 1], Comment):
+                        if i > 0 and isinstance(blocks[i - 1], CEXBuilder.Comment):
                             f.docstr = blocks[i - 1].buf.getvalue()
                         flist = functions.setdefault(f.sub_module, [])
                         flist.append(f)
@@ -536,14 +822,14 @@ class CEXBuilder:
         existing = []
         last_ifndef = None
         for b in src_blocks:
-            if isinstance(b, Code) and b.code_type in ["var", "struct"]:
+            if isinstance(b, CEXBuilder.Code) and b.code_type in ["var", "struct"]:
                 code_line = b.buf.getvalue()
                 if self.ns_struct_name in code_line:
                     existing.append(b)
 
         for b in reversed(existing):
             # print(f"exists at: {b}")
-            del src_lines[int(b.line_start): int(b.line_end) + 1]
+            del src_lines[int(b.line_start) : int(b.line_end) + 1]
 
         for i, line in enumerate(reversed(src_lines)):
             if line.strip() == "":
@@ -599,10 +885,10 @@ class CEXBuilder:
         )
 
         for block in blocks:
-            if not isinstance(block, Code) or not self.is_func_code(block):
+            if not isinstance(block, CEXBuilder.Code) or not self.is_func_code(block):
                 continue
 
-            f = Func(block.buf.getvalue(), "")
+            f = CEXBuilder.Func(block.buf.getvalue(), "")
             if not f.is_public_cex:
                 continue
 
@@ -731,10 +1017,12 @@ class CEXBuilder:
             sub_module_blocks = {}
 
             for block in h_blocks:
-                if not isinstance(block, Code) or not self.is_func_code(block):
+                if not isinstance(block, CEXBuilder.Code) or not self.is_func_code(
+                    block
+                ):
                     continue
 
-                f = Func(block.buf.getvalue(), self.namespace)
+                f = CEXBuilder.Func(block.buf.getvalue(), self.namespace)
                 if not f.is_public_cex:
                     continue
                 sub_mod = f.sub_module if f.sub_module else ""
@@ -748,24 +1036,25 @@ class CEXBuilder:
                 self.make_fff_fake(fake_dir, h_file, funcs_blocks, sub_mod)
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("source_file", help="File path .c (code mode) or .h (lib mode)")
-    parser.add_argument("--fakedir", help="fff.h fake directory", default="")
-    parser.add_argument(
-        "--namespace",
-        help="module/class namespace, inferred from file name",
-        default=None,
+def action_test(args):
+    builder = CEXTestBuilder(
+        args.action, src_path=args.test_file, test_dir=args.testdir
     )
-    args = parser.parse_args()
+    builder.build()
 
+
+def action_make(args):
+    print(f"action_make: {args}")
+    return
     if args.source_file.endswith(".c"):
-        c_file = args.source_file
-        h_file = args.source_file.replace(".c", ".h")
+        c_file = args.source_path
+        h_file = args.source_path.replace(".c", ".h")
     else:
-        assert args.source_file.endswith(".h")
-        h_file = args.source_file
+        assert args.source_path.endswith(".h")
+        h_file = args.source_path
         c_file = None
+
+    # TODO: add batch mode (when passing directory)
 
     builder = CEXBuilder(c_file, h_file, namespace=args.namespace)
     if builder.is_public_header:
@@ -774,3 +1063,38 @@ if __name__ == "__main__":
         builder.build(args.fakedir)
 
     print(f"CEX done for: {args.source_file}")
+
+
+if __name__ == "__main__":
+    global_parser = argparse.ArgumentParser()
+    subparsers = global_parser.add_subparsers(
+        required=True, title="subcommands", help="CEX operations"
+    )
+
+    make_parser = subparsers.add_parser(
+        "make", help="tranforms source code into CEX namespace"
+    )
+    make_parser.add_argument(
+        "source_path",
+        help="Directory (batch mode), or file path .c (code mode) or .h (lib mode)",
+    )
+    make_parser.add_argument("--fakedir", help="fff.h fake directory", default="")
+    make_parser.add_argument(
+        "--namespace",
+        help="module/class namespace, inferred from file name",
+        default=None,
+    )
+    make_parser.set_defaults(func=action_make)
+
+    test_parser = subparsers.add_parser("test", help="CEX test manager runner")
+    test_parser.add_argument(
+        "action", help="test action {create, run, build, debug, clean}"
+    )
+    test_parser.add_argument(
+        "-d", "--testdir", help="Root directory of tests", default="tests"
+    )
+    test_parser.add_argument("test_file", help="File path to cex test .c file")
+    test_parser.set_defaults(func=action_test)
+
+    args = global_parser.parse_args()
+    args.func(args)
