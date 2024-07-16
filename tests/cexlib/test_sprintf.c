@@ -3,7 +3,7 @@
 #include <cex/cexlib/sbuf.c>
 #include <cex/cexlib/sbuf.h>
 #include <cex/cexlib/str.c>
-#include <cex/cextest/cextest.h>
+#include <cex/cexlib/cextest.h>
 
 #define USE_STB 1
 
@@ -21,7 +21,7 @@
 #define CHECK_END(str)                                                                             \
     if (strcmp(buf, str) != 0 || (unsigned)ret != strlen(str)) {                                   \
         printf("< '%s'\n> '%s'\n", str, buf);                                                      \
-        atassert(false && "see ^^^");                                                              \
+        tassert(false && "see ^^^");                                                              \
     }
 
 // clang-format off
@@ -38,20 +38,18 @@
 
 const Allocator_i* allocator;
 /*
- * SUITE INIT / SHUTDOWN
- */
-void
-my_test_shutdown_func(void)
-{
+* SUITE INIT / SHUTDOWN
+*/
+cextest$teardown(){
     allocator = allocators.heap.destroy();
+    return EOK;
 }
 
-ATEST_SETUP_F(void)
+cextest$setup()
 {
     uassert_enable();
     allocator = allocators.heap.create();
-
-    return &my_test_shutdown_func; // return pointer to void some_shutdown_func(void)
+    return EOK;
 }
 
 /*
@@ -59,31 +57,31 @@ ATEST_SETUP_F(void)
  *   TEST SUITE
  *
  */
-ATEST_F(stb_sprintf_str)
+cextest$case(stb_sprintf_str)
 {
 
     sbuf_c s;
-    atassert_eqs(EOK, sbuf.create(&s, 128, allocator));
-    atassert_eqs(EOK, sbuf.sprintf(&s, "%s11", "abcdefgh"));
-    atassert_eqs(s, "abcdefgh11");
+    tassert_eqs(EOK, sbuf.create(&s, 128, allocator));
+    tassert_eqs(EOK, sbuf.sprintf(&s, "%s11", "abcdefgh"));
+    tassert_eqs(s, "abcdefgh11");
 
     str_c sv = str.cstr("45678");
     str_c sv_sub = str.sub(sv, 1, 3);
-    atassert_eqi(str.cmp(sv_sub, s$("56")), 0);
+    tassert_eqi(str.cmp(sv_sub, s$("56")), 0);
 
     _Static_assert(sizeof(char*) == 8, "size");
 
-    atassert_eqs(EOK, sbuf.sprintf(&s, "%s", sv_sub));
-    atassert_eqs(s, "abcdefgh11(str_c->%S)");
+    tassert_eqs(EOK, sbuf.sprintf(&s, "%s", sv_sub));
+    tassert_eqs(s, "abcdefgh11(str_c->%S)");
 
-    atassert_eqs(EOK, sbuf.sprintf(&s, "%S", sv_sub));
-    atassert_eqs(s, "abcdefgh11(str_c->%S)56");
+    tassert_eqs(EOK, sbuf.sprintf(&s, "%S", sv_sub));
+    tassert_eqs(s, "abcdefgh11(str_c->%S)56");
 
     sbuf.destroy(&s);
     return NULL;
 }
 
-ATEST_F(stb_sprintf_orig)
+cextest$case(stb_sprintf_orig)
 {
     char buf[1024];
     int n = 0;
@@ -160,7 +158,7 @@ ATEST_F(stb_sprintf_orig)
 
     // %n
     CHECK3("aaa ", "%.3s %n", "aaaaaaaaaaaaa", &n);
-    atassert(n == 4);
+    tassert(n == 4);
 
 #if __STDC_VERSION__ >= 199901L
     // hex floats
@@ -184,28 +182,28 @@ ATEST_F(stb_sprintf_orig)
 #endif
 
     // snprintf
-    atassert(SNPRINTF(buf, 100, " %s     %d", "b", 123) == 10);
-    atassert(strcmp(buf, " b     123") == 0);
-    atassert(SNPRINTF(buf, 100, "%f", pow_2_75) == 30);
-    atassert(strncmp(buf, "37778931862957161709568.000000", 17) == 0);
+    tassert(SNPRINTF(buf, 100, " %s     %d", "b", 123) == 10);
+    tassert(strcmp(buf, " b     123") == 0);
+    tassert(SNPRINTF(buf, 100, "%f", pow_2_75) == 30);
+    tassert(strncmp(buf, "37778931862957161709568.000000", 17) == 0);
     n = SNPRINTF(buf, 10, "number %f", 123.456789);
-    atassert(strcmp(buf, "number 12") == 0);
-    atassert_eqi(n, 9); // written vs would-be written bytes
+    tassert(strcmp(buf, "number 12") == 0);
+    tassert_eqi(n, 9); // written vs would-be written bytes
     //
     buf[0] = '\0';
     n = SNPRINTF(buf, 0, "7 chars");
-    atassert_eqi(n, -1);
-    atassert_eqi(strlen(buf), 0);
+    tassert_eqi(n, -1);
+    tassert_eqi(strlen(buf), 0);
 
     // stb_sprintf uses internal buffer of 512 chars - test longer string
-    atassert(SPRINTF(buf, "%d  %600s", 3, "abc") == 603);
-    atassert(strlen(buf) == 603);
+    tassert(SPRINTF(buf, "%d  %600s", 3, "abc") == 603);
+    tassert(strlen(buf) == 603);
     SNPRINTF(buf, 550, "%d  %600s", 3, "abc");
-    atassert(strlen(buf) == 549);
-    atassert(SNPRINTF(buf, 600, "%510s     %c", "a", 'b') == 516);
+    tassert(strlen(buf) == 549);
+    tassert(SNPRINTF(buf, 600, "%510s     %c", "a", 'b') == 516);
 
     // length check
-    atassert(SNPRINTF(NULL, 0, " %s     %d", "b", 123) == 10);
+    tassert(SNPRINTF(NULL, 0, " %s     %d", "b", 123) == 10);
 
     // ' modifier. Non-standard, but supported by glibc.
 #if !USE_STB
@@ -253,12 +251,12 @@ ATEST_F(stb_sprintf_orig)
 int
 main(int argc, char* argv[])
 {
-    ATEST_PARSE_MAINARGS(argc, argv);
-    ATEST_PRINT_HEAD();  // >>> all tests below
+    cextest$args_parse(argc, argv);
+    cextest$print_header();  // >>> all tests below
     
-    ATEST_RUN(stb_sprintf_str);
-    ATEST_RUN(stb_sprintf_orig);
+    cextest$run(stb_sprintf_str);
+    cextest$run(stb_sprintf_orig);
     
-    ATEST_PRINT_FOOTER();  // ^^^^^ all tests runs are above
-    return ATEST_EXITCODE();
+    cextest$print_footer();  // ^^^^^ all tests runs are above
+    return cextest$exit_code();
 }

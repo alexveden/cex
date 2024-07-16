@@ -1,4 +1,4 @@
-#include <cex/cextest/cextest.h>
+#include <cex/cexlib/cextest.h>
 #include <cex/cexlib/cex.c>
 #include <cex/cexlib/str.c>
 #include <cex/cexlib/sbuf.c>
@@ -12,14 +12,15 @@ const Allocator_i* allocator;
 /*
 * SUITE INIT / SHUTDOWN
 */
-void my_test_shutdown_func(void){
+cextest$teardown(){
     allocator = allocators.heap.destroy();
+    return EOK;
 }
 
-ATEST_SETUP_F(void)
+cextest$setup()
 {
     allocator = allocators.heap.create();
-    return &my_test_shutdown_func;  // return pointer to void some_shutdown_func(void)
+    return EOK;
 }
 
 /*
@@ -29,365 +30,365 @@ ATEST_SETUP_F(void)
 */
 
 
-ATEST_F(test_sbuf_new)
+cextest$case(test_sbuf_new)
 {
     sbuf_c s;
-    atassert_eqs(EOK, sbuf.create(&s, 20, allocator));
-    atassert(s != NULL);
+    tassert_eqs(EOK, sbuf.create(&s, 20, allocator));
+    tassert(s != NULL);
 
     sbuf_head_s* head = sbuf__head(s);
-    atassert_eqi(head->length, 0);
-    atassert_eqi(head->capacity, 64 - sizeof(sbuf_head_s) - 1);
-    atassert_eqi(head->header.elsize, 1);
-    atassert_eqi(head->header.magic, 0xf00e);
-    atassert_eqi(head->header.nullterm, 0);
-    atassert(head->allocator == allocator);
-    atassert_eqs(s, "");
-    atassert_eqi(s[head->capacity], 0);
-    atassert_eqi(s[0], 0);
+    tassert_eqi(head->length, 0);
+    tassert_eqi(head->capacity, 64 - sizeof(sbuf_head_s) - 1);
+    tassert_eqi(head->header.elsize, 1);
+    tassert_eqi(head->header.magic, 0xf00e);
+    tassert_eqi(head->header.nullterm, 0);
+    tassert(head->allocator == allocator);
+    tassert_eqs(s, "");
+    tassert_eqi(s[head->capacity], 0);
+    tassert_eqi(s[0], 0);
 
     s = sbuf.destroy(&s);
-    atassert(s == NULL);
+    tassert(s == NULL);
+    return EOK;
 
-    return NULL; // Every ATEST_F() must return NULL to succeed!
 }
 
-ATEST_F(test_sbuf_static)
+cextest$case(test_sbuf_static)
 {
     char buf[128] = {'a'};
     sbuf_c s;
 
-    atassert_eqs(EOK, sbuf.create_static(&s, buf, arr$len(buf)));
-    atassert(s != NULL);
-    atassert(s != buf);
-    atassert(s == buf + sizeof(sbuf_head_s));
+    tassert_eqs(EOK, sbuf.create_static(&s, buf, arr$len(buf)));
+    tassert(s != NULL);
+    tassert(s != buf);
+    tassert(s == buf + sizeof(sbuf_head_s));
 
     sbuf_head_s* head = sbuf__head(s);
-    atassert_eqi(head->length, 0);
-    atassert_eqi(head->capacity, arr$len(buf) - sizeof(sbuf_head_s) - 1);
-    atassert_eqi(head->header.elsize, 1);
-    atassert(head->allocator == NULL);
-    atassert_eqi(head->header.magic, 0xf00e);
-    atassert_eqi(head->header.nullterm, 0);
-    atassert_eqi(s[0], 0);
-    atassert_eqi(s[head->capacity], 0);
-    atassert_eqs(s, "");
+    tassert_eqi(head->length, 0);
+    tassert_eqi(head->capacity, arr$len(buf) - sizeof(sbuf_head_s) - 1);
+    tassert_eqi(head->header.elsize, 1);
+    tassert(head->allocator == NULL);
+    tassert_eqi(head->header.magic, 0xf00e);
+    tassert_eqi(head->header.nullterm, 0);
+    tassert_eqi(s[0], 0);
+    tassert_eqi(s[head->capacity], 0);
+    tassert_eqs(s, "");
 
     // All nullified + for$array works!
     for$array(it, s, sbuf.capacity(&s)) {
-        atassert_eqi(*it.val, 0);
+        tassert_eqi(*it.val, 0);
     }
 
     // can be also virtually destroyed
     s = sbuf.destroy(&s);
-    atassert(s == NULL);
+    tassert(s == NULL);
+    return EOK;
 
-    return NULL; // Every ATEST_F() must return NULL to succeed!
 }
 
-ATEST_F(test_sbuf_append_char)
+cextest$case(test_sbuf_append_char)
 {
     sbuf_c s;
 
-    atassert_eqs(EOK, sbuf.create(&s, 20, allocator));
-    atassert_eqi(sbuf.capacity(&s), 64 - sizeof(sbuf_head_s) - 1);
+    tassert_eqs(EOK, sbuf.create(&s, 20, allocator));
+    tassert_eqi(sbuf.capacity(&s), 64 - sizeof(sbuf_head_s) - 1);
 
     // wipe all nullterm (make sure append_c adds new)
     memset(s, 0xff, sbuf.capacity(&s));
 
-    atassert_eqs(Error.argument, sbuf.append_c(&s, NULL));
-    atassert_eqs(EOK, sbuf.append_c(&s, ""));
-    atassert_eqs("", s);
-    atassert_eqi(sbuf.len(&s), 0);
+    tassert_eqs(Error.argument, sbuf.append_c(&s, NULL));
+    tassert_eqs(EOK, sbuf.append_c(&s, ""));
+    tassert_eqs("", s);
+    tassert_eqi(sbuf.len(&s), 0);
 
-    atassert_eqs(EOK, sbuf.append_c(&s, "1234"));
-    atassert_eqi(sbuf.capacity(&s), 64 - sizeof(sbuf_head_s) - 1);
-    atassert_eqs("1234", s);
-    atassert_eqi(sbuf.len(&s), 4);
-    atassert_eqi(sbuf.len(&s), strlen(s));
+    tassert_eqs(EOK, sbuf.append_c(&s, "1234"));
+    tassert_eqi(sbuf.capacity(&s), 64 - sizeof(sbuf_head_s) - 1);
+    tassert_eqs("1234", s);
+    tassert_eqi(sbuf.len(&s), 4);
+    tassert_eqi(sbuf.len(&s), strlen(s));
 
     s = sbuf.destroy(&s);
-    atassert(s == NULL);
+    tassert(s == NULL);
+    return EOK;
 
-    return NULL; // Every ATEST_F() must return NULL to succeed!
 }
 
-ATEST_F(test_sbuf_append_char_grow)
+cextest$case(test_sbuf_append_char_grow)
 {
     sbuf_c s;
 
-    atassert_eqs(EOK, sbuf.create(&s, 5, allocator));
-    atassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
-    atassert_eqi(sbuf.capacity(&s), 11);
+    tassert_eqs(EOK, sbuf.create(&s, 5, allocator));
+    tassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
+    tassert_eqi(sbuf.capacity(&s), 11);
 
     // wipe all nullterm
     memset(s, 0xff, sbuf.capacity(&s));
 
-    atassert_eqs(EOK, sbuf.append_c(&s, "1234567890A"));
-    atassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
-    atassert_eqs("1234567890A", s);
-    atassert_eqi(sbuf.len(&s), 11);
+    tassert_eqs(EOK, sbuf.append_c(&s, "1234567890A"));
+    tassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
+    tassert_eqs("1234567890A", s);
+    tassert_eqi(sbuf.len(&s), 11);
 
-    atassert_eqs(EOK, sbuf.append_c(&s, "B"));
-    atassert_eqi(sbuf.capacity(&s), 64 - sizeof(sbuf_head_s) - 1);
-    atassert_eqs("1234567890AB", s);
+    tassert_eqs(EOK, sbuf.append_c(&s, "B"));
+    tassert_eqi(sbuf.capacity(&s), 64 - sizeof(sbuf_head_s) - 1);
+    tassert_eqs("1234567890AB", s);
 
     // check null term
-    atassert_eqi(s[sbuf.len(&s)], 0);
-    atassert_eqi(s[sbuf.capacity(&s)], 0);
+    tassert_eqi(s[sbuf.len(&s)], 0);
+    tassert_eqi(s[sbuf.capacity(&s)], 0);
 
     s = sbuf.destroy(&s);
-    atassert(s == NULL);
+    tassert(s == NULL);
+    return EOK;
 
-    return NULL; // Every ATEST_F() must return NULL to succeed!
 }
 
-ATEST_F(test_sbuf_append_str_grow)
+cextest$case(test_sbuf_append_str_grow)
 {
     sbuf_c s;
 
-    atassert_eqs(EOK, sbuf.create(&s, 5, allocator));
-    atassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
-    atassert_eqi(sbuf.capacity(&s), 11);
+    tassert_eqs(EOK, sbuf.create(&s, 5, allocator));
+    tassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
+    tassert_eqi(sbuf.capacity(&s), 11);
 
     // wipe all nullterm
     memset(s, 0xff, sbuf.capacity(&s));
 
-    atassert_eqs(EOK, sbuf.append(&s, str.cstr("1234567890A")));
-    atassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
-    atassert_eqs("1234567890A", s);
-    atassert_eqi(sbuf.len(&s), 11);
+    tassert_eqs(EOK, sbuf.append(&s, str.cstr("1234567890A")));
+    tassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
+    tassert_eqs("1234567890A", s);
+    tassert_eqi(sbuf.len(&s), 11);
 
-    atassert_eqs(EOK, sbuf.append(&s, str.cstr("B")));
-    atassert_eqi(sbuf.capacity(&s), 64 - sizeof(sbuf_head_s) - 1);
-    atassert_eqs("1234567890AB", s);
+    tassert_eqs(EOK, sbuf.append(&s, str.cstr("B")));
+    tassert_eqi(sbuf.capacity(&s), 64 - sizeof(sbuf_head_s) - 1);
+    tassert_eqs("1234567890AB", s);
 
     // check null term
-    atassert_eqi(s[sbuf.len(&s)], 0);
-    atassert_eqi(s[sbuf.capacity(&s)], 0);
+    tassert_eqi(s[sbuf.len(&s)], 0);
+    tassert_eqi(s[sbuf.capacity(&s)], 0);
 
     s = sbuf.destroy(&s);
-    atassert(s == NULL);
+    tassert(s == NULL);
+    return EOK;
 
-    return NULL; // Every ATEST_F() must return NULL to succeed!
 }
 
-ATEST_F(test_sbuf_clear)
+cextest$case(test_sbuf_clear)
 {
     sbuf_c s;
 
-    atassert_eqs(EOK, sbuf.create(&s, 5, allocator));
+    tassert_eqs(EOK, sbuf.create(&s, 5, allocator));
     // wipe all nullterm
     memset(s, 0xff, sbuf.capacity(&s));
 
-    atassert_eqs(EOK, sbuf.append_c(&s, "1234567890A"));
-    atassert_eqs("1234567890A", s);
+    tassert_eqs(EOK, sbuf.append_c(&s, "1234567890A"));
+    tassert_eqs("1234567890A", s);
 
     sbuf.clear(&s);
-    atassert_eqi(sbuf.len(&s), 0);
-    atassert_eqs("", s);
-    atassert_eqi(strlen(s), 0);
+    tassert_eqi(sbuf.len(&s), 0);
+    tassert_eqs("", s);
+    tassert_eqi(strlen(s), 0);
 
 
     sbuf.destroy(&s);
-    atassert(s == NULL);
+    tassert(s == NULL);
 
     sbuf.destroy(&s);
-    atassert(s == NULL);
+    tassert(s == NULL);
+    return EOK;
 
-    return NULL; // Every ATEST_F() must return NULL to succeed!
 }
 
-ATEST_F(test_sbuf_destroy)
+cextest$case(test_sbuf_destroy)
 {
     sbuf_c s;
     char buf[128];
     char* alt_s = buf + sizeof(sbuf_head_s);
-    atassert_eqs(EOK, sbuf.create_static(&s, buf, arr$len(buf)));
-    atassert(buf[0] != '\0');
-    atassert_eqs(EOK, sbuf.append_c(&s, "1234567890A"));
-    atassert(*alt_s == '1');
-    atassert_eqs("1234567890A", s);
-    atassert(buf[0] != '\0');
+    tassert_eqs(EOK, sbuf.create_static(&s, buf, arr$len(buf)));
+    tassert(buf[0] != '\0');
+    tassert_eqs(EOK, sbuf.append_c(&s, "1234567890A"));
+    tassert(*alt_s == '1');
+    tassert_eqs("1234567890A", s);
+    tassert(buf[0] != '\0');
 
 
     sbuf.destroy(&s);
-    atassert(s == NULL);
+    tassert(s == NULL);
     // NOTE: buffer and head were invalidated after destroy
-    atassert(buf[0] == '\0');
-    atassert(alt_s[0] == '\0');
-    atassert_eqs("", buf);
-    atassert_eqi(0, strlen(buf));
+    tassert(buf[0] == '\0');
+    tassert(alt_s[0] == '\0');
+    tassert_eqs("", buf);
+    tassert_eqi(0, strlen(buf));
+    return EOK;
 
-    return NULL; // Every ATEST_F() must return NULL to succeed!
 }
 
-ATEST_F(test_sbuf_replace)
+cextest$case(test_sbuf_replace)
 {
     sbuf_c s;
     char buf[128];
 
-    atassert_eqs(EOK, sbuf.create_static(&s, buf, arr$len(buf)));
-    atassert_eqs(EOK, sbuf.append_c(&s, "123123123"));
+    tassert_eqs(EOK, sbuf.create_static(&s, buf, arr$len(buf)));
+    tassert_eqs(EOK, sbuf.append_c(&s, "123123123"));
     u32 cap = sbuf.capacity(&s);
 
-    atassert_eqs(EOK, sbuf.replace(&s, str.cstr("123"), str.cstr("456")));
-    atassert_eqs(s, "456456456");
-    atassert_eqi(sbuf.len(&s), 9);
-    atassert_eqi(sbuf.capacity(&s), cap);
+    tassert_eqs(EOK, sbuf.replace(&s, str.cstr("123"), str.cstr("456")));
+    tassert_eqs(s, "456456456");
+    tassert_eqi(sbuf.len(&s), 9);
+    tassert_eqi(sbuf.capacity(&s), cap);
 
-    atassert_eqs(EOK, sbuf.replace(&s, str.cstr("456"), str.cstr("78")));
-    atassert_eqs(s, "787878");
-    atassert_eqi(sbuf.len(&s), 6);
-    atassert_eqi(sbuf.capacity(&s), cap);
-    atassert_eqi(s[sbuf.len(&s)], 0);
+    tassert_eqs(EOK, sbuf.replace(&s, str.cstr("456"), str.cstr("78")));
+    tassert_eqs(s, "787878");
+    tassert_eqi(sbuf.len(&s), 6);
+    tassert_eqi(sbuf.capacity(&s), cap);
+    tassert_eqi(s[sbuf.len(&s)], 0);
 
-    atassert_eqs(EOK, sbuf.replace(&s, str.cstr("78"), str.cstr("321")));
-    atassert_eqs(s, "321321321");
-    atassert_eqi(sbuf.len(&s), 9);
-    atassert_eqi(sbuf.capacity(&s), cap);
-    atassert_eqi(s[sbuf.len(&s)], 0);
+    tassert_eqs(EOK, sbuf.replace(&s, str.cstr("78"), str.cstr("321")));
+    tassert_eqs(s, "321321321");
+    tassert_eqi(sbuf.len(&s), 9);
+    tassert_eqi(sbuf.capacity(&s), cap);
+    tassert_eqi(s[sbuf.len(&s)], 0);
 
-    atassert_eqs(EOK, sbuf.replace(&s, str.cstr("32"), str.cstr("")));
-    atassert_eqs(s, "111");
-    atassert_eqi(sbuf.len(&s), 3);
-    atassert_eqi(sbuf.capacity(&s), cap);
-    atassert_eqi(s[sbuf.len(&s)], 0);
+    tassert_eqs(EOK, sbuf.replace(&s, str.cstr("32"), str.cstr("")));
+    tassert_eqs(s, "111");
+    tassert_eqi(sbuf.len(&s), 3);
+    tassert_eqi(sbuf.capacity(&s), cap);
+    tassert_eqi(s[sbuf.len(&s)], 0);
 
-    atassert_eqs(EOK, sbuf.replace(&s, str.cstr("1"), str.cstr("2")));
-    atassert_eqs(s, "222");
-    atassert_eqi(sbuf.len(&s), 3);
-    atassert_eqi(sbuf.capacity(&s), cap);
+    tassert_eqs(EOK, sbuf.replace(&s, str.cstr("1"), str.cstr("2")));
+    tassert_eqs(s, "222");
+    tassert_eqi(sbuf.len(&s), 3);
+    tassert_eqi(sbuf.capacity(&s), cap);
     
-    atassert_eqs(EOK, sbuf.replace(&s, str.cstr("2"), str.cstr("")));
-    atassert_eqs(s, "");
-    atassert_eqi(sbuf.len(&s), 0);
-    atassert_eqi(sbuf.capacity(&s), cap);
+    tassert_eqs(EOK, sbuf.replace(&s, str.cstr("2"), str.cstr("")));
+    tassert_eqs(s, "");
+    tassert_eqi(sbuf.len(&s), 0);
+    tassert_eqi(sbuf.capacity(&s), cap);
 
     sbuf.destroy(&s);
-    return NULL;
+    return EOK;
 }
 
-ATEST_F(test_sbuf_replace_resize)
+cextest$case(test_sbuf_replace_resize)
 {
     sbuf_c s;
 
-    atassert_eqs(EOK, sbuf.create(&s, 5, allocator));
-    atassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
-    atassert_eqi(sbuf.capacity(&s), 11);
+    tassert_eqs(EOK, sbuf.create(&s, 5, allocator));
+    tassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
+    tassert_eqi(sbuf.capacity(&s), 11);
 
     // wipe all nullterm
     memset(s, 0xff, sbuf.capacity(&s));
 
-    atassert_eqs(EOK, sbuf.append(&s, str.cstr("1234567890A")));
-    atassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
-    atassert_eqs("1234567890A", s);
-    atassert_eqi(sbuf.len(&s), 11);
+    tassert_eqs(EOK, sbuf.append(&s, str.cstr("1234567890A")));
+    tassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
+    tassert_eqs("1234567890A", s);
+    tassert_eqi(sbuf.len(&s), 11);
 
-    atassert_eqs(EOK, sbuf.replace(&s, str.cstr("A"), str.cstr("AB")));
-    atassert_eqi(sbuf.capacity(&s), 64 - sizeof(sbuf_head_s) - 1);
-    atassert_eqs("1234567890AB", s);
-    atassert_eqi(sbuf.len(&s), 12);
+    tassert_eqs(EOK, sbuf.replace(&s, str.cstr("A"), str.cstr("AB")));
+    tassert_eqi(sbuf.capacity(&s), 64 - sizeof(sbuf_head_s) - 1);
+    tassert_eqs("1234567890AB", s);
+    tassert_eqi(sbuf.len(&s), 12);
 
 
     sbuf.destroy(&s);
-    return NULL;
+    return EOK;
 }
 
-ATEST_F(test_sbuf_replace_error_checks)
+cextest$case(test_sbuf_replace_error_checks)
 {
     sbuf_c s;
 
-    atassert_eqs(EOK, sbuf.create(&s, 5, allocator));
-    atassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
-    atassert_eqi(sbuf.capacity(&s), 11);
+    tassert_eqs(EOK, sbuf.create(&s, 5, allocator));
+    tassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
+    tassert_eqi(sbuf.capacity(&s), 11);
 
     // wipe all nullterm
     memset(s, 0xff, sbuf.capacity(&s));
 
-    atassert_eqs(EOK, sbuf.append(&s, str.cstr("1234567890A")));
-    atassert_eqs(Error.argument, sbuf.replace(&s, str.cstr(NULL), str.cstr("AB")));
-    atassert_eqs(Error.argument, sbuf.replace(&s, str.cstr("9"), str.cstr(NULL)));
-    atassert_eqs(Error.argument, sbuf.replace(&s, str.cstr(""), str.cstr("asda")));
+    tassert_eqs(EOK, sbuf.append(&s, str.cstr("1234567890A")));
+    tassert_eqs(Error.argument, sbuf.replace(&s, str.cstr(NULL), str.cstr("AB")));
+    tassert_eqs(Error.argument, sbuf.replace(&s, str.cstr("9"), str.cstr(NULL)));
+    tassert_eqs(Error.argument, sbuf.replace(&s, str.cstr(""), str.cstr("asda")));
 
-    atassert_eqs("1234567890A", s);
-    atassert_eqi(sbuf.len(&s), 11);
+    tassert_eqs("1234567890A", s);
+    tassert_eqi(sbuf.len(&s), 11);
     sbuf.clear(&s);
-    atassert_eqi(sbuf.len(&s), 0);
-    atassert_eqs(Error.ok, sbuf.replace(&s, str.cstr("123"), str.cstr("asda")));
+    tassert_eqi(sbuf.len(&s), 0);
+    tassert_eqs(Error.ok, sbuf.replace(&s, str.cstr("123"), str.cstr("asda")));
 
 
     sbuf.destroy(&s);
-    return NULL;
+    return EOK;
 }
 
-ATEST_F(test_sbuf_sprintf)
+cextest$case(test_sbuf_sprintf)
 {
     sbuf_c s;
 
-    atassert_eqs(EOK, sbuf.create(&s, 5, allocator));
-    atassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
-    atassert_eqi(sbuf.capacity(&s), 11);
+    tassert_eqs(EOK, sbuf.create(&s, 5, allocator));
+    tassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
+    tassert_eqi(sbuf.capacity(&s), 11);
 
     // wipe all nullterm
     memset(s, 0xff, sbuf.capacity(&s)+1);
-    atassert_eqi(s[sbuf.len(&s)], -1);
-    atassert_eqi(s[sbuf.capacity(&s)], -1);
+    tassert_eqi(s[sbuf.len(&s)], -1);
+    tassert_eqi(s[sbuf.capacity(&s)], -1);
 
-    atassert_eqs(EOK, sbuf.sprintf(&s, "%s", "123"));
-    atassert_eqs("123", s);
-    atassert_eqi(sbuf.len(&s), 3);
-    atassert_eqi(s[sbuf.len(&s)], '\0');
-    atassert_eqi(s[sbuf.capacity(&s)], '\0');
-    atassert_eqi(sbuf.capacity(&s), 11);
+    tassert_eqs(EOK, sbuf.sprintf(&s, "%s", "123"));
+    tassert_eqs("123", s);
+    tassert_eqi(sbuf.len(&s), 3);
+    tassert_eqi(s[sbuf.len(&s)], '\0');
+    tassert_eqi(s[sbuf.capacity(&s)], '\0');
+    tassert_eqi(sbuf.capacity(&s), 11);
 
-    atassert_eqs(EOK, sbuf.sprintf(&s, "%s", "456"));
-    atassert_eqs("123456", s);
-    atassert_eqi(sbuf.len(&s), 6);
-    atassert_eqi(sbuf.capacity(&s), 11);
+    tassert_eqs(EOK, sbuf.sprintf(&s, "%s", "456"));
+    tassert_eqs("123456", s);
+    tassert_eqi(sbuf.len(&s), 6);
+    tassert_eqi(sbuf.capacity(&s), 11);
 
-    atassert_eqs(EOK, sbuf.sprintf(&s, "%s", "7890A"));
-    atassert_eqs("1234567890A", s);
-    atassert_eqi(sbuf.len(&s), 11);
-    atassert_eqi(sbuf.capacity(&s), 11);
+    tassert_eqs(EOK, sbuf.sprintf(&s, "%s", "7890A"));
+    tassert_eqs("1234567890A", s);
+    tassert_eqi(sbuf.len(&s), 11);
+    tassert_eqi(sbuf.capacity(&s), 11);
 
-    atassert_eqs(EOK, sbuf.sprintf(&s, "%s", "B"));
-    atassert_eqs("1234567890AB", s);
-    atassert_eqi(sbuf.len(&s), 12);
-    atassert_eqi(sbuf.capacity(&s), 64 - sizeof(sbuf_head_s) - 1);
+    tassert_eqs(EOK, sbuf.sprintf(&s, "%s", "B"));
+    tassert_eqs("1234567890AB", s);
+    tassert_eqi(sbuf.len(&s), 12);
+    tassert_eqi(sbuf.capacity(&s), 64 - sizeof(sbuf_head_s) - 1);
 
-    atassert_eqs(EOK, sbuf.sprintf(&s, "%s", "CDE"));
-    atassert_eqs("1234567890ABCDE", s);
-    atassert_eqi(sbuf.len(&s), 15);
-    atassert_eqi(sbuf.capacity(&s), 64 - sizeof(sbuf_head_s) - 1);
-    atassert_eqi(s[sbuf.len(&s)], '\0');
-    atassert_eqi(s[sbuf.capacity(&s)], '\0');
+    tassert_eqs(EOK, sbuf.sprintf(&s, "%s", "CDE"));
+    tassert_eqs("1234567890ABCDE", s);
+    tassert_eqi(sbuf.len(&s), 15);
+    tassert_eqi(sbuf.capacity(&s), 64 - sizeof(sbuf_head_s) - 1);
+    tassert_eqi(s[sbuf.len(&s)], '\0');
+    tassert_eqi(s[sbuf.capacity(&s)], '\0');
 
     sbuf.destroy(&s);
-    return NULL;
+    return EOK;
 }
 
-ATEST_F(test_sbuf_sprintf_long_growth)
+cextest$case(test_sbuf_sprintf_long_growth)
 {
     sbuf_c s;
 
-    atassert_eqs(EOK, sbuf.create(&s, 5, allocator));
-    atassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
-    atassert_eqi(sbuf.capacity(&s), 11);
+    tassert_eqs(EOK, sbuf.create(&s, 5, allocator));
+    tassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
+    tassert_eqi(sbuf.capacity(&s), 11);
 
     char buf[16];
     char svbuf[16];
     const u32 n_max = 1000;
     for(u32 i = 0; i < n_max; i++) {
         snprintf(buf, arr$len(buf), "%04d", i);
-        atassert_eqs(EOK, sbuf.sprintf(&s, "%04d", i));
+        tassert_eqs(EOK, sbuf.sprintf(&s, "%04d", i));
 
         str_c v = str.cstr(s);
-        atassertf(str.ends_with(v, str.cstr(buf)), "i=%d, s=%s", i, v.buf);
-        atassert_eqi(s[sbuf.len(&s)], '\0');
-        atassert_eqi(s[sbuf.capacity(&s)], '\0');
+        tassertf(str.ends_with(v, str.cstr(buf)), "i=%d, s=%s", i, v.buf);
+        tassert_eqi(s[sbuf.len(&s)], '\0');
+        tassert_eqi(s[sbuf.capacity(&s)], '\0');
     }
-    atassert_eqi(n_max*4, sbuf.len(&s));
+    tassert_eqi(n_max*4, sbuf.len(&s));
 
     str_c sv = str.cstr(s);
 
@@ -395,100 +396,100 @@ ATEST_F(test_sbuf_sprintf_long_growth)
         snprintf(buf, arr$len(buf), "%04d", i);
         str_c sub1 = str.sub(sv, i*4, i*4+4);
 
-        atassert_eqs(EOK, str.copy(sub1, svbuf, 16));
-        atassertf(str.cmp(sub1, s$(buf)) == 0, "i=%d, buf=%s sub1=%s", i, buf, sub1.buf);
+        tassert_eqs(EOK, str.copy(sub1, svbuf, 16));
+        tassertf(str.cmp(sub1, s$(buf)) == 0, "i=%d, buf=%s sub1=%s", i, buf, sub1.buf);
     }
 
     sbuf.destroy(&s);
-    return NULL;
+    return EOK;
 }
 
-ATEST_F(test_sbuf_sprintf_long_growth_prebuild_buffer)
+cextest$case(test_sbuf_sprintf_long_growth_prebuild_buffer)
 {
     sbuf_c s;
 
-    atassert_eqs(EOK, sbuf.create(&s, 1024*1024, allocator));
-    atassert_eqi(sbuf.capacity(&s), 1024*1024 - sizeof(sbuf_head_s) - 1);
+    tassert_eqs(EOK, sbuf.create(&s, 1024*1024, allocator));
+    tassert_eqi(sbuf.capacity(&s), 1024*1024 - sizeof(sbuf_head_s) - 1);
 
     char buf[16];
     char svbuf[16];
     const u32 n_max = 1000;
     for(u32 i = 0; i < n_max; i++) {
         snprintf(buf, arr$len(buf), "%04d", i);
-        atassert_eqs(EOK, sbuf.sprintf(&s, "%04d", i));
+        tassert_eqs(EOK, sbuf.sprintf(&s, "%04d", i));
 
         str_c v = str.cstr(s);
-        atassertf(str.ends_with(v, str.cstr(buf)), "i=%d, s=%s", i, v.buf);
-        atassert_eqi(s[sbuf.len(&s)], '\0');
-        atassert_eqi(s[sbuf.capacity(&s)], '\0');
+        tassertf(str.ends_with(v, str.cstr(buf)), "i=%d, s=%s", i, v.buf);
+        tassert_eqi(s[sbuf.len(&s)], '\0');
+        tassert_eqi(s[sbuf.capacity(&s)], '\0');
     }
-    atassert_eqi(n_max*4, sbuf.len(&s));
+    tassert_eqi(n_max*4, sbuf.len(&s));
 
     var sv2 = sbuf.tostr(&s);
     str_c sv = str.cstr(s);
-    atassert_eqi(str.cmp(sv2, sv), 0);
-    atassert_eqi(sv2.len, sv.len);
-    atassert(sv2.buf == sv.buf);
+    tassert_eqi(str.cmp(sv2, sv), 0);
+    tassert_eqi(sv2.len, sv.len);
+    tassert(sv2.buf == sv.buf);
 
 
     for(u32 i = 0; i < n_max; i++) {
         snprintf(buf, arr$len(buf), "%04d", i);
         str_c sub1 = str.sub(sv, i*4, i*4+4);
-        atassert_eqs(EOK, str.copy(sub1, svbuf, 16));
-        atassertf(str.cmp(sub1, s$(buf)) == 0, "i=%d, buf=%s sub1=%s", i, buf, sub1.buf);
+        tassert_eqs(EOK, str.copy(sub1, svbuf, 16));
+        tassertf(str.cmp(sub1, s$(buf)) == 0, "i=%d, buf=%s sub1=%s", i, buf, sub1.buf);
     }
 
     sbuf.destroy(&s);
-    return NULL;
+    return EOK;
 }
-ATEST_F(test_sbuf_sprintf_static)
+cextest$case(test_sbuf_sprintf_static)
 {
     sbuf_c s;
     char buf[32];
 
-    atassert_eqs(EOK, sbuf.create_static(&s, buf, arr$len(buf)));
-    atassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
-    atassert_eqi(sbuf.capacity(&s), 11);
+    tassert_eqs(EOK, sbuf.create_static(&s, buf, arr$len(buf)));
+    tassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
+    tassert_eqi(sbuf.capacity(&s), 11);
 
     // wipe all nullterm
     memset(s, 0xff, sbuf.capacity(&s)+1);
-    atassert_eqi(s[sbuf.len(&s)], -1);
-    atassert_eqi(s[sbuf.capacity(&s)], -1);
+    tassert_eqi(s[sbuf.len(&s)], -1);
+    tassert_eqi(s[sbuf.capacity(&s)], -1);
 
 
-    atassert_eqs(EOK, sbuf.sprintf(&s, "%s", "123"));
-    atassert_eqs("123", s);
-    atassert_eqi(sbuf.len(&s), 3);
-    atassert_eqi(s[sbuf.len(&s)], '\0');
-    atassert_eqi(s[sbuf.capacity(&s)], '\0');
-    atassert_eqi(sbuf.capacity(&s), 11);
+    tassert_eqs(EOK, sbuf.sprintf(&s, "%s", "123"));
+    tassert_eqs("123", s);
+    tassert_eqi(sbuf.len(&s), 3);
+    tassert_eqi(s[sbuf.len(&s)], '\0');
+    tassert_eqi(s[sbuf.capacity(&s)], '\0');
+    tassert_eqi(sbuf.capacity(&s), 11);
 
-    atassert_eqs(EOK, sbuf.sprintf(&s, "%s", "456"));
-    atassert_eqs("123456", s);
-    atassert_eqi(sbuf.len(&s), 6);
-    atassert_eqi(sbuf.capacity(&s), 11);
+    tassert_eqs(EOK, sbuf.sprintf(&s, "%s", "456"));
+    tassert_eqs("123456", s);
+    tassert_eqi(sbuf.len(&s), 6);
+    tassert_eqi(sbuf.capacity(&s), 11);
 
-    atassert_eqs(Error.overflow, sbuf.sprintf(&s, "%s", "7890AB"));
-    atassert_eqs("123456", s);
-    atassert_eqi(sbuf.len(&s), 6);
-    atassert_eqi(sbuf.capacity(&s), 11);
+    tassert_eqs(Error.overflow, sbuf.sprintf(&s, "%s", "7890AB"));
+    tassert_eqs("123456", s);
+    tassert_eqi(sbuf.len(&s), 6);
+    tassert_eqi(sbuf.capacity(&s), 11);
 
-    atassert_eqs(Error.ok, sbuf.sprintf(&s, "%s", "7890A"));
-    atassert_eqs("1234567890A", s);
-    atassert_eqi(sbuf.len(&s), 11);
-    atassert_eqi(sbuf.capacity(&s), 11);
-    atassert_eqi(s[sbuf.len(&s)], '\0');
-    atassert_eqi(s[sbuf.capacity(&s)], '\0');
+    tassert_eqs(Error.ok, sbuf.sprintf(&s, "%s", "7890A"));
+    tassert_eqs("1234567890A", s);
+    tassert_eqi(sbuf.len(&s), 11);
+    tassert_eqi(sbuf.capacity(&s), 11);
+    tassert_eqi(s[sbuf.len(&s)], '\0');
+    tassert_eqi(s[sbuf.capacity(&s)], '\0');
 
-    atassert_eqs(Error.overflow, sbuf.sprintf(&s, "%s", "B"));
-    atassert_eqs("1234567890A", s);
-    atassert_eqi(sbuf.len(&s), 11);
-    atassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
-    atassert_eqi(s[sbuf.len(&s)], '\0');
-    atassert_eqi(s[sbuf.capacity(&s)], '\0');
+    tassert_eqs(Error.overflow, sbuf.sprintf(&s, "%s", "B"));
+    tassert_eqs("1234567890A", s);
+    tassert_eqi(sbuf.len(&s), 11);
+    tassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
+    tassert_eqi(s[sbuf.len(&s)], '\0');
+    tassert_eqi(s[sbuf.capacity(&s)], '\0');
 
     sbuf.destroy(&s);
-    return NULL;
+    return EOK;
 }
 /*
 *
@@ -497,24 +498,24 @@ ATEST_F(test_sbuf_sprintf_static)
 */
 int main(int argc, char *argv[])
 {
-    ATEST_PARSE_MAINARGS(argc, argv);
-    ATEST_PRINT_HEAD();  // >>> all tests below
+    cextest$args_parse(argc, argv);
+    cextest$print_header();  // >>> all tests below
     
-    ATEST_RUN(test_sbuf_new);
-    ATEST_RUN(test_sbuf_static);
-    ATEST_RUN(test_sbuf_append_char);
-    ATEST_RUN(test_sbuf_append_char_grow);
-    ATEST_RUN(test_sbuf_append_str_grow);
-    ATEST_RUN(test_sbuf_clear);
-    ATEST_RUN(test_sbuf_destroy);
-    ATEST_RUN(test_sbuf_replace);
-    ATEST_RUN(test_sbuf_replace_resize);
-    ATEST_RUN(test_sbuf_replace_error_checks);
-    ATEST_RUN(test_sbuf_sprintf);
-    ATEST_RUN(test_sbuf_sprintf_long_growth);
-    ATEST_RUN(test_sbuf_sprintf_long_growth_prebuild_buffer);
-    ATEST_RUN(test_sbuf_sprintf_static);
+    cextest$run(test_sbuf_new);
+    cextest$run(test_sbuf_static);
+    cextest$run(test_sbuf_append_char);
+    cextest$run(test_sbuf_append_char_grow);
+    cextest$run(test_sbuf_append_str_grow);
+    cextest$run(test_sbuf_clear);
+    cextest$run(test_sbuf_destroy);
+    cextest$run(test_sbuf_replace);
+    cextest$run(test_sbuf_replace_resize);
+    cextest$run(test_sbuf_replace_error_checks);
+    cextest$run(test_sbuf_sprintf);
+    cextest$run(test_sbuf_sprintf_long_growth);
+    cextest$run(test_sbuf_sprintf_long_growth_prebuild_buffer);
+    cextest$run(test_sbuf_sprintf_static);
     
-    ATEST_PRINT_FOOTER();  // ^^^^^ all tests runs are above
-    return ATEST_EXITCODE();
+    cextest$print_footer();  // ^^^^^ all tests runs are above
+    return cextest$exit_code();
 }

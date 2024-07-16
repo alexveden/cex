@@ -4,27 +4,23 @@
 #include <cex/cexlib/_stb_sprintf.c>
 #include <cex/cexlib/str.c>
 #include <cex/cexlib/io.h>
-#include <cex/cextest/cextest.h>
+#include <cex/cexlib/cextest.h>
 #include <stdio.h>
 
 const Allocator_i* allocator;
 /*
- * SUITE INIT / SHUTDOWN
- */
-void
-my_test_shutdown_func(void)
-{
+* SUITE INIT / SHUTDOWN
+*/
+cextest$teardown(){
     allocator = allocators.heap.destroy();
+    return EOK;
 }
 
-ATEST_SETUP_F(void)
+cextest$setup()
 {
     uassert_enable();
-
     allocator = allocators.heap.create();
-
-    // return NULL;   // if no shutdown logic needed
-    return &my_test_shutdown_func; // return pointer to void some_shutdown_func(void)
+    return EOK;
 }
 
 /*
@@ -33,36 +29,37 @@ ATEST_SETUP_F(void)
  *
  */
 
-ATEST_F(test_io)
+cextest$case(test_io)
 {
     io_c file = { 0 };
-    atassert_eqs(Error.io, io.fopen(&file, "test_not_exist.txt", "r", allocator));
+    tassert_eqs(Error.io, io.fopen(&file, "test_not_exist.txt", "r", allocator));
 
     uassert_disable();
-    atassert_eqs(Error.argument, io.fopen(&file, "test_not_exist.txt", "r", NULL));
-    atassert_eqs(Error.argument, io.fopen(&file, "test_not_exist.txt", NULL, allocator));
-    atassert_eqs(Error.argument, io.fopen(&file, NULL, "r", allocator));
-    atassert_eqs(Error.argument, io.fopen(NULL, "test.txt", "r", allocator));
-    return NULL; // Every ATEST_F() must return NULL to succeed!
+    tassert_eqs(Error.argument, io.fopen(&file, "test_not_exist.txt", "r", NULL));
+    tassert_eqs(Error.argument, io.fopen(&file, "test_not_exist.txt", NULL, allocator));
+    tassert_eqs(Error.argument, io.fopen(&file, NULL, "r", allocator));
+    tassert_eqs(Error.argument, io.fopen(NULL, "test.txt", "r", allocator));
+    return EOK;
+
 }
 
-ATEST_F(test_readall)
+cextest$case(test_readall)
 {
     io_c file = { 0 };
-    atassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_50b.txt", "r", allocator));
-    atassert(file._fh != NULL);
-    atassert_eql(file._fsize, 0); // not calculated yet!
-    atassert(file._fbuf == NULL);
-    atassert(file._fbuf_size == 0);
-    atassert(file._allocator == allocator);
+    tassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_50b.txt", "r", allocator));
+    tassert(file._fh != NULL);
+    tassert_eql(file._fsize, 0); // not calculated yet!
+    tassert(file._fbuf == NULL);
+    tassert(file._fbuf_size == 0);
+    tassert(file._allocator == allocator);
 
     str_c content;
-    atassert_eqs(Error.ok, io.readall(&file, &content));
+    tassert_eqs(Error.ok, io.readall(&file, &content));
 
-    atassert_eqi(50, io.size(&file));
-    atassert_eqi(50 + 16, file._fbuf_size); // +1 null term
-    atassert_eqi(0, file._fbuf[file._fsize]);
-    atassert_eqs(
+    tassert_eqi(50, io.size(&file));
+    tassert_eqi(50 + 16, file._fbuf_size); // +1 null term
+    tassert_eqi(0, file._fbuf[file._fsize]);
+    tassert_eqs(
         "000000001\n"
         "000000002\n"
         "000000003\n"
@@ -73,339 +70,351 @@ ATEST_F(test_readall)
 
 
     io.close(&file);
-    atassert(file._fh == NULL);
-    atassert_eql(file._fsize, 0);
-    atassert(file._fbuf == NULL);
+    tassert(file._fh == NULL);
+    tassert_eql(file._fsize, 0);
+    tassert(file._fbuf == NULL);
+    return EOK;
 
-    return NULL; // Every ATEST_F() must return NULL to succeed!
 }
 
-ATEST_F(test_readall_empty)
+cextest$case(test_readall_empty)
 {
     io_c file = { 0 };
-    atassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_empty.txt", "r", allocator));
+    tassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_empty.txt", "r", allocator));
 
-    atassert(file._fh != NULL);
-    atassert_eql(file._fsize, 0); // not calculated yet!
-    atassert(file._fbuf == NULL);
-    atassert(file._fbuf_size == 0);
-    atassert(file._allocator == allocator);
+    tassert(file._fh != NULL);
+    tassert_eql(file._fsize, 0); // not calculated yet!
+    tassert(file._fbuf == NULL);
+    tassert(file._fbuf_size == 0);
+    tassert(file._allocator == allocator);
 
     str_c content;
-    atassert_eqs(Error.eof, io.readall(&file, &content));
-    atassert_eqi(0, io.size(&file));
-    atassert(file._fbuf == NULL);
-    atassert_eqi(file._fbuf_size, 0);
-    atassert_eqs(content.buf, "");
-    atassert_eqi(content.len, 0);
+    tassert_eqs(Error.eof, io.readall(&file, &content));
+    tassert_eqi(0, io.size(&file));
+    tassert(file._fbuf == NULL);
+    tassert_eqi(file._fbuf_size, 0);
+    tassert_eqs(content.buf, "");
+    tassert_eqi(content.len, 0);
 
 
 
     io.close(&file);
-    return NULL; // Every ATEST_F() must return NULL to succeed!
+    return EOK;
+
 }
 
-ATEST_F(test_readall_stdin)
+cextest$case(test_readall_stdin)
 {
     io_c file = { 0 };
-    atassert_eqs(Error.ok, io.fattach(&file, stdin, allocator));
-    atassert(file._fh == stdin);
-    atassert_eql(file._fsize, 0); // not calculated yet!
-    atassert(file._fbuf == NULL);
-    atassert(file._fbuf_size == 0);
-    atassert(file._allocator == allocator);
-    atassert_eqi(0, io.size(&file));
+    tassert_eqs(Error.ok, io.fattach(&file, stdin, allocator));
+    tassert(file._fh == stdin);
+    tassert_eql(file._fsize, 0); // not calculated yet!
+    tassert(file._fbuf == NULL);
+    tassert(file._fbuf_size == 0);
+    tassert(file._allocator == allocator);
+    tassert_eqi(0, io.size(&file));
 
     str_c content;
-    atassert_eqs(Error.io, io.readall(&file, &content));
-    atassert_eql(file._fsize, 0); // not calculated yet!
-    atassert(file._fbuf == NULL);
-    atassert(file._fbuf_size == 0);
+    tassert_eqs(Error.io, io.readall(&file, &content));
+    tassert_eql(file._fsize, 0); // not calculated yet!
+    tassert(file._fbuf == NULL);
+    tassert(file._fbuf_size == 0);
 
 
     io.close(&file);
-    return NULL; // Every ATEST_F() must return NULL to succeed!
+    return EOK;
+
 }
 
-ATEST_F(test_read_line)
+cextest$case(test_read_line)
 {
     io_c file = { 0 };
-    atassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_50b.txt", "r", allocator));
+    tassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_50b.txt", "r", allocator));
 
     str_c content;
-    atassert_eqs(Error.ok, io.readline(&file, &content));
-    atassert_eqs(content.buf, "000000001");
-    atassert_eqi(content.len, 9);
+    tassert_eqs(Error.ok, io.readline(&file, &content));
+    tassert_eqs(content.buf, "000000001");
+    tassert_eqi(content.len, 9);
 
-    atassert_eqi(file._fbuf_size, 4096-1);
+    tassert_eqi(file._fbuf_size, 4096-1);
 
-    atassert_eqs(Error.ok, io.readline(&file, &content));
-    atassert_eqs(content.buf, "000000002");
-    atassert_eqi(content.len, 9);
+    tassert_eqs(Error.ok, io.readline(&file, &content));
+    tassert_eqs(content.buf, "000000002");
+    tassert_eqi(content.len, 9);
 
-    atassert_eqs(Error.ok, io.readline(&file, &content));
-    atassert_eqs(content.buf, "000000003");
-    atassert_eqi(content.len, 9);
+    tassert_eqs(Error.ok, io.readline(&file, &content));
+    tassert_eqs(content.buf, "000000003");
+    tassert_eqi(content.len, 9);
 
-    atassert_eqs(Error.ok, io.readline(&file, &content));
-    atassert_eqs(content.buf, "000000004");
-    atassert_eqi(content.len, 9);
+    tassert_eqs(Error.ok, io.readline(&file, &content));
+    tassert_eqs(content.buf, "000000004");
+    tassert_eqi(content.len, 9);
 
-    atassert_eqs(Error.ok, io.readline(&file, &content));
-    atassert_eqs(content.buf, "000000005");
-    atassert_eqi(content.len, 9);
+    tassert_eqs(Error.ok, io.readline(&file, &content));
+    tassert_eqs(content.buf, "000000005");
+    tassert_eqi(content.len, 9);
 
-    atassert_eqs(Error.eof, io.readline(&file, &content));
-    atassert_eqs(content.buf, "");
-    atassert_eqi(content.len, 0);
+    tassert_eqs(Error.eof, io.readline(&file, &content));
+    tassert_eqs(content.buf, "");
+    tassert_eqi(content.len, 0);
 
     io.close(&file);
-    return NULL; // Every ATEST_F() must return NULL to succeed!
+    return EOK;
+
 }
 
-ATEST_F(test_read_line_empty_file)
+cextest$case(test_read_line_empty_file)
 {
     io_c file = { 0 };
-    atassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_empty.txt", "r", allocator));
+    tassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_empty.txt", "r", allocator));
 
     str_c content;
-    atassert_eqs(Error.eof, io.readline(&file, &content));
-    atassert_eqs(content.buf, "");
-    atassert_eqi(content.len, 0);
+    tassert_eqs(Error.eof, io.readline(&file, &content));
+    tassert_eqs(content.buf, "");
+    tassert_eqi(content.len, 0);
 
     io.close(&file);
-    return NULL; // Every ATEST_F() must return NULL to succeed!
+    return EOK;
+
 }
 
-ATEST_F(test_read_line_binary_file_with_zero_char)
+cextest$case(test_read_line_binary_file_with_zero_char)
 {
     io_c file = { 0 };
-    atassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_zero_byte.txt", "r", allocator));
+    tassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_zero_byte.txt", "r", allocator));
 
     str_c content;
-    atassert_eqs(Error.ok, io.readline(&file, &content));
-    atassert_eqs(content.buf, "000000001");
-    atassert_eqi(content.len, 9);
+    tassert_eqs(Error.ok, io.readline(&file, &content));
+    tassert_eqs(content.buf, "000000001");
+    tassert_eqi(content.len, 9);
 
-    atassert_eqs(Error.integrity, io.readline(&file, &content));
-    atassert_eqs(content.buf, NULL);
-    atassert_eqi(content.len, 0);
+    tassert_eqs(Error.integrity, io.readline(&file, &content));
+    tassert_eqs(content.buf, NULL);
+    tassert_eqi(content.len, 0);
 
     io.close(&file);
-    return NULL; // Every ATEST_F() must return NULL to succeed!
+    return EOK;
+
 }
 
-ATEST_F(test_read_line_win_new_line)
+cextest$case(test_read_line_win_new_line)
 {
     io_c file = { 0 };
-    atassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_win_newline.txt", "r", allocator));
+    tassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_win_newline.txt", "r", allocator));
 
     str_c content;
-    atassert_eqs(Error.ok, io.readline(&file, &content));
-    atassert_eqs(content.buf, "000000001");
-    atassert_eqi(content.len, 9);
+    tassert_eqs(Error.ok, io.readline(&file, &content));
+    tassert_eqs(content.buf, "000000001");
+    tassert_eqi(content.len, 9);
 
-    atassert_eqs(Error.ok, io.readline(&file, &content));
-    atassert_eqs(content.buf, "000000002");
-    atassert_eqi(content.len, 9);
+    tassert_eqs(Error.ok, io.readline(&file, &content));
+    tassert_eqs(content.buf, "000000002");
+    tassert_eqi(content.len, 9);
 
-    atassert_eqs(Error.ok, io.readline(&file, &content));
-    atassert_eqs(content.buf, "000000003");
-    atassert_eqi(content.len, 9);
+    tassert_eqs(Error.ok, io.readline(&file, &content));
+    tassert_eqs(content.buf, "000000003");
+    tassert_eqi(content.len, 9);
 
-    atassert_eqs(Error.ok, io.readline(&file, &content));
-    atassert_eqs(content.buf, "000000004");
-    atassert_eqi(content.len, 9);
+    tassert_eqs(Error.ok, io.readline(&file, &content));
+    tassert_eqs(content.buf, "000000004");
+    tassert_eqi(content.len, 9);
 
-    atassert_eqs(Error.ok, io.readline(&file, &content));
-    atassert_eqs(content.buf, "000000005");
-    atassert_eqi(content.len, 9);
+    tassert_eqs(Error.ok, io.readline(&file, &content));
+    tassert_eqs(content.buf, "000000005");
+    tassert_eqi(content.len, 9);
 
-    atassert_eqs(Error.eof, io.readline(&file, &content));
-    atassert_eqs(content.buf, "");
-    atassert_eqi(content.len, 0);
+    tassert_eqs(Error.eof, io.readline(&file, &content));
+    tassert_eqs(content.buf, "");
+    tassert_eqi(content.len, 0);
 
     io.close(&file);
-    return NULL; // Every ATEST_F() must return NULL to succeed!
+    return EOK;
+
 }
 
-ATEST_F(test_read_line_only_new_lines)
+cextest$case(test_read_line_only_new_lines)
 {
     io_c file = { 0 };
-    atassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_only_newline.txt", "r", allocator));
+    tassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_only_newline.txt", "r", allocator));
 
     str_c content;
-    atassert_eqs(Error.ok, io.readline(&file, &content));
-    atassert_eqs(content.buf, "");
-    atassert_eqi(content.len, 0);
+    tassert_eqs(Error.ok, io.readline(&file, &content));
+    tassert_eqs(content.buf, "");
+    tassert_eqi(content.len, 0);
 
-    atassert_eqs(Error.ok, io.readline(&file, &content));
-    atassert_eqs(content.buf, "");
-    atassert_eqi(content.len, 0);
+    tassert_eqs(Error.ok, io.readline(&file, &content));
+    tassert_eqs(content.buf, "");
+    tassert_eqi(content.len, 0);
 
-    atassert_eqs(Error.ok, io.readline(&file, &content));
-    atassert_eqs(content.buf, "");
-    atassert_eqi(content.len, 0);
+    tassert_eqs(Error.ok, io.readline(&file, &content));
+    tassert_eqs(content.buf, "");
+    tassert_eqi(content.len, 0);
 
-    atassert_eqs(Error.ok, io.readline(&file, &content));
-    atassert_eqs(content.buf, "");
-    atassert_eqi(content.len, 0);
+    tassert_eqs(Error.ok, io.readline(&file, &content));
+    tassert_eqs(content.buf, "");
+    tassert_eqi(content.len, 0);
 
-    atassert_eqs(Error.eof, io.readline(&file, &content));
-    atassert_eqs(content.buf, "");
-    atassert_eqi(content.len, 0);
+    tassert_eqs(Error.eof, io.readline(&file, &content));
+    tassert_eqs(content.buf, "");
+    tassert_eqi(content.len, 0);
 
     io.close(&file);
-    return NULL; // Every ATEST_F() must return NULL to succeed!
+    return EOK;
+
 }
 
-ATEST_F(test_read_all_then_read_line)
+cextest$case(test_read_all_then_read_line)
 {
     io_c file = { 0 };
-    atassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_50b.txt", "r", allocator));
-    atassert(file._fh != NULL);
-    atassert_eql(file._fsize, 0); // not calculated yet!
-    atassert(file._fbuf == NULL);
-    atassert(file._fbuf_size == 0);
-    atassert(file._allocator == allocator);
+    tassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_50b.txt", "r", allocator));
+    tassert(file._fh != NULL);
+    tassert_eql(file._fsize, 0); // not calculated yet!
+    tassert(file._fbuf == NULL);
+    tassert(file._fbuf_size == 0);
+    tassert(file._allocator == allocator);
 
     str_c content;
-    atassert_eqs(Error.ok, io.readall(&file, &content));
-    atassert_eqi(50, io.size(&file));
-    atassert_eqi(file._fbuf_size, 66);
+    tassert_eqs(Error.ok, io.readall(&file, &content));
+    tassert_eqi(50, io.size(&file));
+    tassert_eqi(file._fbuf_size, 66);
 
-    atassert_eqs(Error.eof, io.readline(&file, &content));
-    atassert_eqs(content.buf, "");
-    atassert_eqi(content.len, 0);
+    tassert_eqs(Error.eof, io.readline(&file, &content));
+    tassert_eqs(content.buf, "");
+    tassert_eqi(content.len, 0);
 
 
-    atassert_eqs(Error.ok, io.seek(&file, 0, SEEK_SET));
-    atassert_eqs(Error.ok, io.readline(&file, &content));
-    atassert_eqs(content.buf, "000000001");
-    atassert_eqi(content.len, 9);
+    tassert_eqs(Error.ok, io.seek(&file, 0, SEEK_SET));
+    tassert_eqs(Error.ok, io.readline(&file, &content));
+    tassert_eqs(content.buf, "000000001");
+    tassert_eqi(content.len, 9);
 
     io.close(&file);
-    return NULL; // Every ATEST_F() must return NULL to succeed!
+    return EOK;
+
 }
 
-ATEST_F(test_read_long_line)
+cextest$case(test_read_long_line)
 {
     io_c file = { 0 };
-    atassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_line_4095.txt", "r", allocator));
-    atassert(file._fh != NULL);
-    atassert_eql(file._fsize, 0); // not calculated yet!
-    atassert(file._fbuf == NULL);
-    atassert(file._fbuf_size == 0);
-    atassert(file._allocator == allocator);
+    tassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_line_4095.txt", "r", allocator));
+    tassert(file._fh != NULL);
+    tassert_eql(file._fsize, 0); // not calculated yet!
+    tassert(file._fbuf == NULL);
+    tassert(file._fbuf_size == 0);
+    tassert(file._allocator == allocator);
 
     str_c content;
-    atassert_eqi(4096+4095+2, io.size(&file));
+    tassert_eqi(4096+4095+2, io.size(&file));
 
-    atassert_eqs(Error.ok, io.readline(&file, &content));
-    atassert_eqi(file._fbuf_size, 4096-1);
-    atassert(str.starts_with(content, str.cstr("4095")));
-    atassert_eqi(content.len, 4095);
-    atassert_eqi(0, content.buf[content.len]); // null term
+    tassert_eqs(Error.ok, io.readline(&file, &content));
+    tassert_eqi(file._fbuf_size, 4096-1);
+    tassert(str.starts_with(content, str.cstr("4095")));
+    tassert_eqi(content.len, 4095);
+    tassert_eqi(0, content.buf[content.len]); // null term
 
-    atassert_eqs(Error.ok, io.readline(&file, &content));
-    atassert_eqi(file._fbuf_size, 4096*2-1); // buffer resized
-    atassert(str.starts_with(content, str.cstr("4096")));
-    atassert_eqi(content.len, 4096);
-    atassert_eqi(0, content.buf[content.len]); // null term
+    tassert_eqs(Error.ok, io.readline(&file, &content));
+    tassert_eqi(file._fbuf_size, 4096*2-1); // buffer resized
+    tassert(str.starts_with(content, str.cstr("4096")));
+    tassert_eqi(content.len, 4096);
+    tassert_eqi(0, content.buf[content.len]); // null term
 
 
-    atassert_eqs(Error.eof, io.readline(&file, &content));
-    atassert_eqs(content.buf, "");
-    atassert_eqi(content.len, 0);
+    tassert_eqs(Error.eof, io.readline(&file, &content));
+    tassert_eqs(content.buf, "");
+    tassert_eqi(content.len, 0);
 
     io.close(&file);
-    return NULL; // Every ATEST_F() must return NULL to succeed!
+    return EOK;
+
 }
 
-ATEST_F(test_readall_realloc)
+cextest$case(test_readall_realloc)
 {
     io_c file = { 0 };
-    atassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_line_4095.txt", "r", allocator));
-    atassert(file._fh != NULL);
-    atassert_eql(file._fsize, 0); // not calculated yet!
-    atassert(file._fbuf == NULL);
-    atassert(file._fbuf_size == 0);
-    atassert(file._allocator == allocator);
+    tassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_line_4095.txt", "r", allocator));
+    tassert(file._fh != NULL);
+    tassert_eql(file._fsize, 0); // not calculated yet!
+    tassert(file._fbuf == NULL);
+    tassert(file._fbuf_size == 0);
+    tassert(file._allocator == allocator);
 
     str_c content;
-    atassert_eqi(4096+4095+2, io.size(&file));
+    tassert_eqi(4096+4095+2, io.size(&file));
 
-    atassert_eqs(Error.ok, io.readline(&file, &content));
-    atassert_eqi(file._fbuf_size, 4096-1);
-    atassert(str.starts_with(content, str.cstr("4095")));
-    atassert_eqi(content.len, 4095);
-    atassert_eqi(0, content.buf[content.len]); // null term
+    tassert_eqs(Error.ok, io.readline(&file, &content));
+    tassert_eqi(file._fbuf_size, 4096-1);
+    tassert(str.starts_with(content, str.cstr("4095")));
+    tassert_eqi(content.len, 4095);
+    tassert_eqi(0, content.buf[content.len]); // null term
 
 
     io.rewind(&file);
 
-    atassert_eqs(Error.ok, io.readall(&file, &content));
-    atassert_eqi(file._fbuf_size, 4095+4096+2+16);
-    atassert(str.starts_with(content, str.cstr("4095")));
-    atassert_eqi(str.find(content, str.cstr("4096"), 0, 0), 4096);
-    atassert_eqi(content.len, 4095+4096+2);
+    tassert_eqs(Error.ok, io.readall(&file, &content));
+    tassert_eqi(file._fbuf_size, 4095+4096+2+16);
+    tassert(str.starts_with(content, str.cstr("4095")));
+    tassert_eqi(str.find(content, str.cstr("4096"), 0, 0), 4096);
+    tassert_eqi(content.len, 4095+4096+2);
 
     io.close(&file);
-    return NULL; // Every ATEST_F() must return NULL to succeed!
+    return EOK;
+
 }
 
-ATEST_F(test_read)
+cextest$case(test_read)
 {
     io_c file = { 0 };
-    atassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_line_4095.txt", "r", allocator));
+    tassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_line_4095.txt", "r", allocator));
 
     char buf[128];
     memset(buf, 'z', arr$len(buf));
 
     size_t read_len = 4;
-    atassert_eqs(Error.ok, io.read(&file, buf, 2, &read_len));
-    atassert_eqi(memcmp(buf, "40950000", 8), 0);
-    atassert_eqi(read_len, 4);
+    tassert_eqs(Error.ok, io.read(&file, buf, 2, &read_len));
+    tassert_eqi(memcmp(buf, "40950000", 8), 0);
+    tassert_eqi(read_len, 4);
 
 
     io.close(&file);
-    return NULL; // Every ATEST_F() must return NULL to succeed!
+    return EOK;
+
 }
 
-ATEST_F(test_read_empty)
+cextest$case(test_read_empty)
 {
     io_c file = { 0 };
-    atassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_empty.txt", "r", allocator));
+    tassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_empty.txt", "r", allocator));
 
     char buf[128];
     memset(buf, 'z', arr$len(buf));
 
     size_t read_len = 4;
-    atassert_eqs(Error.eof, io.read(&file, buf, 2, &read_len));
-    atassert_eqi(memcmp(buf, "zzzzzzzz", 8), 0); // untouched!
-    atassert_eqi(read_len, 0);
+    tassert_eqs(Error.eof, io.read(&file, buf, 2, &read_len));
+    tassert_eqi(memcmp(buf, "zzzzzzzz", 8), 0); // untouched!
+    tassert_eqi(read_len, 0);
 
     io.close(&file);
-    return NULL; // Every ATEST_F() must return NULL to succeed!
+    return EOK;
+
 }
 
-ATEST_F(test_read_not_all)
+cextest$case(test_read_not_all)
 {
     io_c file = { 0 };
-    atassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_50b.txt", "r", allocator));
+    tassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_50b.txt", "r", allocator));
 
     char buf[128];
     memset(buf, 'z', arr$len(buf));
 
     size_t read_len = 100;
-    atassert_eqs(Error.ok, io.read(&file, buf, 1, &read_len));
-    atassert_eqi(read_len, 50);
+    tassert_eqs(Error.ok, io.read(&file, buf, 1, &read_len));
+    tassert_eqi(read_len, 50);
 
     // NOTE: read method does not null terminate!
-    atassert_eqi(buf[read_len], 'z');
+    tassert_eqi(buf[read_len], 'z');
 
     buf[read_len] = '\0'; // null terminate to compare string result below
-    atassert_eqs(
+    tassert_eqs(
         "000000001\n"
         "000000002\n"
         "000000003\n"
@@ -414,68 +423,72 @@ ATEST_F(test_read_not_all)
         buf
     );
 
-    atassert_eqs(Error.eof, io.read(&file, buf, 1, &read_len));
-    atassert_eqi(read_len, 0);
+    tassert_eqs(Error.eof, io.read(&file, buf, 1, &read_len));
+    tassert_eqi(read_len, 0);
 
     io.close(&file);
-    return NULL; // Every ATEST_F() must return NULL to succeed!
+    return EOK;
+
 }
 
-ATEST_F(test_fprintf)
+cextest$case(test_fprintf)
 {
     io_c file = { 0 };
-    atassert_eqs(Error.ok, io.fattach(&file, stdout, allocator));
-    atassert(file._fh == stdout);
-    atassert(file._fbuf == NULL);
-    atassert(file._fbuf_size == 0);
-    atassert(file._allocator == allocator);
-    atassert_eqi(0, io.size(&file));
+    tassert_eqs(Error.ok, io.fattach(&file, stdout, allocator));
+    tassert(file._fh == stdout);
+    tassert(file._fbuf == NULL);
+    tassert(file._fbuf_size == 0);
+    tassert(file._allocator == allocator);
+    tassert_eqi(0, io.size(&file));
 
 
-    atassert_eqs(EOK, io.fprintf(&file, "Hi there it's a io.fprintf\n"));
+    tassert_eqs(EOK, io.fprintf(&file, "Hi there it's a io.fprintf\n"));
 
     io.close(&file);
-    return NULL; // Every ATEST_F() must return NULL to succeed!
+    return EOK;
+
 }
 
-ATEST_F(test_fprintf_to_file)
+cextest$case(test_fprintf_to_file)
 {
     io_c file = { 0 };
-    atassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_fprintf.txt", "w+", allocator));
+    tassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_fprintf.txt", "w+", allocator));
 
     char buf[4] = {"1234"};
     str_c s1 = str.cbuf(buf, 4);
-    atassert_eqi(s1.len, 4);
-    atassert_eqi(s1.buf[3], '4');
-    atassert_eqs(EOK, io.fprintf(&file, "io.fprintf: str_c: %S\n", s1));
+    tassert_eqi(s1.len, 4);
+    tassert_eqi(s1.buf[3], '4');
+    tassert_eqs(EOK, io.fprintf(&file, "io.fprintf: str_c: %S\n", s1));
 
     str_c content;
     io.rewind(&file);
 
-    atassert_eqs(EOK, io.readall(&file, &content));
-    atassert_eqi(0, str.cmp(content, s$("io.fprintf: str_c: 1234\n")));
+    tassert_eqs(EOK, io.readall(&file, &content));
+    tassert_eqi(0, str.cmp(content, s$("io.fprintf: str_c: 1234\n")));
 
 
     io.close(&file);
-    return NULL; // Every ATEST_F() must return NULL to succeed!
+    return EOK;
+
 }
 
-ATEST_F(test_write)
+cextest$case(test_write)
 {
     io_c file = { 0 };
-    atassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_write.txt", "w+", allocator));
+    tassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_write.txt", "w+", allocator));
 
     char buf[4] = {"1234"};
 
-    atassert_eqs(EOK, io.write(&file, buf, sizeof(char), arr$len(buf)));
+    tassert_eqs(EOK, io.write(&file, buf, sizeof(char), arr$len(buf)));
 
     str_c content;
     io.rewind(&file);
-    atassert_eqs(EOK, io.readall(&file, &content));
-    atassert_eqi(0, str.cmp(content, s$("1234")));
+    tassert_eqs(EOK, io.readall(&file, &content));
+    tassert_eqi(0, str.cmp(content, s$("1234")));
 
     io.close(&file);
-    return NULL; // Every ATEST_F() must return NULL to succeed!
+    return EOK;
+
 }
 /*
  *
@@ -485,28 +498,28 @@ ATEST_F(test_write)
 int
 main(int argc, char* argv[])
 {
-    ATEST_PARSE_MAINARGS(argc, argv);
-    ATEST_PRINT_HEAD();  // >>> all tests below
+    cextest$args_parse(argc, argv);
+    cextest$print_header();  // >>> all tests below
     
-    ATEST_RUN(test_io);
-    ATEST_RUN(test_readall);
-    ATEST_RUN(test_readall_empty);
-    ATEST_RUN(test_readall_stdin);
-    ATEST_RUN(test_read_line);
-    ATEST_RUN(test_read_line_empty_file);
-    ATEST_RUN(test_read_line_binary_file_with_zero_char);
-    ATEST_RUN(test_read_line_win_new_line);
-    ATEST_RUN(test_read_line_only_new_lines);
-    ATEST_RUN(test_read_all_then_read_line);
-    ATEST_RUN(test_read_long_line);
-    ATEST_RUN(test_readall_realloc);
-    ATEST_RUN(test_read);
-    ATEST_RUN(test_read_empty);
-    ATEST_RUN(test_read_not_all);
-    ATEST_RUN(test_fprintf);
-    ATEST_RUN(test_fprintf_to_file);
-    ATEST_RUN(test_write);
+    cextest$run(test_io);
+    cextest$run(test_readall);
+    cextest$run(test_readall_empty);
+    cextest$run(test_readall_stdin);
+    cextest$run(test_read_line);
+    cextest$run(test_read_line_empty_file);
+    cextest$run(test_read_line_binary_file_with_zero_char);
+    cextest$run(test_read_line_win_new_line);
+    cextest$run(test_read_line_only_new_lines);
+    cextest$run(test_read_all_then_read_line);
+    cextest$run(test_read_long_line);
+    cextest$run(test_readall_realloc);
+    cextest$run(test_read);
+    cextest$run(test_read_empty);
+    cextest$run(test_read_not_all);
+    cextest$run(test_fprintf);
+    cextest$run(test_fprintf_to_file);
+    cextest$run(test_write);
     
-    ATEST_PRINT_FOOTER();  // ^^^^^ all tests runs are above
-    return ATEST_EXITCODE();
+    cextest$print_footer();  // ^^^^^ all tests runs are above
+    return cextest$exit_code();
 }
