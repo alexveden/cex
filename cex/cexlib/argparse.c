@@ -15,8 +15,8 @@
 #include <string.h>
 
 
-const u32 OPT_UNSET = 1;
-const u32 OPT_LONG = (1 << 1);
+const u32 ARGPARSE_OPT_UNSET = 1;
+const u32 ARGPARSE_OPT_LONG = (1 << 1);
 
 // static const u8 1 /*ARGPARSE_OPT_GROUP*/  = 1;
 // static const u8 2 /*ARGPARSE_OPT_BOOLEAN*/ = 2;
@@ -48,7 +48,7 @@ static Exception
 argparse__error(argparse_c* self, const argparse_opt_s* opt, const char* reason, int flags)
 {
     (void)self;
-    if (flags & OPT_LONG) {
+    if (flags & ARGPARSE_OPT_LONG) {
         fprintf(stdout, "error: option `--%s` %s\n", opt->long_name, reason);
     } else {
         fprintf(stdout, "error: option `-%c` %s\n", opt->short_name, reason);
@@ -178,7 +178,7 @@ argparse__getvalue(argparse_c* self, argparse_opt_s* opt, int flags)
 
     switch (opt->type) {
         case 2 /*ARGPARSE_OPT_BOOLEAN*/:
-            if (flags & OPT_UNSET) {
+            if (flags & ARGPARSE_OPT_UNSET) {
                 *(int*)opt->value = 0;
             } else {
                 *(int*)opt->value = 1;
@@ -186,7 +186,7 @@ argparse__getvalue(argparse_c* self, argparse_opt_s* opt, int flags)
             opt->is_present = true;
             break;
         case 3 /*ARGPARSE_OPT_BIT*/:
-            if (flags & OPT_UNSET) {
+            if (flags & ARGPARSE_OPT_UNSET) {
                 *(int*)opt->value &= ~opt->data;
             } else {
                 *(int*)opt->value |= opt->data;
@@ -347,7 +347,7 @@ argparse__long_opt(argparse_c* self, argparse_opt_s* options)
         rest = argparse__prefix_skip(self->_ctx.argv[0] + 2, options->long_name);
         if (!rest) {
             // negation disabled?
-            if (options->flags & OPT_NONEG) {
+            if (options->flags & ARGPARSE_OPT_NONEG) {
                 continue;
             }
             // only OPT_BOOLEAN/OPT_BIT supports negation
@@ -363,7 +363,7 @@ argparse__long_opt(argparse_c* self, argparse_opt_s* options)
             if (!rest) {
                 continue;
             }
-            opt_flags |= OPT_UNSET;
+            opt_flags |= ARGPARSE_OPT_UNSET;
         }
         if (*rest) {
             if (*rest != '=') {
@@ -371,7 +371,7 @@ argparse__long_opt(argparse_c* self, argparse_opt_s* options)
             }
             self->_ctx.optvalue = rest + 1;
         }
-        return argparse__getvalue(self, options, opt_flags | OPT_LONG);
+        return argparse__getvalue(self, options, opt_flags | ARGPARSE_OPT_LONG);
     }
     return Error.not_found;
 }

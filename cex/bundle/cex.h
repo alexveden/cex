@@ -1040,7 +1040,7 @@ typedef Exception argparse_callback_f(struct argparse_c* self, const struct argp
 
 enum argparse_option_flags
 {
-    OPT_NONEG = 1, /* disable negation */
+    ARGPARSE_OPT_NONEG = 1, /* disable negation */
 };
 /**
  *  argparse option
@@ -1135,7 +1135,7 @@ typedef struct argparse_c
 #define argparse$opt_group(h)     { 1 /*ARGPARSE_OPT_GROUP*/, 0, NULL, NULL, h, false, NULL, 0, 0, .is_present=0 }
 #define argparse$opt_help()       argparse$opt_bool('h', "help", NULL,                           \
                                                     "show this help message and exit", false,    \
-                                                    NULL, 0, OPT_NONEG)
+                                                    NULL, 0, ARGPARSE_OPT_NONEG)
 // clang-format on
 
 struct __module__argparse

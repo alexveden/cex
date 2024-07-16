@@ -45,7 +45,7 @@ ATEST_F(test_argparse_init_short)
         argparse$opt_i64('i', "int", &int_num, "selected integer", false, NULL, 0, 0),
         argparse$opt_f32('s', "float", &flt_num, "selected float", false, NULL, 0, 0),
         argparse$opt_group("Bits options"),
-        argparse$opt_bit(0, "read", &perms, "read perm", false, NULL, PERM_READ, OPT_NONEG),
+        argparse$opt_bit(0, "read", &perms, "read perm", false, NULL, PERM_READ, ARGPARSE_OPT_NONEG),
         argparse$opt_bit(0, "write", &perms, "write perm", false, NULL, PERM_WRITE, 0),
         argparse$opt_bit(0, "exec", &perms, "exec perm", false, NULL, PERM_EXEC, 0),
     };
@@ -94,7 +94,7 @@ ATEST_F(test_argparse_init_long)
         argparse$opt_i64('i', "int", &int_num, .help = "selected integer", NULL, 0, 0),
         argparse$opt_f32('s', "float", .value = &flt_num, "selected float", NULL, 0, 0),
         argparse$opt_group("Bits options"),
-        argparse$opt_bit(0, "read", &perms, "read perm", false, NULL, PERM_READ, OPT_NONEG),
+        argparse$opt_bit(0, "read", &perms, "read perm", false, NULL, PERM_READ, ARGPARSE_OPT_NONEG),
         argparse$opt_bit(0, "write", &perms, "write perm", false, NULL, PERM_WRITE, 0),
         argparse$opt_bit(0, "exec", &perms, "exec perm", false, NULL, .data = PERM_EXEC, 0),
     };
