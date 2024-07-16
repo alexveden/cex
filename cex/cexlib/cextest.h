@@ -9,13 +9,12 @@
  * - mocking (with fff.h)
  * - new cases automatically added when you run the test via cex cli
  * - testing static function via #include ".c"
- * - enabling/disabling uassert() for testing code with production -DNDEBUG
+ * - enabling/disabling uassert() for testing code with production -DNDEBUG simulation
  *
  *
  * Generic test composition
  *
- *
- *
+```
 #include <cex.c>
 
 const Allocator_i* allocator;
@@ -61,6 +60,7 @@ main(int argc, char* argv[])
     cextest$print_footer();  // ^^^^^ all tests runs are above
     return cextest$exit_code();
 }
+```
  */
 #pragma once
 #include "cex.h"

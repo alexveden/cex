@@ -3437,17 +3437,23 @@ allocators__heap__destroy(void)
     // NOTE: this message only shown if no DNDEBUG
     if (a->stats.n_allocs != a->stats.n_free) {
         utracef(
-            "Allocator: Possible memory leaks: number or memory allocs don't match with number of frees! \n"
+            "Allocator: Possible memory leaks/double free: memory allocator->allocs() [%d] != allocator->free() [%d] count! \n",
+            a->stats.n_allocs,
+            a->stats.n_free
         );
     }
     if (a->stats.n_fopen != a->stats.n_fclose) {
         utracef(
-            "Allocator: Possible FILE* leaks: number or allocator->fopen() != allocator->fclose()!\n"
+            "Allocator: Possible FILE* leaks: allocator->fopen() [%d] != allocator->fclose() [%d]!\n",
+            a->stats.n_fopen,
+            a->stats.n_fclose
         );
     }
     if (a->stats.n_open != a->stats.n_close) {
         utracef(
-            "Allocator: Possible file descriptor leaks: number or allocator->open() != allocator->close()!\n"
+            "Allocator: Possible file descriptor leaks: allocator->open() [%d] != allocator->close() [%d]!\n",
+            a->stats.n_open,
+            a->stats.n_close
         );
     }
 

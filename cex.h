@@ -434,13 +434,12 @@ extern const struct __module__allocators allocators; // CEX Autogen
  * - mocking (with fff.h)
  * - new cases automatically added when you run the test via cex cli
  * - testing static function via #include ".c"
- * - enabling/disabling uassert() for testing code with production -DNDEBUG
+ * - enabling/disabling uassert() for testing code with production -DNDEBUG simulation
  *
  *
  * Generic test composition
  *
- *
- *
+```
 #include <cex.c>
 
 const Allocator_i* allocator;
@@ -451,9 +450,7 @@ cextest$teardown(){
 }
 
 cextest$setup(){
-    // NOTE: must be compiled with -DCEXTEST to make uassert_disable() working!
-
-    uassert_enable(); // re-enable if you disable it in the test case
+    uassert_enable(); // re-enable if you disabled it in some test case
     allocator = allocators.heap.create();
     return EOK;
 }
@@ -470,7 +467,7 @@ cextest$case(my_test)
     tassert_eqe(EOK, Error.ok);
 
     uassert_disable();
-    uassert(false && "this will be disabled, not abort!");
+    uassert(false && "this will be disabled, no abort!");
 
     tassertf(true == 0, "true != %d", false);
 
@@ -488,6 +485,7 @@ main(int argc, char* argv[])
     cextest$print_footer();  // ^^^^^ all tests runs are above
     return cextest$exit_code();
 }
+```
  */
 #include <float.h>
 #include <math.h>
