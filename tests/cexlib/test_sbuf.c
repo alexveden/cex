@@ -19,6 +19,7 @@ cextest$teardown(){
 
 cextest$setup()
 {
+    uassert_enable();
     allocator = allocators.heap.create();
     return EOK;
 }

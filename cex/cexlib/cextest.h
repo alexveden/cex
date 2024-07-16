@@ -11,8 +11,8 @@
  * - testing static function via #include ".c"
  * - enabling/disabling uassert() for testing code with production -DNDEBUG simulation
  *
- *
  * Generic test composition
+ *
  *
 ```
 #include <cex.c>

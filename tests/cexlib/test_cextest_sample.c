@@ -17,6 +17,7 @@ cextest$case(my_test)
 {
     // Has malloc, but no free(), allocator will send memory leak warning
     void* a = allocator->malloc(100);
+    free(a); // free without allocator to keep sanitizers happy
 
     tassert(true == 1);
     tassert_eqi(1, 1);
@@ -27,7 +28,7 @@ cextest$case(my_test)
     uassert_disable();
     uassert(false && "this will be disabled, no abort!");
 
-    tassertf(true == 0, "true != %d", false);
+    tassertf(true, "true != %d", false);
 
     return EOK;
 }

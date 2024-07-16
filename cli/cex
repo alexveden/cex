@@ -103,7 +103,7 @@ class CEXTestBuilder:
                 return tpath
 
             self.include_path_cache[incl_fn] = None
-            return tpath
+            return None
 
         return self.include_path_cache[incl_fn]
 
@@ -121,8 +121,6 @@ class CEXTestBuilder:
         fh = open(test_src, "r")
 
         test_mtime = int(os.path.getmtime(test_src))
-
-        # print(f"{build_mtime=} {test_mtime=}")
 
         lines = fh.readlines()
 
@@ -146,7 +144,7 @@ class CEXTestBuilder:
             r".*\s*main\(int\s+argc,\s+char\*\s+argv\[\s*\]\)", re.MULTILINE
         )
         re_includes_c = re.compile(
-            r"^#include\s+\"([.\/\\\w-]+\.(h|c))\"", re.MULTILINE
+            r"^#include\s+[<\"]{1}([.\/\\\w-]+\.[h|c])[>\"]{1}", re.MULTILINE
         )
 
         has_setup = False
@@ -174,14 +172,29 @@ class CEXTestBuilder:
                 fn = m[1]
                 incl_fn = self.search_include_fn(fn)
 
-                if build_mtime and incl_fn:
+                if (
+                    build_mtime
+                    and incl_fn
+                    and not os.path.basename(incl_fn).startswith("fake_")
+                ):
                     mtime = int(os.path.getmtime(incl_fn))
-                    if (
-                        not os.path.basename(incl_fn).startswith("fake_")
-                        and mtime > build_mtime
-                    ):
-                        print(f"{test_src} changed {incl_fn}")
+                    if mtime > build_mtime:
+                        print(f"{test_src} changes in {incl_fn}")
                         has_c_changes = True
+                    else:
+                        if incl_fn.endswith('.c'):
+                            alt_h_file = incl_fn[:-2] + '.h'
+                        elif incl_fn.endswith('.h'):
+                            alt_h_file = incl_fn[:-2] + '.c'
+                        else:
+                            assert False, f"not implemented extension: {incl_fn}"
+
+                        alt_h_file = self.search_include_fn(alt_h_file)
+                        if alt_h_file:
+                            mtime = int(os.path.getmtime(alt_h_file))
+                            if mtime > build_mtime:
+                                # print(f"{test_src} changes in {alt_h_file}")
+                                has_c_changes = True
 
             elif re_print_head.match(line):
                 has_insert_here = True
@@ -253,15 +266,30 @@ class CEXTestBuilder:
                 fh.write(buf.getvalue())
             return True
 
+    def get_inlined_cc_args(self, test_src: str):
+        gcc_args = []
+        re_gcc_args = re.compile(r"^//\s*#[g]*cc_args\s+(.*)$", re.MULTILINE)
+
+        with open(test_src, "r") as fh:
+            for line in fh.readlines():
+                if line.startswith("#include"):
+                    break
+                g = re_gcc_args.search(line)
+                if g:
+                    gcc_args.append(g.group(1))
+        return gcc_args
+
     def compile(self, test_src: str):
         assert os.path.exists(test_src)
+
+        gcc_args_inlined = self.get_inlined_cc_args(test_src)
 
         test_exe = self.make_test_exe(test_src)
 
         args = [
             "cc",
             "-DCEXTEST",
-            "-O3",
+            "-O0",
             "-g3",
             "-ggdb3",
             "-Wall",
@@ -277,31 +305,45 @@ class CEXTestBuilder:
             "-fsanitize=leak",
             "-fstack-protector-strong",
             f"-I{os.getcwd()}/",
-            "-Isrc",
-            "-Iinclude",
             f"-I{self.test_dir}",
+        ]
+
+        # src/ and include/ are optional but keep then in gcc include
+        src_path = os.path.join(os.getcwd(), "src/")
+        if os.path.exists(src_path):
+            args.append(f"-I{src_path}")
+
+        include_path = os.path.join(os.getcwd(), "include/")
+        if os.path.exists(include_path):
+            args.append(f"-I{include_path}")
+
+        if gcc_args_inlined:
+            args.extend(gcc_args_inlined)
+
+        args += [
             test_src,
             "-o",
             test_exe,
         ]
-
         process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = process.communicate()
 
         if process.wait(60) != 0:
             print("Process error:")
             print(" ".join(args))
+            if gcc_args_inlined:
+                print(f"Args inlined:\n{gcc_args_inlined=}")
             print("stdout:")
             print(stdout.decode())
             print("stderr:")
             print(stderr.decode())
-            raise RuntimeError("Compilation error")
+            raise RuntimeError(f"Compilation error: {test_src}")
 
     def action_build(self):
         test_files_list = []
 
         if self.src_path == "all":
-            for fn in glob.glob(os.path.join(self.test_dir, "**/*c")):
+            for fn in glob.glob(os.path.join(self.test_dir, "**/test_*.c")):
                 test_files_list.append(fn)
         else:
             assert os.path.exists(self.src_path), f"test not exist: {self.src_path}"
@@ -320,7 +362,7 @@ class CEXTestBuilder:
         self.action_build()
 
         if self.src_path == "all":
-            for fn in glob.glob(os.path.join(self.test_dir, "**/*c")):
+            for fn in glob.glob(os.path.join(self.test_dir, "**/test_*.c")):
                 test_exe_list.append(self.make_test_exe(fn))
         else:
             assert os.path.exists(self.src_path), f"test not exist: {self.src_path}"

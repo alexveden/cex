@@ -321,7 +321,7 @@ cextest$case(test_sub_negative_start)
     sub = str.sub(s, -7, 0);
     tassert_eqi(str.is_valid(sub), false);
 
-    return NULL;
+    return EOK;
 }
 
 cextest$case(test_iter)
@@ -380,7 +380,7 @@ cextest$case(test_iter)
         nit++;
     }
     tassert_eqi(s.len, nit);
-    return NULL;
+    return EOK;
 }
 
 cextest$case(test_iter_split)
@@ -485,7 +485,7 @@ cextest$case(test_iter_split)
         nit++;
     }
     tassert_eqi(nit, 3);
-    return NULL;
+    return EOK;
 }
 
 cextest$case(test_find)
@@ -544,7 +544,7 @@ cextest$case(test_find)
     // starts from left
     tassert_eqi(0, str.find(s$("123123123"), str.cstr("123"), 0, 0));
 
-    return NULL;
+    return EOK;
 }
 
 cextest$case(test_rfind)
@@ -606,7 +606,7 @@ cextest$case(test_rfind)
     // starts from right
     tassert_eqi(6, str.rfind(s$("123123123"), str.cstr("123"), 0, 0));
 
-    return NULL;
+    return EOK;
 }
 
 cextest$case(test_contains_starts_ends)
@@ -640,7 +640,7 @@ cextest$case(test_contains_starts_ends)
     tassert_eqi(0, str.ends_with(str.cstr(""), str.cstr("1")));
     tassert_eqi(0, str.ends_with(str.cstr(NULL), str.cstr("1")));
 
-    return NULL;
+    return EOK;
 }
 
 cextest$case(test_remove_prefix)
@@ -666,7 +666,7 @@ cextest$case(test_remove_prefix)
     out = str.remove_prefix(s$("prefix_str_prefix"), s$("prefi_"));
     tassert_eqi(str.cmp(out, s$("prefix_str_prefix")), 0);
 
-    return NULL;
+    return EOK;
 }
 
 cextest$case(test_remove_suffix)
@@ -692,7 +692,7 @@ cextest$case(test_remove_suffix)
     out = str.remove_suffix(s$("suffix_str_suffix"), s$("_uffix"));
     tassert_eqi(str.cmp(out, s$("suffix_str_suffix")), 0);
 
-    return NULL;
+    return EOK;
 }
 
 cextest$case(test_strip)
@@ -757,7 +757,7 @@ cextest$case(test_strip)
     out = str.strip(s);
     tassert_eqi(out.len, 0);
     tassert_eqs("", out.buf);
-    return NULL;
+    return EOK;
 }
 
 cextest$case(test_cmp)
@@ -774,7 +774,7 @@ cextest$case(test_cmp)
     tassert_eqi(str.cmp(str.cstr(""), str.cstr(NULL)), 1);
     tassert_eqi(str.cmp(str.cstr(NULL), str.cstr("ABC")), -1);
 
-    return NULL;
+    return EOK;
 }
 
 cextest$case(test_cmpi)
@@ -798,7 +798,7 @@ cextest$case(test_cmpi)
     tassert_eqi(str.cmpi(str.cstr(NULL), str.cstr("ABC")), -1);
 
 
-    return NULL;
+    return EOK;
 }
 /*
  *

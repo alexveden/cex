@@ -30,7 +30,6 @@ typedef double f64;
 #define __CEX_CONCAT(a, b) __CEX_CONCAT_INNER(a, b)
 #define __CEX_TMPNAME(base) __CEX_CONCAT(base, __LINE__)
 
-
 // TODO: decide what to do with it
 #define MIN(X, Y) ((X) < (Y) ? (X) : (Y))
 #define MAX(X, Y) ((X) > (Y) ? (X) : (Y))

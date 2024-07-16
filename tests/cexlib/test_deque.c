@@ -40,7 +40,7 @@ cextest$case(testlist_alloc_capacity)
     tassert_eql(128, deque__alloc_capacity(100));
 
 
-    return NULL;
+    return EOK;
 }
 
 cextest$case(test_deque_new)
@@ -741,7 +741,7 @@ cextest$case(test_deque_static)
     tassert_eqi(head->idx_head, 0);
     tassert(head->allocator == NULL);
     tassert_eqi(deque.len(&a), 0);
-    return NULL;
+    return EOK;
 }
 
 cextest$case(test_deque_static_append_grow)

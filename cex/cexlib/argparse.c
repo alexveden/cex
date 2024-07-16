@@ -14,7 +14,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 const u32 ARGPARSE_OPT_UNSET = 1;
 const u32 ARGPARSE_OPT_LONG = (1 << 1);
 

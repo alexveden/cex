@@ -45,7 +45,7 @@ cextest$case(testlist_alloc_capacity)
     tassert_eql(1024 * 1.2, list__alloc_capacity(1024));
     tassert_eql(1000000 * 1.2, list__alloc_capacity(1000000));
 
-    return NULL;
+    return EOK;
 }
 
 cextest$case(testlist_new)
@@ -390,7 +390,7 @@ cextest$case(testlist_iterator)
 
     list.destroy(&a);
 
-    return NULL;
+    return EOK;
 }
 
 cextest$case(testlist_align256)

@@ -78,7 +78,7 @@ cextest$case(stb_sprintf_str)
     tassert_eqs(s, "abcdefgh11(str_c->%S)56");
 
     sbuf.destroy(&s);
-    return NULL;
+    return EOK;
 }
 
 cextest$case(stb_sprintf_orig)
@@ -240,7 +240,7 @@ cextest$case(stb_sprintf_orig)
     // CHECK2("12 345,678900", "%'f", 12345.6789);  // pedantic
 #endif
 
-    return 0;
+    return EOK;
 }
 
 /*

@@ -92,7 +92,7 @@ cextest$case(test_dict_int64)
 
     dict.destroy(&hm);
 
-    return NULL;
+    return EOK;
 }
 
 cextest$case(test_dict_string)
@@ -146,7 +146,7 @@ cextest$case(test_dict_string)
 
     dict.destroy(&hm);
 
-    return NULL;
+    return EOK;
 }
 
 
@@ -199,7 +199,7 @@ cextest$case(test_dict_create_generic)
 
     dict.destroy(&hm);
     tassert(hm.hashmap == NULL);
-    return NULL;
+    return EOK;
 }
 
 
@@ -223,7 +223,7 @@ cextest$case(test_dict_generic_auto_cmp_hash)
     // but passing pointers may leave them dangling, or use-after-free)
     // tassert(_dict$hashfunc(typeof(rec), cexstr) == NULL);
     // tassert(_dict$hashfunc(typeof(rec), key_ptr) == NULL);
-    return NULL;
+    return EOK;
 }
 
 cextest$case(test_dict_iter)
@@ -265,7 +265,7 @@ cextest$case(test_dict_iter)
     tassert_eqi(nit, 1);
 
     dict.destroy(&hm);
-    return NULL;
+    return EOK;
 }
 
 cextest$case(test_dict_tolist)
@@ -306,7 +306,7 @@ cextest$case(test_dict_tolist)
 
     list.destroy(&a);
 
-    return NULL;
+    return EOK;
 }
 /*
  *

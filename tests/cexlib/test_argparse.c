@@ -75,7 +75,7 @@ cextest$case(test_argparse_init_short)
     tassert_eqi(int_num, 2000);
     tassert_eqf((u32)(flt_num * 100), (u32)(20.20 * 100));
 
-    return NULL;
+    return EOK;
 }
 
 cextest$case(test_argparse_init_long)
@@ -128,7 +128,7 @@ cextest$case(test_argparse_init_long)
 
     argparse.usage(&args);
 
-    return NULL;
+    return EOK;
 }
 
 cextest$case(test_argparse_required)
@@ -156,7 +156,7 @@ cextest$case(test_argparse_required)
     tassert_eqi(options[2].is_present, 0);
     tassert_eqi(force, 100);
 
-    return NULL;
+    return EOK;
 }
 
 cextest$case(test_argparse_bad_opts_help)
@@ -183,7 +183,7 @@ cextest$case(test_argparse_bad_opts_help)
 
     argparse.usage(&args);
 
-    return NULL;
+    return EOK;
 }
 
 cextest$case(test_argparse_bad_opts_long)
@@ -209,7 +209,7 @@ cextest$case(test_argparse_bad_opts_long)
 
     argparse.usage(&args);
 
-    return NULL;
+    return EOK;
 }
 
 cextest$case(test_argparse_bad_opts_short)
@@ -235,7 +235,7 @@ cextest$case(test_argparse_bad_opts_short)
 
     argparse.usage(&args);
 
-    return NULL;
+    return EOK;
 }
 
 cextest$case(test_argparse_bad_opts_arg_value_null)
@@ -260,7 +260,7 @@ cextest$case(test_argparse_bad_opts_arg_value_null)
 
     tassert_eqs(Error.sanity_check, argparse.parse(&args, argc, argv));
 
-    return NULL;
+    return EOK;
 }
 
 cextest$case(test_argparse_bad_opts_both_no_long_short)
@@ -287,7 +287,7 @@ cextest$case(test_argparse_bad_opts_both_no_long_short)
 
     tassert_eqs(Error.sanity_check, argparse.parse(&args, argc, argv));
 
-    return NULL;
+    return EOK;
 }
 
 cextest$case(test_argparse_help_print)
@@ -308,7 +308,7 @@ cextest$case(test_argparse_help_print)
 
     tassert_eqs(Error.argsparse, argparse.parse(&args, argc, argv));
 
-    return NULL;
+    return EOK;
 }
 
 cextest$case(test_argparse_help_print_long)
@@ -329,7 +329,7 @@ cextest$case(test_argparse_help_print_long)
 
     tassert_eqs(Error.argsparse, argparse.parse(&args, argc, argv));
 
-    return NULL;
+    return EOK;
 }
 
 
@@ -363,7 +363,7 @@ cextest$case(test_argparse_arguments)
     tassert_eqs(argparse.argv(&args)[0], "arg1");
     tassert_eqs(argparse.argv(&args)[1], "arg2");
 
-    return NULL;
+    return EOK;
 }
 
 cextest$case(test_argparse_arguments_after_options)
@@ -401,7 +401,7 @@ cextest$case(test_argparse_arguments_after_options)
     tassert_eqs(argparse.argv(&args)[0], "arg1");
     tassert_eqs(argparse.argv(&args)[1], "arg2");
 
-    return NULL;
+    return EOK;
 }
 
 cextest$case(test_argparse_arguments_stacked_short_opt)
@@ -442,7 +442,7 @@ cextest$case(test_argparse_arguments_stacked_short_opt)
     tassert_eqs(argparse.argv(&args)[0], "arg1");
     tassert_eqs(argparse.argv(&args)[1], "arg2");
 
-    return NULL;
+    return EOK;
 }
 
 cextest$case(test_argparse_arguments_double_dash)
@@ -486,7 +486,7 @@ cextest$case(test_argparse_arguments_double_dash)
     tassert_eqs(argparse.argv(&args)[1], "arg1");
     tassert_eqs(argparse.argv(&args)[2], "arg2");
 
-    return NULL;
+    return EOK;
 }
 
 cextest$case(test_argparse_arguments__option_follows_argument_not_allowed)
@@ -527,7 +527,7 @@ cextest$case(test_argparse_arguments__option_follows_argument_not_allowed)
     //
     tassert_eqi(argparse.argc(&args), 0);
 
-    return NULL;
+    return EOK;
 }
 
 
@@ -551,7 +551,7 @@ cextest$case(test_argparse_arguments__parsing_error)
     tassert_eqe(Error.argsparse, argparse.parse(&args, argc, argv));
     tassert_eqi(int_num2, 0);
 
-    return NULL;
+    return EOK;
 }
 
 cextest$case(test_argparse_arguments__option_follows_argument__allowed)
@@ -585,7 +585,7 @@ cextest$case(test_argparse_arguments__option_follows_argument__allowed)
     tassert_eqs(argparse.argv(&args)[2], "arg2");
     tassert_eqs(argparse.argv(&args)[3], "--int=100");
 
-    return NULL;
+    return EOK;
 }
 
 cextest$case(test_argparse_arguments__command_mode)
@@ -639,7 +639,7 @@ cextest$case(test_argparse_arguments__command_mode)
     tassert_eqi(argparse.argc(&cmd_args), 1);
     tassert_eqs(argparse.argv(&cmd_args)[0], "cmd_arg_something");
 
-    return NULL;
+    return EOK;
 }
 
 cextest$case(test_argparse_arguments__command__help)
@@ -683,7 +683,7 @@ cextest$case(test_argparse_arguments__command__help)
     };
     tassert_eqe(Error.argsparse, argparse.parse(&cmd_args, argparse.argc(&args), argparse.argv(&args)));
 
-    return NULL;
+    return EOK;
 }
 
 cextest$case(test_argparse_arguments__int_parsing)
@@ -739,7 +739,7 @@ cextest$case(test_argparse_arguments__int_parsing)
     tassert_eqe(Error.argsparse, argparse.parse(&args, argc, argv7));
     tassert_eqi(int_num2, 9); 
 
-    return NULL;
+    return EOK;
 }
 
 cextest$case(test_argparse_arguments__float_parsing)
@@ -794,7 +794,7 @@ cextest$case(test_argparse_arguments__float_parsing)
     tassert_eqe(Error.ok, argparse.parse(&args, argc, argv7));
     tassert_eqi(fnum*100, -9.8*100); 
 
-    return NULL;
+    return EOK;
 }
 
 /*
