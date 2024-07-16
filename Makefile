@@ -10,7 +10,7 @@ WARN_FLAGS := -Wall -Wextra -Werror -Winline -Wuninitialized -pedantic -Wno-form
 SANITIZE_FLAGS := -fsanitize-address-use-after-scope -fsanitize=address -fsanitize=undefined  -fsanitize=leak -fstack-protector-strong
 
 CFLAGS := -DCEXTEST -O0 -g3 -ggdb3 $(SANITIZE_FLAGS) $(WARN_FLAGS) -I.
-LDFLAGS := -lasan -lubsan -lrt -lm
+LDFLAGS := -lasan -lubsan
 
 CEX_SRC_INCL = $(shell find ./cex -name '*.c')
 

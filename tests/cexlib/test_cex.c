@@ -93,6 +93,14 @@ check(int condition)
     }
     return EOK;
 }
+
+Exception
+check_with_dollar(int condition)
+{
+    e$(check(condition));
+    return EOK;
+}
+
 Exception check_optimized(int e){
 
     int ret = 0;
@@ -126,14 +134,8 @@ Exception check_optimized(int e){
 
 ATEST_F(test_e_dollar_macro)
 {
-
-    // if (check_optimized(-1) == Error.io){
-    //     return "foo";
-    // }
-    atassert(false && "TODO: fix this");
-
-    atassert_eqs(EOK, check(true));
-    atassert_eqs(Error.io, check(false));
+    atassert_eqs(EOK, check_with_dollar(true));
+    atassert_eqs(Error.memory, check_with_dollar(-1));
     return NULL;
 }
 

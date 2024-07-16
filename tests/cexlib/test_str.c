@@ -473,6 +473,7 @@ ATEST_F(test_iter_split)
     const char* expected6[] = {
         "123",
         "456",
+        "",
     };
     s = str.cstr("123\n456\n");
     for$iter(str_c, it, str.iter_split(s, "\n", &it.iterator))

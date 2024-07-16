@@ -71,7 +71,7 @@ ATEST_F(test_argparse_init_short)
     atassert_eqi(test, 1);
     atassert_eqs(path, "mypath/ok");
     atassert_eqi(int_num, 2000);
-    atassert_eqf(round(flt_num * 100), round(20.20 * 100));
+    atassert_eqf((u32)(flt_num * 100), (u32)(20.20 * 100));
 
     return NULL;
 }
@@ -122,7 +122,7 @@ ATEST_F(test_argparse_init_long)
     atassert_eqi(test, 1);
     atassert_eqs(path, "mypath/ok");
     atassert_eqi(int_num, 2000);
-    atassert_eqf(round(flt_num * 100), round(20.20 * 100));
+    atassert_eqf((u32)(flt_num * 100), (u32)(20.20 * 100));
 
     argparse.usage(&args);
 
