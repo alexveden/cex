@@ -8,6 +8,33 @@ import glob
 import sys
 import io
 import re
+import pprint
+
+
+class CEXEnv:
+    def __init__(self):
+        self.cli_path = os.path.abspath(__file__)
+        self.root = os.path.dirname(self.cli_path)
+        self.include_path = os.path.join(self.root, "include")
+        self.cex_h_path = os.path.join(self.include_path, "cex.h")
+        self.cex_c_path = os.path.join(self.include_path, "cex.c")
+        self.fff_h_path = os.path.join(self.include_path, "fff.h")
+
+        assert os.path.exists(self.cli_path)
+        assert os.path.exists(self.root)
+        assert os.path.exists(self.include_path)
+        assert os.path.exists(self.cex_h_path)
+        assert os.path.exists(self.cex_c_path)
+
+    def __repr__(self):
+        env_vars = {
+            "cex_cli": self.cli_path,
+            "cex_include": self.include_path,
+            "cex_c_path": self.cex_c_path,
+            "cex_h_path": self.cex_h_path,
+            "fff_h_path": self.fff_h_path,
+        }
+        return pprint.pformat(env_vars)
 
 
 class CEXTestBuilder:
@@ -182,10 +209,10 @@ class CEXTestBuilder:
                         print(f"{test_src} changes in {incl_fn}")
                         has_c_changes = True
                     else:
-                        if incl_fn.endswith('.c'):
-                            alt_h_file = incl_fn[:-2] + '.h'
-                        elif incl_fn.endswith('.h'):
-                            alt_h_file = incl_fn[:-2] + '.c'
+                        if incl_fn.endswith(".c"):
+                            alt_h_file = incl_fn[:-2] + ".h"
+                        elif incl_fn.endswith(".h"):
+                            alt_h_file = incl_fn[:-2] + ".c"
                         else:
                             assert False, f"not implemented extension: {incl_fn}"
 
@@ -1177,6 +1204,11 @@ def action_test(args):
     builder.build()
 
 
+def action_env(args):
+    env = CEXEnv()
+    print(repr(env))
+
+
 def action_make(args):
     print(f"action_make: {args}")
     return
@@ -1236,6 +1268,11 @@ if __name__ == "__main__":
     )
     test_parser.add_argument("test_file", help="File path to cex test .c file")
     test_parser.set_defaults(func=action_test)
+
+    env_parser = subparsers.add_parser(
+        "env", help="CEX environment variables / diagnostics"
+    )
+    env_parser.set_defaults(func=action_env)
 
     cli_arguments = global_parser.parse_args()
     cli_arguments.func(cli_arguments)

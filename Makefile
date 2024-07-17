@@ -30,7 +30,7 @@ $(BUILD_DIR):
 $(BUILD_DIR)/%.c.test: %.c
 	@echo "\nBuilding generic tests for: $*"
 	@mkdir -p $(dir $@) > /dev/null 2>&1
-	@./cli/atest --data=$(BUILD_DIR)/.atestdb $^ 
+	# @./cli/atest --data=$(BUILD_DIR)/.atestdb $^ 
 	# @rm $(BUILD_DIR)/$(t)*.gcda > /dev/null 2>&1|| exit 0
 	# @rm $(BUILD_DIR)/$(t)*.gcno > /dev/null 2>&1|| exit 0
 	$(CC) $(CFLAGS) $^ $(shell cat $*.c | grep -e "//\s*\#gcc_args " | sed 's@//\s*#gcc_args @@' | xargs) -o $@ $(LDFLAGS)

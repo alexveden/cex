@@ -68,3 +68,4 @@ __pycache__/
 perf.data
 *.csv
 tmux_run.sh
+.gdb_history
