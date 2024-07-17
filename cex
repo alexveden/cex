@@ -19,6 +19,7 @@ class CEXEnv:
         self.cex_h_path = os.path.join(self.include_path, "cex.h")
         self.cex_c_path = os.path.join(self.include_path, "cex.c")
         self.fff_h_path = os.path.join(self.include_path, "fff.h")
+        self.cex_lib = os.path.join(self.root, "include", 'cex')
 
         assert os.path.exists(self.cli_path)
         assert os.path.exists(self.root)
@@ -30,6 +31,7 @@ class CEXEnv:
         env_vars = {
             "cex_cli": self.cli_path,
             "cex_include": self.include_path,
+            "cex_lib": self.cex_lib,
             "cex_c_path": self.cex_c_path,
             "cex_h_path": self.cex_h_path,
             "fff_h_path": self.fff_h_path,

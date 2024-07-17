@@ -26,33 +26,17 @@ cex:
 $(BUILD_DIR):
 	mkdir -p $@
 
-# DEFAULT test building (no dependencies!)
-$(BUILD_DIR)/%.c.test: %.c
-	@echo "\nBuilding generic tests for: $*"
-	@mkdir -p $(dir $@) > /dev/null 2>&1
-	# @./cli/atest --data=$(BUILD_DIR)/.atestdb $^ 
-	# @rm $(BUILD_DIR)/$(t)*.gcda > /dev/null 2>&1|| exit 0
-	# @rm $(BUILD_DIR)/$(t)*.gcno > /dev/null 2>&1|| exit 0
-	$(CC) $(CFLAGS) $^ $(shell cat $*.c | grep -e "//\s*\#gcc_args " | sed 's@//\s*#gcc_args @@' | xargs) -o $@ $(LDFLAGS)
-
 clean:
 	rm -r $(BUILD_DIR) 2> /dev/null || exit 0
 
-
 test:
-	@echo "\nMaking CEX TEST: $(t)"
-	@./cli/atest --data=$(BUILD_DIR)/.atestdb $(t) 
-	@mkdir -p $(BUILD_DIR)/$(dir $(t)) # > /dev/null 2>&1
-	$(CC) $(CFLAGS) $(t) $(shell cat $(t) | grep -e "//\s*\#gcc_args " | sed 's@//\s*#gcc_args @@' | xargs) -o $(BUILD_DIR)/$(t).test $(LDFLAGS)
-	ulimit -c unlimited && $(BUILD_DIR)/$(t).test vvvvv $(c) 
+	ulimit -c unlimited && cex test run $(t)
 
 debug:
 	@echo "\nMaking CEX TEST: $(t)"
-	@./cli/atest --data=$(BUILD_DIR)/.atestdb $(t) 
-	@mkdir -p $(BUILD_DIR)/$(dir $(t)) # > /dev/null 2>&1
-	$(CC) $(CFLAGS) $(t) $(shell cat $(t) | grep -e "//\s*\#gcc_args " | sed 's@//\s*#gcc_args @@' | xargs) -o $(BUILD_DIR)/$(t).test $(LDFLAGS)
+	cex test build $(t)
 	ulimit -c unlimited && gdb -q --args $(BUILD_DIR)/$(t).test vvvvv $(c) 
 
-tests: $(TARGETS)
+tests: 
 	cex test run all
 
