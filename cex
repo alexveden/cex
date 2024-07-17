@@ -19,7 +19,7 @@ class CEXEnv:
         self.cex_h_path = os.path.join(self.include_path, "cex.h")
         self.cex_c_path = os.path.join(self.include_path, "cex.c")
         self.fff_h_path = os.path.join(self.include_path, "fff.h")
-        self.cex_lib = os.path.join(self.root, "include", 'cex')
+        self.cex_lib = os.path.join(self.root, "include", "cex")
 
         assert os.path.exists(self.cli_path)
         assert os.path.exists(self.root)
@@ -60,6 +60,7 @@ class CEXTestBuilder:
     {
         // Has malloc, but no free(), allocator will send memory leak warning
         void* a = allocator->malloc(100);
+        free(a); // free without allocator to keep sanitizer calm
 
         tassert(true == 1);
         tassert_eqi(1, 1);
@@ -71,6 +72,8 @@ class CEXTestBuilder:
         uassert(false && "this will be disabled, no abort!");
 
         tassertf(true == 0, "true != %d", false);
+
+        // allocator->free(a); // if commented this triggers memory leak warning by allocator
 
         return EOK;
     }
@@ -91,6 +94,7 @@ class CEXTestBuilder:
     def __init__(
         self, action: str, src_path: str, test_dir: str, force_rebuild: bool = False
     ):
+        self.env = CEXEnv()
         self.test_dir = test_dir
         self.src_path = os.path.normpath(src_path)
         self.action = action
@@ -159,13 +163,9 @@ class CEXTestBuilder:
             r"^test\$case\((?P<test_name>\w+)\)", re.MULTILINE
         )
         re_test_setup_f_definition = re.compile(r"^test\$setup\(\w*\)", re.MULTILINE)
-        re_parse_main_args = re.compile(
-            r"^\s*test\$args_parse\(.*\);.*", re.MULTILINE
-        )
+        re_parse_main_args = re.compile(r"^\s*test\$args_parse\(.*\);.*", re.MULTILINE)
         re_print_head = re.compile(r"^\s*test\$print_header\(.*\);.*", re.MULTILINE)
-        re_print_footer = re.compile(
-            r"^\s*test\$print_footer\(.*\);.*", re.MULTILINE
-        )
+        re_print_footer = re.compile(r"^\s*test\$print_footer\(.*\);.*", re.MULTILINE)
         re_exit_code = re.compile(
             r"^\s*return\s+test\$exit_code\(.*\);.*", re.MULTILINE
         )
@@ -240,9 +240,7 @@ class CEXTestBuilder:
                     buf.write(f"    test$run({t});\n")
             elif re_print_footer.match(line):
                 buf.write("    \n")
-                line = (
-                    "    test$print_footer();  // ^^^^^ all tests runs are above\n"
-                )
+                line = "    test$print_footer();  // ^^^^^ all tests runs are above\n"
                 has_print_footer = True
                 has_insert_here = False
             elif re_exit_code.match(line):
@@ -333,7 +331,7 @@ class CEXTestBuilder:
             "-fsanitize=undefined",
             "-fsanitize=leak",
             "-fstack-protector-strong",
-            f"-I{os.getcwd()}/",
+            f"-I{self.env.include_path}",
             f"-I{self.test_dir}",
         ]
 
@@ -372,7 +370,9 @@ class CEXTestBuilder:
         test_files_list = []
 
         if self.src_path == "all":
-            for fn in glob.glob(os.path.join(self.test_dir, "**/test_*.c")):
+            for fn in glob.glob(
+                os.path.join(self.test_dir, "**", "test_*.c"), recursive=True
+            ):
                 test_files_list.append(fn)
         else:
             assert os.path.exists(self.src_path), f"test not exist: {self.src_path}"
@@ -391,7 +391,9 @@ class CEXTestBuilder:
         self.action_build()
 
         if self.src_path == "all":
-            for fn in glob.glob(os.path.join(self.test_dir, "**/test_*.c")):
+            for fn in glob.glob(
+                os.path.join(self.test_dir, "**", "test_*.c"), recursive=True
+            ):
                 test_exe_list.append(self.make_test_exe(fn))
         else:
             assert os.path.exists(self.src_path), f"test not exist: {self.src_path}"
@@ -432,6 +434,9 @@ class CEXTestBuilder:
         assert self.src_path != "all", "all not supported for `create` action"
         assert not os.path.exists(self.src_path), f"path already exist: {self.src_path}"
         assert self.src_path.endswith(".c"), "path must end with .c"
+        assert os.path.basename(self.src_path).startswith(
+            "test_"
+        ), "test file name must start with test_ prefix"
 
         test_file = self.src_path
 
