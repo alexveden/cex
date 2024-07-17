@@ -3,7 +3,7 @@
 
 // clang-format off
 #include <cex/cextest/fff.h>
-#include <cex/cexlib/io.h>
+#include <_cexlib/io.h>
 
 // IMPORTANT: wrapping works only with gcc  `-Wl,--wrap=Shmem_new,--wrap=Protocol_event_emitter_new`  flag
 FAKE_VALUE_FUNC(Exc, __wrap_io_fopen, io_c*, const char*, const char*, const Allocator_i*)Exception __real_io_fopen(io_c*, const char*, const char*, const Allocator_i*);

@@ -1,14 +1,14 @@
-#include <cex/cexlib/cex.c>
-#include <cex/cexlib/allocators.c>
-#include <cex/cexlib/sbuf.c>
-#include <cex/cexlib/sbuf.h>
-#include <cex/cexlib/str.c>
-#include <cex/cexlib/cextest.h>
+#include <_cexlib/cex.c>
+#include <_cexlib/allocators.c>
+#include <_cexlib/sbuf.c>
+#include <_cexlib/sbuf.h>
+#include <_cexlib/str.c>
+#include <_cexlib/cextest.h>
 
 #define USE_STB 1
 
 #if USE_STB
-#include <cex/cexlib/_stb_sprintf.c>
+#include <_cexlib/_stb_sprintf.c>
 #define SPRINTF stbsp_sprintf
 #define SNPRINTF stbsp_snprintf
 #else
@@ -40,12 +40,12 @@ const Allocator_i* allocator;
 /*
 * SUITE INIT / SHUTDOWN
 */
-cextest$teardown(){
+test$teardown(){
     allocator = allocators.heap.destroy();
     return EOK;
 }
 
-cextest$setup()
+test$setup()
 {
     uassert_enable();
     allocator = allocators.heap.create();
@@ -57,7 +57,7 @@ cextest$setup()
  *   TEST SUITE
  *
  */
-cextest$case(stb_sprintf_str)
+test$case(stb_sprintf_str)
 {
 
     sbuf_c s;
@@ -81,7 +81,7 @@ cextest$case(stb_sprintf_str)
     return EOK;
 }
 
-cextest$case(stb_sprintf_orig)
+test$case(stb_sprintf_orig)
 {
     char buf[1024];
     int n = 0;
@@ -251,12 +251,12 @@ cextest$case(stb_sprintf_orig)
 int
 main(int argc, char* argv[])
 {
-    cextest$args_parse(argc, argv);
-    cextest$print_header();  // >>> all tests below
+    test$args_parse(argc, argv);
+    test$print_header();  // >>> all tests below
     
-    cextest$run(stb_sprintf_str);
-    cextest$run(stb_sprintf_orig);
+    test$run(stb_sprintf_str);
+    test$run(stb_sprintf_orig);
     
-    cextest$print_footer();  // ^^^^^ all tests runs are above
-    return cextest$exit_code();
+    test$print_footer();  // ^^^^^ all tests runs are above
+    return test$exit_code();
 }

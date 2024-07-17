@@ -3,7 +3,7 @@
 
 // clang-format off
 #include <cex/cextest/fff.h>
-#include <cex/cexlib/sbuf.h>
+#include <_cexlib/sbuf.h>
 
 
 FAKE_VALUE_FUNC(Exc, sbuf_create, sbuf_c*, u32, const Allocator_i*)

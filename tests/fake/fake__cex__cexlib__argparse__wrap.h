@@ -3,7 +3,7 @@
 
 // clang-format off
 #include <cex/cextest/fff.h>
-#include <cex/cexlib/argparse.h>
+#include <_cexlib/argparse.h>
 
 // IMPORTANT: wrapping works only with gcc  `-Wl,--wrap=Shmem_new,--wrap=Protocol_event_emitter_new`  flag
 FAKE_VOID_FUNC(__wrap_argparse_usage, argparse_c*)void __real_argparse_usage(argparse_c*);

@@ -1,8 +1,8 @@
-#include <cex/cexlib/cextest.h>
-#include <cex/cexlib/cex.c>
-#include <cex/cexlib/allocators.c>
-#include <cex/cexlib/deque.c>
-#include <cex/cexlib/deque.h>
+#include <_cexlib/cextest.h>
+#include <_cexlib/cex.c>
+#include <_cexlib/allocators.c>
+#include <_cexlib/deque.c>
+#include <_cexlib/deque.h>
 #include <stdalign.h>
 #include <stdio.h>
 
@@ -10,12 +10,12 @@ const Allocator_i* allocator;
 /*
 * SUITE INIT / SHUTDOWN
 */
-cextest$teardown(){
+test$teardown(){
     allocator = allocators.heap.destroy();
     return EOK;
 }
 
-cextest$setup()
+test$setup()
 {
     uassert_enable();
     allocator = allocators.heap.create();
@@ -28,7 +28,7 @@ cextest$setup()
  *
  */
 
-cextest$case(testlist_alloc_capacity)
+test$case(testlist_alloc_capacity)
 {
     // 4 is minimum
     tassert_eql(16, deque__alloc_capacity(0));
@@ -43,7 +43,7 @@ cextest$case(testlist_alloc_capacity)
     return EOK;
 }
 
-cextest$case(test_deque_new)
+test$case(test_deque_new)
 {
     deque_c a;
     except_traceback(err, deque$new(&a, int, 0, false, allocator))
@@ -71,7 +71,7 @@ cextest$case(test_deque_new)
 
 }
 
-cextest$case(test_element_alignment_16)
+test$case(test_element_alignment_16)
 {
 
     deque_c a;
@@ -120,7 +120,7 @@ cextest$case(test_element_alignment_16)
 
 }
 
-cextest$case(test_element_alignment_64)
+test$case(test_element_alignment_64)
 {
 
     deque_c a;
@@ -177,7 +177,7 @@ cextest$case(test_element_alignment_64)
 
 }
 
-cextest$case(test_deque_new_append_pop)
+test$case(test_deque_new_append_pop)
 {
     deque_c a;
     except_traceback(err, deque$new(&a, int, 0, false, allocator))
@@ -229,7 +229,7 @@ cextest$case(test_deque_new_append_pop)
 }
 
 
-cextest$case(test_deque_new_append_roll_over)
+test$case(test_deque_new_append_roll_over)
 {
     deque_c a;
     except_traceback(err, deque$new(&a, int, 0, false, allocator))
@@ -289,7 +289,7 @@ cextest$case(test_deque_new_append_roll_over)
 
 }
 
-cextest$case(test_deque_new_append_grow)
+test$case(test_deque_new_append_grow)
 {
     deque_c a;
     except_traceback(err, deque$new(&a, int, 0, false, allocator))
@@ -334,7 +334,7 @@ cextest$case(test_deque_new_append_grow)
 
 }
 
-cextest$case(test_deque_new_append_max_cap_wrap)
+test$case(test_deque_new_append_max_cap_wrap)
 {
     deque_c a;
     except_traceback(err, deque$new(&a, int, 16, false, allocator))
@@ -400,7 +400,7 @@ cextest$case(test_deque_new_append_max_cap_wrap)
 
 }
 
-cextest$case(test_deque_new_append_max_cap__rewrite_overflow)
+test$case(test_deque_new_append_max_cap__rewrite_overflow)
 {
     deque_c a;
     except_traceback(err, deque$new(&a, int, 16, true, allocator))
@@ -438,7 +438,7 @@ cextest$case(test_deque_new_append_max_cap__rewrite_overflow)
 }
 
 
-cextest$case(test_deque_new_append_max_cap__rewrite_overflow_with_rollover)
+test$case(test_deque_new_append_max_cap__rewrite_overflow_with_rollover)
 {
     deque_c a;
     except_traceback(err, deque$new(&a, int, 16, true, allocator))
@@ -493,7 +493,7 @@ cextest$case(test_deque_new_append_max_cap__rewrite_overflow_with_rollover)
 
 }
 
-cextest$case(test_deque_new_append_max_cap__rewrite_overflow__multiloop)
+test$case(test_deque_new_append_max_cap__rewrite_overflow__multiloop)
 {
     deque_c a;
     except_traceback(err, deque$new(&a, int, 16, true, allocator))
@@ -525,7 +525,7 @@ cextest$case(test_deque_new_append_max_cap__rewrite_overflow__multiloop)
 
 }
 
-cextest$case(test_deque_new_append_multi_resize)
+test$case(test_deque_new_append_multi_resize)
 {
     deque_c a;
     except_traceback(err, deque$new(&a, int, 0, false, allocator))
@@ -562,7 +562,7 @@ cextest$case(test_deque_new_append_multi_resize)
 
 }
 
-cextest$case(test_deque_iter_get)
+test$case(test_deque_iter_get)
 {
     deque_c a;
     except_traceback(err, deque$new(&a, int, 16, true, allocator))
@@ -618,7 +618,7 @@ cextest$case(test_deque_iter_get)
 
 }
 
-cextest$case(test_deque_iter_fetch)
+test$case(test_deque_iter_fetch)
 {
     deque_c a;
     except_traceback(err, deque$new(&a, int, 16, true, allocator))
@@ -668,7 +668,7 @@ cextest$case(test_deque_iter_fetch)
 
 }
 
-cextest$case(test_deque_iter_fetch_reversed)
+test$case(test_deque_iter_fetch_reversed)
 {
     deque_c a;
     except_traceback(err, deque$new(&a, int, 16, true, allocator))
@@ -719,7 +719,7 @@ cextest$case(test_deque_iter_fetch_reversed)
 
 }
 
-cextest$case(test_deque_static)
+test$case(test_deque_static)
 {
     alignas(64) char buf[sizeof(deque_head_s) + sizeof(int) * 16];
 
@@ -744,7 +744,7 @@ cextest$case(test_deque_static)
     return EOK;
 }
 
-cextest$case(test_deque_static_append_grow)
+test$case(test_deque_static_append_grow)
 {
     alignas(64) char buf[sizeof(deque_head_s) + sizeof(int) * 16];
 
@@ -778,7 +778,7 @@ cextest$case(test_deque_static_append_grow)
 
 }
 
-cextest$case(test_deque_static_append_grow_overwrite)
+test$case(test_deque_static_append_grow_overwrite)
 {
     alignas(64) char buf[sizeof(deque_head_s) + sizeof(int) * 16];
 
@@ -817,7 +817,7 @@ cextest$case(test_deque_static_append_grow_overwrite)
 
 }
 
-cextest$case(test_deque_validate)
+test$case(test_deque_validate)
 {
     alignas(64) char buf[sizeof(deque_head_s) + sizeof(int) * 16];
 
@@ -830,7 +830,7 @@ cextest$case(test_deque_validate)
 
 }
 
-cextest$case(test_deque_validate__head_gt_tail)
+test$case(test_deque_validate__head_gt_tail)
 {
     alignas(64) char buf[sizeof(deque_head_s) + sizeof(int) * 16];
 
@@ -843,7 +843,7 @@ cextest$case(test_deque_validate__head_gt_tail)
 
 }
 
-cextest$case(test_deque_validate__eloffset_weird)
+test$case(test_deque_validate__eloffset_weird)
 {
     alignas(64) char buf[sizeof(deque_head_s) + sizeof(int) * 16];
 
@@ -856,7 +856,7 @@ cextest$case(test_deque_validate__eloffset_weird)
 
 }
 
-cextest$case(test_deque_validate__eloffset_elalign)
+test$case(test_deque_validate__eloffset_elalign)
 {
     alignas(64) char buf[sizeof(deque_head_s) + sizeof(int) * 16];
 
@@ -871,7 +871,7 @@ cextest$case(test_deque_validate__eloffset_elalign)
 
 }
 
-cextest$case(test_deque_validate__capacity_gt_max_capacity)
+test$case(test_deque_validate__capacity_gt_max_capacity)
 {
     alignas(64) char buf[sizeof(deque_head_s) + sizeof(int) * 16];
 
@@ -886,7 +886,7 @@ cextest$case(test_deque_validate__capacity_gt_max_capacity)
 }
 
 
-cextest$case(test_deque_validate__zero_capacity)
+test$case(test_deque_validate__zero_capacity)
 {
     alignas(64) char buf[sizeof(deque_head_s) + sizeof(int) * 16];
 
@@ -899,7 +899,7 @@ cextest$case(test_deque_validate__zero_capacity)
 
 }
 
-cextest$case(test_deque_validate__bad_magic)
+test$case(test_deque_validate__bad_magic)
 {
     alignas(64) char buf[sizeof(deque_head_s) + sizeof(int) * 16];
 
@@ -912,7 +912,7 @@ cextest$case(test_deque_validate__bad_magic)
 
 }
 
-cextest$case(test_deque_validate__bad_pointer_alignment)
+test$case(test_deque_validate__bad_pointer_alignment)
 {
     alignas(64) char buf[sizeof(deque_head_s) + sizeof(int) * 16];
 
@@ -933,36 +933,36 @@ cextest$case(test_deque_validate__bad_pointer_alignment)
 int
 main(int argc, char* argv[])
 {
-    cextest$args_parse(argc, argv);
-    cextest$print_header();  // >>> all tests below
+    test$args_parse(argc, argv);
+    test$print_header();  // >>> all tests below
     
-    cextest$run(testlist_alloc_capacity);
-    cextest$run(test_deque_new);
-    cextest$run(test_element_alignment_16);
-    cextest$run(test_element_alignment_64);
-    cextest$run(test_deque_new_append_pop);
-    cextest$run(test_deque_new_append_roll_over);
-    cextest$run(test_deque_new_append_grow);
-    cextest$run(test_deque_new_append_max_cap_wrap);
-    cextest$run(test_deque_new_append_max_cap__rewrite_overflow);
-    cextest$run(test_deque_new_append_max_cap__rewrite_overflow_with_rollover);
-    cextest$run(test_deque_new_append_max_cap__rewrite_overflow__multiloop);
-    cextest$run(test_deque_new_append_multi_resize);
-    cextest$run(test_deque_iter_get);
-    cextest$run(test_deque_iter_fetch);
-    cextest$run(test_deque_iter_fetch_reversed);
-    cextest$run(test_deque_static);
-    cextest$run(test_deque_static_append_grow);
-    cextest$run(test_deque_static_append_grow_overwrite);
-    cextest$run(test_deque_validate);
-    cextest$run(test_deque_validate__head_gt_tail);
-    cextest$run(test_deque_validate__eloffset_weird);
-    cextest$run(test_deque_validate__eloffset_elalign);
-    cextest$run(test_deque_validate__capacity_gt_max_capacity);
-    cextest$run(test_deque_validate__zero_capacity);
-    cextest$run(test_deque_validate__bad_magic);
-    cextest$run(test_deque_validate__bad_pointer_alignment);
+    test$run(testlist_alloc_capacity);
+    test$run(test_deque_new);
+    test$run(test_element_alignment_16);
+    test$run(test_element_alignment_64);
+    test$run(test_deque_new_append_pop);
+    test$run(test_deque_new_append_roll_over);
+    test$run(test_deque_new_append_grow);
+    test$run(test_deque_new_append_max_cap_wrap);
+    test$run(test_deque_new_append_max_cap__rewrite_overflow);
+    test$run(test_deque_new_append_max_cap__rewrite_overflow_with_rollover);
+    test$run(test_deque_new_append_max_cap__rewrite_overflow__multiloop);
+    test$run(test_deque_new_append_multi_resize);
+    test$run(test_deque_iter_get);
+    test$run(test_deque_iter_fetch);
+    test$run(test_deque_iter_fetch_reversed);
+    test$run(test_deque_static);
+    test$run(test_deque_static_append_grow);
+    test$run(test_deque_static_append_grow_overwrite);
+    test$run(test_deque_validate);
+    test$run(test_deque_validate__head_gt_tail);
+    test$run(test_deque_validate__eloffset_weird);
+    test$run(test_deque_validate__eloffset_elalign);
+    test$run(test_deque_validate__capacity_gt_max_capacity);
+    test$run(test_deque_validate__zero_capacity);
+    test$run(test_deque_validate__bad_magic);
+    test$run(test_deque_validate__bad_pointer_alignment);
     
-    cextest$print_footer();  // ^^^^^ all tests runs are above
-    return cextest$exit_code();
+    test$print_footer();  // ^^^^^ all tests runs are above
+    return test$exit_code();
 }

@@ -3,7 +3,7 @@
 
 // clang-format off
 #include <cex/cextest/fff.h>
-#include <cex/cexlib/dict.h>
+#include <_cexlib/dict.h>
 
 
 FAKE_VALUE_FUNC(int, hm_int_compare, const void*, const void*, void*)

@@ -3,7 +3,7 @@
 
 // clang-format off
 #include <cex/cextest/fff.h>
-#include <cex/cexlib/str.h>
+#include <_cexlib/str.h>
 
 
 FAKE_VALUE_FUNC(str_c, str_cstr, const char*)

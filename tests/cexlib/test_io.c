@@ -1,22 +1,22 @@
-#include <cex/cexlib/cex.c>
-#include <cex/cexlib/allocators.c>
-#include <cex/cexlib/io.c>
-#include <cex/cexlib/_stb_sprintf.c>
-#include <cex/cexlib/str.c>
-#include <cex/cexlib/io.h>
-#include <cex/cexlib/cextest.h>
+#include <_cexlib/cex.c>
+#include <_cexlib/allocators.c>
+#include <_cexlib/io.c>
+#include <_cexlib/_stb_sprintf.c>
+#include <_cexlib/str.c>
+#include <_cexlib/io.h>
+#include <_cexlib/cextest.h>
 #include <stdio.h>
 
 const Allocator_i* allocator;
 /*
 * SUITE INIT / SHUTDOWN
 */
-cextest$teardown(){
+test$teardown(){
     allocator = allocators.heap.destroy();
     return EOK;
 }
 
-cextest$setup()
+test$setup()
 {
     uassert_enable();
     allocator = allocators.heap.create();
@@ -29,7 +29,7 @@ cextest$setup()
  *
  */
 
-cextest$case(test_io)
+test$case(test_io)
 {
     io_c file = { 0 };
     tassert_eqs(Error.io, io.fopen(&file, "test_not_exist.txt", "r", allocator));
@@ -43,7 +43,7 @@ cextest$case(test_io)
 
 }
 
-cextest$case(test_readall)
+test$case(test_readall)
 {
     io_c file = { 0 };
     tassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_50b.txt", "r", allocator));
@@ -77,7 +77,7 @@ cextest$case(test_readall)
 
 }
 
-cextest$case(test_readall_empty)
+test$case(test_readall_empty)
 {
     io_c file = { 0 };
     tassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_empty.txt", "r", allocator));
@@ -103,7 +103,7 @@ cextest$case(test_readall_empty)
 
 }
 
-cextest$case(test_readall_stdin)
+test$case(test_readall_stdin)
 {
     io_c file = { 0 };
     tassert_eqs(Error.ok, io.fattach(&file, stdin, allocator));
@@ -126,7 +126,7 @@ cextest$case(test_readall_stdin)
 
 }
 
-cextest$case(test_read_line)
+test$case(test_read_line)
 {
     io_c file = { 0 };
     tassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_50b.txt", "r", allocator));
@@ -163,7 +163,7 @@ cextest$case(test_read_line)
 
 }
 
-cextest$case(test_read_line_empty_file)
+test$case(test_read_line_empty_file)
 {
     io_c file = { 0 };
     tassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_empty.txt", "r", allocator));
@@ -178,7 +178,7 @@ cextest$case(test_read_line_empty_file)
 
 }
 
-cextest$case(test_read_line_binary_file_with_zero_char)
+test$case(test_read_line_binary_file_with_zero_char)
 {
     io_c file = { 0 };
     tassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_zero_byte.txt", "r", allocator));
@@ -197,7 +197,7 @@ cextest$case(test_read_line_binary_file_with_zero_char)
 
 }
 
-cextest$case(test_read_line_win_new_line)
+test$case(test_read_line_win_new_line)
 {
     io_c file = { 0 };
     tassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_win_newline.txt", "r", allocator));
@@ -232,7 +232,7 @@ cextest$case(test_read_line_win_new_line)
 
 }
 
-cextest$case(test_read_line_only_new_lines)
+test$case(test_read_line_only_new_lines)
 {
     io_c file = { 0 };
     tassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_only_newline.txt", "r", allocator));
@@ -263,7 +263,7 @@ cextest$case(test_read_line_only_new_lines)
 
 }
 
-cextest$case(test_read_all_then_read_line)
+test$case(test_read_all_then_read_line)
 {
     io_c file = { 0 };
     tassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_50b.txt", "r", allocator));
@@ -293,7 +293,7 @@ cextest$case(test_read_all_then_read_line)
 
 }
 
-cextest$case(test_read_long_line)
+test$case(test_read_long_line)
 {
     io_c file = { 0 };
     tassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_line_4095.txt", "r", allocator));
@@ -328,7 +328,7 @@ cextest$case(test_read_long_line)
 
 }
 
-cextest$case(test_readall_realloc)
+test$case(test_readall_realloc)
 {
     io_c file = { 0 };
     tassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_line_4095.txt", "r", allocator));
@@ -361,7 +361,7 @@ cextest$case(test_readall_realloc)
 
 }
 
-cextest$case(test_read)
+test$case(test_read)
 {
     io_c file = { 0 };
     tassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_line_4095.txt", "r", allocator));
@@ -380,7 +380,7 @@ cextest$case(test_read)
 
 }
 
-cextest$case(test_read_empty)
+test$case(test_read_empty)
 {
     io_c file = { 0 };
     tassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_empty.txt", "r", allocator));
@@ -398,7 +398,7 @@ cextest$case(test_read_empty)
 
 }
 
-cextest$case(test_read_not_all)
+test$case(test_read_not_all)
 {
     io_c file = { 0 };
     tassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_50b.txt", "r", allocator));
@@ -431,7 +431,7 @@ cextest$case(test_read_not_all)
 
 }
 
-cextest$case(test_fprintf)
+test$case(test_fprintf)
 {
     io_c file = { 0 };
     tassert_eqs(Error.ok, io.fattach(&file, stdout, allocator));
@@ -449,7 +449,7 @@ cextest$case(test_fprintf)
 
 }
 
-cextest$case(test_fprintf_to_file)
+test$case(test_fprintf_to_file)
 {
     io_c file = { 0 };
     tassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_fprintf.txt", "w+", allocator));
@@ -472,7 +472,7 @@ cextest$case(test_fprintf_to_file)
 
 }
 
-cextest$case(test_write)
+test$case(test_write)
 {
     io_c file = { 0 };
     tassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_write.txt", "w+", allocator));
@@ -498,28 +498,28 @@ cextest$case(test_write)
 int
 main(int argc, char* argv[])
 {
-    cextest$args_parse(argc, argv);
-    cextest$print_header();  // >>> all tests below
+    test$args_parse(argc, argv);
+    test$print_header();  // >>> all tests below
     
-    cextest$run(test_io);
-    cextest$run(test_readall);
-    cextest$run(test_readall_empty);
-    cextest$run(test_readall_stdin);
-    cextest$run(test_read_line);
-    cextest$run(test_read_line_empty_file);
-    cextest$run(test_read_line_binary_file_with_zero_char);
-    cextest$run(test_read_line_win_new_line);
-    cextest$run(test_read_line_only_new_lines);
-    cextest$run(test_read_all_then_read_line);
-    cextest$run(test_read_long_line);
-    cextest$run(test_readall_realloc);
-    cextest$run(test_read);
-    cextest$run(test_read_empty);
-    cextest$run(test_read_not_all);
-    cextest$run(test_fprintf);
-    cextest$run(test_fprintf_to_file);
-    cextest$run(test_write);
+    test$run(test_io);
+    test$run(test_readall);
+    test$run(test_readall_empty);
+    test$run(test_readall_stdin);
+    test$run(test_read_line);
+    test$run(test_read_line_empty_file);
+    test$run(test_read_line_binary_file_with_zero_char);
+    test$run(test_read_line_win_new_line);
+    test$run(test_read_line_only_new_lines);
+    test$run(test_read_all_then_read_line);
+    test$run(test_read_long_line);
+    test$run(test_readall_realloc);
+    test$run(test_read);
+    test$run(test_read_empty);
+    test$run(test_read_not_all);
+    test$run(test_fprintf);
+    test$run(test_fprintf_to_file);
+    test$run(test_write);
     
-    cextest$print_footer();  // ^^^^^ all tests runs are above
-    return cextest$exit_code();
+    test$print_footer();  // ^^^^^ all tests runs are above
+    return test$exit_code();
 }

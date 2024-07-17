@@ -1,10 +1,10 @@
-#include <cex/cexlib/cextest.h>
-#include <cex/cexlib/cex.c>
-#include <cex/cexlib/str.c>
-#include <cex/cexlib/sbuf.c>
-#include <cex/cexlib/sbuf.h>
-#include <cex/cexlib/_stb_sprintf.c>
-#include <cex/cexlib/allocators.c>
+#include <_cexlib/cextest.h>
+#include <_cexlib/cex.c>
+#include <_cexlib/str.c>
+#include <_cexlib/sbuf.c>
+#include <_cexlib/sbuf.h>
+#include <_cexlib/_stb_sprintf.c>
+#include <_cexlib/allocators.c>
 #include <stdio.h>
 #include <stdio.h>
 
@@ -12,12 +12,12 @@ const Allocator_i* allocator;
 /*
 * SUITE INIT / SHUTDOWN
 */
-cextest$teardown(){
+test$teardown(){
     allocator = allocators.heap.destroy();
     return EOK;
 }
 
-cextest$setup()
+test$setup()
 {
     uassert_enable();
     allocator = allocators.heap.create();
@@ -31,7 +31,7 @@ cextest$setup()
 */
 
 
-cextest$case(test_sbuf_new)
+test$case(test_sbuf_new)
 {
     sbuf_c s;
     tassert_eqs(EOK, sbuf.create(&s, 20, allocator));
@@ -54,7 +54,7 @@ cextest$case(test_sbuf_new)
 
 }
 
-cextest$case(test_sbuf_static)
+test$case(test_sbuf_static)
 {
     char buf[128] = {'a'};
     sbuf_c s;
@@ -87,7 +87,7 @@ cextest$case(test_sbuf_static)
 
 }
 
-cextest$case(test_sbuf_append_char)
+test$case(test_sbuf_append_char)
 {
     sbuf_c s;
 
@@ -114,7 +114,7 @@ cextest$case(test_sbuf_append_char)
 
 }
 
-cextest$case(test_sbuf_append_char_grow)
+test$case(test_sbuf_append_char_grow)
 {
     sbuf_c s;
 
@@ -144,7 +144,7 @@ cextest$case(test_sbuf_append_char_grow)
 
 }
 
-cextest$case(test_sbuf_append_str_grow)
+test$case(test_sbuf_append_str_grow)
 {
     sbuf_c s;
 
@@ -174,7 +174,7 @@ cextest$case(test_sbuf_append_str_grow)
 
 }
 
-cextest$case(test_sbuf_clear)
+test$case(test_sbuf_clear)
 {
     sbuf_c s;
 
@@ -200,7 +200,7 @@ cextest$case(test_sbuf_clear)
 
 }
 
-cextest$case(test_sbuf_destroy)
+test$case(test_sbuf_destroy)
 {
     sbuf_c s;
     char buf[128];
@@ -224,7 +224,7 @@ cextest$case(test_sbuf_destroy)
 
 }
 
-cextest$case(test_sbuf_replace)
+test$case(test_sbuf_replace)
 {
     sbuf_c s;
     char buf[128];
@@ -270,7 +270,7 @@ cextest$case(test_sbuf_replace)
     return EOK;
 }
 
-cextest$case(test_sbuf_replace_resize)
+test$case(test_sbuf_replace_resize)
 {
     sbuf_c s;
 
@@ -296,7 +296,7 @@ cextest$case(test_sbuf_replace_resize)
     return EOK;
 }
 
-cextest$case(test_sbuf_replace_error_checks)
+test$case(test_sbuf_replace_error_checks)
 {
     sbuf_c s;
 
@@ -323,7 +323,7 @@ cextest$case(test_sbuf_replace_error_checks)
     return EOK;
 }
 
-cextest$case(test_sbuf_sprintf)
+test$case(test_sbuf_sprintf)
 {
     sbuf_c s;
 
@@ -369,7 +369,7 @@ cextest$case(test_sbuf_sprintf)
     return EOK;
 }
 
-cextest$case(test_sbuf_sprintf_long_growth)
+test$case(test_sbuf_sprintf_long_growth)
 {
     sbuf_c s;
 
@@ -405,7 +405,7 @@ cextest$case(test_sbuf_sprintf_long_growth)
     return EOK;
 }
 
-cextest$case(test_sbuf_sprintf_long_growth_prebuild_buffer)
+test$case(test_sbuf_sprintf_long_growth_prebuild_buffer)
 {
     sbuf_c s;
 
@@ -443,7 +443,7 @@ cextest$case(test_sbuf_sprintf_long_growth_prebuild_buffer)
     sbuf.destroy(&s);
     return EOK;
 }
-cextest$case(test_sbuf_sprintf_static)
+test$case(test_sbuf_sprintf_static)
 {
     sbuf_c s;
     char buf[32];
@@ -499,24 +499,24 @@ cextest$case(test_sbuf_sprintf_static)
 */
 int main(int argc, char *argv[])
 {
-    cextest$args_parse(argc, argv);
-    cextest$print_header();  // >>> all tests below
+    test$args_parse(argc, argv);
+    test$print_header();  // >>> all tests below
     
-    cextest$run(test_sbuf_new);
-    cextest$run(test_sbuf_static);
-    cextest$run(test_sbuf_append_char);
-    cextest$run(test_sbuf_append_char_grow);
-    cextest$run(test_sbuf_append_str_grow);
-    cextest$run(test_sbuf_clear);
-    cextest$run(test_sbuf_destroy);
-    cextest$run(test_sbuf_replace);
-    cextest$run(test_sbuf_replace_resize);
-    cextest$run(test_sbuf_replace_error_checks);
-    cextest$run(test_sbuf_sprintf);
-    cextest$run(test_sbuf_sprintf_long_growth);
-    cextest$run(test_sbuf_sprintf_long_growth_prebuild_buffer);
-    cextest$run(test_sbuf_sprintf_static);
+    test$run(test_sbuf_new);
+    test$run(test_sbuf_static);
+    test$run(test_sbuf_append_char);
+    test$run(test_sbuf_append_char_grow);
+    test$run(test_sbuf_append_str_grow);
+    test$run(test_sbuf_clear);
+    test$run(test_sbuf_destroy);
+    test$run(test_sbuf_replace);
+    test$run(test_sbuf_replace_resize);
+    test$run(test_sbuf_replace_error_checks);
+    test$run(test_sbuf_sprintf);
+    test$run(test_sbuf_sprintf_long_growth);
+    test$run(test_sbuf_sprintf_long_growth_prebuild_buffer);
+    test$run(test_sbuf_sprintf_static);
     
-    cextest$print_footer();  // ^^^^^ all tests runs are above
-    return cextest$exit_code();
+    test$print_footer();  // ^^^^^ all tests runs are above
+    return test$exit_code();
 }

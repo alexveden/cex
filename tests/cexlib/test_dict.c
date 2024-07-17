@@ -1,11 +1,11 @@
-#include <cex/cexlib/cex.c>
-#include <cex/cexlib/allocators.c>
-#include <cex/cexlib/dict.c>
-#include <cex/cexlib/dict.h>
-#include <cex/cexlib/list.c>
-#include <cex/cexlib/list.h>
-#include <cex/cexlib/cextest.h>
-#include <cex/cextest/fff.h>
+#include <_cexlib/cex.c>
+#include <_cexlib/allocators.c>
+#include <_cexlib/dict.c>
+#include <_cexlib/dict.h>
+#include <_cexlib/list.c>
+#include <_cexlib/list.h>
+#include <_cexlib/cextest.h>
+#include <fff.h>
 #include <stdalign.h>
 #include <stdio.h>
 
@@ -18,12 +18,12 @@ const Allocator_i* allocator;
 /*
 * SUITE INIT / SHUTDOWN
 */
-cextest$teardown(){
+test$teardown(){
     allocator = allocators.heap.destroy();
     return EOK;
 }
 
-cextest$setup()
+test$setup()
 {
     uassert_enable();
     allocator = allocators.heap.create();
@@ -37,7 +37,7 @@ cextest$setup()
  */
 
 
-cextest$case(test_dict_int64)
+test$case(test_dict_int64)
 {
     struct s
     {
@@ -95,7 +95,7 @@ cextest$case(test_dict_int64)
     return EOK;
 }
 
-cextest$case(test_dict_string)
+test$case(test_dict_string)
 {
     struct s
     {
@@ -150,7 +150,7 @@ cextest$case(test_dict_string)
 }
 
 
-cextest$case(test_dict_create_generic)
+test$case(test_dict_create_generic)
 {
     struct s
     {
@@ -203,7 +203,7 @@ cextest$case(test_dict_create_generic)
 }
 
 
-cextest$case(test_dict_generic_auto_cmp_hash)
+test$case(test_dict_generic_auto_cmp_hash)
 {
 
     struct s
@@ -226,7 +226,7 @@ cextest$case(test_dict_generic_auto_cmp_hash)
     return EOK;
 }
 
-cextest$case(test_dict_iter)
+test$case(test_dict_iter)
 {
     struct s
     {
@@ -268,7 +268,7 @@ cextest$case(test_dict_iter)
     return EOK;
 }
 
-cextest$case(test_dict_tolist)
+test$case(test_dict_tolist)
 {
     struct s
     {
@@ -316,16 +316,16 @@ cextest$case(test_dict_tolist)
 int
 main(int argc, char* argv[])
 {
-    cextest$args_parse(argc, argv);
-    cextest$print_header();  // >>> all tests below
+    test$args_parse(argc, argv);
+    test$print_header();  // >>> all tests below
     
-    cextest$run(test_dict_int64);
-    cextest$run(test_dict_string);
-    cextest$run(test_dict_create_generic);
-    cextest$run(test_dict_generic_auto_cmp_hash);
-    cextest$run(test_dict_iter);
-    cextest$run(test_dict_tolist);
+    test$run(test_dict_int64);
+    test$run(test_dict_string);
+    test$run(test_dict_create_generic);
+    test$run(test_dict_generic_auto_cmp_hash);
+    test$run(test_dict_iter);
+    test$run(test_dict_tolist);
     
-    cextest$print_footer();  // ^^^^^ all tests runs are above
-    return cextest$exit_code();
+    test$print_footer();  // ^^^^^ all tests runs are above
+    return test$exit_code();
 }

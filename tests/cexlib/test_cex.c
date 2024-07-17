@@ -1,5 +1,5 @@
-#include <cex/cexlib/cex.c>
-#include <cex/cexlib/cextest.h>
+#include <_cexlib/cex.c>
+#include <_cexlib/cextest.h>
 #include <errno.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -8,16 +8,16 @@
 /*
  * SUITE INIT / SHUTDOWN
  */
-cextest$teardown(){
+test$teardown(){
     return EOK;
 }
 
-cextest$setup(){
+test$setup(){
     return EOK;
 }
 
 
-cextest$NOOPT Exception
+test$NOOPT Exception
 foo(int condition)
 {
     if (condition == 0) {
@@ -27,7 +27,7 @@ foo(int condition)
     return EOK;
 }
 
-cextest$NOOPT int
+test$NOOPT int
 sys_func(int condition)
 {
     if (condition == -1) {
@@ -36,7 +36,7 @@ sys_func(int condition)
     return condition;
 }
 
-cextest$NOOPT void*
+test$NOOPT void*
 void_ptr_func(int condition)
 {
     if (condition == -1) {
@@ -46,7 +46,7 @@ void_ptr_func(int condition)
 }
 
 
-cextest$case(test_sysfunc)
+test$case(test_sysfunc)
 {
 
     int ret = 0;
@@ -109,14 +109,14 @@ Exception check_optimized(int e){
     return EOK;
 }
 
-cextest$case(test_e_dollar_macro)
+test$case(test_e_dollar_macro)
 {
     tassert_eqs(EOK, check_with_dollar(true));
     tassert_eqs(Error.memory, check_with_dollar(-1));
     return EOK;
 }
 
-cextest$case(test_null_ptr)
+test$case(test_null_ptr)
 {
     void* res = NULL;
     except_null(res = void_ptr_func(1))
@@ -146,13 +146,13 @@ cextest$case(test_null_ptr)
 int
 main(int argc, char* argv[])
 {
-    cextest$args_parse(argc, argv);
-    cextest$print_header();  // >>> all tests below
+    test$args_parse(argc, argv);
+    test$print_header();  // >>> all tests below
     
-    cextest$run(test_sysfunc);
-    cextest$run(test_e_dollar_macro);
-    cextest$run(test_null_ptr);
+    test$run(test_sysfunc);
+    test$run(test_e_dollar_macro);
+    test$run(test_null_ptr);
     
-    cextest$print_footer();  // ^^^^^ all tests runs are above
-    return cextest$exit_code();
+    test$print_footer();  // ^^^^^ all tests runs are above
+    return test$exit_code();
 }

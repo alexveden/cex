@@ -2,18 +2,18 @@
 
 const Allocator_i* allocator;
 
-cextest$teardown(){
+test$teardown(){
     allocator = allocators.heap.destroy(); // this also nullifies allocator
     return EOK;
 }
 
-cextest$setup(){
+test$setup(){
     uassert_enable(); // re-enable if you disabled it in some test case
     allocator = allocators.heap.create();
     return EOK;
 }
 
-cextest$case(my_test)
+test$case(my_test)
 {
     // Has malloc, but no free(), allocator will send memory leak warning
     void* a = allocator->malloc(100);
@@ -36,11 +36,11 @@ cextest$case(my_test)
 int
 main(int argc, char* argv[])
 {
-    cextest$args_parse(argc, argv);
-    cextest$print_header();  // >>> all tests below
+    test$args_parse(argc, argv);
+    test$print_header();  // >>> all tests below
     
-    cextest$run(my_test);
+    test$run(my_test);
     
-    cextest$print_footer();  // ^^^^^ all tests runs are above
-    return cextest$exit_code();
+    test$print_footer();  // ^^^^^ all tests runs are above
+    return test$exit_code();
 }

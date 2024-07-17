@@ -3,7 +3,7 @@
 
 // clang-format off
 #include <cex/cextest/fff.h>
-#include <cex/cexlib/sbuf.h>
+#include <_cexlib/sbuf.h>
 
 // IMPORTANT: wrapping works only with gcc  `-Wl,--wrap=Shmem_new,--wrap=Protocol_event_emitter_new`  flag
 FAKE_VALUE_FUNC(Exc, __wrap_sbuf_create, sbuf_c*, u32, const Allocator_i*)Exception __real_sbuf_create(sbuf_c*, u32, const Allocator_i*);

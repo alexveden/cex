@@ -3,7 +3,7 @@
 
 // clang-format off
 #include <cex/cextest/fff.h>
-#include <cex/cexlib/deque.h>
+#include <_cexlib/deque.h>
 
 
 FAKE_VALUE_FUNC(Exc, deque_validate, deque_c)

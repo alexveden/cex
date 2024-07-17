@@ -9,7 +9,7 @@ WARN_FLAGS := -Wall -Wextra -Werror -Winline -Wuninitialized -pedantic -Wno-form
 # WARN_FLAGS := -Wall -Wextra -Werror -Winline -Wuninitialized -Wno-format-overflow -Wno-unused-function -Wdouble-promotion
 SANITIZE_FLAGS := -fsanitize-address-use-after-scope -fsanitize=address -fsanitize=undefined  -fsanitize=leak -fstack-protector-strong
 
-CFLAGS := -DCEXTEST -O0 -g3 -ggdb3 $(SANITIZE_FLAGS) $(WARN_FLAGS) -I.
+CFLAGS := -DCEXTEST -O0 -g3 -ggdb3 $(SANITIZE_FLAGS) $(WARN_FLAGS) -Iinclude/
 
 CEX_SRC_INCL = $(shell find ./cex -name '*.c')
 

@@ -3,7 +3,7 @@
 
 // clang-format off
 #include <cex/cextest/fff.h>
-#include <cex/cexlib/deque.h>
+#include <_cexlib/deque.h>
 
 // IMPORTANT: wrapping works only with gcc  `-Wl,--wrap=Shmem_new,--wrap=Protocol_event_emitter_new`  flag
 FAKE_VALUE_FUNC(Exc, __wrap_deque_validate, deque_c)Exception __real_deque_validate(deque_c);

@@ -444,18 +444,18 @@ extern const struct __module__allocators allocators; // CEX Autogen
 
 const Allocator_i* allocator;
 
-cextest$teardown(){
+test$teardown(){
     allocator = allocators.heap.destroy(); // this also nullifies allocator
     return EOK;
 }
 
-cextest$setup(){
+test$setup(){
     uassert_enable(); // re-enable if you disabled it in some test case
     allocator = allocators.heap.create();
     return EOK;
 }
 
-cextest$case(my_test)
+test$case(my_test)
 {
     // Has malloc, but no free(), allocator will send memory leak warning
     void* a = allocator->malloc(100);
@@ -477,13 +477,13 @@ cextest$case(my_test)
 int
 main(int argc, char* argv[])
 {
-    cextest$args_parse(argc, argv);
-    cextest$print_header();  // >>> all tests below
+    test$args_parse(argc, argv);
+    test$print_header();  // >>> all tests below
 
-    cextest$run(my_test);
+    test$run(my_test);
 
-    cextest$print_footer();  // ^^^^^ all tests runs are above
-    return cextest$exit_code();
+    test$print_footer();  // ^^^^^ all tests runs are above
+    return test$exit_code();
 }
 ```
  */
@@ -512,9 +512,9 @@ main(int argc, char* argv[])
 #endif
 
 #if defined(__clang__)
-#define cextest$NOOPT __attribute__((optnone))
+#define test$NOOPT __attribute__((optnone))
 #elif defined(__GNUC__) || defined(__GNUG__)
-#define cextest$NOOPT __attribute__((optimize("O0")))
+#define test$NOOPT __attribute__((optimize("O0")))
 #elif defined(_MSC_VER)
 #warning "MSVS is untested"
 #endif
@@ -717,7 +717,7 @@ struct __CexTestContext_s
  *
  */
 
-#define cextest$setup()                                                                            \
+#define test$setup()                                                                            \
     struct __CexTestContext_s __CexTestContext = {                                                 \
         .out_stream = NULL,                                                                        \
         .tests_run = 0,                                                                            \
@@ -725,18 +725,18 @@ struct __CexTestContext_s
         .verbosity = 3,                                                                            \
         .in_test = NULL,                                                                           \
     };                                                                                             \
-    static cextest$NOOPT Exc cextest_setup_func()
+    static test$NOOPT Exc cextest_setup_func()
 
-#define cextest$teardown() static cextest$NOOPT Exc cextest_teardown_func()
+#define test$teardown() static test$NOOPT Exc cextest_teardown_func()
 
 //
 // Typical test function template
 //  MUST return Error.ok / EOK on test success, or char* with error message when failed!
 //
-#define cextest$case(test_case_name) static cextest$NOOPT Exc test_case_name()
+#define test$case(test_case_name) static test$NOOPT Exc test_case_name()
 
 
-#define cextest$run(test_case_name)                                                                \
+#define test$run(test_case_name)                                                                \
     do {                                                                                           \
         if (argc >= 3 && strcmp(argv[2], #test_case_name) != 0) {                                  \
             break;                                                                                 \
@@ -746,7 +746,7 @@ struct __CexTestContext_s
         if (err != EOK) {                                                                          \
             fprintf(                                                                               \
                 __atest_stream,                                                                    \
-                "[%s] %s in cextest$setup() before %s\n",                                          \
+                "[%s] %s in test$setup() before %s\n",                                          \
                 CEXTEST_CRED "FAIL" CEXTEST_CNONE,                                                 \
                 err,                                                                               \
                 #test_case_name                                                                    \
@@ -782,7 +782,7 @@ struct __CexTestContext_s
         if (err != EOK) {                                                                          \
             fprintf(                                                                               \
                 __atest_stream,                                                                    \
-                "[%s] %s in cextest$teardown() after %s\n",                                        \
+                "[%s] %s in test$teardown() after %s\n",                                        \
                 CEXTEST_CRED "FAIL" CEXTEST_CNONE,                                                 \
                 err,                                                                               \
                 #test_case_name                                                                    \
@@ -797,7 +797,7 @@ struct __CexTestContext_s
 //
 //  Prints current test header
 //
-#define cextest$print_header()                                                                     \
+#define test$print_header()                                                                     \
     do {                                                                                           \
         setbuf(__atest_stream, NULL);                                                              \
         if (__CexTestContext.verbosity > 0) {                                                      \
@@ -812,7 +812,7 @@ struct __CexTestContext_s
 //
 // Prints current tests stats total / passed / failed
 //
-#define cextest$print_footer()                                                                     \
+#define test$print_footer()                                                                     \
     do {                                                                                           \
         if (__CexTestContext.verbosity > 0) {                                                      \
             fprintf(__atest_stream, "\n-------------------------------------\n");                  \
@@ -844,7 +844,7 @@ struct __CexTestContext_s
 //  Utility macro for returning main() exit code based on test failed/run, if no tests
 //  run it's an error too
 //
-#define cextest$args_parse(argc, argv)                                                             \
+#define test$args_parse(argc, argv)                                                             \
     do {                                                                                           \
         if (argc == 1)                                                                             \
             break;                                                                                 \
@@ -872,7 +872,7 @@ struct __CexTestContext_s
         }                                                                                          \
     } while (0);
 
-#define cextest$exit_code() (-1 ? __CexTestContext.tests_run == 0 : __CexTestContext.tests_failed)
+#define test$exit_code() (-1 ? __CexTestContext.tests_run == 0 : __CexTestContext.tests_failed)
 
 /*
  *

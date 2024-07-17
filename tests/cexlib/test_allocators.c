@@ -1,9 +1,9 @@
 // #gcc_args -Wl,--wrap=malloc
 #include <alloca.h>
-#include <cex/cexlib/cex.c>
-#include <cex/cexlib/allocators.c>
-#include <cex/cexlib/cextest.h>
-#include <cex/cextest/fff.h>
+#include <_cexlib/cex.c>
+#include <_cexlib/allocators.c>
+#include <_cexlib/cextest.h>
+#include <fff.h>
 #include <stdalign.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,14 +19,14 @@ void* __real_malloc(size_t, size_t);
 /*
  * SUITE INIT / SHUTDOWN
  */
-cextest$teardown(){
+test$teardown(){
     uassert_disable();
     allocators.heap.destroy();
     allocators.staticarena.destroy();
     return EOK;
 
 }
-cextest$setup()
+test$setup()
 {
     RESET_FAKE(__wrap_malloc);
     __wrap_malloc_fake.custom_fake = __real_malloc;
@@ -39,7 +39,7 @@ cextest$setup()
  *   TEST SUITE
  *
  */
-cextest$case(test_allocator_heap)
+test$case(test_allocator_heap)
 {
 
     const Allocator_i* allocator = allocators.heap.create();
@@ -62,7 +62,7 @@ cextest$case(test_allocator_heap)
     return EOK;
 }
 
-cextest$case(test_allocator_heap_memory_leak_check)
+test$case(test_allocator_heap_memory_leak_check)
 {
 
     const Allocator_i* allocator = allocators.heap.create();
@@ -78,7 +78,7 @@ cextest$case(test_allocator_heap_memory_leak_check)
     return EOK;
 }
 
-cextest$case(test_allocator_heap_fopen_unclosed)
+test$case(test_allocator_heap_fopen_unclosed)
 {
 
     const Allocator_i* allocator = allocators.heap.create();
@@ -127,7 +127,7 @@ cextest$case(test_allocator_heap_fopen_unclosed)
     return EOK;
 }
 
-cextest$case(test_allocator_double_creation)
+test$case(test_allocator_double_creation)
 {
 
     const Allocator_i* allocator = allocators.heap.create();
@@ -142,7 +142,7 @@ cextest$case(test_allocator_double_creation)
     return EOK;
 }
 
-cextest$case(test_allocator_alloc_aligned)
+test$case(test_allocator_alloc_aligned)
 {
 
     const Allocator_i* allocator = allocators.heap.create();
@@ -169,7 +169,7 @@ cextest$case(test_allocator_alloc_aligned)
     return EOK;
 }
 
-cextest$case(test_allocator_heap_calloc)
+test$case(test_allocator_heap_calloc)
 {
 
     const Allocator_i* allocator = allocators.heap.create();
@@ -187,7 +187,7 @@ cextest$case(test_allocator_heap_calloc)
     return EOK;
 }
 
-cextest$case(test_allocator_static_arena_stack)
+test$case(test_allocator_static_arena_stack)
 {
     char buf[1024];
     const Allocator_i* allocator = allocators.staticarena.create(buf, arr$len(buf));
@@ -272,7 +272,7 @@ cextest$case(test_allocator_static_arena_stack)
     return EOK;
 }
 
-cextest$case(test_allocator_static_arena_stack_aligned)
+test$case(test_allocator_static_arena_stack_aligned)
 {
 
     alignas(64) char buf[1024];
@@ -348,7 +348,7 @@ cextest$case(test_allocator_static_arena_stack_aligned)
     return NULL;
 }
 
-cextest$case(test_allocator_static_arena_memory_leak_check)
+test$case(test_allocator_static_arena_memory_leak_check)
 {
 
     alignas(64) char buf[1024];
@@ -366,7 +366,7 @@ cextest$case(test_allocator_static_arena_memory_leak_check)
     return EOK;
 }
 
-cextest$case(test_allocator_static_arena_calloc)
+test$case(test_allocator_static_arena_calloc)
 {
 
     alignas(64) char buf[1025];
@@ -427,7 +427,7 @@ cextest$case(test_allocator_static_arena_calloc)
     return EOK;
 }
 
-cextest$case(test_allocator_staticarena_fopen_unclosed)
+test$case(test_allocator_staticarena_fopen_unclosed)
 {
     char arena[2048];
 
@@ -486,21 +486,21 @@ cextest$case(test_allocator_staticarena_fopen_unclosed)
 int
 main(int argc, char* argv[])
 {
-    cextest$args_parse(argc, argv);
-    cextest$print_header();  // >>> all tests below
+    test$args_parse(argc, argv);
+    test$print_header();  // >>> all tests below
     
-    cextest$run(test_allocator_heap);
-    cextest$run(test_allocator_heap_memory_leak_check);
-    cextest$run(test_allocator_heap_fopen_unclosed);
-    cextest$run(test_allocator_double_creation);
-    cextest$run(test_allocator_alloc_aligned);
-    cextest$run(test_allocator_heap_calloc);
-    cextest$run(test_allocator_static_arena_stack);
-    cextest$run(test_allocator_static_arena_stack_aligned);
-    cextest$run(test_allocator_static_arena_memory_leak_check);
-    cextest$run(test_allocator_static_arena_calloc);
-    cextest$run(test_allocator_staticarena_fopen_unclosed);
+    test$run(test_allocator_heap);
+    test$run(test_allocator_heap_memory_leak_check);
+    test$run(test_allocator_heap_fopen_unclosed);
+    test$run(test_allocator_double_creation);
+    test$run(test_allocator_alloc_aligned);
+    test$run(test_allocator_heap_calloc);
+    test$run(test_allocator_static_arena_stack);
+    test$run(test_allocator_static_arena_stack_aligned);
+    test$run(test_allocator_static_arena_memory_leak_check);
+    test$run(test_allocator_static_arena_calloc);
+    test$run(test_allocator_staticarena_fopen_unclosed);
     
-    cextest$print_footer();  // ^^^^^ all tests runs are above
-    return cextest$exit_code();
+    test$print_footer();  // ^^^^^ all tests runs are above
+    return test$exit_code();
 }

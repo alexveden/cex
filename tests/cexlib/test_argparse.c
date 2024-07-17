@@ -1,10 +1,10 @@
-#include <cex/cexlib/argparse.c>
-#include <cex/cexlib/allocators.c>
-#include <cex/cexlib/argparse.h>
-#include <cex/cexlib/cex.c>
-#include <cex/cexlib/cex.h>
-#include <cex/cexlib/str.c>
-#include <cex/cexlib/cextest.h>
+#include <_cexlib/argparse.c>
+#include <_cexlib/allocators.c>
+#include <_cexlib/argparse.h>
+#include <_cexlib/cex.c>
+#include <_cexlib/cex.h>
+#include <_cexlib/str.c>
+#include <_cexlib/cextest.h>
 #include <stdio.h>
 #include <x86intrin.h>
 
@@ -16,12 +16,12 @@ const Allocator_i* allocator;
 /*
 * SUITE INIT / SHUTDOWN
 */
-cextest$teardown(){
+test$teardown(){
     allocator = allocators.heap.destroy();
     return EOK;
 }
 
-cextest$setup()
+test$setup()
 {
     allocator = allocators.heap.create();
     return EOK;
@@ -29,7 +29,7 @@ cextest$setup()
 
 
 
-cextest$case(test_argparse_init_short)
+test$case(test_argparse_init_short)
 {
     int force = 0;
     int test = 0;
@@ -78,7 +78,7 @@ cextest$case(test_argparse_init_short)
     return EOK;
 }
 
-cextest$case(test_argparse_init_long)
+test$case(test_argparse_init_long)
 {
     int force = 0;
     int test = 0;
@@ -131,7 +131,7 @@ cextest$case(test_argparse_init_long)
     return EOK;
 }
 
-cextest$case(test_argparse_required)
+test$case(test_argparse_required)
 {
     int force = 100;
 
@@ -159,7 +159,7 @@ cextest$case(test_argparse_required)
     return EOK;
 }
 
-cextest$case(test_argparse_bad_opts_help)
+test$case(test_argparse_bad_opts_help)
 {
     int force = 100;
 
@@ -186,7 +186,7 @@ cextest$case(test_argparse_bad_opts_help)
     return EOK;
 }
 
-cextest$case(test_argparse_bad_opts_long)
+test$case(test_argparse_bad_opts_long)
 {
     int force = 100;
 
@@ -212,7 +212,7 @@ cextest$case(test_argparse_bad_opts_long)
     return EOK;
 }
 
-cextest$case(test_argparse_bad_opts_short)
+test$case(test_argparse_bad_opts_short)
 {
     int force = 100;
 
@@ -238,7 +238,7 @@ cextest$case(test_argparse_bad_opts_short)
     return EOK;
 }
 
-cextest$case(test_argparse_bad_opts_arg_value_null)
+test$case(test_argparse_bad_opts_arg_value_null)
 {
     argparse_opt_s options[] = {
         argparse$opt_help(),
@@ -263,7 +263,7 @@ cextest$case(test_argparse_bad_opts_arg_value_null)
     return EOK;
 }
 
-cextest$case(test_argparse_bad_opts_both_no_long_short)
+test$case(test_argparse_bad_opts_both_no_long_short)
 {
     int force = 100;
 
@@ -290,7 +290,7 @@ cextest$case(test_argparse_bad_opts_both_no_long_short)
     return EOK;
 }
 
-cextest$case(test_argparse_help_print)
+test$case(test_argparse_help_print)
 {
     argparse_opt_s options[] = {
         argparse$opt_help(),
@@ -311,7 +311,7 @@ cextest$case(test_argparse_help_print)
     return EOK;
 }
 
-cextest$case(test_argparse_help_print_long)
+test$case(test_argparse_help_print_long)
 {
     argparse_opt_s options[] = {
         argparse$opt_help(),
@@ -333,7 +333,7 @@ cextest$case(test_argparse_help_print_long)
 }
 
 
-cextest$case(test_argparse_arguments)
+test$case(test_argparse_arguments)
 {
     int force = 100;
 
@@ -366,7 +366,7 @@ cextest$case(test_argparse_arguments)
     return EOK;
 }
 
-cextest$case(test_argparse_arguments_after_options)
+test$case(test_argparse_arguments_after_options)
 {
     int force = 100;
     int int_num = 2000;
@@ -404,7 +404,7 @@ cextest$case(test_argparse_arguments_after_options)
     return EOK;
 }
 
-cextest$case(test_argparse_arguments_stacked_short_opt)
+test$case(test_argparse_arguments_stacked_short_opt)
 {
     int force = 100;
     int int_num = -100;
@@ -445,7 +445,7 @@ cextest$case(test_argparse_arguments_stacked_short_opt)
     return EOK;
 }
 
-cextest$case(test_argparse_arguments_double_dash)
+test$case(test_argparse_arguments_double_dash)
 {
     int force = 100;
     int int_num = -100;
@@ -489,7 +489,7 @@ cextest$case(test_argparse_arguments_double_dash)
     return EOK;
 }
 
-cextest$case(test_argparse_arguments__option_follows_argument_not_allowed)
+test$case(test_argparse_arguments__option_follows_argument_not_allowed)
 {
     int force = 100;
     int int_num = -100;
@@ -531,7 +531,7 @@ cextest$case(test_argparse_arguments__option_follows_argument_not_allowed)
 }
 
 
-cextest$case(test_argparse_arguments__parsing_error)
+test$case(test_argparse_arguments__parsing_error)
 {
     int int_num2 = -100;
 
@@ -554,7 +554,7 @@ cextest$case(test_argparse_arguments__parsing_error)
     return EOK;
 }
 
-cextest$case(test_argparse_arguments__option_follows_argument__allowed)
+test$case(test_argparse_arguments__option_follows_argument__allowed)
 {
     int force = 100;
     int int_num = -100;
@@ -588,7 +588,7 @@ cextest$case(test_argparse_arguments__option_follows_argument__allowed)
     return EOK;
 }
 
-cextest$case(test_argparse_arguments__command_mode)
+test$case(test_argparse_arguments__command_mode)
 {
     int force = 100;
     int int_num = -100;
@@ -642,7 +642,7 @@ cextest$case(test_argparse_arguments__command_mode)
     return EOK;
 }
 
-cextest$case(test_argparse_arguments__command__help)
+test$case(test_argparse_arguments__command__help)
 {
     int force = 100;
     int int_num = -100;
@@ -686,7 +686,7 @@ cextest$case(test_argparse_arguments__command__help)
     return EOK;
 }
 
-cextest$case(test_argparse_arguments__int_parsing)
+test$case(test_argparse_arguments__int_parsing)
 {
     int int_num2 = -100;
 
@@ -742,7 +742,7 @@ cextest$case(test_argparse_arguments__int_parsing)
     return EOK;
 }
 
-cextest$case(test_argparse_arguments__float_parsing)
+test$case(test_argparse_arguments__float_parsing)
 {
     f32 fnum = -100;
 
@@ -805,31 +805,31 @@ cextest$case(test_argparse_arguments__float_parsing)
 int
 main(int argc, char* argv[])
 {
-    cextest$args_parse(argc, argv);
-    cextest$print_header();  // >>> all tests below
+    test$args_parse(argc, argv);
+    test$print_header();  // >>> all tests below
     
-    cextest$run(test_argparse_init_short);
-    cextest$run(test_argparse_init_long);
-    cextest$run(test_argparse_required);
-    cextest$run(test_argparse_bad_opts_help);
-    cextest$run(test_argparse_bad_opts_long);
-    cextest$run(test_argparse_bad_opts_short);
-    cextest$run(test_argparse_bad_opts_arg_value_null);
-    cextest$run(test_argparse_bad_opts_both_no_long_short);
-    cextest$run(test_argparse_help_print);
-    cextest$run(test_argparse_help_print_long);
-    cextest$run(test_argparse_arguments);
-    cextest$run(test_argparse_arguments_after_options);
-    cextest$run(test_argparse_arguments_stacked_short_opt);
-    cextest$run(test_argparse_arguments_double_dash);
-    cextest$run(test_argparse_arguments__option_follows_argument_not_allowed);
-    cextest$run(test_argparse_arguments__parsing_error);
-    cextest$run(test_argparse_arguments__option_follows_argument__allowed);
-    cextest$run(test_argparse_arguments__command_mode);
-    cextest$run(test_argparse_arguments__command__help);
-    cextest$run(test_argparse_arguments__int_parsing);
-    cextest$run(test_argparse_arguments__float_parsing);
+    test$run(test_argparse_init_short);
+    test$run(test_argparse_init_long);
+    test$run(test_argparse_required);
+    test$run(test_argparse_bad_opts_help);
+    test$run(test_argparse_bad_opts_long);
+    test$run(test_argparse_bad_opts_short);
+    test$run(test_argparse_bad_opts_arg_value_null);
+    test$run(test_argparse_bad_opts_both_no_long_short);
+    test$run(test_argparse_help_print);
+    test$run(test_argparse_help_print_long);
+    test$run(test_argparse_arguments);
+    test$run(test_argparse_arguments_after_options);
+    test$run(test_argparse_arguments_stacked_short_opt);
+    test$run(test_argparse_arguments_double_dash);
+    test$run(test_argparse_arguments__option_follows_argument_not_allowed);
+    test$run(test_argparse_arguments__parsing_error);
+    test$run(test_argparse_arguments__option_follows_argument__allowed);
+    test$run(test_argparse_arguments__command_mode);
+    test$run(test_argparse_arguments__command__help);
+    test$run(test_argparse_arguments__int_parsing);
+    test$run(test_argparse_arguments__float_parsing);
     
-    cextest$print_footer();  // ^^^^^ all tests runs are above
-    return cextest$exit_code();
+    test$print_footer();  // ^^^^^ all tests runs are above
+    return test$exit_code();
 }

@@ -3,7 +3,7 @@
 
 // clang-format off
 #include <cex/cextest/fff.h>
-#include <cex/cexlib/argparse.h>
+#include <_cexlib/argparse.h>
 
 
 FAKE_VOID_FUNC(argparse_usage, argparse_c*)

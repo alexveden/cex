@@ -5,5 +5,5 @@ Diagnostics:
 
 CompileFlags:
   Add: [
-    -I/home/ubertrader/code/cex
+    -I/home/ubertrader/code/cex/include
    ]

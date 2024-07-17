@@ -3,7 +3,7 @@
 
 // clang-format off
 #include <cex/cextest/fff.h>
-#include <cex/cexlib/dict.h>
+#include <_cexlib/dict.h>
 
 // IMPORTANT: wrapping works only with gcc  `-Wl,--wrap=Shmem_new,--wrap=Protocol_event_emitter_new`  flag
 FAKE_VALUE_FUNC(int, __wrap_hm_int_compare, const void*, const void*, void*)int __real_hm_int_compare(const void*, const void*, void*);

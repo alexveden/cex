@@ -1,22 +1,22 @@
-#include <cex/cexlib/cex.c>
-#include <cex/cexlib/list.h>
-#include <cex/cexlib/str.c>
-#include <cex/cexlib/sbuf.c>
-#include <cex/cexlib/_stb_sprintf.c>
-#include <cex/cexlib/cextest.h>
-#include <cex/cexlib/allocators.c>
+#include <_cexlib/cex.c>
+#include <_cexlib/list.h>
+#include <_cexlib/str.c>
+#include <_cexlib/sbuf.c>
+#include <_cexlib/_stb_sprintf.c>
+#include <_cexlib/cextest.h>
+#include <_cexlib/allocators.c>
 #include <stdio.h>
 
 const Allocator_i* allocator;
 /*
 * SUITE INIT / SHUTDOWN
 */
-cextest$teardown(){
+test$teardown(){
     allocator = allocators.heap.destroy();
     return EOK;
 }
 
-cextest$setup()
+test$setup()
 {
     uassert_enable();
     allocator = allocators.heap.create();
@@ -29,7 +29,7 @@ cextest$setup()
  *
  */
 
-cextest$case(test_cstr)
+test$case(test_cstr)
 {
     const char* cstr = "hello";
 
@@ -60,7 +60,7 @@ cextest$case(test_cstr)
 
 }
 
-cextest$case(test_cstr_sdollar)
+test$case(test_cstr_sdollar)
 {
     const char* cstr = "hello";
 
@@ -135,7 +135,7 @@ cextest$case(test_cstr_sdollar)
 
 }
 
-cextest$case(test_copy)
+test$case(test_copy)
 {
     char buf[8];
     memset(buf, 'a', arr$len(buf));
@@ -180,7 +180,7 @@ cextest$case(test_copy)
 
 }
 
-cextest$case(test_sub_positive_start)
+test$case(test_sub_positive_start)
 {
 
     str_c sub;
@@ -259,7 +259,7 @@ cextest$case(test_sub_positive_start)
 
 }
 
-cextest$case(test_sub_negative_start)
+test$case(test_sub_negative_start)
 {
 
     str_c s = str.cstr("123456");
@@ -324,7 +324,7 @@ cextest$case(test_sub_negative_start)
     return EOK;
 }
 
-cextest$case(test_iter)
+test$case(test_iter)
 {
 
     str_c s = str.cstr("123456");
@@ -383,7 +383,7 @@ cextest$case(test_iter)
     return EOK;
 }
 
-cextest$case(test_iter_split)
+test$case(test_iter_split)
 {
 
     str_c s = str.cstr("123456");
@@ -488,7 +488,7 @@ cextest$case(test_iter_split)
     return EOK;
 }
 
-cextest$case(test_find)
+test$case(test_find)
 {
 
     str_c s = str.cstr("123456");
@@ -547,7 +547,7 @@ cextest$case(test_find)
     return EOK;
 }
 
-cextest$case(test_rfind)
+test$case(test_rfind)
 {
 
     str_c s = str.cstr("123456");
@@ -609,7 +609,7 @@ cextest$case(test_rfind)
     return EOK;
 }
 
-cextest$case(test_contains_starts_ends)
+test$case(test_contains_starts_ends)
 {
     str_c s = str.cstr("123456");
     tassert_eqi(1, str.contains(s, str.cstr("1")));
@@ -643,7 +643,7 @@ cextest$case(test_contains_starts_ends)
     return EOK;
 }
 
-cextest$case(test_remove_prefix)
+test$case(test_remove_prefix)
 {
     str_c out;
 
@@ -669,7 +669,7 @@ cextest$case(test_remove_prefix)
     return EOK;
 }
 
-cextest$case(test_remove_suffix)
+test$case(test_remove_suffix)
 {
     str_c out;
 
@@ -695,7 +695,7 @@ cextest$case(test_remove_suffix)
     return EOK;
 }
 
-cextest$case(test_strip)
+test$case(test_strip)
 {
     str_c s = str.cstr("\n\t \r123\n\t\r 456 \r\n\t");
     (void)s;
@@ -760,7 +760,7 @@ cextest$case(test_strip)
     return EOK;
 }
 
-cextest$case(test_cmp)
+test$case(test_cmp)
 {
 
     tassert_eqi(str.cmp(str.cstr("123456"), str.cstr("123456")), 0);
@@ -777,7 +777,7 @@ cextest$case(test_cmp)
     return EOK;
 }
 
-cextest$case(test_cmpi)
+test$case(test_cmpi)
 {
 
     tassert_eqi(str.cmpi(str.cstr("123456"), str.cstr("123456")), 0);
@@ -808,25 +808,25 @@ cextest$case(test_cmpi)
 int
 main(int argc, char* argv[])
 {
-    cextest$args_parse(argc, argv);
-    cextest$print_header();  // >>> all tests below
+    test$args_parse(argc, argv);
+    test$print_header();  // >>> all tests below
     
-    cextest$run(test_cstr);
-    cextest$run(test_cstr_sdollar);
-    cextest$run(test_copy);
-    cextest$run(test_sub_positive_start);
-    cextest$run(test_sub_negative_start);
-    cextest$run(test_iter);
-    cextest$run(test_iter_split);
-    cextest$run(test_find);
-    cextest$run(test_rfind);
-    cextest$run(test_contains_starts_ends);
-    cextest$run(test_remove_prefix);
-    cextest$run(test_remove_suffix);
-    cextest$run(test_strip);
-    cextest$run(test_cmp);
-    cextest$run(test_cmpi);
+    test$run(test_cstr);
+    test$run(test_cstr_sdollar);
+    test$run(test_copy);
+    test$run(test_sub_positive_start);
+    test$run(test_sub_negative_start);
+    test$run(test_iter);
+    test$run(test_iter_split);
+    test$run(test_find);
+    test$run(test_rfind);
+    test$run(test_contains_starts_ends);
+    test$run(test_remove_prefix);
+    test$run(test_remove_suffix);
+    test$run(test_strip);
+    test$run(test_cmp);
+    test$run(test_cmpi);
     
-    cextest$print_footer();  // ^^^^^ all tests runs are above
-    return cextest$exit_code();
+    test$print_footer();  // ^^^^^ all tests runs are above
+    return test$exit_code();
 }

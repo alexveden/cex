@@ -1,20 +1,20 @@
-#include <cex/cexlib/cextest.h>
-#include <cex/cexlib/cex.c>
-#include <cex/cexlib/list.c>
-#include <cex/cexlib/list.h>
-#include <cex/cexlib/allocators.c>
+#include <_cexlib/cextest.h>
+#include <_cexlib/cex.c>
+#include <_cexlib/list.c>
+#include <_cexlib/list.h>
+#include <_cexlib/allocators.c>
 #include <stdio.h>
 
 const Allocator_i* allocator;
 /*
 * SUITE INIT / SHUTDOWN
 */
-cextest$teardown(){
+test$teardown(){
     allocator = allocators.heap.destroy();
     return EOK;
 }
 
-cextest$setup()
+test$setup()
 {
     uassert_enable();
     allocator = allocators.heap.create();
@@ -27,7 +27,7 @@ cextest$setup()
  *
  */
 
-cextest$case(testlist_alloc_capacity)
+test$case(testlist_alloc_capacity)
 {
     // 4 is minimum
     tassert_eql(4, list__alloc_capacity(1));
@@ -48,7 +48,7 @@ cextest$case(testlist_alloc_capacity)
     return EOK;
 }
 
-cextest$case(testlist_new)
+test$case(testlist_new)
 {
     list$define(int) a;
 
@@ -73,7 +73,7 @@ cextest$case(testlist_new)
 
 }
 
-cextest$case(testlist_append)
+test$case(testlist_append)
 {
     list$define(int) a;
 
@@ -116,7 +116,7 @@ cextest$case(testlist_append)
 
 }
 
-cextest$case(testlist_insert)
+test$case(testlist_insert)
 {
     list$define(int) a;
 
@@ -170,7 +170,7 @@ cextest$case(testlist_insert)
 
 }
 
-cextest$case(testlist_del)
+test$case(testlist_del)
 {
     list$define(int) a;
 
@@ -239,7 +239,7 @@ int test_int_cmp(const void* a, const void* b){
     return *(int*)a - *(int*)b; 
 }
 
-cextest$case(testlist_sort)
+test$case(testlist_sort)
 {
     list$define(int) a;
 
@@ -272,7 +272,7 @@ cextest$case(testlist_sort)
 
 }
 
-cextest$case(testlist_extend)
+test$case(testlist_extend)
 {
 
     list$define(int) a;
@@ -315,7 +315,7 @@ cextest$case(testlist_extend)
 
 }
 
-cextest$case(testlist_iterator)
+test$case(testlist_iterator)
 {
 
     list$define(int) a;
@@ -393,7 +393,7 @@ cextest$case(testlist_iterator)
     return EOK;
 }
 
-cextest$case(testlist_align256)
+test$case(testlist_align256)
 {
 
     struct foo64
@@ -450,7 +450,7 @@ cextest$case(testlist_align256)
 
 }
 
-cextest$case(testlist_align64)
+test$case(testlist_align64)
 {
 
     struct foo64
@@ -507,7 +507,7 @@ cextest$case(testlist_align64)
 
 }
 
-cextest$case(testlist_align16)
+test$case(testlist_align16)
 {
 
     struct foo64
@@ -561,7 +561,7 @@ cextest$case(testlist_align16)
 
 }
 
-cextest$case(testlist_append_static)
+test$case(testlist_append_static)
 {
     list$define(int) a;
 
@@ -600,7 +600,7 @@ cextest$case(testlist_append_static)
 
 }
 
-cextest$case(testlist_static_buffer_validation)
+test$case(testlist_static_buffer_validation)
 {
     list$define(int) a;
 
@@ -617,7 +617,7 @@ cextest$case(testlist_static_buffer_validation)
 
 }
 
-cextest$case(testlist_static_with_alignment)
+test$case(testlist_static_with_alignment)
 {
     struct foo64
     {
@@ -682,24 +682,24 @@ cextest$case(testlist_static_with_alignment)
 int
 main(int argc, char* argv[])
 {
-    cextest$args_parse(argc, argv);
-    cextest$print_header();  // >>> all tests below
+    test$args_parse(argc, argv);
+    test$print_header();  // >>> all tests below
     
-    cextest$run(testlist_alloc_capacity);
-    cextest$run(testlist_new);
-    cextest$run(testlist_append);
-    cextest$run(testlist_insert);
-    cextest$run(testlist_del);
-    cextest$run(testlist_sort);
-    cextest$run(testlist_extend);
-    cextest$run(testlist_iterator);
-    cextest$run(testlist_align256);
-    cextest$run(testlist_align64);
-    cextest$run(testlist_align16);
-    cextest$run(testlist_append_static);
-    cextest$run(testlist_static_buffer_validation);
-    cextest$run(testlist_static_with_alignment);
+    test$run(testlist_alloc_capacity);
+    test$run(testlist_new);
+    test$run(testlist_append);
+    test$run(testlist_insert);
+    test$run(testlist_del);
+    test$run(testlist_sort);
+    test$run(testlist_extend);
+    test$run(testlist_iterator);
+    test$run(testlist_align256);
+    test$run(testlist_align64);
+    test$run(testlist_align16);
+    test$run(testlist_append_static);
+    test$run(testlist_static_buffer_validation);
+    test$run(testlist_static_with_alignment);
     
-    cextest$print_footer();  // ^^^^^ all tests runs are above
-    return cextest$exit_code();
+    test$print_footer();  // ^^^^^ all tests runs are above
+    return test$exit_code();
 }
