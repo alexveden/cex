@@ -1,8 +1,5 @@
-#include <_cexlib/cextest.h>
-#include <_cexlib/cex.c>
-#include <_cexlib/allocators.c>
-#include <_cexlib/deque.c>
-#include <_cexlib/deque.h>
+#include <cex.c>
+#include <cex/deque/deque.c>
 #include <stdalign.h>
 #include <stdio.h>
 

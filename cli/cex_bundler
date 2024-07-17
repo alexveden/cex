@@ -88,7 +88,6 @@ class Bundler:
             "list.h",
             "dict.h",
             "io.h",
-            "deque.h",
             "argparse.h",
         ]
         print(f"Bundling: {headers}")
@@ -118,5 +117,5 @@ class Bundler:
 
 if __name__ == "__main__":
 
-    b = Bundler("./include/cexlib/", "./include")
+    b = Bundler("./include/_cexlib/", "./include")
     b.bundle()

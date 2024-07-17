@@ -54,5 +54,5 @@ debug:
 	ulimit -c unlimited && gdb -q --args $(BUILD_DIR)/$(t).test vvvvv $(c) 
 
 tests: $(TARGETS)
-	@for test in $(SRC); do ulimit -c unlimited; $(BUILD_DIR)/$$test.test q $(c); done 
+	cex test run all
 
