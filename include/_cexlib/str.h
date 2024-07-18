@@ -100,16 +100,28 @@ str_c*
 (*iter_split)(str_c s, const char* split_by, cex_iterator_s* iterator);
 
 Exception
-(*toi8)(str_c self, i8* num);
+(*to_i8)(str_c self, i8* num);
 
 Exception
-(*toi16)(str_c self, i16* num);
+(*to_i16)(str_c self, i16* num);
 
 Exception
-(*toi32)(str_c self, i32* num);
+(*to_i32)(str_c self, i32* num);
 
 Exception
-(*toi64)(str_c self, i64* num);
+(*to_i64)(str_c self, i64* num);
+
+Exception
+(*to_u8)(str_c self, u8* num);
+
+Exception
+(*to_u16)(str_c self, u16* num);
+
+Exception
+(*to_u32)(str_c self, u32* num);
+
+Exception
+(*to_u64)(str_c self, u64* num);
 
     // clang-format on
 };
