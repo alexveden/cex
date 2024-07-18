@@ -364,7 +364,8 @@ class CEXTestBuilder:
             print(stdout.decode())
             print("stderr:")
             print(stderr.decode())
-            raise RuntimeError(f"Compilation error: {test_src}")
+            print(f"Compilation error: {test_src}")
+            sys.exit(1)
 
     def action_build(self):
         test_files_list = []
@@ -566,6 +567,7 @@ class CEXBuilder:
         def __init__(self, line_start):
             self.code_type = None
             self._is_signature = True
+            self._in_string_quotes = []
             self._brstack = []
             self._brackets: dict = {
                 "[": "]",
@@ -593,7 +595,7 @@ class CEXBuilder:
             if not self._brstack:
                 assert (
                     self._brackets[c] is not None
-                ), f"Must me opening bracket: c={c}\n{self.buf.getvalue()}"
+                ), f"Must be opening bracket: c={c}\n{self.buf.getvalue()}"
                 self._brstack.append(c)
             else:
                 if self._brackets[self._brstack[-1]] == c:
@@ -603,7 +605,7 @@ class CEXBuilder:
                     # new bracket level
                     assert (
                         self._brackets[c] is not None
-                    ), f"Must me opening bracket: c={c}\n{self.buf.getvalue()}"
+                    ), f"Must be opening bracket: c={c}\n{self.buf.getvalue()}"
                     self._brstack.append(c)
             pass
 
@@ -623,7 +625,7 @@ class CEXBuilder:
                     if cmt is not None:
                         return True
 
-            for c in line.strip():
+            for i, c in enumerate(line.strip()):
                 # We are in signature
                 if self._is_signature:
                     # Decide definition type based on signature
@@ -661,22 +663,33 @@ class CEXBuilder:
                     if self._is_signature:
                         self.buf.write(c)
                 else:
+                    if not self._in_string_quotes and c != '"' and c != "'":
+                        if c in self._brackets:
+                            self.process_brackets(c)
 
-                    if c in self._brackets:
-                        self.process_brackets(c)
+                        if len(self._brstack) == 0:
 
-                    if len(self._brstack) == 0:
-
-                        # Handle last closing bracket of a function
-                        if self.code_type == "func":
-                            if c == "}":
-                                return False
-                        elif self.code_type == "var":
-                            if c == ";":
-                                return False
+                            # Handle last closing bracket of a function
+                            if self.code_type == "func":
+                                if c == "}":
+                                    return False
+                            elif self.code_type == "var":
+                                if c == ";":
+                                    return False
+                            else:
+                                if c == ";":
+                                    return False
+                    else:
+                        if not self._in_string_quotes:
+                            self._in_string_quotes.append(c)
                         else:
-                            if c == ";":
-                                return False
+                            if c == '"' or c == "'":
+                                if line[i-1] != '\\':
+                                    # escaped quote, skipping \"
+                                    if c == self._in_string_quotes[-1]:
+                                        self._in_string_quotes.pop()
+                                    else:
+                                        self._in_string_quotes.append(c)
 
                     pass
 
@@ -1130,8 +1143,8 @@ class CEXBuilder:
 
     def build(self, fake_dir):
         """Build CEX module"""
-        c_lines, c_blocks = self.parse_source(c_file)
-        h_lines, h_blocks = self.parse_source(h_file)
+        c_lines, c_blocks = self.parse_source(self.c_file)
+        h_lines, h_blocks = self.parse_source(self.h_file)
 
         ifc_decl = self.make_interface_declaration(c_blocks)
         ifc_def = self.make_interface_definition(c_blocks)
@@ -1218,8 +1231,7 @@ def action_env(args):
 
 def action_make(args):
     print(f"action_make: {args}")
-    return
-    if args.source_file.endswith(".c"):
+    if args.source_path.endswith(".c"):
         c_file = args.source_path
         h_file = args.source_path.replace(".c", ".h")
     else:
@@ -1235,7 +1247,7 @@ def action_make(args):
     else:
         builder.build(args.fakedir)
 
-    print(f"CEX done for: {args.source_file}")
+    print(f"CEX done for: {args.source_path}")
 
 
 if __name__ == "__main__":
