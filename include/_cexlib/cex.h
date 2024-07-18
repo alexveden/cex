@@ -115,13 +115,21 @@ _uhf_errors_is_error__uerr(Exc* e)
     for (Exc _var_name = _func; unlikely(_var_name != NULL && (uptraceback(_var_name, #_func)));   \
          _var_name = EOK)
 
-#define e$(_func)                                                                                  \
+#define e$ret(_func)                                                                                  \
     for (Exc __CEX_TMPNAME(__cex_err_traceback_) = _func; unlikely(                                \
              __CEX_TMPNAME(__cex_err_traceback_) != NULL &&                                        \
              (uptraceback(__CEX_TMPNAME(__cex_err_traceback_), #_func))                            \
          );                                                                                        \
          __CEX_TMPNAME(__cex_err_traceback_) = EOK)                                                \
     return __CEX_TMPNAME(__cex_err_traceback_)
+
+#define e$goto(_func, _label)                                                                                  \
+    for (Exc __CEX_TMPNAME(__cex_err_traceback_) = result = _func; unlikely(                                \
+             __CEX_TMPNAME(__cex_err_traceback_) != NULL &&                                        \
+             (uptraceback(__CEX_TMPNAME(__cex_err_traceback_), #_func))                            \
+         );                                                                                        \
+         __CEX_TMPNAME(__cex_err_traceback_) = EOK)                                                \
+    goto _label
 
 #define except_errno(_expression)                                                                  \
     errno = 0;                                                                                     \

@@ -1,17 +1,18 @@
-#include <_cexlib/cex.c>
-#include <_cexlib/allocators.c>
-#include <_cexlib/io.c>
 #include <_cexlib/_stb_sprintf.c>
-#include <_cexlib/str.c>
-#include <_cexlib/io.h>
+#include <_cexlib/allocators.c>
+#include <_cexlib/cex.c>
 #include <_cexlib/cextest.h>
+#include <_cexlib/io.c>
+#include <_cexlib/io.h>
+#include <_cexlib/str.c>
 #include <stdio.h>
 
 const Allocator_i* allocator;
 /*
-* SUITE INIT / SHUTDOWN
-*/
-test$teardown(){
+ * SUITE INIT / SHUTDOWN
+ */
+test$teardown()
+{
     allocator = allocators.heap.destroy();
     return EOK;
 }
@@ -32,7 +33,7 @@ test$setup()
 test$case(test_io)
 {
     io_c file = { 0 };
-    tassert_eqs(Error.io, io.fopen(&file, "test_not_exist.txt", "r", allocator));
+    tassert_eqs(Error.not_found, io.fopen(&file, "test_not_exist.txt", "r", allocator));
 
     uassert_disable();
     tassert_eqs(Error.argument, io.fopen(&file, "test_not_exist.txt", "r", NULL));
@@ -40,7 +41,6 @@ test$case(test_io)
     tassert_eqs(Error.argument, io.fopen(&file, NULL, "r", allocator));
     tassert_eqs(Error.argument, io.fopen(NULL, "test.txt", "r", allocator));
     return EOK;
-
 }
 
 test$case(test_readall)
@@ -74,7 +74,6 @@ test$case(test_readall)
     tassert_eql(file._fsize, 0);
     tassert(file._fbuf == NULL);
     return EOK;
-
 }
 
 test$case(test_readall_empty)
@@ -97,10 +96,8 @@ test$case(test_readall_empty)
     tassert_eqi(content.len, 0);
 
 
-
     io.close(&file);
     return EOK;
-
 }
 
 test$case(test_readall_stdin)
@@ -115,7 +112,10 @@ test$case(test_readall_stdin)
     tassert_eqi(0, io.size(&file));
 
     str_c content;
-    tassert_eqs(Error.io, io.readall(&file, &content));
+    tassert_eqs(
+        "io.readall() not allowed for pipe/socket/std[in/out/err]",
+        io.readall(&file, &content)
+    );
     tassert_eql(file._fsize, 0); // not calculated yet!
     tassert(file._fbuf == NULL);
     tassert(file._fbuf_size == 0);
@@ -123,7 +123,6 @@ test$case(test_readall_stdin)
 
     io.close(&file);
     return EOK;
-
 }
 
 test$case(test_read_line)
@@ -136,7 +135,7 @@ test$case(test_read_line)
     tassert_eqs(content.buf, "000000001");
     tassert_eqi(content.len, 9);
 
-    tassert_eqi(file._fbuf_size, 4096-1);
+    tassert_eqi(file._fbuf_size, 4096 - 1);
 
     tassert_eqs(Error.ok, io.readline(&file, &content));
     tassert_eqs(content.buf, "000000002");
@@ -160,7 +159,6 @@ test$case(test_read_line)
 
     io.close(&file);
     return EOK;
-
 }
 
 test$case(test_read_line_empty_file)
@@ -175,7 +173,6 @@ test$case(test_read_line_empty_file)
 
     io.close(&file);
     return EOK;
-
 }
 
 test$case(test_read_line_binary_file_with_zero_char)
@@ -194,7 +191,6 @@ test$case(test_read_line_binary_file_with_zero_char)
 
     io.close(&file);
     return EOK;
-
 }
 
 test$case(test_read_line_win_new_line)
@@ -229,7 +225,6 @@ test$case(test_read_line_win_new_line)
 
     io.close(&file);
     return EOK;
-
 }
 
 test$case(test_read_line_only_new_lines)
@@ -260,7 +255,6 @@ test$case(test_read_line_only_new_lines)
 
     io.close(&file);
     return EOK;
-
 }
 
 test$case(test_read_all_then_read_line)
@@ -290,7 +284,6 @@ test$case(test_read_all_then_read_line)
 
     io.close(&file);
     return EOK;
-
 }
 
 test$case(test_read_long_line)
@@ -304,16 +297,16 @@ test$case(test_read_long_line)
     tassert(file._allocator == allocator);
 
     str_c content;
-    tassert_eqi(4096+4095+2, io.size(&file));
+    tassert_eqi(4096 + 4095 + 2, io.size(&file));
 
     tassert_eqs(Error.ok, io.readline(&file, &content));
-    tassert_eqi(file._fbuf_size, 4096-1);
+    tassert_eqi(file._fbuf_size, 4096 - 1);
     tassert(str.starts_with(content, str.cstr("4095")));
     tassert_eqi(content.len, 4095);
     tassert_eqi(0, content.buf[content.len]); // null term
 
     tassert_eqs(Error.ok, io.readline(&file, &content));
-    tassert_eqi(file._fbuf_size, 4096*2-1); // buffer resized
+    tassert_eqi(file._fbuf_size, 4096 * 2 - 1); // buffer resized
     tassert(str.starts_with(content, str.cstr("4096")));
     tassert_eqi(content.len, 4096);
     tassert_eqi(0, content.buf[content.len]); // null term
@@ -325,7 +318,6 @@ test$case(test_read_long_line)
 
     io.close(&file);
     return EOK;
-
 }
 
 test$case(test_readall_realloc)
@@ -339,10 +331,10 @@ test$case(test_readall_realloc)
     tassert(file._allocator == allocator);
 
     str_c content;
-    tassert_eqi(4096+4095+2, io.size(&file));
+    tassert_eqi(4096 + 4095 + 2, io.size(&file));
 
     tassert_eqs(Error.ok, io.readline(&file, &content));
-    tassert_eqi(file._fbuf_size, 4096-1);
+    tassert_eqi(file._fbuf_size, 4096 - 1);
     tassert(str.starts_with(content, str.cstr("4095")));
     tassert_eqi(content.len, 4095);
     tassert_eqi(0, content.buf[content.len]); // null term
@@ -351,14 +343,13 @@ test$case(test_readall_realloc)
     io.rewind(&file);
 
     tassert_eqs(Error.ok, io.readall(&file, &content));
-    tassert_eqi(file._fbuf_size, 4095+4096+2+16);
+    tassert_eqi(file._fbuf_size, 4095 + 4096 + 2 + 16);
     tassert(str.starts_with(content, str.cstr("4095")));
     tassert_eqi(str.find(content, str.cstr("4096"), 0, 0), 4096);
-    tassert_eqi(content.len, 4095+4096+2);
+    tassert_eqi(content.len, 4095 + 4096 + 2);
 
     io.close(&file);
     return EOK;
-
 }
 
 test$case(test_read)
@@ -377,7 +368,6 @@ test$case(test_read)
 
     io.close(&file);
     return EOK;
-
 }
 
 test$case(test_read_empty)
@@ -395,7 +385,6 @@ test$case(test_read_empty)
 
     io.close(&file);
     return EOK;
-
 }
 
 test$case(test_read_not_all)
@@ -428,7 +417,6 @@ test$case(test_read_not_all)
 
     io.close(&file);
     return EOK;
-
 }
 
 test$case(test_fprintf)
@@ -446,7 +434,6 @@ test$case(test_fprintf)
 
     io.close(&file);
     return EOK;
-
 }
 
 test$case(test_fprintf_to_file)
@@ -454,7 +441,7 @@ test$case(test_fprintf_to_file)
     io_c file = { 0 };
     tassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_fprintf.txt", "w+", allocator));
 
-    char buf[4] = {"1234"};
+    char buf[4] = { "1234" };
     str_c s1 = str.cbuf(buf, 4);
     tassert_eqi(s1.len, 4);
     tassert_eqi(s1.buf[3], '4');
@@ -469,7 +456,6 @@ test$case(test_fprintf_to_file)
 
     io.close(&file);
     return EOK;
-
 }
 
 test$case(test_write)
@@ -477,7 +463,7 @@ test$case(test_write)
     io_c file = { 0 };
     tassert_eqs(Error.ok, io.fopen(&file, "tests/data/text_file_write.txt", "w+", allocator));
 
-    char buf[4] = {"1234"};
+    char buf[4] = { "1234" };
 
     tassert_eqs(EOK, io.write(&file, buf, sizeof(char), arr$len(buf)));
 
@@ -488,7 +474,6 @@ test$case(test_write)
 
     io.close(&file);
     return EOK;
-
 }
 /*
  *

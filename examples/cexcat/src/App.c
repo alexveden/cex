@@ -1,63 +1,194 @@
 #include "App.h"
-#include "cex.h"
+#include <cex.h>
 
 Exception
 App_create(App_c* app, i32 argc, char* argv[], const Allocator_i* allocator)
 {
-  utracef("App_init app\n");
+    uassert(allocator != NULL && "expected allocator");
 
-  argparse_opt_s options[] = {
-    argparse$opt_help(),
-    argparse$opt_group("Basic options"),
-    argparse$opt_string(
-      'p', "path", &app->path, "path to read", .required = true, NULL, 0, 0),
-  };
+    argparse_opt_s options[] = {
+        argparse$opt_help(),
+        argparse$opt_group("Basic options"),
+        argparse$opt_str('c', "csv", &app->is_csv, .help = "parse input files as csv->json"),
+    };
 
-  const char* usage = "basic [options] [[--] args]\n"
-                      "basic [options]\n";
+    const char* usage = "[-c/--csv] [[--] file1 file2 fileN]";
 
-  argparse_c args = { .options = options,
-                      .options_len = arr$len(options),
-                      .usage = usage,
-                      .description = "A cool CEX program",
-                      .epilog = "help epilog text here" };
+    argparse_c args = { .options = options,
+                        .options_len = arr$len(options),
+                        .usage = usage,
+                        .description = "Basic cat utility with convert csv->json function",
+                        .epilog = "\nIt has intentional bugs, try to fix them :)" };
 
-  // NOTE: there is no need to traceback here, because argparse.parse() prints
-  except(err, argparse.parse(&args, argc, argv)){
-    return err;
-  }
+    except(err, argparse.parse(&args, argc, argv))
+    {
+        return err;
+    }
 
-  return Error.ok;
+    if (argparse.argc(&args) == 0) {
+        argparse.usage(&args);
+        return Error.argsparse;
+    }
+
+    app->files = argparse.argv(&args);
+    app->files_count = argparse.argc(&args);
+    app->allocator = allocator;
+
+    return Error.ok;
+}
+
+static Exception
+App__process_plain(App_c* app, io_c* file)
+{
+    uassert(app != NULL);
+    uassert(file != NULL);
+
+    if (io.size(file) == 0) {
+        return "zero file size";
+    }
+
+    // str_c is a CEX string view, it's not compatible with char* with caveats
+    str_c line; // it carries pointer + length
+
+    Exc r = EOK;
+    while ((r = io.readline(file, &line)) == EOK) {
+        io.printf("%S\n", line);
+
+        if (str.contains(line, s$("cat"))) {
+            io.printf("edited by cex cat with love\n");
+        }
+    }
+
+    return Error.ok;
+}
+
+/**
+ * @brief  This function reads csv file and converts its content into JSON-style output,
+ * where each record has name of a column and value
+ *
+ * @param app
+ * @param file
+ * @return
+ */
+static Exception
+App__process_csv(App_c* app, io_c* file)
+{
+    uassert(app != NULL);
+    uassert(app->allocator != NULL);
+    uassert(file != NULL);
+
+    Exc result = EOK;
+    dict_c csvmap = {0};
+    sbuf_c rbuf = {0}; 
+    str_c contents = {0};
+
+    struct csvcols
+    {
+        u64 col_idx;    // dict key
+        char name[128]; // dict value
+    };
+
+    e$goto(sbuf.create(&rbuf, 1024, app->allocator), fail);
+    e$goto(io.readall(file, &contents), fail);
+    e$goto(dict$new(&csvmap, struct csvcols, col_idx, app->allocator), fail);
+
+    for$iter(str_c, it, str.iter_split(contents, "\n", &it.iterator))
+    {
+        var line = str.strip(*it.val);
+        if (unlikely(it.idx.i == 0)) {
+            e$goto(sbuf.sprintf(&rbuf, "{\n"), fail);
+            if (str.len(line) == 0) {
+                result = raise_exc(Error.empty, "empty header\n");
+                goto fail;
+            }
+
+            for$iter(str_c, tok, str.iter_split(line, ",", &tok.iterator))
+            {
+                struct csvcols col_rec = { .col_idx = tok.idx.i };
+                var col = str.strip(*tok.val);
+                io.printf("%ld: '%S'\n", tok.idx.i, col);
+                e$goto(str.copy(col, col_rec.name, arr$len(col_rec.name)), fail);
+                e$goto(dict.set(&csvmap, &col_rec), fail);
+            }
+            continue;
+        }
+
+        if (str.len(line) == 0) {
+            continue;
+        }
+
+        e$goto(sbuf.sprintf(&rbuf, "  {"), fail);
+
+
+        for$iter(str_c, tok, str.iter_split(line, ",", &tok.iterator))
+        {
+            struct csvcols* rec;
+            except_null(rec = dict.geti(&csvmap, tok.idx.i)) {
+                result = raise_exc(
+                    "column width mismatch",
+                    "header len=%ld col=%ld\n",
+                    dict.len(&csvmap),
+                    tok.idx.key
+                );
+                goto fail;
+            }
+            var col = str.strip(*tok.val);
+            e$goto(sbuf.sprintf(&rbuf, "\"%s\": \"%S\", ", rec->name, col), fail);
+        }
+        e$goto(sbuf.sprintf(&rbuf, "},\n"), fail);
+    }
+    e$goto(sbuf.sprintf(&rbuf, "}\n"), fail);
+    io.printf("%s\n", rbuf);
+
+fail:
+    dict.destroy(&csvmap);
+    sbuf.destroy(&rbuf);
+    return result;
 }
 
 Exception
 App_main(App_c* app, const Allocator_i* allocator)
 {
-  utracef("App_main app\n");
+    (void)allocator;
+    Exc result = EOK;
 
-  io_c fstream;
+    io_c f = { 0 };
+    for$array(it, app->files, app->files_count)
+    {
+        uassert(*it.val != NULL && "unexpected null file name");
+        e$ret(io.fopen(&f, *it.val, "r", allocator));
 
-  e$(io.fattach(&fstream, stdout, allocator));
+        if (app->is_csv) {
+            uassert(false && "TODO: implement");
+            e$goto(App__process_csv(app, &f), fail);
+        } else {
+            except_traceback(err, App__process_plain(app, &f))
+            {
+                io.close(&f);
+                return err;
+            }
+        }
+        io.close(&f);
+    }
 
-  except_traceback(err, io.fprintf(&fstream, "hello world CEX\n"))
-  {
-    return err;
-  }
-
-  return Error.ok;
+fail:
+    io.close(&f);
+    return result;
 }
 
 void
 App_destroy(App_c* app, const Allocator_i* allocator)
 {
-  utracef("shutdown app\n");
+    (void)app;
+    (void)allocator;
+    utracef("App is shutting down\n");
 }
 
 const struct __class__App App = {
-  // Autogenerated by CEX
-  // clang-format off
+    // Autogenerated by CEX
+    // clang-format off
     .create = App_create,
     .main = App_main,
     .destroy = App_destroy,
-  // clang-format on
+    // clang-format on
 };

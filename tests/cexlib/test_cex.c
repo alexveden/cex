@@ -87,7 +87,7 @@ check(int condition)
 Exception
 check_with_dollar(int condition)
 {
-    e$(check(condition));
+    e$ret(check(condition));
     return EOK;
 }
 
@@ -104,7 +104,7 @@ Exception check_optimized(int e){
     (void)nit;
     (void)e;
 
-    e$(check(e));
+    e$ret(check(e));
 
     return EOK;
 }
@@ -113,6 +113,19 @@ test$case(test_e_dollar_macro)
 {
     tassert_eqs(EOK, check_with_dollar(true));
     tassert_eqs(Error.memory, check_with_dollar(-1));
+    return EOK;
+}
+
+test$case(test_e_dollar_macro_goto)
+{
+    Exc result = EOK;
+    // On fail jumps to 'fail' label + sets the result to returned by check_with_dollar()
+    e$goto(check_with_dollar(-1), fail);
+    tassert(false && "unreacheble");
+    
+fail:
+    tassert_eqe(Error.memory, result);
+
     return EOK;
 }
 
@@ -151,6 +164,7 @@ main(int argc, char* argv[])
     
     test$run(test_sysfunc);
     test$run(test_e_dollar_macro);
+    test$run(test_e_dollar_macro_goto);
     test$run(test_null_ptr);
     
     test$print_footer();  // ^^^^^ all tests runs are above

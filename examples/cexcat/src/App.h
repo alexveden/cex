@@ -2,8 +2,10 @@
 #include "cex.h"
 
 typedef struct App_c {
-    u32 argc;           
-    const char* path;
+    bool is_csv;
+    char** files;
+    u32 files_count;
+    const Allocator_i* allocator;
 } App_c;
 
 struct __class__App

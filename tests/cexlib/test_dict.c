@@ -35,7 +35,30 @@ test$setup()
  *   TEST SUITE
  *
  */
+test$case(test_dict_generic_auto_cmp_hash)
+{
 
+    struct s
+    {
+        char key[30];
+        u64 key_u64;
+        char* key_ptr;
+        char val;
+        str_c cexstr;
+    } rec;
+    (void)rec;
+
+    tassert(_dict$hashfunc(typeof(rec), key_u64) == dict.hashfunc.u64_hash);
+    tassert(_dict$hashfunc(typeof(rec), key) == dict.hashfunc.str_hash);
+    tassert(_dict$cmpfunc(typeof(rec), key_u64) == dict.hashfunc.u64_cmp);
+    tassert(_dict$cmpfunc(typeof(rec), key) == dict.hashfunc.str_cmp);
+
+    // NOTE: these are intentionally unsupported (because we store copy of data, and passing
+    // but passing pointers may leave them dangling, or use-after-free)
+    // tassert(_dict$hashfunc(typeof(rec), cexstr) == NULL);
+    // tassert(_dict$hashfunc(typeof(rec), key_ptr) == NULL);
+    return EOK;
+}
 
 test$case(test_dict_int64)
 {
@@ -203,28 +226,7 @@ test$case(test_dict_create_generic)
 }
 
 
-test$case(test_dict_generic_auto_cmp_hash)
-{
 
-    struct s
-    {
-        char key[30];
-        u64 key_u64;
-        char* key_ptr;
-        char val;
-        str_c cexstr;
-    } rec;
-    (void)rec;
-
-    tassert(_dict$hashfunc(typeof(rec), key_u64) == hm_int_hash);
-    tassert(_dict$hashfunc(typeof(rec), key) == hm_str_static_hash);
-
-    // NOTE: these are intentionally unsupported (because we store copy of data, and passing
-    // but passing pointers may leave them dangling, or use-after-free)
-    // tassert(_dict$hashfunc(typeof(rec), cexstr) == NULL);
-    // tassert(_dict$hashfunc(typeof(rec), key_ptr) == NULL);
-    return EOK;
-}
 
 test$case(test_dict_iter)
 {
@@ -319,10 +321,10 @@ main(int argc, char* argv[])
     test$args_parse(argc, argv);
     test$print_header();  // >>> all tests below
     
+    test$run(test_dict_generic_auto_cmp_hash);
     test$run(test_dict_int64);
     test$run(test_dict_string);
     test$run(test_dict_create_generic);
-    test$run(test_dict_generic_auto_cmp_hash);
     test$run(test_dict_iter);
     test$run(test_dict_tolist);
     

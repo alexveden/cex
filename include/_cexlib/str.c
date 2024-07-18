@@ -1,4 +1,5 @@
 #include "str.h"
+#include "_stb_sprintf.h"
 #include <ctype.h>
 
 
@@ -321,6 +322,7 @@ str__strip_right(str_c* s)
         }
     }
 }
+
 
 str_c
 str_lstrip(str_c s)

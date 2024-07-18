@@ -394,10 +394,7 @@ Exception
 argparse_parse(argparse_c* self, int argc, char** argv)
 {
     if (self->options_len == 0) {
-        return raise_exc(
-            Error.sanity_check,
-            "zero options provided or self.options_len field not set\n"
-        );
+        return "zero options provided or self.options_len field not set";
     }
     uassert(argc > 0);
     uassert(argv != NULL);

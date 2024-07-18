@@ -31,11 +31,17 @@ io_fopen(io_c* self, const char* filename, const char* mode, const Allocator_i* 
     };
 
     if (self->_fh == NULL) {
-        memset(self, 0, sizeof(*self));
-        return raise_exc(Error.io, "%s, file: %s\n", strerror(errno), filename);
+        *self = (io_c){ 0 };
+        switch (errno) {
+            case ENOENT:
+                return Error.not_found;
+            default:
+                return strerror(errno);
+        }
+    } else {
+        return Error.ok;
     }
 
-    return Error.ok;
 }
 
 Exception
@@ -218,7 +224,7 @@ io_readall(io_c* self, str_c* s)
 
     // Forbid console and stdin
     if (io_isatty(self)) {
-        return raise_exc(Error.io, "io.readall() not allowed for pipe/socket/std[in/out/err]\n");
+        return "io.readall() not allowed for pipe/socket/std[in/out/err]";
     }
 
     self->_fsize = io_size(self);
@@ -393,6 +399,15 @@ io_fprintf(io_c* self, const char* format, ...)
     }
 }
 
+void
+io_printf(const char* format, ...)
+{
+    va_list va;
+    va_start(va, format);
+    STB_SPRINTF_DECORATE(vfprintf)(stdout, format, va);
+    va_end(va);
+}
+
 Exception
 io_write(io_c* self, void* restrict obj_buffer, size_t obj_el_size, size_t obj_count)
 {
@@ -454,6 +469,7 @@ const struct __module__io io = {
     .readall = io_readall,
     .readline = io_readline,
     .fprintf = io_fprintf,
+    .printf = io_printf,
     .write = io_write,
     .close = io_close,
     // clang-format on

@@ -60,12 +60,7 @@ coverage/
 *.log
 
 __pycache__/
-.ipynb_checkpoints
-.gdb_history
-*.pcap
-*.dat
 *.old
 perf.data
-*.csv
 tmux_run.sh
 .gdb_history
