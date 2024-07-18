@@ -27,7 +27,33 @@ class CEXEnv:
         assert os.path.exists(self.cex_h_path)
         assert os.path.exists(self.cex_c_path)
 
+    def get_project_root(self):
+        cwd = os.getcwd()
+
+        def p(path):
+            return os.path.exists(os.path.join(cwd, path))
+
+        score = 0
+        score += p(".git")
+        score += p(".clangd")
+        score += p(".clang-format")
+        score += p(".gitignore")
+        score += p("Makefile")
+        score += p("tests")
+        score += p("src")
+        score += p("include")
+
+        if score < 3:
+            raise FileNotFoundError(f"{cwd} does not look as project root dir")
+
+        return cwd
+
     def __repr__(self):
+        try:
+            proj_root = self.get_project_root()
+        except Exception as exc:
+            proj_root = repr(exc)
+
         env_vars = {
             "cex_cli": self.cli_path,
             "cex_include": self.include_path,
@@ -35,8 +61,111 @@ class CEXEnv:
             "cex_c_path": self.cex_c_path,
             "cex_h_path": self.cex_h_path,
             "fff_h_path": self.fff_h_path,
+            "proj_root": proj_root,
         }
         return pprint.pformat(env_vars)
+
+
+class CEXCompiler:
+    def __init__(self):
+        self.env = CEXEnv()
+
+    def get_inlined_cc_args(self, test_src: str) -> tuple[list, list]:
+        """Get compiler/linker args inlined into main.c / test_.c file
+
+        Args:
+            test_src: main source code
+
+        Returns: list[cc_args], list[ld_args]
+        """
+        cc_args = []
+        ld_args = []
+        re_cc_args = re.compile(r"^//\s*#cc_args\s+(.*)$", re.MULTILINE)
+        re_ld_args = re.compile(r"^//\s*#ld_args\s+(.*)$", re.MULTILINE)
+
+        with open(test_src, "r") as fh:
+            for line in fh.readlines():
+                if line.startswith("#include"):
+                    break
+                g = re_cc_args.search(line)
+                if g:
+                    cc_args.append(g.group(1))
+
+                g = re_ld_args.search(line)
+                if g:
+                    ld_args.append(g.group(1))
+
+        return cc_args, ld_args
+
+    def compile_app(
+        self,
+        src_path: str,
+        out_file: str,
+        compiler_args: list[str] = None,
+        linker_args: list[str] = None,
+    ):
+        assert os.path.exists(src_path)
+
+        cc_args_inlined, ld_args_inlined = self.get_inlined_cc_args(src_path)
+
+        args = [
+            "cc",
+            "-Wall",
+            "-Wextra",
+            "-Werror",
+            "-fwhole-program",
+            f"-I{self.env.include_path}",
+        ]
+
+        # src/ and include/ are optional but keep then in gcc include
+        src_incl_path = os.path.join(os.getcwd(), "src/")
+        if os.path.exists(src_incl_path):
+            args.append(f"-I{src_incl_path}")
+
+        include_path = os.path.join(os.getcwd(), "include/")
+        if os.path.exists(include_path):
+            args.append(f"-I{include_path}")
+
+        if cc_args_inlined:
+            args.extend(cc_args_inlined)
+
+        if compiler_args:
+            args.extend(compiler_args)
+
+        args += [
+            src_path,
+            "-o",
+            out_file,
+        ]
+
+        if linker_args:
+            args.extend(linker_args)
+
+        if ld_args_inlined:
+            args.extend(ld_args_inlined)
+
+        process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = process.communicate()
+
+        if process.wait(300) != 0:
+            print("Process error:")
+            print(" ".join(args))
+            if cc_args_inlined:
+                print(f"CC args inlined:\n{cc_args_inlined=}")
+            if compiler_args:
+                print(f"CC args passed:\n{compiler_args=}")
+            if ld_args_inlined:
+                print(f"LD args inlined:\n{ld_args_inlined=}")
+            if linker_args:
+                print(f"LD args passed:\n{linker_args=}")
+            print("stdout:")
+            print(stdout.decode())
+            print("stderr:")
+            print(stderr.decode())
+            print(f"Compilation error: {src_path}")
+            sys.exit(1)
+
+    pass
 
 
 class CEXTestBuilder:
@@ -73,7 +202,7 @@ class CEXTestBuilder:
 
         tassertf(true == 0, "true != %d", false);
 
-        // allocator->free(a); // if commented this triggers memory leak warning by allocator
+        // allocator->free(a); // this triggers memory leak warning by allocator
 
         return EOK;
     }
@@ -100,6 +229,7 @@ class CEXTestBuilder:
         self.action = action
         self.include_path_cache = {}
         self.force_rebuild = force_rebuild
+        self.compiler = CEXCompiler()
 
         if not os.path.exists(test_dir):
             raise FileNotFoundError(
@@ -293,80 +423,6 @@ class CEXTestBuilder:
                 fh.write(buf.getvalue())
             return True
 
-    def get_inlined_cc_args(self, test_src: str):
-        gcc_args = []
-        re_gcc_args = re.compile(r"^//\s*#[g]*cc_args\s+(.*)$", re.MULTILINE)
-
-        with open(test_src, "r") as fh:
-            for line in fh.readlines():
-                if line.startswith("#include"):
-                    break
-                g = re_gcc_args.search(line)
-                if g:
-                    gcc_args.append(g.group(1))
-        return gcc_args
-
-    def compile(self, test_src: str):
-        assert os.path.exists(test_src)
-
-        gcc_args_inlined = self.get_inlined_cc_args(test_src)
-
-        test_exe = self.make_test_exe(test_src)
-
-        args = [
-            "cc",
-            "-DCEXTEST",
-            "-O0",
-            "-g3",
-            "-ggdb3",
-            "-Wall",
-            "-Wextra",
-            "-Werror",
-            "-Wuninitialized",
-            "-Wno-format-overflow",
-            "-Wno-unused-function",
-            "-Wdouble-promotion",
-            "-fsanitize-address-use-after-scope",
-            "-fsanitize=address",
-            "-fsanitize=undefined",
-            "-fsanitize=leak",
-            "-fstack-protector-strong",
-            f"-I{self.env.include_path}",
-            f"-I{self.test_dir}",
-        ]
-
-        # src/ and include/ are optional but keep then in gcc include
-        src_path = os.path.join(os.getcwd(), "src/")
-        if os.path.exists(src_path):
-            args.append(f"-I{src_path}")
-
-        include_path = os.path.join(os.getcwd(), "include/")
-        if os.path.exists(include_path):
-            args.append(f"-I{include_path}")
-
-        if gcc_args_inlined:
-            args.extend(gcc_args_inlined)
-
-        args += [
-            test_src,
-            "-o",
-            test_exe,
-        ]
-        process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        stdout, stderr = process.communicate()
-
-        if process.wait(60) != 0:
-            print("Process error:")
-            print(" ".join(args))
-            if gcc_args_inlined:
-                print(f"Args inlined:\n{gcc_args_inlined=}")
-            print("stdout:")
-            print(stdout.decode())
-            print("stderr:")
-            print(stderr.decode())
-            print(f"Compilation error: {test_src}")
-            sys.exit(1)
-
     def action_build(self):
         test_files_list = []
 
@@ -380,10 +436,28 @@ class CEXTestBuilder:
             assert self.src_path.endswith(".c"), "path must end with .c"
             test_files_list.append(self.src_path)
 
+        compiler_args = [
+            "-DCEXTEST",
+            "-O0",
+            "-g3",
+            "-ggdb3",
+            "-Wuninitialized",
+            "-Wno-format-overflow",
+            "-Wno-unused-function",
+            "-Wdouble-promotion",
+            "-fsanitize-address-use-after-scope",
+            "-fsanitize=address",
+            "-fsanitize=undefined",
+            "-fsanitize=leak",
+            "-fstack-protector-strong",
+            f"-I{self.test_dir}",
+        ]
+
         for fn in test_files_list:
             if self.action_build_test(fn):
                 print(f"Building: {fn}")
-                self.compile(fn)
+                test_exe = self.make_test_exe(fn)
+                self.compiler.compile_app(fn, test_exe, compiler_args)
 
     def action_run(self):
         test_exe_list = []
@@ -462,11 +536,181 @@ class CEXTestBuilder:
             self.action_run()
         else:
             raise ValueError(
-                f"Incorrect action: {self.action}, expected one of (build, create, run, clean)"
+                f"Incorrect action: {self.action}, expected one of (build, create, run, clean)"  # noqa
             )
 
 
 class CEXBuilder:
+    def __init__(
+        self,
+        action: str,
+        app_name: str,
+        target: str,
+        ccargs: str,
+        ldargs: str,
+        out_name: str,
+    ):
+        self.env = CEXEnv()
+        self.app_name = app_name
+        self.action = action
+        self.target = target
+        self.ccargs = ccargs
+        self.out_name = out_name
+        self.ldargs = ldargs
+        self.include_path_cache = {}
+        self.compiler = CEXCompiler()
+        self.project_root = self.env.get_project_root()
+
+    def make_exe_name(self, app_name: str, out_name: str = None) -> tuple[str, str]:
+        os.makedirs(os.path.join(self.project_root, "build"), exist_ok=True)
+
+        if app_name == ".":
+            main_path = os.path.join(self.project_root, "src", "main.c")
+            if not os.path.exists(main_path):
+                raise FileNotFoundError(f"{main_path}")
+            if not out_name:
+                out_name = os.path.basename(self.project_root)
+            return os.path.join(self.project_root, "build", out_name), main_path
+        elif app_name == "all":
+            raise RuntimeError("all is not supported by this operation")
+        else:
+            main_path = os.path.join(self.project_root, "src", app_name, "main.c")
+            if not os.path.exists(main_path):
+                raise FileNotFoundError(f"{main_path}")
+            return os.path.join(self.project_root, "build", app_name), main_path
+
+        # return os.path.join(, "build", test_src + ".test")
+
+    def action_build(self, target, app_name, out_name, cc_args, ld_args):
+
+        if target == "debug":
+            compiler_args = [
+                "-O0",
+                "-g3",
+                "-ggdb3",
+                "-Wuninitialized",
+                "-Wno-format-overflow",
+                "-fsanitize-address-use-after-scope",
+                "-fsanitize=address",
+                "-fsanitize=undefined",
+                "-fsanitize=leak",
+                "-fstack-protector-strong",
+            ]
+        elif target == "release-safe":
+            compiler_args = [
+                "-O3",
+                "-fsanitize-address-use-after-scope",
+                "-fsanitize=address",
+                "-fsanitize=undefined",
+                "-fsanitize=leak",
+                "-fstack-protector-strong",
+            ]
+        elif target == "release-fast":
+            compiler_args = [
+                "-O3",
+                "-DNDEBUG",  # disables all asserts
+            ]
+        elif target == "custom":
+            compiler_args = []
+        else:
+            raise ValueError(
+                f"unknown {target=}, supported {{debug,release-safe,release-fast}}"
+            )  # noqa
+
+        app_exe, main_path = self.make_exe_name(app_name, out_name)
+        self.compiler.compile_app(main_path, app_exe, compiler_args)
+
+    def action_run(self):
+        assert False
+        test_exe_list = []
+
+        # Rebuild new before run
+        self.action_build()
+
+        if self.src_path == "all":
+            for fn in glob.glob(
+                os.path.join(self.test_dir, "**", "test_*.c"), recursive=True
+            ):
+                test_exe_list.append(self.make_test_exe(fn))
+        else:
+            assert os.path.exists(self.src_path), f"test not exist: {self.src_path}"
+            assert self.src_path.endswith(".c"), "path must end with .c"
+            test_exe_list.append(self.make_test_exe(self.src_path))
+
+        for fn in test_exe_list:
+            args = [
+                fn,
+            ]
+
+            if self.src_path == "all":
+                args.extend(["q"])  # run cex test in quiet mode
+
+            process = subprocess.Popen(
+                args,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                # universal_newlines=True,
+                # shell=True,
+            )
+            for line in iter(process.stdout.readline, b""):
+                print(line.decode().rstrip())
+
+    def action_clean(self):
+        assert False
+        build_dir = os.path.join(self.test_dir, "build")
+        if self.src_path == "all":
+            if os.path.exists(build_dir):
+                shutil.rmtree(build_dir)
+        else:
+            assert os.path.exists(self.src_path), f"test not exist: {self.src_path}"
+            assert self.src_path.endswith(".c"), "path must end with .c"
+            test_exe = self.make_test_exe(self.src_path)
+            if os.path.exists(test_exe):
+                os.unlink(test_exe)
+
+    def action_create(self):
+        assert False
+        assert self.src_path != "all", "all not supported for `create` action"
+        assert not os.path.exists(self.src_path), f"path already exist: {self.src_path}"
+        assert self.src_path.endswith(".c"), "path must end with .c"
+        assert os.path.basename(self.src_path).startswith(
+            "test_"
+        ), "test file name must start with test_ prefix"
+
+        test_file = self.src_path
+
+        if not self.src_path.startswith(self.test_dir):
+            test_file = os.path.join(self.test_dir, test_file)
+
+        print(f"making: {test_file}")
+
+        os.makedirs(os.path.dirname(test_file), exist_ok=True)
+
+        with open(test_file, "w") as fh:
+            fh.write(dedent(CEXTestBuilder.TEMPLATE))
+
+    def build(self):
+        if self.action == "create":
+            self.action_create()
+        elif self.action == "build":
+            self.action_build(
+                target=self.target,
+                app_name=self.app_name,
+                out_name=self.out_name,
+                cc_args=self.ccargs,
+                ld_args=self.ldargs,
+            )
+        elif self.action == "clean":
+            self.action_clean()
+        elif self.action == "run":
+            self.action_run()
+        else:
+            raise ValueError(
+                f"Incorrect action: {self.action}, expected one of (build, create, run, clean)"  # noqa
+            )
+
+
+class CEXProcessor:
     RE_COMMENT_LINE = re.compile(r"^\s*//", re.MULTILINE)
     RE_COMMENT_ML_START = re.compile(r"^\s*\/\*", re.MULTILINE)
     RE_COMMENT_ML_END = re.compile(r".*\*\/", re.MULTILINE)
@@ -493,7 +737,7 @@ class CEXBuilder:
             return self.__class__.__qualname__
 
         def __repr__(self):
-            return f"Block: {str(self)} [{self.line_start}:{self.line_end}]\n{self.buf.getvalue()}"
+            return f"Block: {str(self)} [{self.line_start}:{self.line_end}]\n{self.buf.getvalue()}"  # noqa
 
         @staticmethod
         def probe(line: str) -> bool:
@@ -520,15 +764,15 @@ class CEXBuilder:
 
         @staticmethod
         def probe(line: str) -> bool:
-            return CEXBuilder.RE_COMMENT_LINE.search(
+            return CEXProcessor.RE_COMMENT_LINE.search(
                 line
-            ) or CEXBuilder.RE_COMMENT_ML_START.search(line)
+            ) or CEXProcessor.RE_COMMENT_ML_START.search(line)
 
         def process_line(self, line: str) -> bool | None:
             if self.comment_type is None:
-                if CEXBuilder.RE_COMMENT_ML_START.search(line):
+                if CEXProcessor.RE_COMMENT_ML_START.search(line):
                     self.comment_type = "m"
-                elif CEXBuilder.RE_COMMENT_LINE.search(line):
+                elif CEXProcessor.RE_COMMENT_LINE.search(line):
                     self.comment_type = "s"
                 else:
                     raise ValueError("Unsupproted commet")
@@ -536,13 +780,13 @@ class CEXBuilder:
                 self.buf.write(line)
 
                 # Single line contains comment end mark
-                if CEXBuilder.RE_COMMENT_ML_END.search(line):
+                if CEXProcessor.RE_COMMENT_ML_END.search(line):
                     return False
 
                 return True
             else:
                 if self.comment_type == "s":
-                    if CEXBuilder.RE_COMMENT_LINE.search(line):
+                    if CEXProcessor.RE_COMMENT_LINE.search(line):
                         self.buf.write(line)
                         return True
                     else:
@@ -550,7 +794,7 @@ class CEXBuilder:
                 else:
                     # In multiline comment, write all until end
 
-                    if CEXBuilder.RE_COMMENT_ML_END.search(line):
+                    if CEXProcessor.RE_COMMENT_ML_END.search(line):
                         self.buf.write(line.replace("\n", ""))
                         return False  # Block ended
                     else:
@@ -585,9 +829,9 @@ class CEXBuilder:
 
         @staticmethod
         def probe(line: str) -> bool:
-            assert not CEXBuilder.RE_COMMENT_LINE.search(line)
-            assert not CEXBuilder.RE_COMMENT_ML_START.search(line)
-            return CEXBuilder.RE_CODE_START_LINE.search(line)
+            assert not CEXProcessor.RE_COMMENT_LINE.search(line)
+            assert not CEXProcessor.RE_COMMENT_ML_START.search(line)
+            return CEXProcessor.RE_CODE_START_LINE.search(line)
 
         def process_brackets(self, c: str):
             assert len(c) == 1
@@ -611,8 +855,8 @@ class CEXBuilder:
 
         def process_line(self, line: str) -> bool | None:
             if not self._comment:
-                if CEXBuilder.Comment.probe(line):
-                    self._comment = CEXBuilder.Comment(-1)
+                if CEXProcessor.Comment.probe(line):
+                    self._comment = CEXProcessor.Comment(-1)
                     if not self._comment.process_line(line):
                         self._comment = None
                     return True
@@ -684,7 +928,7 @@ class CEXBuilder:
                             self._in_string_quotes.append(c)
                         else:
                             if c == '"' or c == "'":
-                                if line[i-1] != '\\':
+                                if line[i - 1] != "\\":
                                     # escaped quote, skipping \"
                                     if c == self._in_string_quotes[-1]:
                                         self._in_string_quotes.pop()
@@ -707,23 +951,23 @@ class CEXBuilder:
             name: function full name
             args: function full arguments
             docstr: comment block prior function
-            sub_module: function sub module, typically _<namespace>__<sub_module>__<name>
+            sub_module: function sub module, e.g _<namespace>__<sub_module>__<name>
             ifc_name: function interface short name
         """
 
         def __init__(self, decl: str, ifc_prefix: str):
-            g = CEXBuilder.RE_FUNC.match(decl)
+            g = CEXProcessor.RE_FUNC.match(decl)
             assert g, f"Function regex not matched: {decl}"
             self.is_static = False
             self.is_inline = False
             typedef = g.group(1)
 
-            if CEXBuilder.RE_STATIC.search(typedef):
+            if CEXProcessor.RE_STATIC.search(typedef):
                 self.is_static = True
-                typedef = CEXBuilder.RE_STATIC.sub(" ", typedef)
-            if CEXBuilder.RE_INLINE.search(typedef):
+                typedef = CEXProcessor.RE_STATIC.sub(" ", typedef)
+            if CEXProcessor.RE_INLINE.search(typedef):
                 self.is_inline = True
-                typedef = CEXBuilder.RE_INLINE.sub(" ", typedef)
+                typedef = CEXProcessor.RE_INLINE.sub(" ", typedef)
 
             self.ifc_prefix = ifc_prefix
             self.typedef = typedef.strip()
@@ -797,7 +1041,7 @@ class CEXBuilder:
         args: {self.args}
         """
 
-    def __init__(self, c_file: str, h_file: str, namespace: str = None):
+    def __init__(self, src_file: str, namespace: str = None):
         """CEX Module generator initializer
 
         Args:
@@ -805,19 +1049,25 @@ class CEXBuilder:
             h_file: path to .h file
             namespace:
         """
-        assert h_file.endswith(".h")
-        self.h_file = h_file
 
-        if c_file:
-            assert c_file.endswith(".c")
-            self.c_file = c_file
-            assert os.path.basename(c_file.replace(".c", "")) == os.path.basename(
-                h_file.replace(".h", "")
-            ), f"BaseName of {c_file=} and {h_file=} mismatch"
+        if src_file.endswith(".c"):
+            self.c_file = src_file
+            assert os.path.exists(self.c_file), f"{self.c_file=} not exists"
+
+            self.h_file = src_file[:-2] + ".h"
+            assert os.path.exists(self.h_file), f"{self.h_file=} not exists"
+
             self.is_public_header = False
-        else:
+        elif src_file.endswith(".h"):
+            self.h_file = src_file
+            assert os.path.exists(self.h_file), f"{self.h_file=} not exists"
+
+            self.c_file = src_file[:-2] + ".c"
+            assert os.path.exists(self.c_file), f"{self.c_file=} not exists"
+
             self.is_public_header = True
-            self.c_file = None
+        else:
+            raise ValueError(f"bad {src_file}")
 
         if namespace:
             self.namespace = namespace
@@ -836,10 +1086,10 @@ class CEXBuilder:
     @staticmethod
     def block_probe(line: str, lineno: int) -> Block | None:
         """Probed block type"""
-        if CEXBuilder.Comment.probe(line):
-            return CEXBuilder.Comment(lineno)
-        if CEXBuilder.Code.probe(line):
-            return CEXBuilder.Code(lineno)
+        if CEXProcessor.Comment.probe(line):
+            return CEXProcessor.Comment(lineno)
+        if CEXProcessor.Code.probe(line):
+            return CEXProcessor.Code(lineno)
         return None
 
     def parse_source(self, c_file) -> tuple[list[str], list[Block]]:
@@ -850,7 +1100,7 @@ class CEXBuilder:
             lines = fh.readlines()
 
         blocks = []
-        current_block: CEXBuilder.Block | None = None
+        current_block: CEXProcessor.Block | None = None
         for i, line in enumerate(lines):
             while True:
                 if current_block is None:
@@ -877,7 +1127,7 @@ class CEXBuilder:
         return lines, blocks
 
     def is_func_code(self, block: Code):
-        isinstance(block, CEXBuilder.Code)
+        isinstance(block, CEXProcessor.Code)
 
         if self.is_public_header:
             if block.code_type == "decl":
@@ -896,15 +1146,15 @@ class CEXBuilder:
         ifc_contents.append("{")
         ifc_contents.append("    // Autogenerated by CEX")
         ifc_contents.append("    // clang-format off\n")
-        functions: dict[str | None, list[CEXBuilder.Func]] = {}
+        functions: dict[str | None, list[CEXProcessor.Func]] = {}
         for i, b in enumerate(blocks):
 
             # print(repr(b))
-            if isinstance(b, CEXBuilder.Code):
+            if isinstance(b, CEXProcessor.Code):
                 if self.is_func_code(b):
-                    f = CEXBuilder.Func(b.buf.getvalue(), ns)
+                    f = CEXProcessor.Func(b.buf.getvalue(), ns)
                     if f.ifc_name and f.is_public_cex:
-                        if i > 0 and isinstance(blocks[i - 1], CEXBuilder.Comment):
+                        if i > 0 and isinstance(blocks[i - 1], CEXProcessor.Comment):
                             f.docstr = blocks[i - 1].buf.getvalue()
                         flist = functions.setdefault(f.sub_module, [])
                         flist.append(f)
@@ -955,17 +1205,17 @@ class CEXBuilder:
         ifc_contents.append(f"const struct {ns_struct_name} {ns} = {{")
         ifc_contents.append("    // Autogenerated by CEX")
         ifc_contents.append("    // clang-format off")
-        functions: dict[str | None, list[CEXBuilder.Func]] = {}
+        functions: dict[str | None, list[CEXProcessor.Func]] = {}
         for i, b in enumerate(blocks):
-            if isinstance(b, CEXBuilder.Code):
+            if isinstance(b, CEXProcessor.Code):
                 if self.is_func_code(b):
-                    f = CEXBuilder.Func(b.buf.getvalue(), ns)
+                    f = CEXProcessor.Func(b.buf.getvalue(), ns)
                     if f.ifc_name and f.is_public_cex:
                         if f.is_inline and not f.is_static:
                             raise ValueError(
                                 f"Function: {f.name} must be have static with inline"
                             )
-                        if i > 0 and isinstance(blocks[i - 1], CEXBuilder.Comment):
+                        if i > 0 and isinstance(blocks[i - 1], CEXProcessor.Comment):
                             f.docstr = blocks[i - 1].buf.getvalue()
                         flist = functions.setdefault(f.sub_module, [])
                         flist.append(f)
@@ -1000,14 +1250,14 @@ class CEXBuilder:
         existing = []
         last_ifndef = None
         for b in src_blocks:
-            if isinstance(b, CEXBuilder.Code) and b.code_type in ["var", "struct"]:
+            if isinstance(b, CEXProcessor.Code) and b.code_type in ["var", "struct"]:
                 code_line = b.buf.getvalue()
                 if self.ns_struct_name in code_line:
                     existing.append(b)
 
         for b in reversed(existing):
             # print(f"exists at: {b}")
-            del src_lines[int(b.line_start) : int(b.line_end) + 1]
+            del src_lines[int(b.line_start) : int(b.line_end) + 1]  # noqa
 
         for i, line in enumerate(reversed(src_lines)):
             if line.strip() == "":
@@ -1037,7 +1287,7 @@ class CEXBuilder:
         src.write(f"#include <{h_file}>\n\n")
         src_wrap.write(src.getvalue())
         src_wrap.write(
-            "// IMPORTANT: wrapping works only with gcc  `-Wl,--wrap=Shmem_new,--wrap=Protocol_event_emitter_new`  flag"
+            "// IMPORTANT: wrapping works only with gcc  `-Wl,--wrap=Shmem_new,--wrap=Protocol_event_emitter_new`  flag"  # noqa
         )
         fake_count = 0
 
@@ -1063,10 +1313,10 @@ class CEXBuilder:
         )
 
         for block in blocks:
-            if not isinstance(block, CEXBuilder.Code) or not self.is_func_code(block):
+            if not isinstance(block, CEXProcessor.Code) or not self.is_func_code(block):
                 continue
 
-            f = CEXBuilder.Func(block.buf.getvalue(), "")
+            f = CEXProcessor.Func(block.buf.getvalue(), "")
             if not f.is_public_cex:
                 continue
 
@@ -1099,10 +1349,10 @@ class CEXBuilder:
 
             if f.typedef.strip() == "void":
                 src.write(
-                    f"FAKE_VOID_FUNC{var_arg_prefix}({f.name}{sig_args_prefix}{', '.join(sig_args)})"
+                    f"FAKE_VOID_FUNC{var_arg_prefix}({f.name}{sig_args_prefix}{', '.join(sig_args)})"  # noqa
                 )
                 src_wrap.write(
-                    f"FAKE_VOID_FUNC{var_arg_prefix}(__wrap_{f.name}{sig_args_prefix}{', '.join(sig_args)})"
+                    f"FAKE_VOID_FUNC{var_arg_prefix}(__wrap_{f.name}{sig_args_prefix}{', '.join(sig_args)})"  # noqa
                 )
                 src_wrap.write(f"void __real_{f.name}({', '.join(sig_args)});\n")
             else:
@@ -1111,10 +1361,10 @@ class CEXBuilder:
                 ret_val = ret_val.replace("Exception", "Exc")
                 ret_val = ret_val.replace("ExcSkip", "Exc")
                 src.write(
-                    f"FAKE_VALUE_FUNC{var_arg_prefix}({ret_val}, {f.name}{sig_args_prefix}{', '.join(sig_args)})"
+                    f"FAKE_VALUE_FUNC{var_arg_prefix}({ret_val}, {f.name}{sig_args_prefix}{', '.join(sig_args)})"  # noqa
                 )
                 src_wrap.write(
-                    f"FAKE_VALUE_FUNC{var_arg_prefix}({ret_val}, __wrap_{f.name}{sig_args_prefix}{', '.join(sig_args)})"
+                    f"FAKE_VALUE_FUNC{var_arg_prefix}({ret_val}, __wrap_{f.name}{sig_args_prefix}{', '.join(sig_args)})"  # noqa
                 )
                 src_wrap.write(f"{f.typedef} __real_{f.name}({', '.join(sig_args)});\n")
 
@@ -1165,11 +1415,11 @@ class CEXBuilder:
             fh.writelines(h_lines)
 
         if fake_dir:
-            self.make_fff_fake(fake_dir, h_file, c_blocks)
+            self.make_fff_fake(fake_dir, self.h_file, c_blocks)
 
     def build_header(self, fake_dir):
         """Build CEX module"""
-        h_lines, h_blocks = self.parse_source(h_file)
+        h_lines, h_blocks = self.parse_source(self.h_file)
 
         ifc_decl = self.make_interface_declaration(h_blocks)
         ifc_def = self.make_interface_definition(h_blocks)
@@ -1190,17 +1440,17 @@ class CEXBuilder:
         if fake_dir:
 
             # Make fake for whole app
-            self.make_fff_fake(fake_dir, h_file, h_blocks, "")
+            self.make_fff_fake(fake_dir, self.h_file, h_blocks, "")
 
             sub_module_blocks = {}
 
             for block in h_blocks:
-                if not isinstance(block, CEXBuilder.Code) or not self.is_func_code(
+                if not isinstance(block, CEXProcessor.Code) or not self.is_func_code(
                     block
                 ):
                     continue
 
-                f = CEXBuilder.Func(block.buf.getvalue(), self.namespace)
+                f = CEXProcessor.Func(block.buf.getvalue(), self.namespace)
                 if not f.is_public_cex:
                     continue
                 sub_mod = f.sub_module if f.sub_module else ""
@@ -1211,7 +1461,7 @@ class CEXBuilder:
             for sub_mod, funcs_blocks in sub_module_blocks.items():
                 if not sub_mod.strip():
                     sub_mod = "unknown"
-                self.make_fff_fake(fake_dir, h_file, funcs_blocks, sub_mod)
+                self.make_fff_fake(fake_dir, self.h_file, funcs_blocks, sub_mod)
 
 
 def action_test(args):
@@ -1229,25 +1479,78 @@ def action_env(args):
     print(repr(env))
 
 
-def action_make(args):
-    print(f"action_make: {args}")
-    if args.source_path.endswith(".c"):
-        c_file = args.source_path
-        h_file = args.source_path.replace(".c", ".h")
+def action_build(args):
+    builder = CEXBuilder(
+        args.action,
+        app_name=args.app_name,
+        target=args.target,
+        ccargs=args.ccargs,
+        ldargs=args.ldargs,
+        out_name=args.outname,
+    )
+    builder.build()
+
+
+def action_process(args):
+    src_path = args.source_path
+
+    sources = {}
+    headers = {}
+
+    if os.path.isdir(src_path):
+        print("CEX Updating exising modules\n")
+        re_cex_module = re.compile(r"const struct __(class|module)__")
+        re_cex_header = re.compile(r"const struct __header__")
+
+        for fn in glob.glob("**/*.c", recursive=True):
+            if os.path.basename(fn).startswith("test_") or os.path.basename(
+                fn
+            ).startswith("fake_"):
+                continue
+            if fn.endswith("include/cex.c"):
+                # ignore bundles
+                continue
+            sources[fn] = None
+        for fn in glob.glob("**/*.h", recursive=True):
+            if os.path.basename(fn).startswith("test_") or os.path.basename(
+                fn
+            ).startswith("fake_"):
+                continue
+            if fn.endswith("include/cex.h"):
+                # ignore bundles
+                continue
+            if os.path.basename(fn) == "fff.h":
+                # ignore bundles
+                continue
+            headers[fn] = None
+
+        for fn in sources:
+            with open(fn, "r") as fh:
+                content = fh.read()
+                if re_cex_module.search(content):
+                    print(f"CEX bulding: {fn}")
+                    h_file = fn[:-2] + ".h"
+                    if h_file in headers:
+                        # remove .h file mapped to the current source, no double read
+                        del headers[h_file]
+                    builder = CEXProcessor(fn, namespace=args.namespace)
+                    builder.build(args.fakedir)
+
+        for fn in headers:
+            with open(fn, "r") as fh:
+                content = fh.read()
+                if re_cex_header.search(content):
+                    print(f"CEX bulding: {fn}")
+                    builder = CEXProcessor(fn, namespace=args.namespace)
+                    builder.build_header(args.fakedir)
+
     else:
-        assert args.source_path.endswith(".h")
-        h_file = args.source_path
-        c_file = None
-
-    # TODO: add batch mode (when passing directory)
-
-    builder = CEXBuilder(c_file, h_file, namespace=args.namespace)
-    if builder.is_public_header:
-        builder.build_header(args.fakedir)
-    else:
-        builder.build(args.fakedir)
-
-    print(f"CEX done for: {args.source_path}")
+        print(f"CEX building: {src_path}")
+        builder = CEXProcessor(src_path, namespace=args.namespace)
+        if builder.is_public_header:
+            builder.build_header(args.fakedir)
+        else:
+            builder.build(args.fakedir)
 
 
 if __name__ == "__main__":
@@ -1256,20 +1559,20 @@ if __name__ == "__main__":
         required=True, title="subcommands", help="CEX operations"
     )
 
-    make_parser = subparsers.add_parser(
-        "make", help="tranforms source code into CEX namespace"
+    process_parser = subparsers.add_parser(
+        "process", help="tranforms or updates source code into CEX namespace"
     )
-    make_parser.add_argument(
+    process_parser.add_argument(
         "source_path",
-        help="Directory (batch mode), or file path .c (code mode) or .h (lib mode)",
+        help="Directory (batch update mode), or file path .c (code mode) or .h (lib mode)",  # noqa
     )
-    make_parser.add_argument("--fakedir", help="fff.h fake directory", default="")
-    make_parser.add_argument(
+    process_parser.add_argument("--fakedir", help="fff.h fake directory", default="")
+    process_parser.add_argument(
         "--namespace",
         help="module/class namespace, inferred from file name",
         default=None,
     )
-    make_parser.set_defaults(func=action_make)
+    process_parser.set_defaults(func=action_process)
 
     test_parser = subparsers.add_parser("test", help="CEX test manager runner")
     test_parser.add_argument(
@@ -1281,7 +1584,7 @@ if __name__ == "__main__":
     test_parser.add_argument(
         "-f",
         "--force",
-        help="Force test rebuild befor command",
+        help="Force test rebuild before command",
         default=False,
         action="store_true",
     )
@@ -1292,6 +1595,30 @@ if __name__ == "__main__":
         "env", help="CEX environment variables / diagnostics"
     )
     env_parser.set_defaults(func=action_env)
+
+    build_parser = subparsers.add_parser("app", help="CEX app management")
+    build_parser.add_argument(
+        "action",
+        help="app action {create, run, build, debug, clean}",
+    )
+    build_parser.add_argument(
+        "app_name",
+        help=". for src/main.c, or `my_app_name` for src/<my_app_name>/main.c, or `all`",  # noqa
+    )
+    build_parser.add_argument(
+        "-o",
+        "--outname",
+        help="Application output name, in build/<outname>",
+        default="",
+    )
+    build_parser.add_argument(
+        "--target",
+        help="compiler args preset: {debug, release-safe, release-fast, custom}, default: debug",  # noqa
+        default="debug",
+    )
+    build_parser.add_argument("--ccargs", help="compiler arguments", default="")
+    build_parser.add_argument("--ldargs", help="linker arguments", default="")
+    build_parser.set_defaults(func=action_build)
 
     cli_arguments = global_parser.parse_args()
     cli_arguments.func(cli_arguments)
