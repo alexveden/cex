@@ -99,6 +99,18 @@ int
 str_c*
 (*iter_split)(str_c s, const char* split_by, cex_iterator_s* iterator);
 
+Exception
+(*toi8)(str_c self, i8* num);
+
+Exception
+(*toi16)(str_c self, i16* num);
+
+Exception
+(*toi32)(str_c self, i32* num);
+
+Exception
+(*toi64)(str_c self, i64* num);
+
     // clang-format on
 };
 extern const struct __module__str str; // CEX Autogen
