@@ -23,6 +23,8 @@ foo(int condition)
     if (condition == 0) {
         return raise_exc(Error.io, "condition == 0\n");
     }
+    if (condition == 2)
+        return Error.memory;
 
     return EOK;
 }
@@ -151,6 +153,25 @@ test$case(test_null_ptr)
 
     return EOK;
 }
+
+test$case(test_nested_excepts)
+{
+
+    except(err, foo(0)){
+        tassert_eqe(err, Error.io);
+
+        except(err, foo(2)){
+            tassert_eqe(err, Error.memory);
+        }
+
+        // err, back after nested handling!
+        tassert_eqe(err, Error.io);
+    return EOK;
+    }
+
+    tassert(false && "unreachable");
+    return EOK;
+}
 /*
  *
  * MAIN (AUTO GENERATED)
@@ -166,6 +187,7 @@ main(int argc, char* argv[])
     test$run(test_e_dollar_macro);
     test$run(test_e_dollar_macro_goto);
     test$run(test_null_ptr);
+    test$run(test_nested_excepts);
     
     test$print_footer();  // ^^^^^ all tests runs are above
     return test$exit_code();
