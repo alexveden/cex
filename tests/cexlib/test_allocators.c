@@ -1,4 +1,4 @@
-// #gcc_args -Wl,--wrap=malloc
+// --#cc_args -Wl,--wrap=malloc
 #include <alloca.h>
 #include <_cexlib/cex.c>
 #include <_cexlib/allocators.c>
@@ -14,7 +14,7 @@
  */
 DEFINE_FFF_GLOBALS
 FAKE_VALUE_FUNC(void*, __wrap_malloc, size_t, size_t)
-void* __real_malloc(size_t, size_t);
+// void* __real_malloc(size_t, size_t);
 
 /*
  * SUITE INIT / SHUTDOWN
@@ -29,7 +29,7 @@ test$teardown(){
 test$setup()
 {
     RESET_FAKE(__wrap_malloc);
-    __wrap_malloc_fake.custom_fake = __real_malloc;
+    // __wrap_malloc_fake.custom_fake = __real_malloc;
     uassert_enable();
     return EOK;
 }

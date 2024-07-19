@@ -4,6 +4,7 @@
 #include <_cexlib/cex.c>
 #include <_cexlib/cex.h>
 #include <_cexlib/str.c>
+#include <_cexlib/_stb_sprintf.c>
 #include <_cexlib/cextest.h>
 #include <stdio.h>
 #include <x86intrin.h>

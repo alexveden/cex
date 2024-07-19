@@ -188,7 +188,8 @@ test$case(stb_sprintf_orig)
     tassert(strncmp(buf, "37778931862957161709568.000000", 17) == 0);
     n = SNPRINTF(buf, 10, "number %f", 123.456789);
     tassert(strcmp(buf, "number 12") == 0);
-    tassert_eqi(n, 9); // written vs would-be written bytes
+    // tassert_eqi(n, 9); // written vs would-be written bytes
+    tassert_eqi(n, 10); // WARNING: cex changed this behavior to handle overflows!
     //
     buf[0] = '\0';
     n = SNPRINTF(buf, 0, "7 chars");
@@ -203,7 +204,7 @@ test$case(stb_sprintf_orig)
     tassert(SNPRINTF(buf, 600, "%510s     %c", "a", 'b') == 516);
 
     // length check
-    tassert(SNPRINTF(NULL, 0, " %s     %d", "b", 123) == 10);
+    tassert(SNPRINTF(NULL, 0, " %s     %d", "b", 123) == -1);
 
     // ' modifier. Non-standard, but supported by glibc.
 #if !USE_STB

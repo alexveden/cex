@@ -125,6 +125,23 @@ str_copy(str_c s, char* dest, size_t destlen)
     return Error.ok;
 }
 
+Exception
+str_sprintf(char* dest, size_t dest_len, const char* format, ...) {
+
+    va_list va;
+    va_start(va, format);
+
+    int result = STB_SPRINTF_DECORATE(vsnprintf)(dest, dest_len, format, va);
+    va_end(va);
+    if (result >= 0){
+        if((unsigned)result >= dest_len)
+            return Error.overflow;
+        return Error.ok;
+    } else {
+        return Error.argument;
+    }
+}
+
 size_t
 str_len(str_c s)
 {
@@ -988,6 +1005,7 @@ const struct __module__str str = {
     .cbuf = str_cbuf,
     .sub = str_sub,
     .copy = str_copy,
+    .sprintf = str_sprintf,
     .len = str_len,
     .is_valid = str_is_valid,
     .iter = str_iter,

@@ -1281,7 +1281,7 @@ typedef struct stbsp__context
 {
     char* buf;
     FILE* file;
-    int count;
+    int capacity;
     int length;
     int has_error;
     char tmp[STB_SPRINTF_MIN];
@@ -1293,8 +1293,8 @@ stbsp__clamp_callback(const char* buf, void* user, int len)
     stbsp__context* c = (stbsp__context*)user;
     c->length += len;
 
-    if (len > c->count) {
-        len = c->count;
+    if (len > c->capacity) {
+        len = c->capacity;
     }
 
     if (len) {
@@ -1309,13 +1309,13 @@ stbsp__clamp_callback(const char* buf, void* user, int len)
             } while (s < se);
         }
         c->buf += len;
-        c->count -= len;
+        c->capacity -= len;
     }
 
-    if (c->count <= 0) {
+    if (c->capacity <= 0) {
         return c->tmp;
     }
-    return (c->count >= STB_SPRINTF_MIN) ? c->buf : c->tmp; // go direct into buffer if you can
+    return (c->capacity >= STB_SPRINTF_MIN) ? c->buf : c->tmp; // go direct into buffer if you can
 }
 
 static char*
@@ -1333,15 +1333,13 @@ STB_SPRINTF_DECORATE(vsnprintf)(char* buf, int count, char const* fmt, va_list v
 {
     stbsp__context c;
 
-    if ((count == 0) && !buf) {
-        c.length = 0;
-
-        STB_SPRINTF_DECORATE(vsprintfcb)(stbsp__count_clamp_callback, &c, c.tmp, fmt, va);
+    if (!buf || count <= 0) {
+        return -1;
     } else {
         int l;
 
         c.buf = buf;
-        c.count = count;
+        c.capacity = count;
         c.length = 0;
 
         STB_SPRINTF_DECORATE(vsprintfcb)
@@ -1350,8 +1348,8 @@ STB_SPRINTF_DECORATE(vsnprintf)(char* buf, int count, char const* fmt, va_list v
         // zero-terminate
         l = (int)(c.buf - buf);
         if (l >= count) { // should never be greater, only equal (or less) than count
-            l = count - 1;
             c.length = l;
+            l = count - 1;
         }
         buf[l] = 0;
     }

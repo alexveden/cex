@@ -126,11 +126,14 @@ class CEXCompiler:
         if os.path.exists(include_path):
             args.append(f"-I{include_path}")
 
-        if cc_args_inlined:
-            args.extend(cc_args_inlined)
-
         if compiler_args:
             args.extend(compiler_args)
+
+
+        # args.append(src_path)
+
+        if cc_args_inlined:
+            args.extend(cc_args_inlined)
 
         args += [
             src_path,

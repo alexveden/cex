@@ -51,6 +51,9 @@ str_c
 Exception
 (*copy)(str_c s, char* dest, size_t destlen);
 
+Exception
+(*sprintf)(char* dest, size_t dest_len, const char* format, ...);
+
 size_t
 (*len)(str_c s);
 
