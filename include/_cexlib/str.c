@@ -1,6 +1,8 @@
 #include "str.h"
 #include "_stb_sprintf.h"
 #include <ctype.h>
+#include <float.h>
+#include <math.h>
 
 
 static inline bool
@@ -552,6 +554,7 @@ str_iter_split(str_c s, const char* split_by, cex_iterator_s* iterator)
 Exception
 str__to_signed_num(str_c self, i64* num, i64 num_min, i64 num_max)
 {
+    _Static_assert(sizeof(i64) == 8, "unexpected u64 size");
     uassert(num_min < num_max);
     uassert(num_min <= 0);
     uassert(num_max > 0);
@@ -638,6 +641,7 @@ str__to_signed_num(str_c self, i64* num, i64 num_min, i64 num_max)
 Exception
 str__to_unsigned_num(str_c self, u64* num, u64 num_max)
 {
+    _Static_assert(sizeof(u64) == 8, "unexpected u64 size");
     uassert(num_max > 0);
     uassert(num_max > 64);
 
@@ -714,6 +718,193 @@ str__to_unsigned_num(str_c self, u64* num, u64 num_max)
     *num = (i64)acc;
 
     return Error.ok;
+}
+
+Exception
+str__to_double(str_c self, double* num, i32 exp_min, i32 exp_max)
+{
+    _Static_assert(sizeof(double) == 8, "unexpected double precision");
+    if (unlikely(self.len == 0)) {
+        return Error.argument;
+    }
+
+    char* s = self.buf;
+    size_t len = self.len;
+    size_t i = 0;
+    double number = 0.0;
+
+    for (; s[i] == ' ' && i < self.len; i++) {
+    }
+
+    double sign = 1;
+    if (s[i] == '-') {
+        sign = -1;
+        i++;
+    } else if (unlikely(s[i] == '+')) {
+        i++;
+    }
+
+    if (unlikely(i >= len)) {
+        return Error.argument;
+    }
+
+    if (unlikely(s[i] == 'n' || s[i] == 'i' || s[i] == 'N' || s[i] == 'I')) {
+        if (unlikely(len - i < 3)) {
+            return Error.argument;
+        }
+        if (s[i] == 'n' || s[i] == 'N') {
+            if ((s[i + 1] == 'a' || s[i + 1] == 'A') && (s[i + 2] == 'n' || s[i + 2] == 'N')) {
+                number = NAN;
+                i += 3;
+            }
+        } else {
+            // s[i] = 'i'
+            if ((s[i + 1] == 'n' || s[i + 1] == 'N') && (s[i + 2] == 'f' || s[i + 2] == 'F')) {
+                number = (double)INFINITY * sign;
+                i += 3;
+            }
+            // INF 'INITY' part (optional but still valid)
+            // clang-format off
+            if (unlikely(len - i >= 5)) {
+                if ((s[i + 0] == 'i' || s[i + 0] == 'I') && 
+                    (s[i + 1] == 'n' || s[i + 1] == 'N') &&
+                    (s[i + 2] == 'i' || s[i + 2] == 'I') &&
+                    (s[i + 3] == 't' || s[i + 3] == 'T') &&
+                    (s[i + 4] == 'y' || s[i + 4] == 'Y')) {
+                    i += 5;
+                }
+            }
+            // clang-format on
+        }
+
+        // Allow trailing spaces, but no other character allowed
+        for (; i < len; i++) {
+            if (s[i] != ' ') {
+                return Error.argument;
+            }
+        }
+
+        *num = number;
+        return Error.ok;
+    }
+
+    i32 exponent = 0;
+    u32 num_decimals = 0;
+    u32 num_digits = 0;
+
+    for (; i < len; i++) {
+        u8 c = (u8)s[i];
+
+        if (c >= '0' && c <= '9') {
+            c -= '0';
+        } else if (c == 'e' || c == 'E' || c == '.') {
+            break;
+        } else {
+            return Error.argument;
+        }
+
+        number = number * 10. + c;
+        num_digits++;
+    }
+    // Process decimal part
+    if (i < len && s[i] == '.') {
+        i++;
+
+        for (; i < len; i++) {
+            u8 c = (u8)s[i];
+
+            if (c >= '0' && c <= '9') {
+                c -= '0';
+            } else {
+                break;
+            }
+            number = number * 10. + c;
+            num_decimals++;
+            num_digits++;
+        }
+        exponent -= num_decimals;
+    }
+
+
+    number *= sign;
+
+    if (i < len - 1 && (s[i] == 'e' || s[i] == 'E')) {
+        i++;
+        sign = 1;
+        if (s[i] == '-') {
+            sign = -1;
+            i++;
+        } else if (s[i] == '+') {
+            i++;
+        }
+
+        u32 n = 0;
+        for (; i < len; i++) {
+            u8 c = (u8)s[i];
+
+            if (c >= '0' && c <= '9') {
+                c -= '0';
+            } else {
+                break;
+            }
+
+            n = n * 10 + c;
+        }
+
+        exponent += n * sign;
+    }
+
+    if (num_digits == 0) {
+        return Error.argument;
+    }
+
+    if (exponent < exp_min || exponent > exp_max) {
+        return Error.overflow;
+    }
+
+    // Scale the result
+    double p10 = 10.;
+    i32 n = exponent;
+    if (n < 0) {
+        n = -n;
+    }
+    while (n) {
+        if (n & 1) {
+            if (exponent < 0) {
+                number /= p10;
+            } else {
+                number *= p10;
+            }
+        }
+        n >>= 1;
+        p10 *= p10;
+    }
+
+    if (number == HUGE_VAL) {
+        return Error.overflow;
+    }
+
+    // Allow trailing spaces, but no other character allowed
+    for (; i < len; i++) {
+        if (s[i] != ' ') {
+            return Error.argument;
+        }
+    }
+
+    *num = number;
+
+    return Error.ok;
+}
+
+Exception str_to_f32(str_c self, f32* num){
+    f64 res = 0;
+    Exc r = str__to_double(self, &res, -37, 38);
+    *num = (f32)res;
+    return r;
+}
+
+Exception str_to_f64(str_c self, f64* num){
+    return str__to_double(self, num, -307, 308);
 }
 
 Exception
@@ -813,6 +1004,8 @@ const struct __module__str str = {
     .cmp = str_cmp,
     .cmpi = str_cmpi,
     .iter_split = str_iter_split,
+    .to_f32 = str_to_f32,
+    .to_f64 = str_to_f64,
     .to_i8 = str_to_i8,
     .to_i16 = str_to_i16,
     .to_i32 = str_to_i32,

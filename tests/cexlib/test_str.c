@@ -1369,6 +1369,273 @@ test$case(test_str_to_u64)
 
     return EOK;
 }
+test$case(str_to__double)
+{
+    double num;
+    str_c s;
+
+    num = 0;
+    s = s$("1");
+    tassert_eqe(EOK, str__to_double(s, &num, -100, 100));
+    tassert_eqf(num, 1.0);
+
+    num = 0;
+    s = s$("1.5");
+    tassert_eqe(EOK, str__to_double(s, &num, -100, 100));
+    tassert_eqf(num, 1.5);
+
+    num = 0;
+    s = s$("-1.5");
+    tassert_eqe(EOK, str__to_double(s, &num, -100, 100));
+    tassert_eqf(num, -1.5);
+
+    num = 0;
+    s = s$("1e3");
+    tassert_eqe(EOK, str__to_double(s, &num, -100, 100));
+    tassert_eqf(num, 1000);
+
+    num = 0;
+    s = s$("1e-3");
+    tassert_eqe(EOK, str__to_double(s, &num, -100, 100));
+    tassert_eqf(num, 1e-3);
+
+    num = 0;
+    s = s$("123e-30");
+    tassert_eqe(EOK, str__to_double(s, &num, -100, 100));
+    tassert_eqf(num, 123e-30);
+
+    num = 0;
+    s = s$("123e+30");
+    tassert_eqe(EOK, str__to_double(s, &num, -100, 100));
+    tassert_eqf(num, 123e+30);
+
+    num = 0;
+    s = s$("123.321E+30");
+    tassert_eqe(EOK, str__to_double(s, &num, -100, 100));
+    tassert_eqf(num, 123.321e+30);
+
+    num = 0;
+    s = s$("-0.");
+    tassert_eqe(EOK, str__to_double(s, &num, -100, 100));
+    tassert_eqf(num, -0.0);
+
+    num = 0;
+    s = s$("+.5");
+    tassert_eqe(EOK, str__to_double(s, &num, -100, 100));
+    tassert_eqf(num, 0.5);
+
+    num = 0;
+    s = s$(".0e10");
+    tassert_eqe(EOK, str__to_double(s, &num, -100, 100));
+    tassert_eqf(num, 0.0);
+
+    num = 0;
+    s = s$(".");
+    tassert_eqe(Error.argument, str__to_double(s, &num, -100, 100));
+    tassert_eqf(num, 0.0);
+
+    num = 0;
+    s = s$(".e10");
+    tassert_eqe(Error.argument, str__to_double(s, &num, -100, 100));
+    tassert_eqf(num, 0.0);
+
+    num = 0;
+    s = s$("00000000001.e00000010");
+    tassert_eqe(Error.ok, str__to_double(s, &num, -100, 100));
+    tassert_eqf(num, 10000000000.0);
+
+    num = 0;
+    s = s$("e10");
+    tassert_eqe(Error.argument, str__to_double(s, &num, -100, 100));
+
+    num = 0;
+    s = s$("10e");
+    tassert_eqe(Error.argument, str__to_double(s, &num, -100, 100));
+
+    num = 0;
+    s = s$("10e0.3");
+    tassert_eqe(Error.argument, str__to_double(s, &num, -100, 100));
+
+    num = 0;
+    s = s$("10a");
+    tassert_eqe(Error.argument, str__to_double(s, &num, -100, 100));
+
+    num = 0;
+    s = s$("10.0a");
+    tassert_eqe(Error.argument, str__to_double(s, &num, -100, 100));
+
+    num = 0;
+    s = s$("10.0e-a");
+    tassert_eqe(Error.argument, str__to_double(s, &num, -100, 100));
+
+    num = 0;
+    s = s$("      10.5     ");
+    tassert_eqe(Error.ok, str__to_double(s, &num, -100, 100));
+    tassert_eqf(num, 10.5);
+
+    num = 0;
+    s = s$("      10.5     z");
+    tassert_eqe(Error.argument, str__to_double(s, &num, -100, 100));
+
+    num = 0;
+    s = s$("n");
+    tassert_eqe(Error.argument, str__to_double(s, &num, -100, 100));
+
+    num = 0;
+    s = s$("na");
+    tassert_eqe(Error.argument, str__to_double(s, &num, -100, 100));
+
+    num = 0;
+    s = s$("nan");
+    tassert_eqe(Error.ok, str__to_double(s, &num, -100, 100));
+    tassert_eqf(num, NAN);
+
+    num = 0;
+    s = s$("   NAN    ");
+    tassert_eqe(Error.ok, str__to_double(s, &num, -100, 100));
+    tassert_eqf(num, NAN);
+
+    num = 0;
+    s = s$("   NaN    ");
+    tassert_eqe(Error.ok, str__to_double(s, &num, -100, 100));
+    tassert_eqf(num, NAN);
+
+    num = 0;
+    s = s$("   nan    y");
+    tassert_eqe(Error.argument, str__to_double(s, &num, -100, 100));
+
+    num = 0;
+    s = s$("   nanny");
+    tassert_eqe(Error.argument, str__to_double(s, &num, -100, 100));
+
+    num = 0;
+    s = s$("inf");
+    tassert_eqe(Error.ok, str__to_double(s, &num, -100, 100));
+    tassert_eqf(num, INFINITY);
+
+    num = 0;
+    s = s$("INF");
+    tassert_eqe(Error.ok, str__to_double(s, &num, -100, 100));
+    tassert_eqf(num, INFINITY);
+    tassert(isinf(num));
+
+    num = 0;
+    s = s$("-iNf");
+    tassert_eqe(Error.ok, str__to_double(s, &num, -100, 100));
+    tassert_eqf(num, -INFINITY);
+    tassert(isinf(num));
+
+    num = 0;
+    s = s$("-infinity");
+    tassert_eqe(Error.ok, str__to_double(s, &num, -100, 100));
+    tassert_eqf(num, -INFINITY);
+    tassert(isinf(num));
+
+    num = 0;
+    s = s$("   INFINITY   ");
+    tassert_eqe(Error.ok, str__to_double(s, &num, -100, 100));
+    tassert_eqf(num, INFINITY);
+    tassert(isinf(num));
+
+    num = 0;
+    s = s$("INFINITY0");
+    tassert_eqe(Error.argument, str__to_double(s, &num, -100, 100));
+
+    num = 0;
+    s = s$("INFO");
+    tassert_eqe(Error.argument, str__to_double(s, &num, -100, 100));
+
+    num = 0;
+    s = s$("1e100");
+    tassert_eqe(Error.ok, str__to_double(s, &num, -100, 100));
+
+    num = 0;
+    s = s$("1e101");
+    tassert_eqe(Error.overflow, str__to_double(s, &num, -100, 100));
+
+    num = 0;
+    s = s$("1e-100");
+    tassert_eqe(Error.ok, str__to_double(s, &num, -100, 100));
+
+    num = 0;
+    s = s$("1e-101");
+    tassert_eqe(Error.overflow, str__to_double(s, &num, -100, 100));
+
+    return EOK;
+}
+test$case(test_str_to_f32)
+{
+    f32 num;
+    str_c s;
+
+    num = 0;
+    s = s$("1.4");
+    tassert_eqe(EOK, str.to_f32(s, &num));
+    tassert_eqf(num, 1.4f);
+
+
+    num = 0;
+    s = s$("nan");
+    tassert_eqe(EOK, str.to_f32(s, &num));
+    tassert_eqf(num, NAN);
+
+    num = 0;
+    s = s$("1e38");
+    tassert_eqe(EOK, str.to_f32(s, &num));
+
+    num = 0;
+    s = s$("1e39");
+    tassert_eqe(Error.overflow, str.to_f32(s, &num));
+
+    
+    num = 0;
+    s = s$("1e-37");
+    tassert_eqe(EOK, str.to_f32(s, &num));
+
+    num = 0;
+    s = s$("1e-38");
+    tassert_eqe(Error.overflow, str.to_f32(s, &num));
+    
+    
+    return EOK;
+}
+
+test$case(test_str_to_f64)
+{
+    f64 num;
+    str_c s;
+
+    num = 0;
+    s = s$("1.4");
+    tassert_eqe(EOK, str.to_f64(s, &num));
+    tassert_eqf(num, 1.4);
+
+
+    num = 0;
+    s = s$("nan");
+    tassert_eqe(EOK, str.to_f64(s, &num));
+    tassert_eqf(num, NAN);
+
+    num = 0;
+    s = s$("1e308");
+    tassert_eqe(EOK, str.to_f64(s, &num));
+
+    num = 0;
+    s = s$("1e309");
+    tassert_eqe(Error.overflow, str.to_f64(s, &num));
+
+    
+    num = 0;
+    s = s$("1e-307");
+    tassert_eqe(EOK, str.to_f64(s, &num));
+
+    num = 0;
+    s = s$("1e-308");
+    tassert_eqe(Error.overflow, str.to_f64(s, &num));
+    
+    
+    return EOK;
+}
 /*
  *
  * MAIN (AUTO GENERATED)
@@ -1405,6 +1672,9 @@ main(int argc, char* argv[])
     test$run(test_str_to_u16);
     test$run(test_str_to_u32);
     test$run(test_str_to_u64);
+    test$run(str_to__double);
+    test$run(test_str_to_f32);
+    test$run(test_str_to_f64);
     
     test$print_footer();  // ^^^^^ all tests runs are above
     return test$exit_code();

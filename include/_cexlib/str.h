@@ -100,6 +100,12 @@ str_c*
 (*iter_split)(str_c s, const char* split_by, cex_iterator_s* iterator);
 
 Exception
+(*to_f32)(str_c self, f32* num);
+
+Exception
+(*to_f64)(str_c self, f64* num);
+
+Exception
 (*to_i8)(str_c self, i8* num);
 
 Exception

@@ -19,7 +19,7 @@ all: cex tests
 
 
 cex:
-	@for cfile in $(CEX_SRC_INCL); do  (cat $$cfile | grep -E 'const struct __(class|module)__' > /dev/null) && cli/cex $$cfile --fakedir=tests/fake/; done 
+	cex process .
 	./cli/cex_bundler
 	
 
@@ -33,7 +33,6 @@ test:
 	ulimit -c unlimited && cex test run $(t)
 
 debug:
-	@echo "\nMaking CEX TEST: $(t)"
 	cex test build $(t)
 	ulimit -c unlimited && gdb -q --args $(BUILD_DIR)/$(t).test vvvvv $(c) 
 

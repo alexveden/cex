@@ -277,7 +277,7 @@ struct __CexTestContext_s
             snprintf(                                                                              \
                 __CexTestContext._str_buf,                                                         \
                 CEXTEST_AMSG_MAX_LEN - 1,                                                          \
-                __CEXTEST_LOG_ERR("%f != %f (diff: %0.10f epsilon: %0.10f)"),                      \
+                __CEXTEST_LOG_ERR("%.10e != %.10e (diff: %0.10e epsilon: %0.10e)"),                      \
                 (ac),                                                                              \
                 (ex),                                                                              \
                 ((ac) - (ex)),                                                                     \

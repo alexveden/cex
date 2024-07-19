@@ -707,7 +707,7 @@ struct __CexTestContext_s
             snprintf(                                                                              \
                 __CexTestContext._str_buf,                                                         \
                 CEXTEST_AMSG_MAX_LEN - 1,                                                          \
-                __CEXTEST_LOG_ERR("%f != %f (diff: %0.10f epsilon: %0.10f)"),                      \
+                __CEXTEST_LOG_ERR("%.10e != %.10e (diff: %0.10e epsilon: %0.10e)"),                      \
                 (ac),                                                                              \
                 (ex),                                                                              \
                 ((ac) - (ex)),                                                                     \
@@ -993,6 +993,36 @@ int
 
 str_c*
 (*iter_split)(str_c s, const char* split_by, cex_iterator_s* iterator);
+
+Exception
+(*to_f32)(str_c self, f32* num);
+
+Exception
+(*to_f64)(str_c self, f64* num);
+
+Exception
+(*to_i8)(str_c self, i8* num);
+
+Exception
+(*to_i16)(str_c self, i16* num);
+
+Exception
+(*to_i32)(str_c self, i32* num);
+
+Exception
+(*to_i64)(str_c self, i64* num);
+
+Exception
+(*to_u8)(str_c self, u8* num);
+
+Exception
+(*to_u16)(str_c self, u16* num);
+
+Exception
+(*to_u32)(str_c self, u32* num);
+
+Exception
+(*to_u64)(str_c self, u64* num);
 
     // clang-format on
 };

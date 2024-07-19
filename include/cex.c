@@ -6248,6 +6248,8 @@ const struct __module__sbuf sbuf = {
 *                   str.c
 */
 #include <ctype.h>
+#include <float.h>
+#include <math.h>
 
 
 static inline bool
@@ -6795,6 +6797,437 @@ str_iter_split(str_c s, const char* split_by, cex_iterator_s* iterator)
     }
 }
 
+
+Exception
+str__to_signed_num(str_c self, i64* num, i64 num_min, i64 num_max)
+{
+    _Static_assert(sizeof(i64) == 8, "unexpected u64 size");
+    uassert(num_min < num_max);
+    uassert(num_min <= 0);
+    uassert(num_max > 0);
+    uassert(num_max > 64);
+    uassert(num_min == 0 || num_min < -64);
+    uassert(num_min >= INT64_MIN + 1 && "try num_min+1, negation overflow");
+
+    if (unlikely(self.len == 0)) {
+        return Error.argument;
+    }
+
+    char* s = self.buf;
+    size_t len = self.len;
+    size_t i = 0;
+
+    for (; s[i] == ' ' && i < self.len; i++) {
+    }
+
+    u64 neg = 1;
+    if (s[i] == '-') {
+        neg = -1;
+        i++;
+    } else if (unlikely(s[i] == '+')) {
+        i++;
+    }
+    i32 base = 10;
+
+    if (unlikely(i >= len)) {
+        return Error.argument;
+    }
+
+    if ((len - i) >= 2 && s[i] == '0' && (s[i + 1] == 'x' || s[i + 1] == 'X')) {
+        i += 2;
+        base = 16;
+        if (unlikely(i >= len)) {
+            // edge case when '0x'
+            return Error.argument;
+        }
+    }
+
+    u64 cutoff = (u64)(neg == 1 ? (u64)num_max : (u64)-num_min);
+    u64 cutlim = cutoff % (u64)base;
+    cutoff /= (u64)base;
+
+    u64 acc = 0;
+
+    for (; i < len; i++) {
+        u8 c = (u8)s[i];
+
+        if (c >= '0' && c <= '9') {
+            c -= '0';
+        } else if (c >= 'A' && c <= 'F') {
+            c = c - 'A' + 10;
+        } else if (c >= 'a' && c <= 'f') {
+            c = c - 'a' + 10;
+        } else {
+            break;
+        }
+
+        if (unlikely(c >= base)) {
+            return Error.argument;
+        }
+
+        if (unlikely(acc > cutoff || (acc == cutoff && c > cutlim))) {
+            return Error.overflow;
+        } else {
+            acc *= base;
+            acc += c;
+        }
+    }
+
+    // Allow trailing spaces, but no other character allowed
+    for (; i < len; i++) {
+        if (s[i] != ' ') {
+            return Error.argument;
+        }
+    }
+
+    *num = (i64)acc * neg;
+
+    return Error.ok;
+}
+
+Exception
+str__to_unsigned_num(str_c self, u64* num, u64 num_max)
+{
+    _Static_assert(sizeof(u64) == 8, "unexpected u64 size");
+    uassert(num_max > 0);
+    uassert(num_max > 64);
+
+    if (unlikely(self.len == 0)) {
+        return Error.argument;
+    }
+
+    char* s = self.buf;
+    size_t len = self.len;
+    size_t i = 0;
+
+    for (; s[i] == ' ' && i < self.len; i++) {
+    }
+
+    if (s[i] == '-') {
+        return Error.argument;
+    } else if (unlikely(s[i] == '+')) {
+        i++;
+    }
+    i32 base = 10;
+
+    if (unlikely(i >= len)) {
+        return Error.argument;
+    }
+
+    if ((len - i) >= 2 && s[i] == '0' && (s[i + 1] == 'x' || s[i + 1] == 'X')) {
+        i += 2;
+        base = 16;
+
+        if (unlikely(i >= len)) {
+            // edge case when '0x'
+            return Error.argument;
+        }
+    }
+
+    u64 cutoff = num_max;
+    u64 cutlim = cutoff % (u64)base;
+    cutoff /= (u64)base;
+
+    u64 acc = 0;
+
+    for (; i < len; i++) {
+        u8 c = (u8)s[i];
+
+        if (c >= '0' && c <= '9') {
+            c -= '0';
+        } else if (c >= 'A' && c <= 'F') {
+            c = c - 'A' + 10;
+        } else if (c >= 'a' && c <= 'f') {
+            c = c - 'a' + 10;
+        } else {
+            break;
+        }
+
+        if (unlikely(c >= base)) {
+            return Error.argument;
+        }
+
+        if (unlikely(acc > cutoff || (acc == cutoff && c > cutlim))) {
+            return Error.overflow;
+        } else {
+            acc *= base;
+            acc += c;
+        }
+    }
+
+    // Allow trailing spaces, but no other character allowed
+    for (; i < len; i++) {
+        if (s[i] != ' ') {
+            return Error.argument;
+        }
+    }
+
+    *num = (i64)acc;
+
+    return Error.ok;
+}
+
+Exception
+str__to_double(str_c self, double* num, i32 exp_min, i32 exp_max)
+{
+    _Static_assert(sizeof(double) == 8, "unexpected double precision");
+    if (unlikely(self.len == 0)) {
+        return Error.argument;
+    }
+
+    char* s = self.buf;
+    size_t len = self.len;
+    size_t i = 0;
+    double number = 0.0;
+
+    for (; s[i] == ' ' && i < self.len; i++) {
+    }
+
+    double sign = 1;
+    if (s[i] == '-') {
+        sign = -1;
+        i++;
+    } else if (unlikely(s[i] == '+')) {
+        i++;
+    }
+
+    if (unlikely(i >= len)) {
+        return Error.argument;
+    }
+
+    if (unlikely(s[i] == 'n' || s[i] == 'i' || s[i] == 'N' || s[i] == 'I')) {
+        if (unlikely(len - i < 3)) {
+            return Error.argument;
+        }
+        if (s[i] == 'n' || s[i] == 'N') {
+            if ((s[i + 1] == 'a' || s[i + 1] == 'A') && (s[i + 2] == 'n' || s[i + 2] == 'N')) {
+                number = NAN;
+                i += 3;
+            }
+        } else {
+            // s[i] = 'i'
+            if ((s[i + 1] == 'n' || s[i + 1] == 'N') && (s[i + 2] == 'f' || s[i + 2] == 'F')) {
+                number = (double)INFINITY * sign;
+                i += 3;
+            }
+            // INF 'INITY' part (optional but still valid)
+            // clang-format off
+            if (unlikely(len - i >= 5)) {
+                if ((s[i + 0] == 'i' || s[i + 0] == 'I') &&
+                    (s[i + 1] == 'n' || s[i + 1] == 'N') &&
+                    (s[i + 2] == 'i' || s[i + 2] == 'I') &&
+                    (s[i + 3] == 't' || s[i + 3] == 'T') &&
+                    (s[i + 4] == 'y' || s[i + 4] == 'Y')) {
+                    i += 5;
+                }
+            }
+            // clang-format on
+        }
+
+        // Allow trailing spaces, but no other character allowed
+        for (; i < len; i++) {
+            if (s[i] != ' ') {
+                return Error.argument;
+            }
+        }
+
+        *num = number;
+        return Error.ok;
+    }
+
+    i32 exponent = 0;
+    u32 num_decimals = 0;
+    u32 num_digits = 0;
+
+    for (; i < len; i++) {
+        u8 c = (u8)s[i];
+
+        if (c >= '0' && c <= '9') {
+            c -= '0';
+        } else if (c == 'e' || c == 'E' || c == '.') {
+            break;
+        } else {
+            return Error.argument;
+        }
+
+        number = number * 10. + c;
+        num_digits++;
+    }
+    // Process decimal part
+    if (i < len && s[i] == '.') {
+        i++;
+
+        for (; i < len; i++) {
+            u8 c = (u8)s[i];
+
+            if (c >= '0' && c <= '9') {
+                c -= '0';
+            } else {
+                break;
+            }
+            number = number * 10. + c;
+            num_decimals++;
+            num_digits++;
+        }
+        exponent -= num_decimals;
+    }
+
+
+    number *= sign;
+
+    if (i < len - 1 && (s[i] == 'e' || s[i] == 'E')) {
+        i++;
+        sign = 1;
+        if (s[i] == '-') {
+            sign = -1;
+            i++;
+        } else if (s[i] == '+') {
+            i++;
+        }
+
+        u32 n = 0;
+        for (; i < len; i++) {
+            u8 c = (u8)s[i];
+
+            if (c >= '0' && c <= '9') {
+                c -= '0';
+            } else {
+                break;
+            }
+
+            n = n * 10 + c;
+        }
+
+        exponent += n * sign;
+    }
+
+    if (num_digits == 0) {
+        return Error.argument;
+    }
+
+    if (exponent < exp_min || exponent > exp_max) {
+        return Error.overflow;
+    }
+
+    // Scale the result
+    double p10 = 10.;
+    i32 n = exponent;
+    if (n < 0) {
+        n = -n;
+    }
+    while (n) {
+        if (n & 1) {
+            if (exponent < 0) {
+                number /= p10;
+            } else {
+                number *= p10;
+            }
+        }
+        n >>= 1;
+        p10 *= p10;
+    }
+
+    if (number == HUGE_VAL) {
+        return Error.overflow;
+    }
+
+    // Allow trailing spaces, but no other character allowed
+    for (; i < len; i++) {
+        if (s[i] != ' ') {
+            return Error.argument;
+        }
+    }
+
+    *num = number;
+
+    return Error.ok;
+}
+
+Exception str_to_f32(str_c self, f32* num){
+    f64 res = 0;
+    Exc r = str__to_double(self, &res, -37, 38);
+    *num = (f32)res;
+    return r;
+}
+
+Exception str_to_f64(str_c self, f64* num){
+    return str__to_double(self, num, -307, 308);
+}
+
+Exception
+str_to_i8(str_c self, i8* num)
+{
+    i64 res = 0;
+    Exc r = str__to_signed_num(self, &res, INT8_MIN, INT8_MAX);
+    *num = res;
+    return r;
+}
+
+Exception
+str_to_i16(str_c self, i16* num)
+{
+    i64 res = 0;
+    var r = str__to_signed_num(self, &res, INT16_MIN, INT16_MAX);
+    *num = res;
+    return r;
+}
+
+Exception
+str_to_i32(str_c self, i32* num)
+{
+    i64 res = 0;
+    var r = str__to_signed_num(self, &res, INT32_MIN, INT32_MAX);
+    *num = res;
+    return r;
+}
+
+
+Exception
+str_to_i64(str_c self, i64* num)
+{
+    i64 res = 0;
+    // NOTE:INT64_MIN+1 because negating of INT64_MIN leads to UB!
+    var r = str__to_signed_num(self, &res, INT64_MIN + 1, INT64_MAX);
+    *num = res;
+    return r;
+}
+
+Exception
+str_to_u8(str_c self, u8* num)
+{
+    u64 res = 0;
+    Exc r = str__to_unsigned_num(self, &res, UINT8_MAX);
+    *num = res;
+    return r;
+}
+
+Exception
+str_to_u16(str_c self, u16* num)
+{
+    u64 res = 0;
+    Exc r = str__to_unsigned_num(self, &res, UINT16_MAX);
+    *num = res;
+    return r;
+}
+
+Exception
+str_to_u32(str_c self, u32* num)
+{
+    u64 res = 0;
+    Exc r = str__to_unsigned_num(self, &res, UINT32_MAX);
+    *num = res;
+    return r;
+}
+
+Exception
+str_to_u64(str_c self, u64* num)
+{
+    u64 res = 0;
+    Exc r = str__to_unsigned_num(self, &res, UINT64_MAX);
+    *num = res;
+
+    return r;
+}
 const struct __module__str str = {
     // Autogenerated by CEX
     // clang-format off
@@ -6818,5 +7251,15 @@ const struct __module__str str = {
     .cmp = str_cmp,
     .cmpi = str_cmpi,
     .iter_split = str_iter_split,
+    .to_f32 = str_to_f32,
+    .to_f64 = str_to_f64,
+    .to_i8 = str_to_i8,
+    .to_i16 = str_to_i16,
+    .to_i32 = str_to_i32,
+    .to_i64 = str_to_i64,
+    .to_u8 = str_to_u8,
+    .to_u16 = str_to_u16,
+    .to_u32 = str_to_u32,
+    .to_u64 = str_to_u64,
     // clang-format on
 };
