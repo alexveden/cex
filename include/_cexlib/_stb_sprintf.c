@@ -1318,15 +1318,6 @@ stbsp__clamp_callback(const char* buf, void* user, int len)
     return (c->capacity >= STB_SPRINTF_MIN) ? c->buf : c->tmp; // go direct into buffer if you can
 }
 
-static char*
-stbsp__count_clamp_callback(const char* buf, void* user, int len)
-{
-    stbsp__context* c = (stbsp__context*)user;
-    (void)sizeof(buf);
-
-    c->length += len;
-    return c->tmp; // go direct into buffer if you can
-}
 
 STBSP__PUBLICDEF int
 STB_SPRINTF_DECORATE(vsnprintf)(char* buf, int count, char const* fmt, va_list va)
