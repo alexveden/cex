@@ -218,6 +218,7 @@ dict_destroy(dict_c* self)
             hashmap_free(self->hashmap);
             self->hashmap = NULL;
         }
+        memset(self, 0, sizeof(*self));
     }
 }
 

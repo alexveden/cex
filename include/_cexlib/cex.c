@@ -10,8 +10,8 @@ const struct _CEX_Error_struct Error = {
     .exists = "ExistsError",         // entity or key already exists
     .not_found = "NotFoundError",    // entity or key already exists
     .skip = "ShouldBeSkipped",       // NOT an error, function result must be skipped
-    .sanity_check = "SanityCheckError",     // uerrcheck() failed
     .empty = "EmptyError",           // resource is empty
     .eof = "EOF",                    // end of file reached
     .argsparse = "ProgramArgsError", // program arguments empty or incorrect
+    .runtime = "RuntimeError",       // generic runtime error
 };

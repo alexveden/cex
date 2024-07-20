@@ -299,6 +299,7 @@ sbuf_destroy(sbuf_c* self)
             // allocator is NULL for static sbuf
             head->allocator->free(head);
         }
+        memset(self, 0, sizeof(*self));
     }
     return NULL;
 }

@@ -436,14 +436,15 @@ void
 io_close(io_c* self)
 {
     if (self != NULL) {
-        uassert(self->_allocator != NULL && "allocator not set");
 
         if (self->_fh != NULL && !self->_flags.is_attached) {
+            uassert(self->_allocator != NULL && "allocator not set");
             // prevent closing attached FILE* (i.e. stdin/out or other)
             self->_allocator->fclose(self->_fh);
         }
 
         if (self->_fbuf != NULL) {
+            uassert(self->_allocator != NULL && "allocator not set");
             self->_allocator->free(self->_fbuf);
         }
 

@@ -252,7 +252,7 @@ argparse__getvalue(argparse_c* self, argparse_opt_s* opt, int flags)
             break;
         default:
             uassert(false && "unhandled");
-            return Error.sanity_check;
+            return Error.runtime;
     }
 
 skipped:
@@ -290,7 +290,7 @@ argparse__options_check(argparse_c* self, bool reset)
                             (options->short_name || options->long_name) &&
                             "options both long/short_name NULL"
                         );
-                        return Error.sanity_check;
+                        return Error.argument;
                     }
                     if (options->value == NULL && options->short_name != 'h') {
                         uassertf(
@@ -299,7 +299,7 @@ argparse__options_check(argparse_c* self, bool reset)
                             options->short_name,
                             options->long_name
                         );
-                        return Error.sanity_check;
+                        return Error.argument;
                     }
                 } else {
                     if (options->required && !options->is_present) {

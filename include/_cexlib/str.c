@@ -108,7 +108,7 @@ str_copy(str_c s, char* dest, size_t destlen)
     dest[0] = '\0';
 
     if (unlikely(!str__isvalid(&s))) {
-        return Error.sanity_check;
+        return Error.argument;
     }
 
     size_t slen = s.len;

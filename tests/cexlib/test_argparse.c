@@ -259,7 +259,7 @@ test$case(test_argparse_bad_opts_arg_value_null)
     uassert_disable();
     argparse.usage(&args);
 
-    tassert_eqs(Error.sanity_check, argparse.parse(&args, argc, argv));
+    tassert_eqs(Error.argument, argparse.parse(&args, argc, argv));
 
     return EOK;
 }
@@ -286,7 +286,7 @@ test$case(test_argparse_bad_opts_both_no_long_short)
     uassert_disable();
     argparse.usage(&args);
 
-    tassert_eqs(Error.sanity_check, argparse.parse(&args, argc, argv));
+    tassert_eqs(Error.argument, argparse.parse(&args, argc, argv));
 
     return EOK;
 }

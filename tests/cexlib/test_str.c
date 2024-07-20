@@ -161,7 +161,7 @@ test$case(test_copy)
     tassert_eqs("", buf);
 
     memset(buf, 'a', arr$len(buf));
-    tassert_eqs(Error.sanity_check, str.copy(str.cstr(NULL), buf, arr$len(buf)));
+    tassert_eqs(Error.argument, str.copy(str.cstr(NULL), buf, arr$len(buf)));
     // buffer reset to "" string
     tassert_eqs("", buf);
 

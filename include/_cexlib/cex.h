@@ -56,10 +56,10 @@ extern const struct _CEX_Error_struct
     Exc exists;
     Exc not_found;
     Exc skip;
-    Exc sanity_check;
     Exc empty;
     Exc eof;
     Exc argsparse;
+    Exc runtime;
 } Error;
 
 /// Strips full path of __FILENAME__ to the file basename
@@ -124,7 +124,7 @@ _uhf_errors_is_error__uerr(Exc* e)
     return __CEX_TMPNAME(__cex_err_traceback_)
 
 #define e$goto(_func, _label)                                                                                  \
-    for (Exc __CEX_TMPNAME(__cex_err_traceback_) = result = _func; unlikely(                                \
+    for (Exc __CEX_TMPNAME(__cex_err_traceback_) = _func; unlikely(                                \
              __CEX_TMPNAME(__cex_err_traceback_) != NULL &&                                        \
              (uptraceback(__CEX_TMPNAME(__cex_err_traceback_), #_func))                            \
          );                                                                                        \

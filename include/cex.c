@@ -10,10 +10,10 @@ const struct _CEX_Error_struct Error = {
     .exists = "ExistsError",         // entity or key already exists
     .not_found = "NotFoundError",    // entity or key already exists
     .skip = "ShouldBeSkipped",       // NOT an error, function result must be skipped
-    .sanity_check = "SanityCheckError",     // uerrcheck() failed
     .empty = "EmptyError",           // resource is empty
     .eof = "EOF",                    // end of file reached
     .argsparse = "ProgramArgsError", // program arguments empty or incorrect
+    .runtime = "RuntimeError",       // generic runtime error
 };
 
 
@@ -4235,7 +4235,7 @@ argparse__getvalue(argparse_c* self, argparse_opt_s* opt, int flags)
             break;
         default:
             uassert(false && "unhandled");
-            return Error.sanity_check;
+            return Error.runtime;
     }
 
 skipped:
@@ -4273,7 +4273,7 @@ argparse__options_check(argparse_c* self, bool reset)
                             (options->short_name || options->long_name) &&
                             "options both long/short_name NULL"
                         );
-                        return Error.sanity_check;
+                        return Error.argument;
                     }
                     if (options->value == NULL && options->short_name != 'h') {
                         uassertf(
@@ -4282,7 +4282,7 @@ argparse__options_check(argparse_c* self, bool reset)
                             options->short_name,
                             options->long_name
                         );
-                        return Error.sanity_check;
+                        return Error.argument;
                     }
                 } else {
                     if (options->required && !options->is_present) {
@@ -5294,14 +5294,15 @@ void
 io_close(io_c* self)
 {
     if (self != NULL) {
-        uassert(self->_allocator != NULL && "allocator not set");
 
         if (self->_fh != NULL && !self->_flags.is_attached) {
+            uassert(self->_allocator != NULL && "allocator not set");
             // prevent closing attached FILE* (i.e. stdin/out or other)
             self->_allocator->fclose(self->_fh);
         }
 
         if (self->_fbuf != NULL) {
+            uassert(self->_allocator != NULL && "allocator not set");
             self->_allocator->free(self->_fbuf);
         }
 
@@ -6312,7 +6313,7 @@ str_copy(str_c s, char* dest, size_t destlen)
     dest[0] = '\0';
 
     if (unlikely(!str__isvalid(&s))) {
-        return Error.sanity_check;
+        return Error.argument;
     }
 
     size_t slen = s.len;

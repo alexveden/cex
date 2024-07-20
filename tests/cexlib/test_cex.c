@@ -122,8 +122,16 @@ test$case(test_e_dollar_macro_goto)
 {
     Exc result = EOK;
     // On fail jumps to 'fail' label + sets the result to returned by check_with_dollar()
-    e$goto(check_with_dollar(-1), fail);
-    tassert(false && "unreacheble");
+    e$goto(check_with_dollar(-1), setresult);
+    tassert(false && "unreacheble, the above must fail");
+
+setresult:
+    // e$goto() - previous jump didn't change result
+    tassert_eqe(Error.ok, result);
+
+    // we can explicitly set result value to the error of the call
+    e$goto(result = check_with_dollar(-1), fail);
+    tassert(false && "unreacheble, the above must fail");
     
 fail:
     tassert_eqe(Error.memory, result);
@@ -172,6 +180,21 @@ test$case(test_nested_excepts)
     tassert(false && "unreachable");
     return EOK;
 }
+
+test$case(test_all_errors_set)
+{
+    const Exc* e = &Error.ok;
+    tassert(Error.ok == NULL);
+    tassert(EOK == NULL);
+    tassert(e[0] == NULL && "EOK!");
+
+    for(u32 i = 1; i< sizeof(Error)/sizeof(Error.ok); i++){
+        tassertf(e[i] != NULL, "Error. %d-th member is NULL", i); // Empty error
+        tassertf(strlen(e[i]) > 2, "Exception is empty or too short: [%d]: %s", i, e[i] );
+    }
+
+    return EOK;
+}
 /*
  *
  * MAIN (AUTO GENERATED)
@@ -188,6 +211,7 @@ main(int argc, char* argv[])
     test$run(test_e_dollar_macro_goto);
     test$run(test_null_ptr);
     test$run(test_nested_excepts);
+    test$run(test_all_errors_set);
     
     test$print_footer();  // ^^^^^ all tests runs are above
     return test$exit_code();
