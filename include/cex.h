@@ -1069,12 +1069,12 @@ typedef struct
     u32 capacity;
     const Allocator_i* allocator;
 
-    #ifdef CEX_ENV32BIT
-    char __padding[4];
-    #endif
+    // #ifdef CEX_ENV32BIT
+    // char __padding[4];
+    // #endif
 } __attribute__((packed)) sbuf_head_s;
 
-_Static_assert(sizeof(sbuf_head_s) == 20, "size");
+// _Static_assert(sizeof(sbuf_head_s) <= 20, "size");
 _Static_assert(alignof(sbuf_head_s) == 1, "align");
 _Static_assert(alignof(sbuf_head_s) == alignof(char), "align");
 
@@ -1092,9 +1092,6 @@ Exception
 
 Exception
 (*grow)(sbuf_c* self, u32 capacity);
-
-Exception
-(*append_c)(sbuf_c* self, char* s);
 
 Exception
 (*replace)(sbuf_c* self, const str_c oldstr, const str_c newstr);

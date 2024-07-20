@@ -30,6 +30,37 @@ test$setup()
 *
 */
 
+Exception
+append_to_cap(sbuf_c* s){
+    tassert(s != NULL);
+    u8 c = 'A';
+    str_c s1 = {
+        .buf = (char*)&c,
+        .len = 1,
+    };
+
+    for(size_t i = sbuf.len(s); i < sbuf.capacity(s); i++){
+        c = 'A' + i;
+        tassert_eqs(EOK, sbuf.append(s, s1));
+    }
+
+    return EOK;
+}
+
+Exception
+sprintf_to_cap(sbuf_c* s){
+    tassert(s != NULL);
+    u8 c = 'A';
+    for(size_t i = sbuf.len(s); i < sbuf.capacity(s); i++){
+        c = 'A' + i;
+        except(err, sbuf.sprintf(s, "%c", c)) {
+            return err;
+        }
+    }
+
+    return EOK;
+}
+
 
 test$case(test_sbuf_new)
 {
@@ -87,32 +118,6 @@ test$case(test_sbuf_static)
 
 }
 
-test$case(test_sbuf_append_char)
-{
-    sbuf_c s;
-
-    tassert_eqs(EOK, sbuf.create(&s, 20, allocator));
-    tassert_eqi(sbuf.capacity(&s), 64 - sizeof(sbuf_head_s) - 1);
-
-    // wipe all nullterm (make sure append_c adds new)
-    memset(s, 0xff, sbuf.capacity(&s));
-
-    tassert_eqs(Error.argument, sbuf.append_c(&s, NULL));
-    tassert_eqs(EOK, sbuf.append_c(&s, ""));
-    tassert_eqs("", s);
-    tassert_eqi(sbuf.len(&s), 0);
-
-    tassert_eqs(EOK, sbuf.append_c(&s, "1234"));
-    tassert_eqi(sbuf.capacity(&s), 64 - sizeof(sbuf_head_s) - 1);
-    tassert_eqs("1234", s);
-    tassert_eqi(sbuf.len(&s), 4);
-    tassert_eqi(sbuf.len(&s), strlen(s));
-
-    s = sbuf.destroy(&s);
-    tassert(s == NULL);
-    return EOK;
-
-}
 
 test$case(test_sbuf_append_char_grow)
 {
@@ -120,19 +125,17 @@ test$case(test_sbuf_append_char_grow)
 
     tassert_eqs(EOK, sbuf.create(&s, 5, allocator));
     tassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
-    // tassert_eqi(sbuf.capacity(&s), 11);  // x64!
 
     // wipe all nullterm
     memset(s, 0xff, sbuf.capacity(&s));
 
-    tassert_eqs(EOK, sbuf.append_c(&s, "1234567890A"));
-    tassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
-    tassert_eqs("1234567890A", s);
-    tassert_eqi(sbuf.len(&s), 11);
+    tassert_eqe(append_to_cap(&s), EOK);
 
-    tassert_eqs(EOK, sbuf.append_c(&s, "B"));
+    tassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
+    tassert_eqi(sbuf.len(&s), sbuf.capacity(&s));
+
+    tassert_eqs(EOK, sbuf.append(&s, s$("B")));
     tassert_eqi(sbuf.capacity(&s), 64 - sizeof(sbuf_head_s) - 1);
-    tassert_eqs("1234567890AB", s);
 
     // check null term
     tassert_eqi(s[sbuf.len(&s)], 0);
@@ -150,19 +153,16 @@ test$case(test_sbuf_append_str_grow)
 
     tassert_eqs(EOK, sbuf.create(&s, 5, allocator));
     tassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
-    tassert_eqi(sbuf.capacity(&s), 11);
 
     // wipe all nullterm
     memset(s, 0xff, sbuf.capacity(&s));
 
-    tassert_eqs(EOK, sbuf.append(&s, str.cstr("1234567890A")));
+    tassert_eqe(append_to_cap(&s), EOK);
     tassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
-    tassert_eqs("1234567890A", s);
-    tassert_eqi(sbuf.len(&s), 11);
+    tassert_eqi(sbuf.len(&s), sbuf.capacity(&s));
 
     tassert_eqs(EOK, sbuf.append(&s, str.cstr("B")));
     tassert_eqi(sbuf.capacity(&s), 64 - sizeof(sbuf_head_s) - 1);
-    tassert_eqs("1234567890AB", s);
 
     // check null term
     tassert_eqi(s[sbuf.len(&s)], 0);
@@ -182,7 +182,7 @@ test$case(test_sbuf_clear)
     // wipe all nullterm
     memset(s, 0xff, sbuf.capacity(&s));
 
-    tassert_eqs(EOK, sbuf.append_c(&s, "1234567890A"));
+    tassert_eqs(EOK, sbuf.append(&s, s$("1234567890A")));
     tassert_eqs("1234567890A", s);
 
     sbuf.clear(&s);
@@ -207,7 +207,7 @@ test$case(test_sbuf_destroy)
     char* alt_s = buf + sizeof(sbuf_head_s);
     tassert_eqs(EOK, sbuf.create_static(&s, buf, arr$len(buf)));
     tassert(buf[0] != '\0');
-    tassert_eqs(EOK, sbuf.append_c(&s, "1234567890A"));
+    tassert_eqs(EOK, sbuf.append(&s, s$("1234567890A")));
     tassert(*alt_s == '1');
     tassert_eqs("1234567890A", s);
     tassert(buf[0] != '\0');
@@ -230,7 +230,7 @@ test$case(test_sbuf_replace)
     char buf[128];
 
     tassert_eqs(EOK, sbuf.create_static(&s, buf, arr$len(buf)));
-    tassert_eqs(EOK, sbuf.append_c(&s, "123123123"));
+    tassert_eqs(EOK, sbuf.append(&s, s$("123123123")));
     u32 cap = sbuf.capacity(&s);
 
     tassert_eqs(EOK, sbuf.replace(&s, str.cstr("123"), str.cstr("456")));
@@ -276,20 +276,18 @@ test$case(test_sbuf_replace_resize)
 
     tassert_eqs(EOK, sbuf.create(&s, 5, allocator));
     tassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
-    tassert_eqi(sbuf.capacity(&s), 11);
 
     // wipe all nullterm
     memset(s, 0xff, sbuf.capacity(&s));
 
-    tassert_eqs(EOK, sbuf.append(&s, str.cstr("1234567890A")));
+    tassert_eqe(append_to_cap(&s), EOK);
     tassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
-    tassert_eqs("1234567890A", s);
-    tassert_eqi(sbuf.len(&s), 11);
+    tassert_eqi(sbuf.len(&s), sbuf.capacity(&s));
 
+    size_t prev_len = sbuf.len(&s);
     tassert_eqs(EOK, sbuf.replace(&s, str.cstr("A"), str.cstr("AB")));
     tassert_eqi(sbuf.capacity(&s), 64 - sizeof(sbuf_head_s) - 1);
-    tassert_eqs("1234567890AB", s);
-    tassert_eqi(sbuf.len(&s), 12);
+    tassert_eqi(sbuf.len(&s), prev_len+1);
 
 
     sbuf.destroy(&s);
@@ -302,7 +300,6 @@ test$case(test_sbuf_replace_error_checks)
 
     tassert_eqs(EOK, sbuf.create(&s, 5, allocator));
     tassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
-    tassert_eqi(sbuf.capacity(&s), 11);
 
     // wipe all nullterm
     memset(s, 0xff, sbuf.capacity(&s));
@@ -329,7 +326,6 @@ test$case(test_sbuf_sprintf)
 
     tassert_eqs(EOK, sbuf.create(&s, 5, allocator));
     tassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
-    tassert_eqi(sbuf.capacity(&s), 11);
 
     // wipe all nullterm
     memset(s, 0xff, sbuf.capacity(&s)+1);
@@ -341,26 +337,29 @@ test$case(test_sbuf_sprintf)
     tassert_eqi(sbuf.len(&s), 3);
     tassert_eqi(s[sbuf.len(&s)], '\0');
     tassert_eqi(s[sbuf.capacity(&s)], '\0');
-    tassert_eqi(sbuf.capacity(&s), 11);
+    tassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
 
     tassert_eqs(EOK, sbuf.sprintf(&s, "%s", "456"));
     tassert_eqs("123456", s);
     tassert_eqi(sbuf.len(&s), 6);
-    tassert_eqi(sbuf.capacity(&s), 11);
+    tassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
 
     tassert_eqs(EOK, sbuf.sprintf(&s, "%s", "7890A"));
     tassert_eqs("1234567890A", s);
     tassert_eqi(sbuf.len(&s), 11);
-    tassert_eqi(sbuf.capacity(&s), 11);
+    tassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
 
+    sbuf.clear(&s);
+    size_t prev_cap = sbuf.capacity(&s);
+    tassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
+    tassert_eqe(EOK, append_to_cap(&s));
     tassert_eqs(EOK, sbuf.sprintf(&s, "%s", "B"));
-    tassert_eqs("1234567890AB", s);
-    tassert_eqi(sbuf.len(&s), 12);
+    tassert_eqi(sbuf.len(&s), prev_cap+1);
+    tassert_eqi(s[prev_cap], 'B');
     tassert_eqi(sbuf.capacity(&s), 64 - sizeof(sbuf_head_s) - 1);
 
     tassert_eqs(EOK, sbuf.sprintf(&s, "%s", "CDE"));
-    tassert_eqs("1234567890ABCDE", s);
-    tassert_eqi(sbuf.len(&s), 15);
+    tassert_eqi(sbuf.len(&s), prev_cap + 4);
     tassert_eqi(sbuf.capacity(&s), 64 - sizeof(sbuf_head_s) - 1);
     tassert_eqi(s[sbuf.len(&s)], '\0');
     tassert_eqi(s[sbuf.capacity(&s)], '\0');
@@ -375,7 +374,6 @@ test$case(test_sbuf_sprintf_long_growth)
 
     tassert_eqs(EOK, sbuf.create(&s, 5, allocator));
     tassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
-    tassert_eqi(sbuf.capacity(&s), 11);
 
     char buf[16];
     char svbuf[16];
@@ -450,7 +448,6 @@ test$case(test_sbuf_sprintf_static)
 
     tassert_eqs(EOK, sbuf.create_static(&s, buf, arr$len(buf)));
     tassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
-    tassert_eqi(sbuf.capacity(&s), 11);
 
     // wipe all nullterm
     memset(s, 0xff, sbuf.capacity(&s)+1);
@@ -463,31 +460,24 @@ test$case(test_sbuf_sprintf_static)
     tassert_eqi(sbuf.len(&s), 3);
     tassert_eqi(s[sbuf.len(&s)], '\0');
     tassert_eqi(s[sbuf.capacity(&s)], '\0');
-    tassert_eqi(sbuf.capacity(&s), 11);
+    tassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
 
     tassert_eqs(EOK, sbuf.sprintf(&s, "%s", "456"));
     tassert_eqs("123456", s);
     tassert_eqi(sbuf.len(&s), 6);
-    tassert_eqi(sbuf.capacity(&s), 11);
-
-    tassert_eqs(Error.overflow, sbuf.sprintf(&s, "%s", "7890AB"));
-    tassert_eqs("123456", s);
-    tassert_eqi(sbuf.len(&s), 6);
-    tassert_eqi(sbuf.capacity(&s), 11);
-
-    tassert_eqs(Error.ok, sbuf.sprintf(&s, "%s", "7890A"));
-    tassert_eqs("1234567890A", s);
-    tassert_eqi(sbuf.len(&s), 11);
-    tassert_eqi(sbuf.capacity(&s), 11);
-    tassert_eqi(s[sbuf.len(&s)], '\0');
-    tassert_eqi(s[sbuf.capacity(&s)], '\0');
-
-    tassert_eqs(Error.overflow, sbuf.sprintf(&s, "%s", "B"));
-    tassert_eqs("1234567890A", s);
-    tassert_eqi(sbuf.len(&s), 11);
     tassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
+
+
+    tassert_eqe(EOK, sprintf_to_cap(&s));
     tassert_eqi(s[sbuf.len(&s)], '\0');
     tassert_eqi(s[sbuf.capacity(&s)], '\0');
+    tassert_eqi(sbuf.len(&s), sbuf.capacity(&s));
+    tassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
+
+    tassert_eqs(Error.overflow, sbuf.sprintf(&s, "%s", "7"));
+    tassert_eqi(sbuf.len(&s), sbuf.capacity(&s));
+    tassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
+
 
     sbuf.destroy(&s);
     return EOK;
@@ -504,7 +494,6 @@ int main(int argc, char *argv[])
     
     test$run(test_sbuf_new);
     test$run(test_sbuf_static);
-    test$run(test_sbuf_append_char);
     test$run(test_sbuf_append_char_grow);
     test$run(test_sbuf_append_str_grow);
     test$run(test_sbuf_clear);

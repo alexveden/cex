@@ -1486,14 +1486,8 @@ STBSP__PUBLICDEC void STB_SPRINTF_DECORATE(set_separators)(char comma, char peri
 #endif
 #define stbsp__uint16 unsigned short
 
-#ifndef stbsp__uintptr
-#if defined(__ppc64__) || defined(__powerpc64__) || defined(__aarch64__) || defined(_M_X64) ||     \
-    defined(__x86_64__) || defined(__x86_64) || defined(__s390x__)
-#define stbsp__uintptr stbsp__uint64
-#else
-#define stbsp__uintptr stbsp__uint32
-#endif
-#endif
+// NOTE: CEX size_t is more portable than original u32/u64 checking!
+#define stbsp__uintptr size_t
 
 #ifndef STB_SPRINTF_MSVC_MODE // used for MSVC2013 and earlier (MSVC2015 matches GCC)
 #if defined(_MSC_VER) && (_MSC_VER < 1900)
@@ -5934,44 +5928,6 @@ sbuf_grow(sbuf_c* self, u32 capacity)
 }
 
 Exception
-sbuf_append_c(sbuf_c* self, char* s)
-{
-    uassert(self != NULL);
-    if (s == NULL) {
-        return Error.argument;
-    }
-
-    sbuf_head_s* head = sbuf__head(*self);
-
-    u32 length = head->length;
-    u32 capacity = head->capacity;
-    uassert(capacity > 0);
-
-
-    while (*s != '\0') {
-
-        // Try resize
-        if (length > capacity - 1) {
-            except(err, sbuf__grow_buffer(self, length + 1))
-            {
-                return err;
-            }
-        }
-
-        (*self)[length] = *s;
-        length++;
-        s++;
-    }
-    // always null terminate
-    (*self)[length] = '\0';
-
-    // re-fetch head in case of realloc
-    head = (sbuf_head_s*)(*self - sizeof(sbuf_head_s));
-    head->length = length;
-
-    return Error.ok;
-}
-Exception
 sbuf_replace(sbuf_c* self, const str_c oldstr, const str_c newstr)
 {
     uassert(self != NULL);
@@ -6234,7 +6190,6 @@ const struct __module__sbuf sbuf = {
     .create = sbuf_create,
     .create_static = sbuf_create_static,
     .grow = sbuf_grow,
-    .append_c = sbuf_append_c,
     .replace = sbuf_replace,
     .append = sbuf_append,
     .clear = sbuf_clear,

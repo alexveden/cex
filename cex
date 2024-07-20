@@ -603,7 +603,10 @@ class CEXTestBuilder:
                 # shell=True,
             )
             for line in iter(process.stdout.readline, b""):
-                print(line.decode().rstrip())
+                try:
+                    print(line.decode().rstrip())
+                except UnicodeDecodeError:
+                    print(line)
 
     def action_clean(self):
         build_dir = os.path.join(self.test_dir, "build")
