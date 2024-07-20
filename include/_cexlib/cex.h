@@ -273,7 +273,7 @@ typedef struct
 _Static_assert(sizeof(size_t) == sizeof(void*), "size_t expected as sizeof ptr");
 _Static_assert(sizeof(size_t) == sizeof(unsigned long), "size_t expected as u64");
 _Static_assert(alignof(cex_iterator_s) == alignof(void*), "alignof");
-_Static_assert(sizeof(cex_iterator_s) == 64, "cex size");
+_Static_assert(sizeof(cex_iterator_s) <= 64, "cex size");
 
 /**
  * @brief Iterates via iterator function (see usage below)
@@ -325,5 +325,24 @@ typedef struct Allocator_i
     int (*fclose)(FILE* stream);
     int (*close)(int fd);
 } Allocator_i;
-_Static_assert(sizeof(Allocator_i) == 80, "size");
-_Static_assert(alignof(Allocator_i) == 8, "size");
+_Static_assert(alignof(Allocator_i) == alignof(size_t), "size");
+_Static_assert(sizeof(Allocator_i) == sizeof(size_t)*10, "size");
+
+
+// Check windows
+#if _WIN32 || _WIN64
+   #if _WIN64
+     #define CEX_ENV64BIT
+  #else
+    #define CEX_ENV32BIT
+  #endif
+#endif
+
+// Check GCC
+#if __GNUC__
+  #if __x86_64__ || __ppc64__
+    #define CEX_ENV64BIT
+  #else
+    #define CEX_ENV32BIT
+  #endif
+#endif

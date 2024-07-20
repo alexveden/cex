@@ -199,8 +199,8 @@ class CEXCompiler:
         )
 
         args = [
-            # "cc",
-            "clang",
+            "cc",
+            # "clang",
             "-Wall",
             "-Wextra",
             "-Werror",
@@ -318,7 +318,13 @@ class CEXTestBuilder:
     """
 
     def __init__(
-        self, action: str, src_path: str, test_dir: str, force_rebuild: bool = False
+        self,
+        action: str,
+        src_path: str,
+        test_dir: str,
+        force_rebuild: bool = False,
+        ccargs: str = None,
+        ldargs: str = None,
     ):
         self.env = CEXEnv()
         self.test_dir = test_dir
@@ -326,6 +332,8 @@ class CEXTestBuilder:
         self.action = action
         self.include_path_cache = {}
         self.force_rebuild = force_rebuild
+        self.ccargs = [] if not ccargs else shlex.split(ccargs)
+        self.ldargs = [] if not ldargs else shlex.split(ldargs)
         self.compiler = CEXCompiler()
 
         if not os.path.exists(test_dir):
@@ -552,11 +560,16 @@ class CEXTestBuilder:
             f"-I{self.test_dir}",
         ]
 
+        if self.ccargs:
+            compiler_args += self.ccargs
+
         for fn in test_files_list:
             if self.action_build_test(fn):
                 print(f"Building: {fn}")
                 test_exe = self.make_test_exe(fn)
-                self.compiler.compile_app(fn, test_exe, compiler_args)
+                self.compiler.compile_app(
+                    fn, test_exe, compiler_args=compiler_args, linker_args=self.ldargs
+                )
 
     def action_run(self):
         test_exe_list = []
@@ -1569,6 +1582,8 @@ def action_test(args):
         src_path=args.test_file,
         test_dir=args.testdir,
         force_rebuild=args.force,
+        ccargs=args.ccargs,
+        ldargs=args.ldargs,
     )
     builder.build()
 
@@ -1688,6 +1703,8 @@ if __name__ == "__main__":
         action="store_true",
     )
     test_parser.add_argument("test_file", help="File path to cex test .c file")
+    test_parser.add_argument("--ccargs", help="compiler arguments", default="")
+    test_parser.add_argument("--ldargs", help="linker arguments", default="")
     test_parser.set_defaults(func=action_test)
 
     env_parser = subparsers.add_parser(

@@ -1,3 +1,4 @@
+#include <_cexlib/cex.h>
 #include <_cexlib/cex.c>
 #include <_cexlib/allocators.c>
 #include <_cexlib/sbuf.c>
@@ -21,7 +22,7 @@
 #define CHECK_END(str)                                                                             \
     if (strcmp(buf, str) != 0 || (unsigned)ret != strlen(str)) {                                   \
         printf("< '%s'\n> '%s'\n", str, buf);                                                      \
-        tassert(false && "see ^^^");                                                              \
+        tassert(false && "CHECK_END() failed see ^^^");                                                              \
     }
 
 // clang-format off
@@ -37,6 +38,11 @@
 // clang-format on
 
 const Allocator_i* allocator;
+
+
+static char* ret_null_char(){
+    return NULL;
+}
 /*
 * SUITE INIT / SHUTDOWN
 */
@@ -69,8 +75,12 @@ test$case(stb_sprintf_str)
     str_c sv_sub = str.sub(sv, 1, 3);
     tassert_eqi(str.cmp(sv_sub, s$("56")), 0);
 
-    _Static_assert(sizeof(char*) == 8, "size");
+    _Static_assert(sizeof(char*) == sizeof(size_t), "size");
 
+
+    // WARNING: dangerous trick, sprintf(), tries to distinguish
+    // str_c by checking if sv_sub addres < 1024*1024, this may not be portable
+    // especially on embedded and may require additional testing
     tassert_eqs(EOK, sbuf.sprintf(&s, "%s", sv_sub));
     tassert_eqs(s, "abcdefgh11(str_c->%S)");
 
@@ -111,7 +121,10 @@ test$case(stb_sprintf_orig)
 #if !defined(_MSC_VER) || _MSC_VER >= 1600
     CHECK2("9888777666", "%llu", 9888777666llu);
 #endif
+
+    #ifndef CEX_ENV32BIT
     CHECK4("-1 2 -3", "%ji %zi %ti", (intmax_t)-1, (ssize_t)2, (ptrdiff_t)-3);
+    #endif
 
     // floating-point numbers
     CHECK2("-3.000000", "%f", -3.0);
@@ -176,7 +189,11 @@ test$case(stb_sprintf_orig)
 
     // %p
 #if USE_STB
+    #ifdef CEX_ENV32BIT
+    CHECK2("00000000", "%p", (void*)NULL);
+    #else
     CHECK2("0000000000000000", "%p", (void*)NULL);
+    #endif
 #else
     CHECK2("(nil)", "%p", (void*)NULL);
 #endif
@@ -226,7 +243,7 @@ test$case(stb_sprintf_orig)
 
     // things not supported by glibc
 #if USE_STB
-    CHECK2("(null)", "%s", (char*)NULL);
+    CHECK2("(null)", "%s", ret_null_char());
     // CHECK2("123,4abc:", "%'x:", 0x1234ABC);
     // CHECK2("100000000", "%b", 256); // pedantic
     // CHECK3("0b10 0B11", "%#b %#B", 2, 3); // pedantic

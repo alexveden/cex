@@ -9,7 +9,7 @@ typedef struct dict_c
 } dict_c;
 
 typedef u64 (*dict_hash_func_f)(const void* item, u64 seed0, u64 seed1);
-typedef i32 (*dict_compare_func_f)(const void* a, const void* b, void* udata);
+typedef int (*dict_compare_func_f)(const void* a, const void* b, void* udata);
 typedef void (*dict_elfree_func_f)(void* item);
 
 

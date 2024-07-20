@@ -1,7 +1,6 @@
 #pragma once
 #include "str.h"
 #include "cex.h"
-#include "allocators.h"
 
 typedef char* sbuf_c;
 
@@ -16,6 +15,10 @@ typedef struct
     u32 length;
     u32 capacity;
     const Allocator_i* allocator;
+
+    #ifdef CEX_ENV32BIT
+    char __padding[4];
+    #endif
 } __attribute__((packed)) sbuf_head_s;
 
 _Static_assert(sizeof(sbuf_head_s) == 20, "size");

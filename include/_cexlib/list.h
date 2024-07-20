@@ -56,7 +56,9 @@ typedef struct
     // alignment, so the list_head_s takes place at (void*)1st_el - sizeof(list_head_s)
 } __attribute__((packed)) list_head_s;
 
-_Static_assert(sizeof(list_head_s) == 32, "size");
+#define _CEX_LIST_BUF 32
+// _Static_assert(sizeof(list_head_s) == 32, "size"); // platform dependent
+_Static_assert(sizeof(list_head_s) <= _CEX_LIST_BUF, "size");
 _Static_assert(alignof(list_head_s) == 1, "align");
 
 struct __module__list

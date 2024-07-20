@@ -106,7 +106,7 @@ test$case(test_element_alignment_16)
     for (u32 i = 0; i < 16; i++) {
         struct foo16* f = deque.dequeue(&a);
         tassertf(f != NULL, "%d\n: NULL", i);
-        tassertf(f->foo == i, "%ld: i=%d\n", f->foo, i);
+        tassertf(f->foo == i, "%zu: i=%d\n", f->foo, i);
         nit++;
     }
     tassert_eqi(nit, 16);
@@ -160,7 +160,7 @@ test$case(test_element_alignment_64)
     for (u32 i = 0; i < 16; i++) {
         struct foo64* f = deque.dequeue(&a);
         tassertf(f != NULL, "%d\n: NULL", i);
-        tassertf(f->foo == i, "%ld: i=%d\n", f->foo, i);
+        tassertf(f->foo == i, "%zu: i=%d\n", f->foo, i);
         nit++;
     }
     tassert_eqi(nit, 16);

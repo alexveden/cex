@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <malloc.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 // struct Allocator_i;
 #define ALLOCATOR_HEAP_MAGIC 0xFEED0001U
@@ -16,7 +17,7 @@ static void* allocator_heap__aligned_realloc(void* ptr, size_t alignment, size_t
 static void allocator_heap__free(void* ptr);
 static FILE* allocator_heap__fopen(const char* filename, const char* mode);
 static int allocator_heap__fclose(FILE* f);
-static int allocator_heap__open(const char* pathname, int flags, mode_t mode);
+static int allocator_heap__open(const char* pathname, int flags, unsigned int mode);
 static int allocator_heap__close(int fd);
 
 static void* allocator_staticarena__malloc(size_t size);
@@ -27,7 +28,7 @@ static void* allocator_staticarena__aligned_realloc(void* ptr, size_t alignment,
 static void allocator_staticarena__free(void* ptr);
 static FILE* allocator_staticarena__fopen(const char* filename, const char* mode);
 static int allocator_staticarena__fclose(FILE* f);
-static int allocator_staticarena__open(const char* pathname, int flags, mode_t mode);
+static int allocator_staticarena__open(const char* pathname, int flags, unsigned int mode);
 static int allocator_staticarena__close(int fd);
 
 static allocator_heap_s
@@ -192,9 +193,13 @@ allocator_heap__aligned_realloc(void* ptr, size_t alignment, size_t size)
 
     // Check if we have available space for realloc'ing new size
     //
-    size_t new_size = malloc_usable_size(ptr);
+#ifdef _WIN32
+    size_t new_size = _msize(ptr);
+#else
     // NOTE: malloc_usable_size() returns a value no less than the size of
     // the block of allocated memory pointed to by ptr.
+    size_t new_size = malloc_usable_size(ptr);
+#endif
 
     if (new_size >= size) {
         // This should return extended memory
@@ -259,7 +264,7 @@ allocator_heap__fopen(const char* filename, const char* mode)
 }
 
 static int
-allocator_heap__open(const char* pathname, int flags, mode_t mode)
+allocator_heap__open(const char* pathname, int flags, unsigned int mode)
 {
     uassert(allocator__heap_data.magic != 0 && "Allocator not initialized");
     uassert(allocator__heap_data.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
@@ -354,10 +359,10 @@ allocators__staticarena__create(char* buffer, size_t capacity)
     a->max = (char*)a->mem + capacity;
     a->next = a->mem;
 
-    u32 offset = ((u64)a->next % sizeof(size_t));
+    size_t offset = ((size_t)a->next % sizeof(size_t));
     a->next = (char*)a->next + (offset ? sizeof(size_t) - offset : 0);
 
-    uassert(((u64)a->next % sizeof(size_t) == 0) && "alloca/malloc() returned non word aligned ptr");
+    uassert(((size_t)a->next % sizeof(size_t) == 0) && "alloca/malloc() returned non word aligned ptr");
 
     return &a->base;
 }
@@ -588,7 +593,7 @@ allocator_staticarena__fclose(FILE* f)
     return fclose(f);
 }
 static int
-allocator_staticarena__open(const char* pathname, int flags, mode_t mode)
+allocator_staticarena__open(const char* pathname, int flags, unsigned int mode)
 {
     uassert(allocator__staticarena_data.magic != 0 && "Allocator not initialized");
     uassert(allocator__staticarena_data.magic == ALLOCATOR_STATIC_ARENA_MAGIC && "Allocator type!");

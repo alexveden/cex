@@ -764,7 +764,11 @@ test$case(test_cmp)
     tassert_eqi(str.cmp(str.cstr(NULL), str.cstr(NULL)), 0);
     tassert_eqi(str.cmp(str.cstr(""), str.cstr("")), 0);
     tassert_eqi(str.cmp(str.cstr("ABC"), str.cstr("AB")), 67);
+#ifdef CEX_ENV32BIT
+    tassert(str.cmp(str.cstr("ABA"), str.cstr("ABZ")) < 0);
+#else
     tassert_eqi(str.cmp(str.cstr("ABA"), str.cstr("ABZ")), -25);
+#endif
     tassert_eqi(str.cmp(str.cstr("AB"), str.cstr("ABC")), -67);
     tassert_eqi(str.cmp(str.cstr("A"), str.cstr("")), (int)'A');
     tassert_eqi(str.cmp(str.cstr(""), str.cstr("A")), -1 * ((int)'A'));

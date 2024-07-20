@@ -283,7 +283,7 @@ dict_iter(dict_c* self, cex_iterator_s* iterator)
         size_t counter;
     }* ctx = (struct iter_ctx*)iterator->_ctx;
     _Static_assert(sizeof(*ctx) <= sizeof(iterator->_ctx), "ctx size overflow");
-    _Static_assert(alignof(struct iter_ctx) == 8, "ctx alignment mismatch");
+    _Static_assert(alignof(struct iter_ctx) == alignof(size_t), "ctx alignment mismatch");
 
     if (unlikely(iterator->val == NULL)) {
         if (hm->count == 0) {

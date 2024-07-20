@@ -402,13 +402,11 @@ STB_SPRINTF_DECORATE(vsprintfcb)(
                     if (s == 0) {
                         s = (char*)"(null)";
                     }
-#if defined(__x86_64__) || defined(__x86_64)
                     else {
                         // NOTE: cex is str_c passed as %s, s will be length
                         // try to double check sensible value of pointer
                         s = (char*)"(str_c->%S)";
                     }
-#endif
                 }
                 // get the length, limited to desired precision
                 // always limit to ~0u chars since our counts are 32b

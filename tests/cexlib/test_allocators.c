@@ -1,8 +1,8 @@
 // --#cc_args -Wl,--wrap=malloc
-#include <alloca.h>
-#include <_cexlib/cex.c>
 #include <_cexlib/allocators.c>
+#include <_cexlib/cex.c>
 #include <_cexlib/cextest.h>
+#include <alloca.h>
 #include <fff.h>
 #include <stdalign.h>
 #include <stdio.h>
@@ -19,12 +19,12 @@ FAKE_VALUE_FUNC(void*, __wrap_malloc, size_t, size_t)
 /*
  * SUITE INIT / SHUTDOWN
  */
-test$teardown(){
+test$teardown()
+{
     uassert_disable();
     allocators.heap.destroy();
     allocators.staticarena.destroy();
     return EOK;
-
 }
 test$setup()
 {
@@ -178,7 +178,7 @@ test$case(test_allocator_heap_calloc)
     tassert(buf2 != NULL);
     tassert_eqi((size_t)buf2 % alignof(size_t), 0);
 
-    char buf_zero[1024] = {0};
+    char buf_zero[1024] = { 0 };
     tassert_eqi(0, memcmp(buf2, buf_zero, 1024));
 
     allocator->free(buf2);
@@ -208,23 +208,26 @@ test$case(test_allocator_static_arena_stack)
     tassert(a->base.close != NULL);
 
     tassert(a->mem != NULL);
-    tassert_eqi((u64)a->next % sizeof(size_t), 0);
+    tassert_eqi((size_t)a->next % sizeof(size_t), 0);
 
     // two small variables - aligned to 64
     void* v1 = allocator->malloc(12);
     tassert(v1 != NULL);
-    tassert_eqi((u64)v1 % sizeof(size_t), 0);
+    tassert_eqi((size_t)v1 % sizeof(size_t), 0);
     tassert_eqi(a->stats.n_allocs, 1);
 
     void* v2 = allocator->malloc(12);
     tassert(v2 != NULL);
-    tassert_eqi((u64)v2 % sizeof(size_t), 0);
+    tassert_eqi((size_t)v2 % sizeof(size_t), 0);
     tassert_eqi(a->stats.n_allocs, 2);
 
     // data composition check
     tassert(v1 != v2);
+
+#ifdef CEX_ENV64BIT
     tassert_eqi((char*)v2 - (char*)v1, sizeof(size_t) * 2);
     tassert_eqi((char*)a->next - (char*)v2, sizeof(size_t) * 2);
+#endif
 
     // capacity overflow
     u32 used = (char*)a->next - (char*)a->mem;
@@ -286,18 +289,18 @@ test$case(test_allocator_static_arena_stack_aligned)
     // tassert_eqi(a->alignment, 64);
 
     return EOK;
-    // tassert_eqi((u64)a->mem % 64, 0);  // occasionally this can fail!
-    tassert_eqi((u64)a->next % sizeof(size_t), 0);
+    // tassert_eqi((size_t)a->mem % 64, 0);  // occasionally this can fail!
+    tassert_eqi((size_t)a->next % sizeof(size_t), 0);
 
     // two small variables - aligned to 64
     void* v1 = allocator->malloc(12);
     tassert(v1 != NULL);
-    tassert_eqi((u64)v1 % sizeof(size_t), 0);
+    tassert_eqi((size_t)v1 % sizeof(size_t), 0);
 
     tassert(alignof(allocator_heap_s) == 64); // this struct is 64 aligned
     void* v2 = allocator->malloc_aligned(64, 64);
     tassert(v2 != NULL);
-    tassert_eqi((u64)v2 % 64, 0);
+    tassert_eqi((size_t)v2 % 64, 0);
 
     // data composition check
     tassert(v1 != v2);
@@ -372,54 +375,60 @@ test$case(test_allocator_static_arena_calloc)
     alignas(64) char buf[1025];
 
     // initial buffer is unaligned
-    const Allocator_i* allocator = allocators.staticarena.create(buf+1, arr$len(buf)-1);
+    const Allocator_i* allocator = allocators.staticarena.create(buf + 1, arr$len(buf) - 1);
     allocator_staticarena_s* a = (allocator_staticarena_s*)allocator;
 
     memset(buf, 'z', 1025);
 
     tassert(allocator != NULL);
     tassert(a->mem != NULL);
-    tassert_eqi((u64)a->next % sizeof(size_t), 0);
+    tassert_eqi((size_t)a->next % sizeof(size_t), 0);
 
     // two small variables - aligned to 64
     void* v1 = allocator->calloc(3, 4);
-    tassert_eqi((u64)a->next % sizeof(size_t), 0);
+    tassert_eqi((size_t)a->next % sizeof(size_t), 0);
 
     // aligned!
-    tassert_eqi((u64)v1 % sizeof(size_t), 0);
+    tassert_eqi((size_t)v1 % sizeof(size_t), 0);
     tassert(v1 != NULL);
     tassert_eqi(a->stats.n_allocs, 1);
 
-    char zero_buf[12] = {0};
+    char zero_buf[12] = { 0 };
     tassert_eqi(0, memcmp(v1, zero_buf, 12));
 
     void* v2 = allocator->calloc(4, 3);
-    tassert_eqi((u64)a->next % sizeof(size_t), 0);
+    tassert_eqi((size_t)a->next % sizeof(size_t), 0);
     tassert(v2 != NULL);
-    tassert_eqi((u64)v2 % sizeof(size_t), 0);
+    tassert_eqi((size_t)v2 % sizeof(size_t), 0);
     tassert_eqi(a->stats.n_allocs, 2);
 
     // data composition check
     tassert(v1 != v2);
+    void* v3 = NULL;
+    
+#ifdef CEX_ENV64BIT
     tassert_eqi((char*)v2 - (char*)v1, sizeof(size_t) * 2);
     tassert_eqi((char*)a->next - (char*)v2, sizeof(size_t) * 2);
 
     // capacity overflow
     u32 used = (char*)a->next - (char*)a->mem;
     tassert_eqi(used, 39);
-    void* v3 = allocator->calloc(1024 - used, 1);
+    v3 = allocator->calloc(1024 - used, 1);
     tassert(v3 != NULL);
 
     // no more allocations
     void* v4 = allocator->calloc(1, 1);
     tassert(v4 == NULL);
+#endif
 
 
     // Free is not needed but still acts well
     allocator->free(v1);
     allocator->free(v2);
+
+    tassert_eqi(a->stats.n_free, 2);
+
     allocator->free(v3);
-    tassert_eqi(a->stats.n_free, 3);
 
     // Arena cleanup
     allocators.staticarena.destroy();

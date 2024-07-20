@@ -406,7 +406,6 @@ sbuf_sprintf(sbuf_c* self, const char* format, ...)
 {
     uassert(self != NULL);
     sbuf_head_s* head = sbuf__head(*self);
-    // utracef("head s: %s, len: %d\n", *self, head->length);
 
     struct _sbuf__sprintf_ctx ctx = {
         .head = head,

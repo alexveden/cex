@@ -120,7 +120,7 @@ test$case(test_sbuf_append_char_grow)
 
     tassert_eqs(EOK, sbuf.create(&s, 5, allocator));
     tassert_eqi(sbuf.capacity(&s), 32 - sizeof(sbuf_head_s) - 1);
-    tassert_eqi(sbuf.capacity(&s), 11);
+    // tassert_eqi(sbuf.capacity(&s), 11);  // x64!
 
     // wipe all nullterm
     memset(s, 0xff, sbuf.capacity(&s));

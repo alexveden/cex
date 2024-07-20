@@ -1876,13 +1876,11 @@ STB_SPRINTF_DECORATE(vsprintfcb)(
                     if (s == 0) {
                         s = (char*)"(null)";
                     }
-#if defined(__x86_64__) || defined(__x86_64)
                     else {
                         // NOTE: cex is str_c passed as %s, s will be length
                         // try to double check sensible value of pointer
                         s = (char*)"(str_c->%S)";
                     }
-#endif
                 }
                 // get the length, limited to desired precision
                 // always limit to ~0u chars since our counts are 32b
@@ -3337,6 +3335,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <fcntl.h>
 #include <malloc.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 // struct Allocator_i;
 #define ALLOCATOR_HEAP_MAGIC 0xFEED0001U
@@ -3351,7 +3350,7 @@ static void* allocator_heap__aligned_realloc(void* ptr, size_t alignment, size_t
 static void allocator_heap__free(void* ptr);
 static FILE* allocator_heap__fopen(const char* filename, const char* mode);
 static int allocator_heap__fclose(FILE* f);
-static int allocator_heap__open(const char* pathname, int flags, mode_t mode);
+static int allocator_heap__open(const char* pathname, int flags, unsigned int mode);
 static int allocator_heap__close(int fd);
 
 static void* allocator_staticarena__malloc(size_t size);
@@ -3362,7 +3361,7 @@ static void* allocator_staticarena__aligned_realloc(void* ptr, size_t alignment,
 static void allocator_staticarena__free(void* ptr);
 static FILE* allocator_staticarena__fopen(const char* filename, const char* mode);
 static int allocator_staticarena__fclose(FILE* f);
-static int allocator_staticarena__open(const char* pathname, int flags, mode_t mode);
+static int allocator_staticarena__open(const char* pathname, int flags, unsigned int mode);
 static int allocator_staticarena__close(int fd);
 
 static allocator_heap_s
@@ -3527,9 +3526,13 @@ allocator_heap__aligned_realloc(void* ptr, size_t alignment, size_t size)
 
     // Check if we have available space for realloc'ing new size
     //
-    size_t new_size = malloc_usable_size(ptr);
+#ifdef _WIN32
+    size_t new_size = _msize(ptr);
+#else
     // NOTE: malloc_usable_size() returns a value no less than the size of
     // the block of allocated memory pointed to by ptr.
+    size_t new_size = malloc_usable_size(ptr);
+#endif
 
     if (new_size >= size) {
         // This should return extended memory
@@ -3594,7 +3597,7 @@ allocator_heap__fopen(const char* filename, const char* mode)
 }
 
 static int
-allocator_heap__open(const char* pathname, int flags, mode_t mode)
+allocator_heap__open(const char* pathname, int flags, unsigned int mode)
 {
     uassert(allocator__heap_data.magic != 0 && "Allocator not initialized");
     uassert(allocator__heap_data.magic == ALLOCATOR_HEAP_MAGIC && "Allocator type!");
@@ -3689,10 +3692,10 @@ allocators__staticarena__create(char* buffer, size_t capacity)
     a->max = (char*)a->mem + capacity;
     a->next = a->mem;
 
-    u32 offset = ((u64)a->next % sizeof(size_t));
+    size_t offset = ((size_t)a->next % sizeof(size_t));
     a->next = (char*)a->next + (offset ? sizeof(size_t) - offset : 0);
 
-    uassert(((u64)a->next % sizeof(size_t) == 0) && "alloca/malloc() returned non word aligned ptr");
+    uassert(((size_t)a->next % sizeof(size_t) == 0) && "alloca/malloc() returned non word aligned ptr");
 
     return &a->base;
 }
@@ -3923,7 +3926,7 @@ allocator_staticarena__fclose(FILE* f)
     return fclose(f);
 }
 static int
-allocator_staticarena__open(const char* pathname, int flags, mode_t mode)
+allocator_staticarena__open(const char* pathname, int flags, unsigned int mode)
 {
     uassert(allocator__staticarena_data.magic != 0 && "Allocator not initialized");
     uassert(allocator__staticarena_data.magic == ALLOCATOR_STATIC_ARENA_MAGIC && "Allocator type!");
@@ -4764,7 +4767,7 @@ dict_iter(dict_c* self, cex_iterator_s* iterator)
         size_t counter;
     }* ctx = (struct iter_ctx*)iterator->_ctx;
     _Static_assert(sizeof(*ctx) <= sizeof(iterator->_ctx), "ctx size overflow");
-    _Static_assert(alignof(struct iter_ctx) == 8, "ctx alignment mismatch");
+    _Static_assert(alignof(struct iter_ctx) == alignof(size_t), "ctx alignment mismatch");
 
     if (unlikely(iterator->val == NULL)) {
         if (hm->count == 0) {
@@ -5115,7 +5118,6 @@ io_readall(io_c* self, str_c* s)
     }
 
     if (read_size != self->_fsize) {
-        utracef("%ld != %ld: %s\n", read_size, self->_fsize, strerror(errno));
         return "File size changed";
     }
 
@@ -5333,7 +5335,7 @@ list__head(list_c* self)
 {
     uassert(self != NULL);
     uassert(self->arr != NULL && "array is not initialized");
-    list_head_s* head = (list_head_s*)((char*)self->arr - sizeof(list_head_s));
+    list_head_s* head = (list_head_s*)((char*)self->arr - _CEX_LIST_BUF);
     uassert(head->header.magic == 0x1eed && "not a dlist / bad pointer");
     uassert(head->capacity > 0 && "zero capacity or memory corruption");
     uassert(head->count <= head->capacity && "count > capacity");
@@ -5365,7 +5367,7 @@ list__elidx(list_head_s* head, size_t idx)
     // Memory alignment
     // |-----|head|--el1--|--el2--|--elN--|
     //  ^^^^ - head can moved to el1, because of el1 alignment
-    void* result = (char*)head + sizeof(list_head_s) + (head->header.elsize * idx);
+    void* result = (char*)head + _CEX_LIST_BUF + (head->header.elsize * idx);
 
     uassert((size_t)result % head->header.elalign == 0 && "misaligned array index pointer");
 
@@ -5381,9 +5383,9 @@ list__realloc(list_head_s* head, size_t alloc_size)
     uassert(head->header.magic == 0x1eed && "not a dlist / bad pointer");
     size_t offset = 0;
     size_t align = alignof(list_head_s);
-    if (head->header.elalign > sizeof(list_head_s)) {
+    if (head->header.elalign > _CEX_LIST_BUF) {
         align = head->header.elalign;
-        offset = head->header.elalign - sizeof(list_head_s);
+        offset = head->header.elalign - _CEX_LIST_BUF;
     }
     uassert(head->header.magic == 0x1eed && "not a dlist / bad pointer");
     void* mptr = (char*)head - offset;
@@ -5408,7 +5410,7 @@ list__alloc_size(size_t capacity, size_t elsize, size_t elalign)
     uassert(elsize % elalign == 0 && "element size has to be rounded to elalign");
 
     size_t result = (capacity * elsize) +
-                    (elalign > sizeof(list_head_s) ? elalign : sizeof(list_head_s));
+                    (elalign > _CEX_LIST_BUF ? elalign : _CEX_LIST_BUF);
     uassert(result % elalign == 0 && "alloc_size is unaligned");
     return result;
 }
@@ -5455,8 +5457,8 @@ list_create(
         return Error.memory;
     }
 
-    if (elalign > sizeof(list_head_s)) {
-        buf += elalign - sizeof(list_head_s);
+    if (elalign > _CEX_LIST_BUF) {
+        buf += elalign - _CEX_LIST_BUF;
     }
 
     list_head_s* head = (list_head_s*)buf;
@@ -5502,15 +5504,15 @@ list_create_static(list_c* self, void* buf, size_t buf_len, size_t elsize, size_
     // Clear dlist pointer
     memset(self, 0, sizeof(list_c));
 
-    size_t offset = ((size_t)buf + sizeof(list_head_s)) % elalign;
+    size_t offset = ((size_t)buf + _CEX_LIST_BUF) % elalign;
     if (offset != 0) {
         offset = elalign - offset;
     }
 
-    if (buf_len < sizeof(list_head_s) + offset + elsize) {
+    if (buf_len < _CEX_LIST_BUF + offset + elsize) {
         return Error.overflow;
     }
-    size_t max_capacity = (buf_len - sizeof(list_head_s) - offset) / elsize;
+    size_t max_capacity = (buf_len - _CEX_LIST_BUF - offset) / elsize;
 
     list_head_s* head = (list_head_s*)((char*)buf + offset);
     *head = (list_head_s){
@@ -5696,8 +5698,8 @@ list_destroy(void* self)
             list_head_s* head = list__head(self);
 
             size_t offset = 0;
-            if (head->header.elalign > sizeof(list_head_s)) {
-                offset = head->header.elalign - sizeof(list_head_s);
+            if (head->header.elalign > _CEX_LIST_BUF) {
+                offset = head->header.elalign - _CEX_LIST_BUF;
             }
 
             void* mptr = (char*)head - offset;
@@ -5731,7 +5733,7 @@ list_iter(void* self, cex_iterator_s* iterator)
         size_t cursor;
     }* ctx = (struct iter_ctx*)iterator->_ctx;
     _Static_assert(sizeof(*ctx) <= sizeof(iterator->_ctx), "ctx size overflow");
-    _Static_assert(alignof(struct iter_ctx) == 8, "ctx alignment mismatch");
+    _Static_assert(alignof(struct iter_ctx) == alignof(size_t), "ctx alignment mismatch");
 
     if (unlikely(iterator->val == NULL)) {
         ctx->cursor = 0;
@@ -6174,7 +6176,6 @@ sbuf_sprintf(sbuf_c* self, const char* format, ...)
 {
     uassert(self != NULL);
     sbuf_head_s* head = sbuf__head(*self);
-    // utracef("head s: %s, len: %d\n", *self, head->length);
 
     struct _sbuf__sprintf_ctx ctx = {
         .head = head,
@@ -6401,7 +6402,7 @@ str_iter(str_c s, cex_iterator_s* iterator)
         size_t cursor;
     }* ctx = (struct iter_ctx*)iterator->_ctx;
     _Static_assert(sizeof(*ctx) <= sizeof(iterator->_ctx), "ctx size overflow");
-    _Static_assert(alignof(struct iter_ctx) == 8, "ctx alignment mismatch");
+    _Static_assert(alignof(struct iter_ctx) == alignof(size_t), "ctx alignment mismatch");
 
     if (unlikely(iterator->val == NULL)) {
         // Iterator is not initialized set to 1st item

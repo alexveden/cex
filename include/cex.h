@@ -273,7 +273,7 @@ typedef struct
 _Static_assert(sizeof(size_t) == sizeof(void*), "size_t expected as sizeof ptr");
 _Static_assert(sizeof(size_t) == sizeof(unsigned long), "size_t expected as u64");
 _Static_assert(alignof(cex_iterator_s) == alignof(void*), "alignof");
-_Static_assert(sizeof(cex_iterator_s) == 64, "cex size");
+_Static_assert(sizeof(cex_iterator_s) <= 64, "cex size");
 
 /**
  * @brief Iterates via iterator function (see usage below)
@@ -325,8 +325,27 @@ typedef struct Allocator_i
     int (*fclose)(FILE* stream);
     int (*close)(int fd);
 } Allocator_i;
-_Static_assert(sizeof(Allocator_i) == 80, "size");
-_Static_assert(alignof(Allocator_i) == 8, "size");
+_Static_assert(alignof(Allocator_i) == alignof(size_t), "size");
+_Static_assert(sizeof(Allocator_i) == sizeof(size_t)*10, "size");
+
+
+// Check windows
+#if _WIN32 || _WIN64
+   #if _WIN64
+     #define CEX_ENV64BIT
+  #else
+    #define CEX_ENV32BIT
+  #endif
+#endif
+
+// Check GCC
+#if __GNUC__
+  #if __x86_64__ || __ppc64__
+    #define CEX_ENV64BIT
+  #else
+    #define CEX_ENV32BIT
+  #endif
+#endif
 
 
 /*
@@ -379,7 +398,8 @@ typedef struct
     } stats;
 
 } allocator_staticarena_s;
-_Static_assert(sizeof(allocator_staticarena_s) == 192, "size!");
+// _Static_assert(sizeof(allocator_staticarena_s) == 192, "size!");
+_Static_assert(alignof(allocator_staticarena_s) == 64, "align");
 _Static_assert(offsetof(allocator_staticarena_s, base) == 0, "base must be the 1st struct member");
 
 struct __module__allocators
@@ -653,13 +673,13 @@ struct __CexTestContext_s
 //
 #define tassert_eqi(_ac, _ex)                                                                      \
     do {                                                                                           \
-        int ac = (_ac);                                                                            \
-        int ex = (_ex);                                                                            \
+        long int ac = (_ac);                                                                       \
+        long int ex = (_ex);                                                                       \
         if ((ac) != (ex)) {                                                                        \
             snprintf(                                                                              \
                 __CexTestContext._str_buf,                                                         \
                 CEXTEST_AMSG_MAX_LEN - 1,                                                          \
-                __CEXTEST_LOG_ERR("%d != %d"),                                                     \
+                __CEXTEST_LOG_ERR("%ld != %ld"),                                                     \
                 (ac),                                                                              \
                 (ex)                                                                               \
             );                                                                                     \
@@ -672,13 +692,13 @@ struct __CexTestContext_s
 //
 #define tassert_eql(_ac, _ex)                                                                      \
     do {                                                                                           \
-        long ac = (_ac);                                                                           \
-        long ex = (_ex);                                                                           \
+        long long ac = (_ac);                                                                           \
+        long long ex = (_ex);                                                                           \
         if ((ac) != (ex)) {                                                                        \
             snprintf(                                                                              \
                 __CexTestContext._str_buf,                                                         \
                 CEXTEST_AMSG_MAX_LEN - 1,                                                          \
-                __CEXTEST_LOG_ERR("%ld != %ld"),                                                   \
+                __CEXTEST_LOG_ERR("%lld != %lld"),                                                   \
                 (ac),                                                                              \
                 (ex)                                                                               \
             );                                                                                     \
@@ -707,7 +727,7 @@ struct __CexTestContext_s
             snprintf(                                                                              \
                 __CexTestContext._str_buf,                                                         \
                 CEXTEST_AMSG_MAX_LEN - 1,                                                          \
-                __CEXTEST_LOG_ERR("%.10e != %.10e (diff: %0.10e epsilon: %0.10e)"),                      \
+                __CEXTEST_LOG_ERR("%.10e != %.10e (diff: %0.10e epsilon: %0.10e)"),                \
                 (ac),                                                                              \
                 (ex),                                                                              \
                 ((ac) - (ex)),                                                                     \
@@ -724,7 +744,7 @@ struct __CexTestContext_s
  *
  */
 
-#define test$setup()                                                                            \
+#define test$setup()                                                                               \
     struct __CexTestContext_s __CexTestContext = {                                                 \
         .out_stream = NULL,                                                                        \
         .tests_run = 0,                                                                            \
@@ -743,7 +763,7 @@ struct __CexTestContext_s
 #define test$case(test_case_name) static test$NOOPT Exc test_case_name()
 
 
-#define test$run(test_case_name)                                                                \
+#define test$run(test_case_name)                                                                   \
     do {                                                                                           \
         if (argc >= 3 && strcmp(argv[2], #test_case_name) != 0) {                                  \
             break;                                                                                 \
@@ -753,7 +773,7 @@ struct __CexTestContext_s
         if (err != EOK) {                                                                          \
             fprintf(                                                                               \
                 __atest_stream,                                                                    \
-                "[%s] %s in test$setup() before %s\n",                                          \
+                "[%s] %s in test$setup() before %s\n",                                             \
                 CEXTEST_CRED "FAIL" CEXTEST_CNONE,                                                 \
                 err,                                                                               \
                 #test_case_name                                                                    \
@@ -789,7 +809,7 @@ struct __CexTestContext_s
         if (err != EOK) {                                                                          \
             fprintf(                                                                               \
                 __atest_stream,                                                                    \
-                "[%s] %s in test$teardown() after %s\n",                                        \
+                "[%s] %s in test$teardown() after %s\n",                                           \
                 CEXTEST_CRED "FAIL" CEXTEST_CNONE,                                                 \
                 err,                                                                               \
                 #test_case_name                                                                    \
@@ -804,7 +824,7 @@ struct __CexTestContext_s
 //
 //  Prints current test header
 //
-#define test$print_header()                                                                     \
+#define test$print_header()                                                                        \
     do {                                                                                           \
         setbuf(__atest_stream, NULL);                                                              \
         if (__CexTestContext.verbosity > 0) {                                                      \
@@ -819,7 +839,7 @@ struct __CexTestContext_s
 //
 // Prints current tests stats total / passed / failed
 //
-#define test$print_footer()                                                                     \
+#define test$print_footer()                                                                        \
     do {                                                                                           \
         if (__CexTestContext.verbosity > 0) {                                                      \
             fprintf(__atest_stream, "\n-------------------------------------\n");                  \
@@ -851,7 +871,7 @@ struct __CexTestContext_s
 //  Utility macro for returning main() exit code based on test failed/run, if no tests
 //  run it's an error too
 //
-#define test$args_parse(argc, argv)                                                             \
+#define test$args_parse(argc, argv)                                                                \
     do {                                                                                           \
         if (argc == 1)                                                                             \
             break;                                                                                 \
@@ -897,7 +917,6 @@ struct __CexTestContext_s
 */
 #include <stdalign.h>
 #include <stdint.h>
-#include <string.h>
 
 
 typedef struct
@@ -908,6 +927,9 @@ typedef struct
     size_t len;
     char* buf;
 } str_c;
+
+_Static_assert(alignof(str_c) == alignof(size_t), "align");
+_Static_assert(sizeof(str_c) == sizeof(size_t)*2, "size");
 
 static inline str_c
 _str__propagate_inline_small_func(str_c s)
@@ -925,8 +947,6 @@ _str__propagate_inline_small_func(str_c s)
     )(string)
 // clang-format on
 
-_Static_assert(sizeof(str_c) == 16, "size");
-_Static_assert(alignof(str_c) == 8, "size");
 
 
 struct __module__str
@@ -1048,6 +1068,10 @@ typedef struct
     u32 length;
     u32 capacity;
     const Allocator_i* allocator;
+
+    #ifdef CEX_ENV32BIT
+    char __padding[4];
+    #endif
 } __attribute__((packed)) sbuf_head_s;
 
 _Static_assert(sizeof(sbuf_head_s) == 20, "size");
@@ -1158,7 +1182,9 @@ typedef struct
     // alignment, so the list_head_s takes place at (void*)1st_el - sizeof(list_head_s)
 } __attribute__((packed)) list_head_s;
 
-_Static_assert(sizeof(list_head_s) == 32, "size");
+#define _CEX_LIST_BUF 32
+// _Static_assert(sizeof(list_head_s) == 32, "size"); // platform dependent
+_Static_assert(sizeof(list_head_s) <= _CEX_LIST_BUF, "size");
 _Static_assert(alignof(list_head_s) == 1, "align");
 
 struct __module__list
@@ -1217,7 +1243,7 @@ typedef struct dict_c
 } dict_c;
 
 typedef u64 (*dict_hash_func_f)(const void* item, u64 seed0, u64 seed1);
-typedef i32 (*dict_compare_func_f)(const void* a, const void* b, void* udata);
+typedef int (*dict_compare_func_f)(const void* a, const void* b, void* udata);
 typedef void (*dict_elfree_func_f)(void* item);
 
 

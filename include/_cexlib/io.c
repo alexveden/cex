@@ -266,7 +266,6 @@ io_readall(io_c* self, str_c* s)
     }
 
     if (read_size != self->_fsize) {
-        utracef("%ld != %ld: %s\n", read_size, self->_fsize, strerror(errno));
         return "File size changed";
     }
 

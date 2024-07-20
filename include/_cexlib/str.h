@@ -2,7 +2,6 @@
 #include "cex.h"
 #include <stdalign.h>
 #include <stdint.h>
-#include <string.h>
 
 
 typedef struct
@@ -13,6 +12,9 @@ typedef struct
     size_t len;
     char* buf;
 } str_c;
+
+_Static_assert(alignof(str_c) == alignof(size_t), "align");
+_Static_assert(sizeof(str_c) == sizeof(size_t)*2, "size");
 
 static inline str_c
 _str__propagate_inline_small_func(str_c s)
@@ -30,8 +32,6 @@ _str__propagate_inline_small_func(str_c s)
     )(string)
 // clang-format on
 
-_Static_assert(sizeof(str_c) == 16, "size");
-_Static_assert(alignof(str_c) == 8, "size");
 
 
 struct __module__str

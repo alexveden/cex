@@ -43,7 +43,9 @@ test$case(testlist_alloc_capacity)
 
     // after 1024 increase by 20%
     tassert_eql(1024 * 1.2, list__alloc_capacity(1024));
-    tassert_eql(1000000 * 1.2, list__alloc_capacity(1000000));
+    u64 expected_cap = 1000000 * 1.2;
+    u64 alloc_cap = list__alloc_capacity(1000000);
+    tassert(expected_cap-alloc_cap <= 1); // x32 - may have precision rounding
 
     return EOK;
 }
@@ -60,7 +62,7 @@ test$case(testlist_new)
     tassert(a.arr != NULL);
     tassert_eqi(a.len, 0);
 
-    list_head_s* head = (list_head_s*)((char*)a.arr - sizeof(list_head_s));
+    list_head_s* head = (list_head_s*)((char*)a.arr - _CEX_LIST_BUF);
     tassert_eqi(head->header.magic, 0x1eed);
     tassert_eqi(head->header.elalign, alignof(int));
     tassert_eqi(head->header.elsize, sizeof(int));
@@ -565,7 +567,7 @@ test$case(testlist_append_static)
 {
     list$define(int) a;
 
-    alignas(32) char buf[sizeof(list_head_s) + sizeof(int)*4];
+    alignas(32) char buf[_CEX_LIST_BUF + sizeof(int)*4];
 
     tassert_eqs(EOK, list$new_static(&a, buf, arr$len(buf)));
     tassert_eqi(list.capacity(&a), 4);
@@ -604,7 +606,7 @@ test$case(testlist_static_buffer_validation)
 {
     list$define(int) a;
 
-    alignas(32) char buf[sizeof(list_head_s) + sizeof(int)*1];
+    alignas(32) char buf[_CEX_LIST_BUF + sizeof(int)*1];
 
     tassert_eqs(EOK, list$new_static(&a, buf, arr$len(buf)));
     tassert_eqi(list.capacity(&a), 1);
@@ -645,7 +647,7 @@ test$case(testlist_static_with_alignment)
 
     tassert_eqi(a.len, 1);
     list_head_s* head = list__head((list_c*)&a);
-    tassert_eqi(((char*)a.arr - (char*)head), sizeof(list_head_s));
+    tassert_eqi(((char*)a.arr - (char*)head), _CEX_LIST_BUF);
     tassert_eqi(((char*)a.arr - (char*)buf), 64);
     tassert_eqi(((char*)head - (char*)unaligned), 31);
 
