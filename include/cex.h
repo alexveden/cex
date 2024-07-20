@@ -108,24 +108,25 @@ _uhf_errors_is_error__uerr(Exc* e)
 
 
 // WARNING: DO NOT USE break/continue inside except* {scope!}
-#define except(_var_name, _func)                                                                   \
+#define except_silent(_var_name, _func)                                                            \
     for (Exc _var_name = _func; unlikely(_uhf_errors_is_error__uerr(&_var_name)); _var_name = EOK)
 
-#define except_traceback(_var_name, _func)                                                         \
-    for (Exc _var_name = _func; unlikely(_var_name != NULL && (uptraceback(_var_name, #_func)));   \
+#define except(_var_name, _func)                                                                   \
+    for (Exc _var_name = _func;                                                                    \
+         unlikely(_uhf_errors_is_error__uerr(&_var_name) && uptraceback(_var_name, #_func));       \
          _var_name = EOK)
 
-#define e$ret(_func)                                                                                  \
+#define e$ret(_func)                                                                               \
     for (Exc __CEX_TMPNAME(__cex_err_traceback_) = _func; unlikely(                                \
-             __CEX_TMPNAME(__cex_err_traceback_) != NULL &&                                        \
+             _uhf_errors_is_error__uerr(&__CEX_TMPNAME(__cex_err_traceback_)) &&                   \
              (uptraceback(__CEX_TMPNAME(__cex_err_traceback_), #_func))                            \
          );                                                                                        \
          __CEX_TMPNAME(__cex_err_traceback_) = EOK)                                                \
     return __CEX_TMPNAME(__cex_err_traceback_)
 
-#define e$goto(_func, _label)                                                                                  \
-    for (Exc __CEX_TMPNAME(__cex_err_traceback_) = result = _func; unlikely(                                \
-             __CEX_TMPNAME(__cex_err_traceback_) != NULL &&                                        \
+#define e$goto(_func, _label)                                                                      \
+    for (Exc __CEX_TMPNAME(__cex_err_traceback_) = result = _func; unlikely(                       \
+             _uhf_errors_is_error__uerr(&__CEX_TMPNAME(__cex_err_traceback_)) &&                   \
              (uptraceback(__CEX_TMPNAME(__cex_err_traceback_), #_func))                            \
          );                                                                                        \
          __CEX_TMPNAME(__cex_err_traceback_) = EOK)                                                \
@@ -150,7 +151,6 @@ _uhf_errors_is_error__uerr(Exc* e)
 /**
  *                 ASSERTIONS MACROS
  */
-
 
 
 #ifdef NDEBUG
@@ -326,37 +326,37 @@ typedef struct Allocator_i
     int (*close)(int fd);
 } Allocator_i;
 _Static_assert(alignof(Allocator_i) == alignof(size_t), "size");
-_Static_assert(sizeof(Allocator_i) == sizeof(size_t)*10, "size");
+_Static_assert(sizeof(Allocator_i) == sizeof(size_t) * 10, "size");
 
 
 // Check windows
 #if _WIN32 || _WIN64
-   #if _WIN64
-     #define CEX_ENV64BIT
-  #else
-    #define CEX_ENV32BIT
-  #endif
+#if _WIN64
+#define CEX_ENV64BIT
+#else
+#define CEX_ENV32BIT
+#endif
 #endif
 
 // Check GCC
 #if __GNUC__
-  #if __x86_64__ || __ppc64__
-    #define CEX_ENV64BIT
-  #else
-    #define CEX_ENV32BIT
-  #endif
+#if __x86_64__ || __ppc64__
+#define CEX_ENV64BIT
+#else
+#define CEX_ENV32BIT
+#endif
 #endif
 
 
 /*
-*                   allocators.h
-*/
+ *                   allocators.h
+ */
 #include <stdalign.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stddef.h>
 
 
 typedef struct
@@ -443,13 +443,13 @@ struct {  // sub-module .staticarena >>>
     (*destroy)(void);
 
 } staticarena;  // sub-module .staticarena <<<
-    // clang-format on
+                  // clang-format on
 };
 extern const struct __module__allocators allocators; // CEX Autogen
 
 /*
-*                   cextest.h
-*/
+ *                   cextest.h
+ */
 /**
  * @brief CEX built-in testing framework
  *
@@ -679,7 +679,7 @@ struct __CexTestContext_s
             snprintf(                                                                              \
                 __CexTestContext._str_buf,                                                         \
                 CEXTEST_AMSG_MAX_LEN - 1,                                                          \
-                __CEXTEST_LOG_ERR("%ld != %ld"),                                                     \
+                __CEXTEST_LOG_ERR("%ld != %ld"),                                                   \
                 (ac),                                                                              \
                 (ex)                                                                               \
             );                                                                                     \
@@ -692,13 +692,13 @@ struct __CexTestContext_s
 //
 #define tassert_eql(_ac, _ex)                                                                      \
     do {                                                                                           \
-        long long ac = (_ac);                                                                           \
-        long long ex = (_ex);                                                                           \
+        long long ac = (_ac);                                                                      \
+        long long ex = (_ex);                                                                      \
         if ((ac) != (ex)) {                                                                        \
             snprintf(                                                                              \
                 __CexTestContext._str_buf,                                                         \
                 CEXTEST_AMSG_MAX_LEN - 1,                                                          \
-                __CEXTEST_LOG_ERR("%lld != %lld"),                                                   \
+                __CEXTEST_LOG_ERR("%lld != %lld"),                                                 \
                 (ac),                                                                              \
                 (ex)                                                                               \
             );                                                                                     \
@@ -913,8 +913,8 @@ struct __CexTestContext_s
 #define __CEXTEST_NON_NULL(x) ((x != NULL) ? (x) : "")
 
 /*
-*                   str.h
-*/
+ *                   str.h
+ */
 #include <stdalign.h>
 #include <stdint.h>
 
@@ -929,7 +929,7 @@ typedef struct
 } str_c;
 
 _Static_assert(alignof(str_c) == alignof(size_t), "align");
-_Static_assert(sizeof(str_c) == sizeof(size_t)*2, "size");
+_Static_assert(sizeof(str_c) == sizeof(size_t) * 2, "size");
 
 static inline str_c
 _str__propagate_inline_small_func(str_c s)
@@ -946,7 +946,6 @@ _str__propagate_inline_small_func(str_c s)
         str_c: _str__propagate_inline_small_func           \
     )(string)
 // clang-format on
-
 
 
 struct __module__str
@@ -1052,8 +1051,8 @@ Exception
 extern const struct __module__str str; // CEX Autogen
 
 /*
-*                   sbuf.h
-*/
+ *                   sbuf.h
+ */
 
 typedef char* sbuf_c;
 
@@ -1122,8 +1121,8 @@ str_c
 extern const struct __module__sbuf sbuf; // CEX Autogen
 
 /*
-*                   list.h
-*/
+ *                   list.h
+ */
 
 
 /**
@@ -1230,8 +1229,8 @@ void*
 extern const struct __module__list list; // CEX Autogen
 
 /*
-*                   dict.h
-*/
+ *                   dict.h
+ */
 #include <string.h>
 
 typedef struct dict_c
@@ -1256,7 +1255,6 @@ typedef void (*dict_elfree_func_f)(void* item);
 #define _dict$hashfunc(struct, field) _dict$hashfunc_field(((struct){ 0 }.field))
 
 #define _dict$cmpfunc(struct, field) _dict$cmpfunc_field(((struct){ 0 }.field))
-
 
 
 #define dict$new(self, struct_type, key_field_name, allocator)                                     \
@@ -1412,8 +1410,8 @@ Exception
 extern const struct __module__dict dict; // CEX Autogen
 
 /*
-*                   io.h
-*/
+ *                   io.h
+ */
 #include <stdio.h>
 
 
@@ -1490,8 +1488,8 @@ void
 extern const struct __module__io io; // CEX Autogen
 
 /*
-*                   argparse.h
-*/
+ *                   argparse.h
+ */
 /**
  * Copyright (C) 2012-2015 Yecheng Fu <cofyc.jackson at gmail dot com>
  * All rights reserved.

@@ -157,10 +157,10 @@ test$case(test_null_ptr)
 test$case(test_nested_excepts)
 {
 
-    except(err, foo(0)){
+    except_silent(err, foo(0)){
         tassert_eqe(err, Error.io);
 
-        except(err, foo(2)){
+        except_silent(err, foo(2)){
             tassert_eqe(err, Error.memory);
         }
 

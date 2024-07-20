@@ -9,7 +9,7 @@ main(int argc, char* argv[])
   App_c app = { 0 };
   var allocator = allocators.heap.create();
 
-  except(err, App.create(&app, argc, argv, allocator))
+  except_silent(err, App.create(&app, argc, argv, allocator))
   {
     if (err != Error.argsparse){
       uptraceback(err, "App.create(&app, argc, argv, allocator))");
@@ -18,7 +18,7 @@ main(int argc, char* argv[])
     goto shutdown;
   }
 
-  except_traceback(err, App.main(&app, allocator))
+  except(err, App.main(&app, allocator))
   {
     ret_code = EXIT_FAILURE;
     goto shutdown;

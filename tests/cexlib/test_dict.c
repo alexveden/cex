@@ -73,12 +73,12 @@ test$case(test_dict_int64)
 
     tassert_eqs(dict.set(&hm, &(struct s){ .key = 123, .val = 'z' }), EOK);
 
-    except(err, dict.set(&hm, &(struct s){ .key = 123, .val = 'z' }))
+    except_silent(err, dict.set(&hm, &(struct s){ .key = 123, .val = 'z' }))
     {
         tassert(false && "unexpected");
     }
 
-    except(err, dict.set(&hm, &(struct s){ .key = 133, .val = 'z' }))
+    except_silent(err, dict.set(&hm, &(struct s){ .key = 133, .val = 'z' }))
     {
         tassert(false && "unexpected");
     }
@@ -131,12 +131,12 @@ test$case(test_dict_string)
 
     tassert_eqs(dict.set(&hm, &(struct s){ .key = "abcd", .val = 'z' }), EOK);
 
-    except(err, dict.set(&hm, &(struct s){ .key = "abcd", .val = 'z' }))
+    except_silent(err, dict.set(&hm, &(struct s){ .key = "abcd", .val = 'z' }))
     {
         tassert(false && "unexpected");
     }
 
-    except(err, dict.set(&hm, &(struct s){ .key = "xyz", .val = 'z' }))
+    except_silent(err, dict.set(&hm, &(struct s){ .key = "xyz", .val = 'z' }))
     {
         tassert(false && "unexpected");
     }

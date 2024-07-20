@@ -20,7 +20,7 @@ App_create(App_c* app, i32 argc, char* argv[], const Allocator_i* allocator)
                         .description = "Basic cat utility with convert csv->json function",
                         .epilog = "\nIt has intentional bugs, try to fix them :)" };
 
-    except(err, argparse.parse(&args, argc, argv))
+    except_silent(err, argparse.parse(&args, argc, argv))
     {
         return err;
     }
@@ -162,7 +162,7 @@ App_main(App_c* app, const Allocator_i* allocator)
             uassert(false && "TODO: implement");
             e$goto(App__process_csv(app, &f), fail);
         } else {
-            except_traceback(err, App__process_plain(app, &f))
+            except(err, App__process_plain(app, &f))
             {
                 io.close(&f);
                 return err;

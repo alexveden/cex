@@ -108,10 +108,10 @@ _uhf_errors_is_error__uerr(Exc* e)
 
 
 // WARNING: DO NOT USE break/continue inside except* {scope!}
-#define except(_var_name, _func)                                                                   \
+#define except_silent(_var_name, _func)                                                                   \
     for (Exc _var_name = _func; unlikely(_uhf_errors_is_error__uerr(&_var_name)); _var_name = EOK)
 
-#define except_traceback(_var_name, _func)                                                         \
+#define except(_var_name, _func)                                                         \
     for (Exc _var_name = _func; unlikely(_var_name != NULL && (uptraceback(_var_name, #_func)));   \
          _var_name = EOK)
 

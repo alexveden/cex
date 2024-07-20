@@ -194,7 +194,7 @@ sbuf_replace(sbuf_c* self, const str_c oldstr, const str_c newstr)
         } else {
             // Try resize
             if (unlikely(s.len + (newstr.len - oldstr.len) > capacity - 1)) {
-                except(err, sbuf__grow_buffer(self, s.len + (newstr.len - oldstr.len)))
+                except_silent(err, sbuf__grow_buffer(self, s.len + (newstr.len - oldstr.len)))
                 {
                     return err;
                 }
@@ -238,7 +238,7 @@ sbuf_append(sbuf_c* self, str_c s)
 
     // Try resize
     if (length + s.len > capacity - 1) {
-        except(err, sbuf__grow_buffer(self, length + s.len))
+        except_silent(err, sbuf__grow_buffer(self, length + s.len))
         {
             return err;
         }
@@ -325,7 +325,7 @@ sbuf__sprintf_callback(const char* buf, void* user, int len)
         }
 
         // NOTE: sbuf likely changed after realloc
-        except(err, sbuf__grow_buffer(&sbuf, ctx->length + len + 1))
+        except_silent(err, sbuf__grow_buffer(&sbuf, ctx->length + len + 1))
         {
             ctx->err = err;
             return ctx->tmp;

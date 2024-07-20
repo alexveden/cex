@@ -4394,7 +4394,7 @@ argparse_parse(argparse_c* self, int argc, char** argv)
     self->_ctx.argv = argv + 1;
     self->_ctx.out = argv;
 
-    except(err, argparse__options_check(self, true))
+    except_silent(err, argparse__options_check(self, true))
     {
         return err;
     }
@@ -4420,12 +4420,12 @@ argparse_parse(argparse_c* self, int argc, char** argv)
 
             self->_ctx.optvalue = arg + 1;
             self->_ctx.cpidx++;
-            except(err, argparse__short_opt(self, self->options))
+            except_silent(err, argparse__short_opt(self, self->options))
             {
                 return argparse__report_error(self, err);
             }
             while (self->_ctx.optvalue) {
-                except(err, argparse__short_opt(self, self->options))
+                except_silent(err, argparse__short_opt(self, self->options))
                 {
                     return argparse__report_error(self, err);
                 }
@@ -4444,7 +4444,7 @@ argparse_parse(argparse_c* self, int argc, char** argv)
             // options are not allowed after arguments
             return argparse__report_error(self, Error.integrity);
         }
-        except(err, argparse__long_opt(self, self->options))
+        except_silent(err, argparse__long_opt(self, self->options))
         {
             return argparse__report_error(self, err);
         }
@@ -4452,7 +4452,7 @@ argparse_parse(argparse_c* self, int argc, char** argv)
         continue;
     }
 
-    except(err, argparse__options_check(self, false))
+    except_silent(err, argparse__options_check(self, false))
     {
         return err;
     }
@@ -4816,7 +4816,7 @@ dict_tolist(dict_c* self, void* listptr, const Allocator_i* allocator)
 
     struct hashmap* hm = self->hashmap;
 
-    except_traceback(err, list.create((list_c*)listptr, hm->count, hm->elsize, alignof(size_t), allocator)){
+    except(err, list.create((list_c*)listptr, hm->count, hm->elsize, alignof(size_t), allocator)){
         return err;
     }
 
@@ -4824,7 +4824,7 @@ dict_tolist(dict_c* self, void* listptr, const Allocator_i* allocator)
     void* item = NULL;
 
     while(hashmap_iter(self->hashmap, &hm_cursor, &item)) {
-        except_traceback(err, list.append(listptr, item)){
+        except(err, list.append(listptr, item)){
             return err;
         }
     };
@@ -5015,19 +5015,19 @@ io_size(io_c* self)
     if (self->_fsize == 0) {
         // Do some caching
         size_t old_pos = 0;
-        except(err, io_tell(self, &old_pos))
+        except_silent(err, io_tell(self, &old_pos))
         {
             return 0;
         }
-        except(err, io_seek(self, 0, SEEK_END))
+        except_silent(err, io_seek(self, 0, SEEK_END))
         {
             return 0;
         }
-        except(err, io_tell(self, &self->_fsize))
+        except_silent(err, io_tell(self, &self->_fsize))
         {
             return 0;
         }
-        except(err, io_seek(self, old_pos, SEEK_SET))
+        except_silent(err, io_seek(self, old_pos, SEEK_SET))
         {
             return 0;
         }
@@ -5093,7 +5093,7 @@ io_readall(io_c* self, str_c* s)
             .buf = "",
             .len = 0,
         };
-        except_traceback(err, io_seek(self, 0, SEEK_END))
+        except(err, io_seek(self, 0, SEEK_END))
         {
             ;
         }
@@ -5118,7 +5118,7 @@ io_readall(io_c* self, str_c* s)
     }
 
     size_t read_size = self->_fbuf_size;
-    except(err, io_read(self, self->_fbuf, sizeof(char), &read_size))
+    except_silent(err, io_read(self, self->_fbuf, sizeof(char), &read_size))
     {
         return err;
     }
@@ -5970,7 +5970,7 @@ sbuf_replace(sbuf_c* self, const str_c oldstr, const str_c newstr)
         } else {
             // Try resize
             if (unlikely(s.len + (newstr.len - oldstr.len) > capacity - 1)) {
-                except(err, sbuf__grow_buffer(self, s.len + (newstr.len - oldstr.len)))
+                except_silent(err, sbuf__grow_buffer(self, s.len + (newstr.len - oldstr.len)))
                 {
                     return err;
                 }
@@ -6014,7 +6014,7 @@ sbuf_append(sbuf_c* self, str_c s)
 
     // Try resize
     if (length + s.len > capacity - 1) {
-        except(err, sbuf__grow_buffer(self, length + s.len))
+        except_silent(err, sbuf__grow_buffer(self, length + s.len))
         {
             return err;
         }
@@ -6101,7 +6101,7 @@ sbuf__sprintf_callback(const char* buf, void* user, int len)
         }
 
         // NOTE: sbuf likely changed after realloc
-        except(err, sbuf__grow_buffer(&sbuf, ctx->length + len + 1))
+        except_silent(err, sbuf__grow_buffer(&sbuf, ctx->length + len + 1))
         {
             ctx->err = err;
             return ctx->tmp;

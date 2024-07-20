@@ -43,7 +43,7 @@ test$case(testlist_alloc_capacity)
 test$case(test_deque_new)
 {
     deque_c a;
-    except_traceback(err, deque$new(&a, int, 0, false, allocator))
+    except(err, deque$new(&a, int, 0, false, allocator))
     {
         tassert(false && "deque$new fail");
     }
@@ -80,7 +80,7 @@ test$case(test_element_alignment_16)
     _Static_assert(sizeof(struct foo16) == 16, "size");
     _Static_assert(alignof(struct foo16) == 16, "align");
 
-    except_traceback(err, deque$new(&a, struct foo16, 0, false, allocator))
+    except(err, deque$new(&a, struct foo16, 0, false, allocator))
     {
         tassert(false && "deque$new fail");
     }
@@ -134,7 +134,7 @@ test$case(test_element_alignment_64)
         alignas(128) size_t foo;
     };
 
-    except_traceback(err, deque$new(&a, struct foo64, 0, false, allocator))
+    except(err, deque$new(&a, struct foo64, 0, false, allocator))
     {
         tassert(false && "deque$new fail");
     }
@@ -177,7 +177,7 @@ test$case(test_element_alignment_64)
 test$case(test_deque_new_append_pop)
 {
     deque_c a;
-    except_traceback(err, deque$new(&a, int, 0, false, allocator))
+    except(err, deque$new(&a, int, 0, false, allocator))
     {
         tassert(false && "deque$new fail");
     }
@@ -229,7 +229,7 @@ test$case(test_deque_new_append_pop)
 test$case(test_deque_new_append_roll_over)
 {
     deque_c a;
-    except_traceback(err, deque$new(&a, int, 0, false, allocator))
+    except(err, deque$new(&a, int, 0, false, allocator))
     {
         tassert(false && "deque$new fail");
     }
@@ -289,7 +289,7 @@ test$case(test_deque_new_append_roll_over)
 test$case(test_deque_new_append_grow)
 {
     deque_c a;
-    except_traceback(err, deque$new(&a, int, 0, false, allocator))
+    except(err, deque$new(&a, int, 0, false, allocator))
     {
         tassert(false && "deque$new fail");
     }
@@ -334,7 +334,7 @@ test$case(test_deque_new_append_grow)
 test$case(test_deque_new_append_max_cap_wrap)
 {
     deque_c a;
-    except_traceback(err, deque$new(&a, int, 16, false, allocator))
+    except(err, deque$new(&a, int, 16, false, allocator))
     {
         tassert(false && "deque$new fail");
     }
@@ -400,7 +400,7 @@ test$case(test_deque_new_append_max_cap_wrap)
 test$case(test_deque_new_append_max_cap__rewrite_overflow)
 {
     deque_c a;
-    except_traceback(err, deque$new(&a, int, 16, true, allocator))
+    except(err, deque$new(&a, int, 16, true, allocator))
     {
         tassert(false && "deque$new fail");
     }
@@ -438,7 +438,7 @@ test$case(test_deque_new_append_max_cap__rewrite_overflow)
 test$case(test_deque_new_append_max_cap__rewrite_overflow_with_rollover)
 {
     deque_c a;
-    except_traceback(err, deque$new(&a, int, 16, true, allocator))
+    except(err, deque$new(&a, int, 16, true, allocator))
     {
         tassert(false && "deque$new fail");
     }
@@ -493,7 +493,7 @@ test$case(test_deque_new_append_max_cap__rewrite_overflow_with_rollover)
 test$case(test_deque_new_append_max_cap__rewrite_overflow__multiloop)
 {
     deque_c a;
-    except_traceback(err, deque$new(&a, int, 16, true, allocator))
+    except(err, deque$new(&a, int, 16, true, allocator))
     {
         tassert(false && "deque$new fail");
     }
@@ -525,7 +525,7 @@ test$case(test_deque_new_append_max_cap__rewrite_overflow__multiloop)
 test$case(test_deque_new_append_multi_resize)
 {
     deque_c a;
-    except_traceback(err, deque$new(&a, int, 0, false, allocator))
+    except(err, deque$new(&a, int, 0, false, allocator))
     {
         tassert(false && "deque$new fail");
     }
@@ -562,7 +562,7 @@ test$case(test_deque_new_append_multi_resize)
 test$case(test_deque_iter_get)
 {
     deque_c a;
-    except_traceback(err, deque$new(&a, int, 16, true, allocator))
+    except(err, deque$new(&a, int, 16, true, allocator))
     {
         tassert(false && "deque$new fail");
     }
@@ -618,7 +618,7 @@ test$case(test_deque_iter_get)
 test$case(test_deque_iter_fetch)
 {
     deque_c a;
-    except_traceback(err, deque$new(&a, int, 16, true, allocator))
+    except(err, deque$new(&a, int, 16, true, allocator))
     {
         tassert(false && "deque$new fail");
     }
@@ -668,7 +668,7 @@ test$case(test_deque_iter_fetch)
 test$case(test_deque_iter_fetch_reversed)
 {
     deque_c a;
-    except_traceback(err, deque$new(&a, int, 16, true, allocator))
+    except(err, deque$new(&a, int, 16, true, allocator))
     {
         tassert(false && "deque$new fail");
     }
@@ -721,7 +721,7 @@ test$case(test_deque_static)
     alignas(64) char buf[sizeof(deque_head_s) + sizeof(int) * 16];
 
     deque_c a;
-    except_traceback(err, deque$new_static(&a, int, buf, arr$len(buf), true))
+    except(err, deque$new_static(&a, int, buf, arr$len(buf), true))
     {
         tassert(false && "deque$new fail");
     }
@@ -746,7 +746,7 @@ test$case(test_deque_static_append_grow)
     alignas(64) char buf[sizeof(deque_head_s) + sizeof(int) * 16];
 
     deque_c a;
-    except_traceback(err, deque$new_static(&a, int, buf, arr$len(buf), false))
+    except(err, deque$new_static(&a, int, buf, arr$len(buf), false))
     {
         tassert(false && "deque$new fail");
     }
@@ -780,7 +780,7 @@ test$case(test_deque_static_append_grow_overwrite)
     alignas(64) char buf[sizeof(deque_head_s) + sizeof(int) * 16];
 
     deque_c a;
-    except_traceback(err, deque$new_static(&a, int, buf, arr$len(buf), true))
+    except(err, deque$new_static(&a, int, buf, arr$len(buf), true))
     {
         tassert(false && "deque$new fail");
     }

@@ -53,7 +53,7 @@ sprintf_to_cap(sbuf_c* s){
     u8 c = 'A';
     for(size_t i = sbuf.len(s); i < sbuf.capacity(s); i++){
         c = 'A' + i;
-        except(err, sbuf.sprintf(s, "%c", c)) {
+        except_silent(err, sbuf.sprintf(s, "%c", c)) {
             return err;
         }
     }
