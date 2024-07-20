@@ -271,8 +271,8 @@ typedef struct
     char _ctx[48];
 } cex_iterator_s;
 _Static_assert(sizeof(size_t) == sizeof(void*), "size_t expected as sizeof ptr");
-_Static_assert(sizeof(size_t) == sizeof(unsigned long), "size_t expected as u64");
-_Static_assert(alignof(cex_iterator_s) == alignof(void*), "alignof");
+_Static_assert(alignof(size_t) == alignof(void*), "alignof pointer != alignof size_t");
+// _Static_assert(alignof(cex_iterator_s) == alignof(void*), "alignof");
 _Static_assert(sizeof(cex_iterator_s) <= 64, "cex size");
 
 /**
@@ -320,7 +320,7 @@ typedef struct Allocator_i
     void* (*realloc_aligned)(void* ptr, size_t alignment, size_t new_size);
     void (*free)(void* ptr);
     FILE* (*fopen)(const char* filename, const char* mode);
-    int (*open)(const char* pathname, int flags, mode_t mode);
+    int (*open)(const char* pathname, int flags, unsigned int mode);
     //<<< 64 byte cacheline
     int (*fclose)(FILE* stream);
     int (*close)(int fd);
@@ -366,13 +366,13 @@ typedef struct
     u64 magic;
     struct
     {
-        u32 n_allocs;
-        u32 n_reallocs;
-        u32 n_free;
-        u32 n_fopen;
-        u32 n_fclose;
-        u32 n_open;
-        u32 n_close;
+        unsigned int n_allocs;
+        unsigned int n_reallocs;
+        unsigned int n_free;
+        unsigned int n_fopen;
+        unsigned int n_fclose;
+        unsigned int n_open;
+        unsigned int n_close;
     } stats;
 } allocator_heap_s;
 _Static_assert(sizeof(allocator_heap_s) == 128, "size!");
@@ -388,13 +388,13 @@ typedef struct
     u64 magic;
     struct
     {
-        u32 n_allocs;
-        u32 n_reallocs;
-        u32 n_free;
-        u32 n_fopen;
-        u32 n_fclose;
-        u32 n_open;
-        u32 n_close;
+        unsigned int n_allocs;
+        unsigned int n_reallocs;
+        unsigned int n_free;
+        unsigned int n_fopen;
+        unsigned int n_fclose;
+        unsigned int n_open;
+        unsigned int n_close;
     } stats;
 
 } allocator_staticarena_s;

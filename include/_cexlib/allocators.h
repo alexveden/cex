@@ -15,13 +15,13 @@ typedef struct
     u64 magic;
     struct
     {
-        u32 n_allocs;
-        u32 n_reallocs;
-        u32 n_free;
-        u32 n_fopen;
-        u32 n_fclose;
-        u32 n_open;
-        u32 n_close;
+        unsigned int n_allocs;
+        unsigned int n_reallocs;
+        unsigned int n_free;
+        unsigned int n_fopen;
+        unsigned int n_fclose;
+        unsigned int n_open;
+        unsigned int n_close;
     } stats;
 } allocator_heap_s;
 _Static_assert(sizeof(allocator_heap_s) == 128, "size!");
@@ -37,13 +37,13 @@ typedef struct
     u64 magic;
     struct
     {
-        u32 n_allocs;
-        u32 n_reallocs;
-        u32 n_free;
-        u32 n_fopen;
-        u32 n_fclose;
-        u32 n_open;
-        u32 n_close;
+        unsigned int n_allocs;
+        unsigned int n_reallocs;
+        unsigned int n_free;
+        unsigned int n_fopen;
+        unsigned int n_fclose;
+        unsigned int n_open;
+        unsigned int n_close;
     } stats;
 
 } allocator_staticarena_s;

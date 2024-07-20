@@ -92,21 +92,21 @@ allocators__heap__destroy(void)
     // NOTE: this message only shown if no DNDEBUG
     if (a->stats.n_allocs != a->stats.n_free) {
         utracef(
-            "Allocator: Possible memory leaks/double free: memory allocator->allocs() [%d] != allocator->free() [%d] count! \n",
+            "Allocator: Possible memory leaks/double free: memory allocator->allocs() [%u] != allocator->free() [%u] count! \n",
             a->stats.n_allocs,
             a->stats.n_free
         );
     }
     if (a->stats.n_fopen != a->stats.n_fclose) {
         utracef(
-            "Allocator: Possible FILE* leaks: allocator->fopen() [%d] != allocator->fclose() [%d]!\n",
+            "Allocator: Possible FILE* leaks: allocator->fopen() [%u] != allocator->fclose() [%u]!\n",
             a->stats.n_fopen,
             a->stats.n_fclose
         );
     }
     if (a->stats.n_open != a->stats.n_close) {
         utracef(
-            "Allocator: Possible file descriptor leaks: allocator->open() [%d] != allocator->close() [%d]!\n",
+            "Allocator: Possible file descriptor leaks: allocator->open() [%u] != allocator->close() [%u]!\n",
             a->stats.n_open,
             a->stats.n_close
         );
@@ -157,7 +157,11 @@ allocator_heap__aligned_malloc(size_t alignment, size_t size)
     allocator__heap_data.stats.n_allocs++;
 #endif
 
+#ifdef _WIN32
+    return _aligned_malloc(alignment, size);
+#else
     return aligned_alloc(alignment, size);
+#endif
 }
 
 static void*
@@ -211,14 +215,22 @@ allocator_heap__aligned_realloc(void* ptr, size_t alignment, size_t size)
         if (result != ptr || (size_t)result % alignment != 0) {
             // very rare case, when some thread acquired space or returned unaligned result
             // Pessimistic case
+#ifdef _WIN32
+            void* aligned = _aligned_malloc(alignment, size);
+#else
             void* aligned = aligned_alloc(alignment, size);
+#endif
             memcpy(aligned, result, size);
             free(result);
             return aligned;
         }
     } else {
         // No space available, alloc new memory + copy + release old
+#ifdef _WIN32
+        result = _aligned_malloc(alignment, size);
+#else
         result = aligned_alloc(alignment, size);
+#endif
         if (result == NULL) {
             return NULL;
         }
@@ -383,21 +395,21 @@ allocators__staticarena__destroy(void)
 #ifndef NDEBUG
     if (a->stats.n_allocs != a->stats.n_free) {
         utracef(
-            "Allocator: Possible memory leaks/double free: memory allocator->allocs() [%d] != allocator->free() [%d] count! \n",
+            "Allocator: Possible memory leaks/double free: memory allocator->allocs() [%u] != allocator->free() [%u] count! \n",
             a->stats.n_allocs,
             a->stats.n_free
         );
     }
     if (a->stats.n_fopen != a->stats.n_fclose) {
         utracef(
-            "Allocator: Possible FILE* leaks: allocator->fopen() [%d] != allocator->fclose() [%d]!\n",
+            "Allocator: Possible FILE* leaks: allocator->fopen() [%u] != allocator->fclose() [%u]!\n",
             a->stats.n_fopen,
             a->stats.n_fclose
         );
     }
     if (a->stats.n_open != a->stats.n_close) {
         utracef(
-            "Allocator: Possible file descriptor leaks: allocator->open() [%d] != allocator->close() [%d]!\n",
+            "Allocator: Possible file descriptor leaks: allocator->open() [%u] != allocator->close() [%u]!\n",
             a->stats.n_open,
             a->stats.n_close
         );

@@ -12,14 +12,8 @@
 #endif
 #define stbsp__uint16 unsigned short
 
-#ifndef stbsp__uintptr
-#if defined(__ppc64__) || defined(__powerpc64__) || defined(__aarch64__) || defined(_M_X64) ||     \
-    defined(__x86_64__) || defined(__x86_64) || defined(__s390x__)
-#define stbsp__uintptr stbsp__uint64
-#else
-#define stbsp__uintptr stbsp__uint32
-#endif
-#endif
+// NOTE: CEX size_t is more portable than original u32/u64 checking! 
+#define stbsp__uintptr size_t
 
 #ifndef STB_SPRINTF_MSVC_MODE // used for MSVC2013 and earlier (MSVC2015 matches GCC)
 #if defined(_MSC_VER) && (_MSC_VER < 1900)
