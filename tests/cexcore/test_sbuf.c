@@ -424,7 +424,7 @@ test$case(test_sbuf_sprintf_long_growth_prebuild_buffer)
     }
     tassert_eqi(n_max*4, sbuf.len(&s));
 
-    var sv2 = sbuf.tostr(&s);
+    var sv2 = sbuf.to_str(&s);
     str_c sv = str.cstr(s);
     tassert_eqi(str.cmp(sv2, sv), 0);
     tassert_eqi(sv2.len, sv.len);
@@ -482,6 +482,213 @@ test$case(test_sbuf_sprintf_static)
     sbuf.destroy(&s);
     return EOK;
 }
+
+test$case(test_iter_split)
+{
+
+    sbuf_c s;
+    char str_buf[128];
+    char buf[32];
+    tassert_eqs(EOK, sbuf.create_static(&s, str_buf, arr$len(str_buf)));
+    tassert(s != buf);
+
+    tassert_eqe(EOK, sbuf.append(&s, s$("123456")));
+    u32 nit = 0;
+
+
+    nit = 0;
+    const char* expected1[] = {
+        "123456",
+    };
+    for$iter(str_c, it, sbuf.iter_split(&s, ",", &it.iterator))
+    {
+        tassert_eqi(str.is_valid(*it.val), true);
+        tassert_eqs(Error.ok, str.copy(*it.val, buf, arr$len(buf)));
+        tassert_eqi(str.cmp(*it.val, s$(expected1[nit])), 0);
+        nit++;
+    }
+    tassert_eqi(nit, 1);
+
+    nit = 0;
+    sbuf.clear(&s);
+    tassert_eqe(EOK, sbuf.append(&s, str.cstr("123,456")));
+    const char* expected2[] = {
+        "123",
+        "456",
+    };
+    for$iter(str_c, it, sbuf.iter_split(&s, ",", &it.iterator))
+    {
+        tassert_eqi(str.is_valid(*it.val), true);
+        tassert_eqs(Error.ok, str.copy(*it.val, buf, arr$len(buf)));
+        tassert_eqi(str.cmp(*it.val, s$(expected2[nit])), 0);
+        nit++;
+    }
+    tassert_eqi(nit, 2);
+
+    nit = 0;
+    sbuf.clear(&s);
+    tassert_eqe(EOK, sbuf.append(&s, str.cstr("123,456,88,99")));
+    const char* expected3[] = {
+        "123",
+        "456",
+        "88",
+        "99",
+    };
+    for$iter(str_c, it, sbuf.iter_split(&s, ",", &it.iterator))
+    {
+        tassert_eqi(str.is_valid(*it.val), true);
+        tassert_eqs(Error.ok, str.copy(*it.val, buf, arr$len(buf)));
+        tassert_eqi(str.cmp(*it.val, s$(expected3[nit])), 0);
+        tassert_eqi(it.idx.i, nit);
+        nit++;
+    }
+    tassert_eqi(nit, 4);
+
+    nit = 0;
+    const char* expected4[] = {
+        "123",
+        "456",
+        "88",
+        "",
+    };
+    sbuf.clear(&s);
+    tassert_eqe(EOK, sbuf.append(&s, str.cstr("123,456,88,")));
+    for$iter(str_c, it, sbuf.iter_split(&s, ",", &it.iterator))
+    {
+        tassert_eqi(str.is_valid(*it.val), true);
+        tassert_eqs(Error.ok, str.copy(*it.val, buf, arr$len(buf)));
+        tassert_eqi(str.cmp(*it.val, s$(expected4[nit])), 0);
+        nit++;
+    }
+    tassert_eqi(nit, 4);
+
+    nit = 0;
+    sbuf.clear(&s);
+    tassert_eqe(EOK, sbuf.append(&s, str.cstr("123,456#88@99")));
+    const char* expected5[] = {
+        "123",
+        "456",
+        "88",
+        "99",
+    };
+    for$iter(str_c, it, sbuf.iter_split(&s, ",#@", &it.iterator))
+    {
+        tassert_eqi(str.is_valid(*it.val), true);
+        tassert_eqs(Error.ok, str.copy(*it.val, buf, arr$len(buf)));
+        tassert_eqi(str.cmp(*it.val, s$(expected5[nit])), 0);
+        nit++;
+    }
+    tassert_eqi(nit, 4);
+
+    nit = 0;
+    const char* expected6[] = {
+        "123",
+        "456",
+        "",
+    };
+    sbuf.clear(&s);
+    tassert_eqe(EOK, sbuf.append(&s, str.cstr("123\n456\n")));
+    for$iter(str_c, it, sbuf.iter_split(&s, "\n", &it.iterator))
+    {
+        tassert_eqi(str.is_valid(*it.val), true);
+        tassert_eqs(Error.ok, str.copy(*it.val, buf, arr$len(buf)));
+        tassert_eqi(str.cmp(*it.val, s$(expected6[nit])), 0);
+        tassert_eqi(it.idx.i, nit);
+        nit++;
+    }
+    tassert_eqi(nit, 3);
+    return EOK;
+}
+
+test$case(test_sbuf__is_valid__no_null_term)
+{
+    sbuf_c s;
+    tassert_eqs(EOK, sbuf.create(&s, 20, allocator));
+    tassert(s != NULL);
+
+    sbuf_head_s* head = sbuf__head(s);
+    tassert_eqi(sbuf.isvalid(&s), true);
+
+    head->header.nullterm = 1;
+    tassert_eqi(sbuf.isvalid(&s), false);
+
+    // manual free (because s.destroy() does sanity checks of head)
+    allocator->free(head);
+    return EOK;
+
+}
+
+test$case(test_sbuf__is_valid__len_gt_cap)
+{
+    sbuf_c s;
+    tassert_eqs(EOK, sbuf.create(&s, 20, allocator));
+    tassert(s != NULL);
+
+    sbuf_head_s* head = sbuf__head(s);
+    tassert_eqi(sbuf.isvalid(&s), true);
+
+    head->length = 10;
+    head->capacity = 9;
+    tassert_eqi(sbuf.isvalid(&s), false);
+
+    // manual free (because s.destroy() does sanity checks of head)
+    allocator->free(head);
+    return EOK;
+
+}
+
+test$case(test_sbuf__is_valid__zero_cap)
+{
+    sbuf_c s;
+    tassert_eqs(EOK, sbuf.create(&s, 20, allocator));
+    tassert(s != NULL);
+
+    sbuf_head_s* head = sbuf__head(s);
+    tassert_eqi(sbuf.isvalid(&s), true);
+
+    head->capacity = 0;
+    tassert_eqi(sbuf.isvalid(&s), false);
+
+    // manual free (because s.destroy() does sanity checks of head)
+    allocator->free(head);
+    return EOK;
+
+}
+
+test$case(test_sbuf__is_valid__bad_magic)
+{
+    sbuf_c s;
+    tassert_eqs(EOK, sbuf.create(&s, 20, allocator));
+    tassert(s != NULL);
+
+    sbuf_head_s* head = sbuf__head(s);
+    tassert_eqi(sbuf.isvalid(&s), true);
+
+    head->header.magic = 1098;
+    tassert_eqi(sbuf.isvalid(&s), false);
+
+    // manual free (because s.destroy() does sanity checks of head)
+    allocator->free(head);
+    return EOK;
+
+}
+
+test$case(test_sbuf__is_valid__null_pointer)
+{
+    sbuf_c s = {0};
+    tassert_eqi(sbuf.isvalid(&s), false);
+
+    tassert_eqi(sbuf.isvalid(NULL), false);
+
+    // s2 initialized with some non null junk
+    // WARNING: this will always segfault, so we need to s = {0}; before calling sbuf.isvalid()
+    // sbuf_c s2;
+    // memset(&s2, 'z', sizeof(s2));
+    // tassert_eqi(sbuf.isvalid(&s2), false);
+
+
+    return EOK;
+}
 /*
 *
 * MAIN (AUTO GENERATED)
@@ -505,6 +712,12 @@ int main(int argc, char *argv[])
     test$run(test_sbuf_sprintf_long_growth);
     test$run(test_sbuf_sprintf_long_growth_prebuild_buffer);
     test$run(test_sbuf_sprintf_static);
+    test$run(test_iter_split);
+    test$run(test_sbuf__is_valid__no_null_term);
+    test$run(test_sbuf__is_valid__len_gt_cap);
+    test$run(test_sbuf__is_valid__zero_cap);
+    test$run(test_sbuf__is_valid__bad_magic);
+    test$run(test_sbuf__is_valid__null_pointer);
     
     test$print_footer();  // ^^^^^ all tests runs are above
     return test$exit_code();

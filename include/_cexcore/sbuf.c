@@ -106,10 +106,12 @@ sbuf_create(sbuf_c* self, u32 capacity, const Allocator_i* allocator)
 Exception
 sbuf_create_static(sbuf_c* self, char* buf, size_t buf_size)
 {
+
     if (unlikely(self == NULL)) {
         uassert(self != NULL);
         return Error.argument;
     }
+
     if (unlikely(buf == NULL)) {
         uassert(buf != NULL);
         return Error.argument;
@@ -149,6 +151,17 @@ sbuf_grow(sbuf_c* self, u32 capacity)
         return Error.ok;
     }
     return sbuf__grow_buffer(self, capacity);
+}
+
+void
+sbuf_update_len(sbuf_c* self)
+{
+    uassert(self != NULL);
+    sbuf_head_s* head = sbuf__head(*self);
+
+    uassert((*self)[head->capacity] == '\0');
+
+    head->length = strlen(*self);
 }
 
 Exception
@@ -397,7 +410,7 @@ sbuf_sprintf(sbuf_c* self, const char* format, ...)
 }
 
 str_c
-sbuf_tostr(sbuf_c* self)
+sbuf_to_str(sbuf_c* self)
 {
     uassert(self != NULL);
     sbuf_head_s* head = sbuf__head(*self);
@@ -414,22 +427,120 @@ sbuf_isvalid(sbuf_c* self)
     if (self == NULL) {
         return false;
     }
+    if (*self == NULL) {
+        return false;
+    }
 
-    sbuf_head_s* head = (sbuf_head_s*)(self - sizeof(sbuf_head_s));
+    sbuf_head_s* head = (sbuf_head_s*)((char*)(*self) - sizeof(sbuf_head_s));
+
     if (head->header.magic != 0xf00e) {
         return false;
     }
-    if(head->capacity == 0){
+    if (head->capacity == 0) {
         return false;
     }
-    if(head->length > head->capacity){
+    if (head->length > head->capacity) {
         return false;
     }
-    if(head->header.nullterm != 0){
+    if (head->header.nullterm != 0) {
         return false;
     }
 
     return true;
+}
+
+
+static inline ssize_t
+sbuf__index(const char* self, size_t self_len, const char* c, u8 clen)
+{
+    ssize_t result = -1;
+
+    u8 split_by_idx[UINT8_MAX] = { 0 };
+    for (u8 i = 0; i < clen; i++) {
+        split_by_idx[(u8)c[i]] = 1;
+    }
+
+    for (size_t i = 0; i < self_len; i++) {
+        if (split_by_idx[(u8)self[i]]) {
+            result = i;
+            break;
+        }
+    }
+
+    return result;
+}
+
+str_c*
+sbuf_iter_split(sbuf_c* self, const char* split_by, cex_iterator_s* iterator)
+{
+    uassert(iterator != NULL && "null iterator");
+    uassert(split_by != NULL && "null split_by");
+    uassert(self != NULL);
+
+    // temporary struct based on _ctxbuffer
+    struct 
+    {
+        str_c base_str;
+        str_c str;
+        size_t split_by_len;
+        size_t cursor;
+    }* ctx = (void*)iterator->_ctx;
+    _Static_assert(sizeof(*ctx) <= sizeof(iterator->_ctx), "ctx size overflow");
+
+    if (unlikely(iterator->val == NULL)) {
+        ctx->split_by_len = strlen(split_by);
+        uassert(ctx->split_by_len < UINT8_MAX && "split_by is suspiciously long!");
+
+        if (unlikely(ctx->split_by_len == 0)) {
+            return NULL;
+        }
+
+        ctx->base_str = sbuf_to_str(self);
+
+        ssize_t idx = sbuf__index(ctx->base_str.buf, ctx->base_str.len, split_by, ctx->split_by_len);
+        if (idx < 0) {
+            idx = ctx->base_str.len;
+        }
+        ctx->cursor = idx;
+
+        ctx->str = str.sub(ctx->base_str, 0, idx);
+
+        iterator->val = &ctx->str;
+        iterator->idx.i = 0;
+        return iterator->val;
+    } else {
+        uassert(iterator->val == &ctx->str);
+
+        if (unlikely(ctx->cursor >= ctx->base_str.len)) {
+            return NULL; // reached the end stops
+        }
+        ctx->cursor++;
+        if (unlikely(ctx->cursor == ctx->base_str.len)) {
+            // edge case, we have separator at last col
+            // it's not an error, return empty split token
+            ctx->str = (str_c){ .buf = "", .len = 0 };
+            iterator->idx.i++;
+            return iterator->val;
+        }
+
+        // Get remaining string after prev split_by char
+        str_c tok = str.sub(ctx->base_str, ctx->cursor, 0);
+        ssize_t idx = sbuf__index(tok.buf, tok.len, split_by, ctx->split_by_len);
+
+        iterator->idx.i++;
+
+        if (idx < 0) {
+            // No more splits, return remaining part
+            ctx->str = tok;
+            ctx->cursor = ctx->base_str.len;
+        } else {
+            // Sub from prev cursor to idx (excluding split char)
+            ctx->str = str.sub(tok, 0, idx);
+            ctx->cursor += idx;
+        }
+
+        return iterator->val;
+    }
 }
 
 const struct __module__sbuf sbuf = {
@@ -438,6 +549,7 @@ const struct __module__sbuf sbuf = {
     .create = sbuf_create,
     .create_static = sbuf_create_static,
     .grow = sbuf_grow,
+    .update_len = sbuf_update_len,
     .replace = sbuf_replace,
     .append = sbuf_append,
     .clear = sbuf_clear,
@@ -445,7 +557,8 @@ const struct __module__sbuf sbuf = {
     .capacity = sbuf_capacity,
     .destroy = sbuf_destroy,
     .sprintf = sbuf_sprintf,
-    .tostr = sbuf_tostr,
+    .to_str = sbuf_to_str,
     .isvalid = sbuf_isvalid,
+    .iter_split = sbuf_iter_split,
     // clang-format on
 };

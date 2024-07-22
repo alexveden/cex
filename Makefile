@@ -1,4 +1,5 @@
 .PHONY: clean run test tests cex all
+BUILD_DIR=tests/build
 
 all: cex tests
 

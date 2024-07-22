@@ -35,6 +35,9 @@ Exception
 Exception
 (*grow)(sbuf_c* self, u32 capacity);
 
+void
+(*update_len)(sbuf_c* self);
+
 Exception
 (*replace)(sbuf_c* self, const str_c oldstr, const str_c newstr);
 
@@ -57,10 +60,13 @@ Exception
 (*sprintf)(sbuf_c* self, const char* format, ...);
 
 str_c
-(*tostr)(sbuf_c* self);
+(*to_str)(sbuf_c* self);
 
 bool
 (*isvalid)(sbuf_c* self);
+
+str_c*
+(*iter_split)(sbuf_c* self, const char* split_by, cex_iterator_s* iterator);
 
     // clang-format on
 };

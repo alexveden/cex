@@ -64,7 +64,7 @@ test$case(test_cstr_sdollar)
 {
     const char* cstr = "hello";
 
-    sbuf_c sb;
+    sbuf_c sb = NULL;
     tassert_eqs(EOK, sbuf.create(&sb, 10, allocator));
     tassert_eqs(EOK, sbuf.append(&sb, s$("hello")));
     str_c sbv = s$(sb);
@@ -446,6 +446,7 @@ test$case(test_iter_split)
         tassert_eqi(str.is_valid(*it.val), true);
         tassert_eqs(Error.ok, str.copy(*it.val, buf, arr$len(buf)));
         tassert_eqi(str.cmp(*it.val, s$(expected4[nit])), 0);
+        tassert_eqi(it.idx.i, nit);
         nit++;
     }
     tassert_eqi(nit, 4);
@@ -463,6 +464,7 @@ test$case(test_iter_split)
         tassert_eqi(str.is_valid(*it.val), true);
         tassert_eqs(Error.ok, str.copy(*it.val, buf, arr$len(buf)));
         tassert_eqi(str.cmp(*it.val, s$(expected5[nit])), 0);
+        tassert_eqi(it.idx.i, nit);
         nit++;
     }
     tassert_eqi(nit, 4);

@@ -543,7 +543,8 @@ str_iter_split(str_c s, const char* split_by, cex_iterator_s* iterator)
         if (unlikely(ctx->cursor == s.len)) {
             // edge case, we have separator at last col
             // it's not an error, return empty split token
-            ctx->str = str.cstr("");
+            iterator->idx.i++;
+            ctx->str = (str_c){ .buf = "", .len = 0 };
             return iterator->val;
         }
 
