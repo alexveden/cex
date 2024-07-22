@@ -7,7 +7,10 @@ struct __module__os
     // clang-format off
 
 Exception
-(*listdir)(str_c path, sbuf_c* out, const Allocator_i* allc);
+(*listdir)(str_c path, sbuf_c* out);
+
+Exception
+(*getcwd)(sbuf_c* out);
 
     // clang-format on
 };

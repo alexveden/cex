@@ -1,52 +1,47 @@
 #include "os.h"
 #include <cex.h>
 #include <dirent.h>
+#include <linux/limits.h>
 #include <stdio.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 static Exception
-os__listdir(str_c path, sbuf_c* own, const Allocator_i* allc)
+os__listdir(str_c path, sbuf_c* buf)
 {
     if (unlikely(path.len == 0)) {
         return Error.argument;
     }
-    if (own == NULL) {
+    if (buf == NULL) {
         return Error.argument;
-    }
-    if (allc == NULL) {
-        return Error.argument;
-    }
-
-    Exc result = Error.ok;
-    bool sbuf_created = false;
-    if (sbuf.isvalid(own)) {
-        utracef("own is valid\n");
-        sbuf.clear(own);
-    } else {
-        e$ret(sbuf.create(own, 1024, allc));
-        sbuf_created = true;
     }
 
     // use own as temp buffer for dir name (because path, may not be a valid null-term string)
     DIR* dp = NULL;
-    e$goto(result = sbuf.append(own, path), fail);
-    dp = opendir(*own);
+    Exc result = Error.ok;
 
+    uassert(sbuf.isvalid(buf) && "buf is not valid sbuf_c (or missing initialization)");
+
+    sbuf.clear(buf);
+
+    e$goto(result = sbuf.append(buf, path), fail);
+
+    dp = opendir(*buf);
 
     if (unlikely(dp == NULL)) {
         result = Error.not_found;
         goto fail;
     }
-    sbuf.clear(own);
+    sbuf.clear(buf);
 
     struct dirent* ep;
     while ((ep = readdir(dp)) != NULL) {
         var d = s$(ep->d_name);
 
-        if(str.cmp(d, s$(".")) == 0) {
+        if (str.cmp(d, s$(".")) == 0) {
             continue;
         }
-        if(str.cmp(d, s$("..")) == 0) {
+        if (str.cmp(d, s$("..")) == 0) {
             continue;
         }
 
@@ -58,7 +53,7 @@ os__listdir(str_c path, sbuf_c* own, const Allocator_i* allc)
         // terminated string
         d.buf[d.len] = '\n';
         d.len++;
-        e$goto(result = sbuf.append(own, d), fail);
+        e$goto(result = sbuf.append(buf, d), fail);
     }
 
 end:
@@ -68,8 +63,24 @@ end:
     return result;
 
 fail:
-    if (sbuf_created) {
-        sbuf.destroy(own);
-    }
+    sbuf.clear(buf);
     goto end;
+}
+
+static Exception
+os__getcwd(sbuf_c* out)
+{
+    uassert(sbuf.isvalid(out) && "out is not valid sbuf_c (or missing initialization)");
+
+    e$ret(sbuf.grow(out, PATH_MAX + 1));
+    sbuf.clear(out);
+
+    errno = 0;
+    if (unlikely(getcwd(*out, sbuf.capacity(out)) == NULL)) {
+        return strerror(errno);
+    }
+
+    sbuf.update_len(out);
+
+    return EOK;
 }
