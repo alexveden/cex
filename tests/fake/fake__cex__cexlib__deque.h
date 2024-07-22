@@ -3,7 +3,7 @@
 
 // clang-format off
 #include <cex/cextest/fff.h>
-#include <_cexlib/deque.h>
+#include <_cexcore/deque.h>
 
 
 FAKE_VALUE_FUNC(Exc, deque_validate, deque_c)
@@ -43,7 +43,7 @@ const struct __module__deque deque = {
 // clang-format off
 
 
-static void fake__cex__cexlib__deque__resetall(void) {
+static void fake__cex__cexcore__deque__resetall(void) {
     RESET_FAKE(deque_validate)
     RESET_FAKE(deque_create)
     RESET_FAKE(deque_create_static)

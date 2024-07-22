@@ -3,7 +3,7 @@
 
 // clang-format off
 #include <cex/cextest/fff.h>
-#include <_cexlib/dict.h>
+#include <_cexcore/dict.h>
 
 
 FAKE_VALUE_FUNC(int, hm_int_compare, const void*, const void*, void*)
@@ -41,7 +41,7 @@ const struct __module__dict dict = {
 // clang-format off
 
 
-static void fake__cex__cexlib__dict__resetall(void) {
+static void fake__cex__cexcore__dict__resetall(void) {
     RESET_FAKE(hm_int_compare)
     RESET_FAKE(hm_int_hash)
     RESET_FAKE(hm_str_static_compare)

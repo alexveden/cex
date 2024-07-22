@@ -1,11 +1,11 @@
-#include <_cexlib/argparse.c>
-#include <_cexlib/allocators.c>
-#include <_cexlib/argparse.h>
-#include <_cexlib/cex.c>
-#include <_cexlib/cex.h>
-#include <_cexlib/str.c>
-#include <_cexlib/_stb_sprintf.c>
-#include <_cexlib/cextest.h>
+#include <_cexcore/argparse.c>
+#include <_cexcore/allocators.c>
+#include <_cexcore/argparse.h>
+#include <_cexcore/cex.c>
+#include <_cexcore/cex.h>
+#include <_cexcore/str.c>
+#include <_cexcore/_stb_sprintf.c>
+#include <_cexcore/cextest.h>
 #include <stdio.h>
 #include <x86intrin.h>
 

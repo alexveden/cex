@@ -3,7 +3,7 @@
 
 // clang-format off
 #include <cex/cextest/fff.h>
-#include <_cexlib/str.h>
+#include <_cexcore/str.h>
 
 
 FAKE_VALUE_FUNC(bool, str__isvalid, const str_c*)
@@ -53,7 +53,7 @@ const struct __module__str.str.= {
 // clang-format off
 
 
-static void fake__cex__cexlib__str__resetall(void) {
+static void fake__cex__cexcore__str__resetall(void) {
     RESET_FAKE(str__isvalid)
     RESET_FAKE(str__index)
     RESET_FAKE(str_cstr)

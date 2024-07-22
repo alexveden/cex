@@ -3,7 +3,7 @@
 
 // clang-format off
 #include <cex/cextest/fff.h>
-#include <_cexlib/argparse.h>
+#include <_cexcore/argparse.h>
 
 
 FAKE_VOID_FUNC(argparse_usage, argparse_c*)
@@ -23,7 +23,7 @@ const struct __module__argparse argparse = {
 // clang-format off
 
 
-static void fake__cex__cexlib__argparse__resetall(void) {
+static void fake__cex__cexcore__argparse__resetall(void) {
     RESET_FAKE(argparse_usage)
     RESET_FAKE(argparse_parse)
     RESET_FAKE(argparse_argc)

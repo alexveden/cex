@@ -3,7 +3,7 @@
 
 // clang-format off
 #include <cex/cextest/fff.h>
-#include <_cexlib/list.h>
+#include <_cexcore/list.h>
 
 
 FAKE_VALUE_FUNC(Exc, list_create, list_c*, size_t, size_t, size_t, const Allocator_i*)
@@ -39,7 +39,7 @@ const struct __module__list list = {
 // clang-format off
 
 
-static void fake__cex__cexlib__list__resetall(void) {
+static void fake__cex__cexcore__list__resetall(void) {
     RESET_FAKE(list_create)
     RESET_FAKE(list_create_static)
     RESET_FAKE(list_insert)

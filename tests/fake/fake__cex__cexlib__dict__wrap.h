@@ -3,7 +3,7 @@
 
 // clang-format off
 #include <cex/cextest/fff.h>
-#include <_cexlib/dict.h>
+#include <_cexcore/dict.h>
 
 // IMPORTANT: wrapping works only with gcc  `-Wl,--wrap=Shmem_new,--wrap=Protocol_event_emitter_new`  flag
 FAKE_VALUE_FUNC(int, __wrap_hm_int_compare, const void*, const void*, void*)int __real_hm_int_compare(const void*, const void*, void*);
@@ -56,7 +56,7 @@ const struct __module__dict dict = {
 // clang-format off
 
 
-static void fake__cex__cexlib__dict__wrap__resetall(void) {
+static void fake__cex__cexcore__dict__wrap__resetall(void) {
     RESET_FAKE(__wrap_hm_int_compare)
     RESET_FAKE(__wrap_hm_int_hash)
     RESET_FAKE(__wrap_hm_str_static_compare)

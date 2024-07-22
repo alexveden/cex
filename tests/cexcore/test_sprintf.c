@@ -1,15 +1,15 @@
-#include <_cexlib/cex.h>
-#include <_cexlib/cex.c>
-#include <_cexlib/allocators.c>
-#include <_cexlib/sbuf.c>
-#include <_cexlib/sbuf.h>
-#include <_cexlib/str.c>
-#include <_cexlib/cextest.h>
+#include <_cexcore/cex.h>
+#include <_cexcore/cex.c>
+#include <_cexcore/allocators.c>
+#include <_cexcore/sbuf.c>
+#include <_cexcore/sbuf.h>
+#include <_cexcore/str.c>
+#include <_cexcore/cextest.h>
 
 #define USE_STB 1
 
 #if USE_STB
-#include <_cexlib/_stb_sprintf.c>
+#include <_cexcore/_stb_sprintf.c>
 #define SPRINTF stbsp_sprintf
 #define SNPRINTF stbsp_snprintf
 #else

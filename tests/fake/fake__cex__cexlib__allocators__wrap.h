@@ -3,7 +3,7 @@
 
 // clang-format off
 #include <cex/cextest/fff.h>
-#include <_cexlib/allocators.h>
+#include <_cexcore/allocators.h>
 
 // IMPORTANT: wrapping works only with gcc  `-Wl,--wrap=Shmem_new,--wrap=Protocol_event_emitter_new`  flag
 
@@ -25,6 +25,6 @@ const struct __module__allocators allocators = {
 // clang-format off
 
 
-static void fake__cex__cexlib__allocators__wrap__resetall(void) {
+static void fake__cex__cexcore__allocators__wrap__resetall(void) {
 }
 

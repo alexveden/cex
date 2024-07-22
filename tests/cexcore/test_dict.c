@@ -1,10 +1,10 @@
-#include <_cexlib/cex.c>
-#include <_cexlib/allocators.c>
-#include <_cexlib/dict.c>
-#include <_cexlib/dict.h>
-#include <_cexlib/list.c>
-#include <_cexlib/list.h>
-#include <_cexlib/cextest.h>
+#include <_cexcore/cex.c>
+#include <_cexcore/allocators.c>
+#include <_cexcore/dict.c>
+#include <_cexcore/dict.h>
+#include <_cexcore/list.c>
+#include <_cexcore/list.h>
+#include <_cexcore/cextest.h>
 #include <fff.h>
 #include <stdalign.h>
 #include <stdio.h>

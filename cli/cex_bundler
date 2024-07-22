@@ -117,5 +117,5 @@ class Bundler:
 
 if __name__ == "__main__":
 
-    b = Bundler("./include/_cexlib/", "./include")
+    b = Bundler("./include/_cexcore/", "./include")
     b.bundle()

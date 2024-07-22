@@ -3,7 +3,7 @@
 
 // clang-format off
 #include <cex/cextest/fff.h>
-#include <_cexlib/sbuf.h>
+#include <_cexcore/sbuf.h>
 
 
 FAKE_VALUE_FUNC(Exc, sbuf_create, sbuf_c*, u32, const Allocator_i*)
@@ -39,7 +39,7 @@ const struct __module__sbuf sbuf = {
 // clang-format off
 
 
-static void fake__cex__cexlib__sbuf__resetall(void) {
+static void fake__cex__cexcore__sbuf__resetall(void) {
     RESET_FAKE(sbuf_create)
     RESET_FAKE(sbuf_create_static)
     RESET_FAKE(sbuf_grow)

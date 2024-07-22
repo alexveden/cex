@@ -3,7 +3,7 @@
 
 // clang-format off
 #include <cex/cextest/fff.h>
-#include <_cexlib/allocators.h>
+#include <_cexcore/allocators.h>
 
 
 
@@ -25,6 +25,6 @@ const struct __module__allocators allocators = {
 // clang-format off
 
 
-static void fake__cex__cexlib__allocators__resetall(void) {
+static void fake__cex__cexcore__allocators__resetall(void) {
 }
 

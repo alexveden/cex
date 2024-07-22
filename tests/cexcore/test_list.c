@@ -1,8 +1,8 @@
-#include <_cexlib/cextest.h>
-#include <_cexlib/cex.c>
-#include <_cexlib/list.c>
-#include <_cexlib/list.h>
-#include <_cexlib/allocators.c>
+#include <_cexcore/cextest.h>
+#include <_cexcore/cex.c>
+#include <_cexcore/list.c>
+#include <_cexcore/list.h>
+#include <_cexcore/allocators.c>
 #include <stdio.h>
 
 const Allocator_i* allocator;

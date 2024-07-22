@@ -1,7 +1,7 @@
 // --#cc_args -Wl,--wrap=malloc
-#include <_cexlib/allocators.c>
-#include <_cexlib/cex.c>
-#include <_cexlib/cextest.h>
+#include <_cexcore/allocators.c>
+#include <_cexcore/cex.c>
+#include <_cexcore/cextest.h>
 #include <alloca.h>
 #include <fff.h>
 #include <stdalign.h>

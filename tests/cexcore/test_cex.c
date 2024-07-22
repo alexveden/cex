@@ -1,5 +1,5 @@
-#include <_cexlib/cex.c>
-#include <_cexlib/cextest.h>
+#include <_cexcore/cex.c>
+#include <_cexcore/cextest.h>
 #include <errno.h>
 #include <stdio.h>
 #include <unistd.h>

@@ -3,7 +3,7 @@
 
 // clang-format off
 #include <cex/cextest/fff.h>
-#include <_cexlib/io.h>
+#include <_cexcore/io.h>
 
 
 FAKE_VALUE_FUNC(Exc, io_fopen, io_c*, const char*, const char*, const Allocator_i*)
@@ -45,7 +45,7 @@ const struct __module__io io = {
 // clang-format off
 
 
-static void fake__cex__cexlib__io__resetall(void) {
+static void fake__cex__cexcore__io__resetall(void) {
     RESET_FAKE(io_fopen)
     RESET_FAKE(io_fattach)
     RESET_FAKE(io_fileno)

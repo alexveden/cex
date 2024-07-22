@@ -1112,6 +1112,9 @@ Exception
 str_c
 (*tostr)(sbuf_c* self);
 
+bool
+(*isvalid)(sbuf_c* self);
+
     // clang-format on
 };
 extern const struct __module__sbuf sbuf; // CEX Autogen

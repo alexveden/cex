@@ -1,10 +1,10 @@
-#include <_cexlib/_stb_sprintf.c>
-#include <_cexlib/allocators.c>
-#include <_cexlib/cex.c>
-#include <_cexlib/cextest.h>
-#include <_cexlib/list.h>
-#include <_cexlib/sbuf.c>
-#include <_cexlib/str.c>
+#include <_cexcore/_stb_sprintf.c>
+#include <_cexcore/allocators.c>
+#include <_cexcore/cex.c>
+#include <_cexcore/cextest.h>
+#include <_cexcore/list.h>
+#include <_cexcore/sbuf.c>
+#include <_cexcore/str.c>
 #include <stdio.h>
 
 const Allocator_i* allocator;
