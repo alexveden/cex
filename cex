@@ -984,7 +984,8 @@ class CEXProcessor:
                     if cmt is not None:
                         return True
 
-            for i, c in enumerate(line.strip()):
+            line = line.strip()
+            for i, c in enumerate(line):
                 # We are in signature
                 if self._is_signature:
                     # Decide definition type based on signature
