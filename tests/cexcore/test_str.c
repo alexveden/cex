@@ -64,7 +64,7 @@ test$case(test_cstr_sdollar)
 {
     const char* cstr = "hello";
 
-    sbuf_c sb = NULL;
+    sbuf_c sb;
     tassert_eqs(EOK, sbuf.create(&sb, 10, allocator));
     tassert_eqs(EOK, sbuf.append(&sb, s$("hello")));
     str_c sbv = s$(sb);

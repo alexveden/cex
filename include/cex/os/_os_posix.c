@@ -7,7 +7,7 @@
 #include <unistd.h>
 
 static Exception
-os__listdir(str_c path, sbuf_c* buf)
+os__listdir_(str_c path, sbuf_c* buf)
 {
     if (unlikely(path.len == 0)) {
         return Error.argument;
@@ -68,11 +68,14 @@ fail:
 }
 
 static Exception
-os__getcwd(sbuf_c* out)
+os__getcwd_(sbuf_c* out)
 {
     uassert(sbuf.isvalid(out) && "out is not valid sbuf_c (or missing initialization)");
 
-    e$ret(sbuf.grow(out, PATH_MAX + 1));
+    except_silent(err, sbuf.grow(out, PATH_MAX + 1))
+    {
+        return err;
+    }
     sbuf.clear(out);
 
     errno = 0;
@@ -83,4 +86,35 @@ os__getcwd(sbuf_c* out)
     sbuf.update_len(out);
 
     return EOK;
+}
+
+static Exception
+os__path__exists_(str_c path)
+{
+    if (!str.is_valid(path) || path.len == 0) {
+        return Error.argument;
+    }
+
+    int ret_code = 0;
+    if (path.buf[path.len] != '\0') {
+        // it's non null term path!
+        char path_buf[PATH_MAX + 1];
+        except_silent(err, str.copy(path, path_buf, arr$len(path_buf)))
+        {
+            return err;
+        }
+        ret_code = access(path_buf, F_OK);
+    } else {
+        ret_code = access(path.buf, F_OK);
+    }
+
+    if (ret_code < 0){
+        if(errno == ENOENT){
+            return Error.not_found;
+        } else {
+            return strerror(errno);
+        }
+    }
+
+    return Error.ok;
 }

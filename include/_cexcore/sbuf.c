@@ -378,7 +378,7 @@ sbuf__sprintf_callback(const char* buf, void* user, int len)
 }
 
 Exception
-sbuf_sprintf(sbuf_c* self, const char* format, ...)
+sbuf_vsprintf(sbuf_c* self, const char* format, va_list va)
 {
     uassert(self != NULL);
     sbuf_head_s* head = sbuf__head(*self);
@@ -391,9 +391,6 @@ sbuf_sprintf(sbuf_c* self, const char* format, ...)
         .count = head->capacity,
     };
 
-    va_list va;
-    va_start(va, format);
-
     STB_SPRINTF_DECORATE(vsprintfcb)
     (sbuf__sprintf_callback, &ctx, sbuf__sprintf_callback(NULL, &ctx, 0), format, va);
 
@@ -404,9 +401,18 @@ sbuf_sprintf(sbuf_c* self, const char* format, ...)
     (*self)[ctx.head->length] = '\0';
     (*self)[ctx.head->capacity] = '\0';
 
-    va_end(va);
-
     return ctx.err;
+}
+
+Exception
+sbuf_sprintf(sbuf_c* self, const char* format, ...)
+{
+
+    va_list va;
+    va_start(va, format);
+    Exc result = sbuf_vsprintf(self, format, va);
+    va_end(va);
+    return result;
 }
 
 str_c
@@ -556,6 +562,7 @@ const struct __module__sbuf sbuf = {
     .len = sbuf_len,
     .capacity = sbuf_capacity,
     .destroy = sbuf_destroy,
+    .vsprintf = sbuf_vsprintf,
     .sprintf = sbuf_sprintf,
     .to_str = sbuf_to_str,
     .isvalid = sbuf_isvalid,

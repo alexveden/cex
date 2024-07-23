@@ -1,3 +1,4 @@
+#pragma once
 #include <cex.h>
 
 
@@ -12,6 +13,27 @@ Exception
 Exception
 (*getcwd)(sbuf_c* out);
 
+const char*
+(*getenv)(const char* name, const char* deflt);
+
+void
+(*setenv)(const char* name, const char* value, bool overwrite);
+
+void
+(*unsetenv)(const char* name);
+
+
+struct {  // sub-module .path >>>
+    Exception
+    (*exists)(str_c path);
+
+    Exception
+    (*join)(sbuf_c* out, const char* format, ...);
+
+    str_c
+    (*splitext)(str_c path, bool return_ext);
+
+} path;  // sub-module .path <<<
     // clang-format on
 };
 extern const struct __module__os os; // CEX Autogen

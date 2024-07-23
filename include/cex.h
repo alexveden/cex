@@ -1110,6 +1110,9 @@ sbuf_c
 (*destroy)(sbuf_c* self);
 
 Exception
+(*vsprintf)(sbuf_c* self, const char* format, va_list va);
+
+Exception
 (*sprintf)(sbuf_c* self, const char* format, ...);
 
 str_c
