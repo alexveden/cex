@@ -1,3 +1,4 @@
+#include "_cexcore/cex.h"
 #include <_cexcore/cex.c>
 #include <_cexcore/cextest.h>
 #include <errno.h>
@@ -13,6 +14,7 @@ test$teardown(){
 }
 
 test$setup(){
+    uassert_enable();
     return EOK;
 }
 
@@ -139,6 +141,33 @@ fail:
     return EOK;
 }
 
+test$case(test_e_dollar_macro_assert)
+{
+    Exc result = EOK;
+    tassert_eqi(e$raise_is_ok(), 1);
+    e$raise_enable();
+    tassert_eqi(e$raise_is_ok(), 0);
+    e$raise_disable();
+    tassert_eqi(e$raise_is_ok(), 1);
+
+    // On fail jumps to 'fail' label + sets the result to returned by check_with_dollar()
+    e$goto(check_with_dollar(-1), setresult);
+
+setresult:
+    // e$goto() - previous jump didn't change result
+    tassert_eqe(Error.ok, result);
+
+    // we can explicitly set result value to the error of the call
+    e$goto(result = check_with_dollar(-1), fail);
+    tassert(false && "unreacheble, the above must fail");
+    
+fail:
+    tassert_eqe(Error.memory, result);
+
+    return EOK;
+}
+
+
 test$case(test_null_ptr)
 {
     void* res = NULL;
@@ -209,6 +238,7 @@ main(int argc, char* argv[])
     test$run(test_sysfunc);
     test$run(test_e_dollar_macro);
     test$run(test_e_dollar_macro_goto);
+    test$run(test_e_dollar_macro_assert);
     test$run(test_null_ptr);
     test$run(test_nested_excepts);
     test$run(test_all_errors_set);

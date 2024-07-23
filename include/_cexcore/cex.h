@@ -100,57 +100,9 @@ extern const struct _CEX_Error_struct
     ))
 
 
-static inline bool
-_uhf_errors_is_error__uerr(Exc* e)
-{
-    return *e != NULL;
-}
-
-
-// WARNING: DO NOT USE break/continue inside except* {scope!}
-#define except_silent(_var_name, _func)                                                                   \
-    for (Exc _var_name = _func; unlikely(_uhf_errors_is_error__uerr(&_var_name)); _var_name = EOK)
-
-#define except(_var_name, _func)                                                         \
-    for (Exc _var_name = _func; unlikely(_var_name != NULL && (uptraceback(_var_name, #_func)));   \
-         _var_name = EOK)
-
-#define e$ret(_func)                                                                                  \
-    for (Exc __CEX_TMPNAME(__cex_err_traceback_) = _func; unlikely(                                \
-             __CEX_TMPNAME(__cex_err_traceback_) != NULL &&                                        \
-             (uptraceback(__CEX_TMPNAME(__cex_err_traceback_), #_func))                            \
-         );                                                                                        \
-         __CEX_TMPNAME(__cex_err_traceback_) = EOK)                                                \
-    return __CEX_TMPNAME(__cex_err_traceback_)
-
-#define e$goto(_func, _label)                                                                                  \
-    for (Exc __CEX_TMPNAME(__cex_err_traceback_) = _func; unlikely(                                \
-             __CEX_TMPNAME(__cex_err_traceback_) != NULL &&                                        \
-             (uptraceback(__CEX_TMPNAME(__cex_err_traceback_), #_func))                            \
-         );                                                                                        \
-         __CEX_TMPNAME(__cex_err_traceback_) = EOK)                                                \
-    goto _label
-
-#define except_errno(_expression)                                                                  \
-    errno = 0;                                                                                     \
-    for (int __CEX_TMPNAME(__cex_errno_traceback_ctr) = 0,                                         \
-             __CEX_TMPNAME(__cex_errno_traceback_) = (_expression);                                \
-         __CEX_TMPNAME(__cex_errno_traceback_ctr) == 0 &&                                          \
-         __CEX_TMPNAME(__cex_errno_traceback_) == -1 &&                                            \
-         uperrorf("`%s` failed errno: %d, msg: %s\n", #_expression, errno, strerror(errno));       \
-         __CEX_TMPNAME(__cex_errno_traceback_ctr)++)
-
-#define except_null(_expression)                                                                   \
-    if (((_expression) == NULL) && uperrorf("`%s` returned NULL\n", #_expression))
-
-#define raise_exc(return_uerr, error_msg, ...)                                                     \
-    (uperrorf("[%s] " error_msg, return_uerr, ##__VA_ARGS__), (return_uerr))
-
-
 /**
  *                 ASSERTIONS MACROS
  */
-
 
 
 #ifdef NDEBUG
@@ -230,6 +182,69 @@ int __cex_test_uassert_enabled = 0;
 #define uassert_is_enabled() true
 #define CEXERRORF_OUT__ stderr
 #endif
+
+
+#ifndef DNDEBUG
+int __cex_eraise_assert__should_pass = 1;
+#define e$raise_disable() __cex_eraise_assert__should_pass = 1
+#define e$raise_enable() __cex_eraise_assert__should_pass = 0
+#define e$raise_is_ok() (__cex_eraise_assert__should_pass)
+#else
+#define e$raise_disable() (void)0
+#define e$raise_enable() (void)0
+#define e$raise_is_ok() (true)
+#endif
+
+static inline bool
+_cex_e_raise_check_assert_if_enabled(Exc e)
+{
+    if (e != NULL) {
+        uassert(e$raise_is_ok() && "failed because e$raise_enable()");
+        return true; // error, pass to the trace back
+    } else {
+        return false; // OK! No error path
+    }
+}
+
+// WARNING: DO NOT USE break/continue inside except* {scope!}
+#define except_silent(_var_name, _func)                                                            \
+    for (Exc _var_name = _func; unlikely(_var_name != NULL); _var_name = EOK)
+
+#define except(_var_name, _func)                                                                   \
+    for (Exc _var_name = _func; unlikely((_var_name != NULL) && (uptraceback(_var_name, #_func))); \
+         _var_name = EOK)
+
+#define e$ret(_func)                                                                               \
+    for (Exc __CEX_TMPNAME(__cex_err_traceback_) = _func; unlikely(                                \
+             _cex_e_raise_check_assert_if_enabled(__CEX_TMPNAME(__cex_err_traceback_)) &&          \
+             (uptraceback(__CEX_TMPNAME(__cex_err_traceback_), #_func))                            \
+         );                                                                                        \
+         __CEX_TMPNAME(__cex_err_traceback_) = EOK)                                                \
+    return __CEX_TMPNAME(__cex_err_traceback_)
+
+#define e$goto(_func, _label)                                                                      \
+    for (Exc __CEX_TMPNAME(__cex_err_traceback_) = _func; unlikely(                                \
+             _cex_e_raise_check_assert_if_enabled(__CEX_TMPNAME(__cex_err_traceback_)) &&          \
+             (uptraceback(__CEX_TMPNAME(__cex_err_traceback_), #_func))                            \
+         );                                                                                        \
+         __CEX_TMPNAME(__cex_err_traceback_) = EOK)                                                \
+    goto _label
+
+#define except_errno(_expression)                                                                  \
+    errno = 0;                                                                                     \
+    for (int __CEX_TMPNAME(__cex_errno_traceback_ctr) = 0,                                         \
+             __CEX_TMPNAME(__cex_errno_traceback_) = (_expression);                                \
+         __CEX_TMPNAME(__cex_errno_traceback_ctr) == 0 &&                                          \
+         __CEX_TMPNAME(__cex_errno_traceback_) == -1 &&                                            \
+         uperrorf("`%s` failed errno: %d, msg: %s\n", #_expression, errno, strerror(errno));       \
+         __CEX_TMPNAME(__cex_errno_traceback_ctr)++)
+
+#define except_null(_expression)                                                                   \
+    if (((_expression) == NULL) && uperrorf("`%s` returned NULL\n", #_expression))
+
+#define raise_exc(return_uerr, error_msg, ...)                                                     \
+    (uperrorf("[%s] " error_msg, return_uerr, ##__VA_ARGS__), (return_uerr))
+
 
 /*
  *                  ARRAY / ITERATORS INTERFACE
@@ -326,23 +341,23 @@ typedef struct Allocator_i
     int (*close)(int fd);
 } Allocator_i;
 _Static_assert(alignof(Allocator_i) == alignof(size_t), "size");
-_Static_assert(sizeof(Allocator_i) == sizeof(size_t)*10, "size");
+_Static_assert(sizeof(Allocator_i) == sizeof(size_t) * 10, "size");
 
 
 // Check windows
 #if _WIN32 || _WIN64
-   #if _WIN64
-     #define CEX_ENV64BIT
-  #else
-    #define CEX_ENV32BIT
-  #endif
+#if _WIN64
+#define CEX_ENV64BIT
+#else
+#define CEX_ENV32BIT
+#endif
 #endif
 
 // Check GCC
 #if __GNUC__
-  #if __x86_64__ || __ppc64__
-    #define CEX_ENV64BIT
-  #else
-    #define CEX_ENV32BIT
-  #endif
+#if __x86_64__ || __ppc64__
+#define CEX_ENV64BIT
+#else
+#define CEX_ENV32BIT
+#endif
 #endif

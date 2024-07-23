@@ -801,6 +801,9 @@ test$case(test_cmpi)
     tassert_eqi(str.cmpi(str.cstr(NULL), str.cstr("ABC")), -1);
 
 
+    tassert(str.cmpi(str.cstr("PFIRM"), str.cstr("PCOMM")) != 0);
+    tassert(str.cmpi(str.cstr("PCLASS"), str.cstr("PCLOSE")) != 0);
+
     return EOK;
 }
 

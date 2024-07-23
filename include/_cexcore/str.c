@@ -481,6 +481,9 @@ str_cmpi(str_c self, str_c other)
     char* o = other.buf;
     for (size_t i = 0; i < min_len; i++) {
         cmp = tolower(*s) - tolower(*o);
+        if (cmp != 0){
+            return cmp;
+        }
         s++;
         o++;
     }

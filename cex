@@ -1044,7 +1044,11 @@ class CEXProcessor:
                             self._in_string_quotes.append(c)
                         else:
                             if c == '"' or c == "'":
-                                if line[i - 1] != "\\":
+                                # NOTE: special case for backslash '\\', "\\"
+                                if i >= 2 and (
+                                    line[i - 1] != "\\"
+                                    or (line[i - 1] == "\\" and line[i - 2] == "\\")
+                                ):
                                     # escaped quote, skipping \"
                                     if c == self._in_string_quotes[-1]:
                                         self._in_string_quotes.pop()
