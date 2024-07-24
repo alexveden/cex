@@ -798,6 +798,95 @@ test$case(test_argparse_arguments__float_parsing)
     return EOK;
 }
 
+test$case(test_argparse_int_short_arg__argc_remainder)
+{
+    int force = 100;
+
+    argparse_opt_s options[] = {
+        argparse$opt_help(),
+        argparse$opt_group("Basic options"),
+        argparse$opt_i64('f', "force", &force, "force to do"),
+    };
+
+    argparse_c args = {
+        .options = options,
+        .options_len = arr$len(options),
+    };
+
+    char* argv[] = { "program_name", "-f", "10", "arg1", "arg2" };
+    int argc = arr$len(argv);
+
+
+    tassert_eqe(Error.ok, argparse.parse(&args, argc, argv));
+    tassert_eqi(force, 10);
+    tassert_eqi(argc, 5);                 // unchanged
+
+    tassert_eqi(argparse.argc(&args), 2);
+    tassert_eqs(argparse.argv(&args)[0], "arg1");
+    tassert_eqs(argparse.argv(&args)[1], "arg2");
+
+    return EOK;
+}
+
+test$case(test_argparse_str_short_arg__argc_remainder)
+{
+    const char* force = NULL;
+
+    argparse_opt_s options[] = {
+        argparse$opt_help(),
+        argparse$opt_group("Basic options"),
+        argparse$opt_str('f', "force", &force, "force to do"),
+    };
+
+    argparse_c args = {
+        .options = options,
+        .options_len = arr$len(options),
+    };
+
+    char* argv[] = { "program_name", "-f", "10", "arg1", "arg2" };
+    int argc = arr$len(argv);
+
+
+    tassert_eqe(Error.ok, argparse.parse(&args, argc, argv));
+    tassert_eqs(force, "10");
+    tassert_eqi(argc, 5);                 // unchanged
+
+    tassert_eqi(argparse.argc(&args), 2);
+    tassert_eqs(argparse.argv(&args)[0], "arg1");
+    tassert_eqs(argparse.argv(&args)[1], "arg2");
+
+    return EOK;
+}
+
+test$case(test_argparse_float_short_arg__argc_remainder)
+{
+    f32 force = 0.0;
+
+    argparse_opt_s options[] = {
+        argparse$opt_help(),
+        argparse$opt_group("Basic options"),
+        argparse$opt_f32('f', "force", &force, "force to do"),
+    };
+
+    argparse_c args = {
+        .options = options,
+        .options_len = arr$len(options),
+    };
+
+    char* argv[] = { "program_name", "-f", "10", "arg1", "arg2" };
+    int argc = arr$len(argv);
+
+
+    tassert_eqe(Error.ok, argparse.parse(&args, argc, argv));
+    tassert_eqf(force, 10.0f);
+    tassert_eqi(argc, 5);                 // unchanged
+
+    tassert_eqi(argparse.argc(&args), 2);
+    tassert_eqs(argparse.argv(&args)[0], "arg1");
+    tassert_eqs(argparse.argv(&args)[1], "arg2");
+
+    return EOK;
+}
 /*
  *
  * MAIN (AUTO GENERATED)
@@ -830,6 +919,9 @@ main(int argc, char* argv[])
     test$run(test_argparse_arguments__command__help);
     test$run(test_argparse_arguments__int_parsing);
     test$run(test_argparse_arguments__float_parsing);
+    test$run(test_argparse_int_short_arg__argc_remainder);
+    test$run(test_argparse_str_short_arg__argc_remainder);
+    test$run(test_argparse_float_short_arg__argc_remainder);
     
     test$print_footer();  // ^^^^^ all tests runs are above
     return test$exit_code();

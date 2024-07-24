@@ -198,6 +198,7 @@ argparse__getvalue(argparse_c* self, argparse_opt_s* opt, int flags)
                 self->_ctx.optvalue = NULL;
             } else if (self->_ctx.argc > 1) {
                 self->_ctx.argc--;
+                self->_ctx.cpidx++;
                 *(const char**)opt->value = *++self->_ctx.argv;
             } else {
                 return argparse__error(self, opt, "requires a value", flags);
@@ -215,6 +216,7 @@ argparse__getvalue(argparse_c* self, argparse_opt_s* opt, int flags)
                 self->_ctx.optvalue = NULL;
             } else if (self->_ctx.argc > 1) {
                 self->_ctx.argc--;
+                self->_ctx.cpidx++;
                 *(int*)opt->value = strtol(*++self->_ctx.argv, (char**)&s, 0);
             } else {
                 return argparse__error(self, opt, "requires a value", flags);
@@ -238,6 +240,7 @@ argparse__getvalue(argparse_c* self, argparse_opt_s* opt, int flags)
                 self->_ctx.optvalue = NULL;
             } else if (self->_ctx.argc > 1) {
                 self->_ctx.argc--;
+                self->_ctx.cpidx++;
                 *(float*)opt->value = strtof(*++self->_ctx.argv, (char**)&s);
             } else {
                 return argparse__error(self, opt, "requires a value", flags);
