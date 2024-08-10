@@ -1045,15 +1045,18 @@ class CEXProcessor:
                         else:
                             if c == '"' or c == "'":
                                 # NOTE: special case for backslash '\\', "\\"
+                                # NOTE: special case "'" or '"'
                                 if i >= 2 and (
                                     line[i - 1] != "\\"
                                     or (line[i - 1] == "\\" and line[i - 2] == "\\")
+                                    or self._in_string_quotes[0] == c
                                 ):
-                                    # escaped quote, skipping \"
-                                    if c == self._in_string_quotes[-1]:
-                                        self._in_string_quotes.pop()
-                                    else:
-                                        self._in_string_quotes.append(c)
+                                    if self._in_string_quotes[0] == c:
+                                        # escaped quote, skipping \" or " '  "
+                                        if c == self._in_string_quotes[-1]:
+                                            self._in_string_quotes.pop()
+                                        else:
+                                            self._in_string_quotes.append(c)
 
                     pass
 
@@ -1222,12 +1225,15 @@ class CEXProcessor:
         blocks = []
         current_block: CEXProcessor.Block | None = None
         for i, line in enumerate(lines):
+            # print(f"{i}: {line}")
             while True:
                 if current_block is None:
                     current_block = self.block_probe(line, i)
+                    # print(repr(current_block))
 
                 if current_block:
                     lres = current_block.process_line(line)
+                    # print(repr(current_block))
                     if not lres:
                         # block ended at this line
                         blocks.append(current_block)
@@ -1624,7 +1630,7 @@ def action_process(args):
         re_cex_module = re.compile(r"const struct __(class|module)__")
         re_cex_header = re.compile(r"const struct __header__")
 
-        for fn in glob.glob("**/*.c", recursive=True):
+        for fn in glob.glob(f"{src_path}/**/*.c", recursive=True):
             if os.path.basename(fn).startswith("test_") or os.path.basename(
                 fn
             ).startswith("fake_"):
@@ -1633,7 +1639,7 @@ def action_process(args):
                 # ignore bundles
                 continue
             sources[fn] = None
-        for fn in glob.glob("**/*.h", recursive=True):
+        for fn in glob.glob(f"{src_path}/**/*.h", recursive=True):
             if os.path.basename(fn).startswith("test_") or os.path.basename(
                 fn
             ).startswith("fake_"):
