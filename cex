@@ -1402,6 +1402,9 @@ class CEXProcessor:
         if h_file.startswith("./"):
             h_file = h_file[2:]
 
+        file = h_file.replace("../", "").replace("include/", "").replace("src/", "")
+        base_file = "fake__" + file.replace("/", "__")
+
         src = io.StringIO()
         src_reset = io.StringIO()
         src_wrap = io.StringIO()
@@ -1410,7 +1413,8 @@ class CEXProcessor:
         src.write("// NOTE: Do not edit, all changes can be lost\n")
         src.write("\n// clang-format off\n")
         src.write("#include <fff.h>\n")
-        src.write(f"#include <{h_file}>\n\n")
+        src.write("#include <cex.h>\n")
+        src.write(f"#include \"{file}\"\n\n")
         src_wrap.write(src.getvalue())
         src_wrap.write(
             "// IMPORTANT: wrapping works only with gcc  `-Wl,--wrap=Shmem_new,--wrap=Protocol_event_emitter_new`  flag"  # noqa
@@ -1418,11 +1422,6 @@ class CEXProcessor:
         fake_count = 0
 
         _RE_COMBINE_WHITESPACE = re.compile(r"\s+")
-
-        file = h_file
-        base_file = "fake__" + file.replace("../", "").replace("include/", "").replace(
-            "src/", ""
-        ).replace("/", "__")
 
         if sub_module:
             base_file = base_file.replace(".h", f"__{sub_module}.h")
@@ -1443,8 +1442,10 @@ class CEXProcessor:
                 continue
 
             f = CEXProcessor.Func(block.buf.getvalue(), "")
-            if not f.is_public_cex:
+            if not self.is_public_header and not f.is_public_cex:
                 continue
+
+            # print(block)
 
             is_var_args = False
 
@@ -1508,6 +1509,7 @@ class CEXProcessor:
             src.write("\n".join(c_ifc_impl))
             src_wrap.write("\n".join(c_ifc_impl))
 
+        # print(src.getvalue())
         with open(os.path.join(fake_dir, base_file), "w") as fh:
             fh.write(src.getvalue())
             fh.write(src_reset.getvalue())
@@ -1564,6 +1566,7 @@ class CEXProcessor:
             fh.writelines(h_lines)
 
         if fake_dir:
+            # print(h_blocks)
 
             # Make fake for whole app
             self.make_fff_fake(fake_dir, self.h_file, h_blocks, "")
