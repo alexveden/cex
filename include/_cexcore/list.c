@@ -6,7 +6,7 @@ list__head(list_c* self)
     uassert(self != NULL);
     uassert(self->arr != NULL && "array is not initialized");
     list_head_s* head = (list_head_s*)((char*)self->arr - _CEX_LIST_BUF);
-    uassert(head->header.magic == 0x1eed && "not a dlist / bad pointer");
+    uassert(head->header.magic == 0x1eed && "not a list / bad pointer");
     uassert(head->capacity > 0 && "zero capacity or memory corruption");
     uassert(head->count <= head->capacity && "count > capacity");
 

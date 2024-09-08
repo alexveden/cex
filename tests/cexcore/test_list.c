@@ -50,6 +50,7 @@ test$case(testlist_alloc_capacity)
     return EOK;
 }
 
+
 test$case(testlist_new)
 {
     list$define(int) a;
@@ -72,9 +73,61 @@ test$case(testlist_new)
 
     list.destroy(&a);
     return EOK;
-
 }
 
+test$case(testlist_new_as_typedef)
+{
+    typedef list$define(int) my_int_list;
+
+    my_int_list a;
+
+    except(err, list$new(&a, 5, allocator))
+    {
+        tassert(false && "list$new fail");
+    }
+
+    tassert(a.arr != NULL);
+    tassert_eqi(a.len, 0);
+
+    list_head_s* head = (list_head_s*)((char*)a.arr - _CEX_LIST_BUF);
+    tassert_eqi(head->header.magic, 0x1eed);
+    tassert_eqi(head->header.elalign, alignof(int));
+    tassert_eqi(head->header.elsize, sizeof(int));
+    tassert_eqi(head->count, 0);
+    tassert_eqi(head->capacity, 8);
+    tassert(head->allocator == allocator);
+
+    list.destroy(&a);
+    return EOK;
+
+}
+test$case(testlist_new_as_struct_member)
+{
+    struct {
+        list$define(int) a;
+    } mystruct = {0};
+
+
+    except(err, list$new(&mystruct.a, 5, allocator))
+    {
+        tassert(false && "list$new fail");
+    }
+
+    tassert(mystruct.a.arr != NULL);
+    tassert_eqi(mystruct.a.len, 0);
+
+    list_head_s* head = (list_head_s*)((char*)mystruct.a.arr - _CEX_LIST_BUF);
+    tassert_eqi(head->header.magic, 0x1eed);
+    tassert_eqi(head->header.elalign, alignof(int));
+    tassert_eqi(head->header.elsize, sizeof(int));
+    tassert_eqi(head->count, 0);
+    tassert_eqi(head->capacity, 8);
+    tassert(head->allocator == allocator);
+
+    list.destroy(&mystruct.a);
+    return EOK;
+
+}
 test$case(testlist_append)
 {
     list$define(int) a;
@@ -327,7 +380,8 @@ test$case(testlist_iterator)
     }
 
     u32 nit = 0;
-    for$iter(int, it, list.iter(&a, &it.iterator))
+    // type is inferred?
+    for$iter(a.arr, it, list.iter(&a, &it.iterator))
     {
         tassert(false && "not expected");
         nit++;
@@ -538,8 +592,8 @@ test$case(testlist_align16)
     tassert_eqi(head->header.elalign, 16);
 
     // validate appended values
-    for (u32 i = 0; i < a.len; i++) {
-        tassert_eqi(a.arr[i].foo, i);
+    for$iter(typeof(*a.arr), it, list.iter(&a, &it.iterator)) {
+        tassert_eqi(it.val->foo, it.idx.i);
     }
 
     // check if array got resized
@@ -689,6 +743,8 @@ main(int argc, char* argv[])
     
     test$run(testlist_alloc_capacity);
     test$run(testlist_new);
+    test$run(testlist_new_as_typedef);
+    test$run(testlist_new_as_struct_member);
     test$run(testlist_append);
     test$run(testlist_insert);
     test$run(testlist_del);

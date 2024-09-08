@@ -1,5 +1,4 @@
 #pragma once
-#include "allocators.h"
 #include "cex.h"
 
 
@@ -17,37 +16,37 @@ typedef struct
 #define list$define(eltype)                                                                        \
     /* NOTE: shadow struct the same as list_c, only used for type safety. const  prevents user to  \
      * overwrite struct arr.arr pointer (elements are ok), and also arr.count */                   \
-    struct __CEX_TMPNAME(__cexlist__)                                                              \
+    struct  \
     {                                                                                              \
         eltype* const arr;                                                                         \
         const size_t len;                                                                          \
     }
 
-#define list$new(self, capacity, allocator)                                                        \
+#define list$new(list_c_ptr, capacity, allocator)                                                        \
     (list.create(                                                                                  \
-        (list_c*)self,                                                                             \
+        (list_c*)list_c_ptr,                                                                             \
         capacity,                                                                                  \
-        sizeof(typeof(*(((self))->arr))),                                                          \
-        alignof(typeof(*(((self))->arr))),                                                         \
+        sizeof(typeof(*(((list_c_ptr))->arr))),                                                          \
+        alignof(typeof(*(((list_c_ptr))->arr))),                                                         \
         allocator                                                                                  \
     ))
 
-#define list$new_static(self, buf, buf_len)                                                        \
+#define list$new_static(list_c_ptr, buf, buf_len)                                                        \
     (list.create_static(                                                                           \
-        (list_c*)self,                                                                             \
+        (list_c*)list_c_ptr,                                                                             \
         buf,                                                                                       \
         buf_len,                                                                                   \
-        sizeof(typeof(*(((self))->arr))),                                                          \
-        alignof(typeof(*(((self))->arr)))                                                          \
+        sizeof(typeof(*(((list_c_ptr))->arr))),                                                          \
+        alignof(typeof(*(((list_c_ptr))->arr)))                                                          \
     ))
 
 typedef struct
 {
     struct
     {
-        size_t magic : 16;
-        size_t elsize : 16;
-        size_t elalign : 16;
+        u16 magic;
+        u16 elsize;
+        u16 elalign;
     } header;
     size_t count;
     size_t capacity;

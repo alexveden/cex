@@ -229,7 +229,7 @@ struct __CexTestContext_s
             snprintf(                                                                              \
                 __CexTestContext._str_buf,                                                         \
                 CEXTEST_AMSG_MAX_LEN - 1,                                                          \
-                __CEXTEST_LOG_ERR("%ld != %ld"),                                                     \
+                __CEXTEST_LOG_ERR("%ld != %ld"),                                                   \
                 (ac),                                                                              \
                 (ex)                                                                               \
             );                                                                                     \
@@ -242,13 +242,13 @@ struct __CexTestContext_s
 //
 #define tassert_eql(_ac, _ex)                                                                      \
     do {                                                                                           \
-        long long ac = (_ac);                                                                           \
-        long long ex = (_ex);                                                                           \
+        long long ac = (_ac);                                                                      \
+        long long ex = (_ex);                                                                      \
         if ((ac) != (ex)) {                                                                        \
             snprintf(                                                                              \
                 __CexTestContext._str_buf,                                                         \
                 CEXTEST_AMSG_MAX_LEN - 1,                                                          \
-                __CEXTEST_LOG_ERR("%lld != %lld"),                                                   \
+                __CEXTEST_LOG_ERR("%lld != %lld"),                                                 \
                 (ac),                                                                              \
                 (ex)                                                                               \
             );                                                                                     \
@@ -323,16 +323,19 @@ struct __CexTestContext_s
         if (err != EOK) {                                                                          \
             fprintf(                                                                               \
                 __atest_stream,                                                                    \
-                "[%s] %s in test$setup() before %s\n",                                             \
+                "[%s] %s in test$setup() before %s (suite %s stopped)\n",                          \
                 CEXTEST_CRED "FAIL" CEXTEST_CNONE,                                                 \
                 err,                                                                               \
-                #test_case_name                                                                    \
+                #test_case_name,                                                                   \
+                __FILE__                                                                           \
             );                                                                                     \
+            return 1;                                                                              \
+        } else {                                                                                   \
+            err = (test_case_name());                                                              \
         }                                                                                          \
-        Exc result = (test_case_name());                                                           \
                                                                                                    \
         __CexTestContext.tests_run++;                                                              \
-        if (result == EOK) {                                                                       \
+        if (err == EOK) {                                                                          \
             if (__CexTestContext.verbosity > 0) {                                                  \
                 if (__CexTestContext.verbosity == 1) {                                             \
                     fprintf(__atest_stream, ".");                                                  \
@@ -350,7 +353,7 @@ struct __CexTestContext_s
                 __atest_stream,                                                                    \
                 "[%s] %s %s\n",                                                                    \
                 CEXTEST_CRED "FAIL" CEXTEST_CNONE,                                                 \
-                result,                                                                            \
+                err,                                                                               \
                 #test_case_name                                                                    \
             );                                                                                     \
             __CexTestContext.tests_failed++;                                                       \

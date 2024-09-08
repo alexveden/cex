@@ -694,7 +694,7 @@ struct __CexTestContext_s
             snprintf(                                                                              \
                 __CexTestContext._str_buf,                                                         \
                 CEXTEST_AMSG_MAX_LEN - 1,                                                          \
-                __CEXTEST_LOG_ERR("%ld != %ld"),                                                     \
+                __CEXTEST_LOG_ERR("%ld != %ld"),                                                   \
                 (ac),                                                                              \
                 (ex)                                                                               \
             );                                                                                     \
@@ -707,13 +707,13 @@ struct __CexTestContext_s
 //
 #define tassert_eql(_ac, _ex)                                                                      \
     do {                                                                                           \
-        long long ac = (_ac);                                                                           \
-        long long ex = (_ex);                                                                           \
+        long long ac = (_ac);                                                                      \
+        long long ex = (_ex);                                                                      \
         if ((ac) != (ex)) {                                                                        \
             snprintf(                                                                              \
                 __CexTestContext._str_buf,                                                         \
                 CEXTEST_AMSG_MAX_LEN - 1,                                                          \
-                __CEXTEST_LOG_ERR("%lld != %lld"),                                                   \
+                __CEXTEST_LOG_ERR("%lld != %lld"),                                                 \
                 (ac),                                                                              \
                 (ex)                                                                               \
             );                                                                                     \
@@ -788,16 +788,19 @@ struct __CexTestContext_s
         if (err != EOK) {                                                                          \
             fprintf(                                                                               \
                 __atest_stream,                                                                    \
-                "[%s] %s in test$setup() before %s\n",                                             \
+                "[%s] %s in test$setup() before %s (suite %s stopped)\n",                          \
                 CEXTEST_CRED "FAIL" CEXTEST_CNONE,                                                 \
                 err,                                                                               \
-                #test_case_name                                                                    \
+                #test_case_name,                                                                   \
+                __FILE__                                                                           \
             );                                                                                     \
+            return 1;                                                                              \
+        } else {                                                                                   \
+            err = (test_case_name());                                                              \
         }                                                                                          \
-        Exc result = (test_case_name());                                                           \
                                                                                                    \
         __CexTestContext.tests_run++;                                                              \
-        if (result == EOK) {                                                                       \
+        if (err == EOK) {                                                                          \
             if (__CexTestContext.verbosity > 0) {                                                  \
                 if (__CexTestContext.verbosity == 1) {                                             \
                     fprintf(__atest_stream, ".");                                                  \
@@ -815,7 +818,7 @@ struct __CexTestContext_s
                 __atest_stream,                                                                    \
                 "[%s] %s %s\n",                                                                    \
                 CEXTEST_CRED "FAIL" CEXTEST_CNONE,                                                 \
-                result,                                                                            \
+                err,                                                                               \
                 #test_case_name                                                                    \
             );                                                                                     \
             __CexTestContext.tests_failed++;                                                       \
@@ -1162,37 +1165,37 @@ typedef struct
 #define list$define(eltype)                                                                        \
     /* NOTE: shadow struct the same as list_c, only used for type safety. const  prevents user to  \
      * overwrite struct arr.arr pointer (elements are ok), and also arr.count */                   \
-    struct __CEX_TMPNAME(__cexlist__)                                                              \
+    struct  \
     {                                                                                              \
         eltype* const arr;                                                                         \
         const size_t len;                                                                          \
     }
 
-#define list$new(self, capacity, allocator)                                                        \
+#define list$new(list_c_ptr, capacity, allocator)                                                        \
     (list.create(                                                                                  \
-        (list_c*)self,                                                                             \
+        (list_c*)list_c_ptr,                                                                             \
         capacity,                                                                                  \
-        sizeof(typeof(*(((self))->arr))),                                                          \
-        alignof(typeof(*(((self))->arr))),                                                         \
+        sizeof(typeof(*(((list_c_ptr))->arr))),                                                          \
+        alignof(typeof(*(((list_c_ptr))->arr))),                                                         \
         allocator                                                                                  \
     ))
 
-#define list$new_static(self, buf, buf_len)                                                        \
+#define list$new_static(list_c_ptr, buf, buf_len)                                                        \
     (list.create_static(                                                                           \
-        (list_c*)self,                                                                             \
+        (list_c*)list_c_ptr,                                                                             \
         buf,                                                                                       \
         buf_len,                                                                                   \
-        sizeof(typeof(*(((self))->arr))),                                                          \
-        alignof(typeof(*(((self))->arr)))                                                          \
+        sizeof(typeof(*(((list_c_ptr))->arr))),                                                          \
+        alignof(typeof(*(((list_c_ptr))->arr)))                                                          \
     ))
 
 typedef struct
 {
     struct
     {
-        size_t magic : 16;
-        size_t elsize : 16;
-        size_t elalign : 16;
+        u16 magic;
+        u16 elsize;
+        u16 elalign;
     } header;
     size_t count;
     size_t capacity;

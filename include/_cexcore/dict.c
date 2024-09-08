@@ -111,8 +111,8 @@ dict_create(
         return Error.argument;
     }
 
-    if (item_size <= sizeof(u64)) {
-        uassert(item_size > sizeof(u64) && "item_size is too small");
+    if (item_size < sizeof(u64)) {
+        uassert(item_size >= sizeof(u64) && "item_size is too small");
         return Error.argument;
     }
 
