@@ -594,6 +594,8 @@ class CEXTestBuilder:
 
             if self.src_path == "all":
                 args.extend(["q"])  # run cex test in quiet mode
+            else:
+                print(f"Test executable: {fn}")
 
             process = subprocess.Popen(
                 args,
@@ -1023,6 +1025,10 @@ class CEXProcessor:
                     if self._is_signature:
                         self.buf.write(c)
                 else:
+                    # FIX: in code comments breaks parsing (duplicate code generated)
+                    # Example: 
+                    #  struct {
+                    #    int field;   // this is my comment it's  breaking because of ' in it's
                     if not self._in_string_quotes and c != '"' and c != "'":
                         if c in self._brackets:
                             self.process_brackets(c)
@@ -1365,7 +1371,7 @@ class CEXProcessor:
             pass
 
         ifc_contents.append("    // clang-format on")
-        ifc_contents.append("};")
+        ifc_contents.append("};\n")
 
         return ifc_contents
 
@@ -1376,6 +1382,7 @@ class CEXProcessor:
         existing = []
         last_ifndef = None
         for b in src_blocks:
+            # print(f"{b}")
             if isinstance(b, CEXProcessor.Code) and b.code_type in ["var", "struct"]:
                 code_line = b.buf.getvalue()
                 if self.ns_struct_name in code_line:

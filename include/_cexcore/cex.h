@@ -310,8 +310,9 @@ _Static_assert(sizeof(cex_iterator_s) <= 64, "cex size");
                 union                                                                              \
                 {                                                                                  \
                     size_t i;                                                                      \
-                    u64 key;                                                                       \
+                    u64 ikey;                                                                      \
                     char* skey;                                                                    \
+                    void* pkey;                                                                    \
                 };                                                                                 \
             } idx;                                                                                 \
         };                                                                                         \
