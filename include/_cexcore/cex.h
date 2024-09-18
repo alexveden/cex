@@ -171,7 +171,7 @@ void __sanitizer_print_stack_trace();
 // this prevents spamming on stderr (i.e. cextest.h output stream in silent mode)
 #define CEXERRORF_OUT__ stdout
 
-int __cex_test_uassert_enabled = 0;
+int __cex_test_uassert_enabled = 1;
 #define uassert_disable() __cex_test_uassert_enabled = 0
 #define uassert_enable() __cex_test_uassert_enabled = 1
 #define uassert_is_enabled() (__cex_test_uassert_enabled)
