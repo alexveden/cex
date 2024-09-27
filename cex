@@ -1086,6 +1086,7 @@ class CEXProcessor:
 
         def __init__(self, decl: str, ifc_prefix: str):
             g = CEXProcessor.RE_FUNC.match(decl)
+            assert ifc_prefix, "empty ifc_prefix"
             assert g, f"Function regex not matched: {decl}"
             self.is_static = False
             self.is_inline = False
@@ -1166,6 +1167,8 @@ class CEXProcessor:
         typedef: {self.typedef}
         is_static: {self.is_static}
         is_inline: {self.is_inline}
+        is_public_cex: {self.is_public_cex}
+        ifc_prefix: {self.ifc_prefix}
         name: {self.name}
         args: {self.args}
         """
@@ -1448,11 +1451,10 @@ class CEXProcessor:
             if not isinstance(block, CEXProcessor.Code) or not self.is_func_code(block):
                 continue
 
-            f = CEXProcessor.Func(block.buf.getvalue(), "")
+            f = CEXProcessor.Func(block.buf.getvalue(), self.namespace)
+            # print(f)
             if not self.is_public_header and not f.is_public_cex:
                 continue
-
-            # print(block)
 
             is_var_args = False
 
