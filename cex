@@ -1026,7 +1026,7 @@ class CEXProcessor:
                         self.buf.write(c)
                 else:
                     # FIX: in code comments breaks parsing (duplicate code generated)
-                    # Example: 
+                    # Example:
                     #  struct {
                     #    int field;   // this is my comment it's  breaking because of ' in it's
                     if not self._in_string_quotes and c != '"' and c != "'":
@@ -1133,7 +1133,9 @@ class CEXProcessor:
             g = re.match(
                 rf"^{self.ifc_prefix}__([\w]+)__(\w+)", self.name, re.MULTILINE
             )
-            if not g and f"{self.ifc_prefix}__" in self.name:
+            g2 = re.match(rf"^{self.ifc_prefix}_(\w+)", self.name, re.MULTILINE)
+
+            if not g and not g2:
                 # private function, and not second level namespace
                 return False
 
@@ -1424,7 +1426,7 @@ class CEXProcessor:
         src.write("\n// clang-format off\n")
         src.write("#include <fff.h>\n")
         src.write("#include <cex.h>\n")
-        src.write(f"#include \"{file}\"\n\n")
+        src.write(f'#include "{file}"\n\n')
         src_wrap.write(src.getvalue())
         src_wrap.write(
             "// IMPORTANT: wrapping works only with gcc  `-Wl,--wrap=Shmem_new,--wrap=Protocol_event_emitter_new`  flag"  # noqa
@@ -1704,7 +1706,10 @@ if __name__ == "__main__":
     )
     process_parser.add_argument(
         "source_path",
-        help="Directory (batch update mode), or file path .c (code mode) or .h (lib mode)",  # noqa
+        help=(  # noqa
+            "Directory (batch update mode), or file path .c (code mode) or .h (lib"
+            " mode)"
+        ),
     )
     process_parser.add_argument("--fakedir", help="fff.h fake directory", default="")
     process_parser.add_argument(
@@ -1745,7 +1750,9 @@ if __name__ == "__main__":
     )
     build_parser.add_argument(
         "app_name",
-        help=". for src/main.c, or `my_app_name` for src/<my_app_name>/main.c, or `all`",  # noqa
+        help=(  # noqa
+            ". for src/main.c, or `my_app_name` for src/<my_app_name>/main.c, or `all`"
+        ),
     )
     build_parser.add_argument(
         "-o",
@@ -1755,7 +1762,10 @@ if __name__ == "__main__":
     )
     build_parser.add_argument(
         "--target",
-        help="compiler args preset: {debug, release-safe, release-fast, custom}, default: debug",  # noqa
+        help=(  # noqa
+            "compiler args preset: {debug, release-safe, release-fast, custom},"
+            " default: debug"
+        ),
         default="debug",
     )
     build_parser.add_argument("--ccargs", help="compiler arguments", default="")
