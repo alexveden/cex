@@ -6479,21 +6479,24 @@ str_copy(str_c s, char* dest, size_t destlen)
     return Error.ok;
 }
 
-Exception
-str_sprintf(char* dest, size_t dest_len, const char* format, ...) {
+str_c
+str_sprintf(char* dest, size_t dest_len, const char* format, ...)
+{
+    str_c out = { .buf = NULL, .len = 0 };
 
     va_list va;
     va_start(va, format);
 
     int result = STB_SPRINTF_DECORATE(vsnprintf)(dest, dest_len, format, va);
     va_end(va);
-    if (result >= 0){
-        if((unsigned)result >= dest_len)
-            return Error.overflow;
-        return Error.ok;
-    } else {
-        return Error.argument;
+
+    // NOTE: result equals dest_len if buffer overflow
+    if (result > 0) {
+        out.buf = dest;
+        out.len = result;
     }
+
+    return out;
 }
 
 size_t
@@ -6835,7 +6838,7 @@ str_cmpi(str_c self, str_c other)
     char* o = other.buf;
     for (size_t i = 0; i < min_len; i++) {
         cmp = tolower(*s) - tolower(*o);
-        if (cmp != 0){
+        if (cmp != 0) {
             return cmp;
         }
         s++;
@@ -7271,14 +7274,18 @@ str__to_double(str_c self, double* num, i32 exp_min, i32 exp_max)
     return Error.ok;
 }
 
-Exception str_to_f32(str_c self, f32* num){
+Exception
+str_to_f32(str_c self, f32* num)
+{
     f64 res = 0;
     Exc r = str__to_double(self, &res, -37, 38);
     *num = (f32)res;
     return r;
 }
 
-Exception str_to_f64(str_c self, f64* num){
+Exception
+str_to_f64(str_c self, f64* num)
+{
     return str__to_double(self, num, -307, 308);
 }
 

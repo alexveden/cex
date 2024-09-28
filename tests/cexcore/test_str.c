@@ -1651,33 +1651,50 @@ test$case(test_str_sprintf)
     char buffer[10] = {0};
 
     memset(buffer, 'z', sizeof(buffer));
-    tassert_eqe(EOK, str.sprintf(buffer, sizeof(buffer), "%s", "1234"));
+    str_c s = str.sprintf(buffer, sizeof(buffer), "%s", "1234");
     tassert_eqs("1234", buffer);
+    tassert_eqi(str.cmp(s, s$("1234")), 0);
+    tassert_eqi(s.len, 4);
+    tassert(s.buf == buffer);
 
 
     memset(buffer, 'z', sizeof(buffer));
-    tassert_eqe(EOK, str.sprintf(buffer, sizeof(buffer), "%s", "123456789"));
+    s = str.sprintf(buffer, sizeof(buffer), "%s", "123456789");
     tassert_eqs("123456789", buffer);
+    tassert_eqi(str.cmp(s, s$(buffer)), 0);
+    tassert_eqi(s.len, 9);
+    tassert(s.buf == buffer);
 
     memset(buffer, 'z', sizeof(buffer));
-    tassert_eqe(Error.overflow, str.sprintf(buffer, sizeof(buffer), "%s", "1234567890"));
+    s = str.sprintf(buffer, sizeof(buffer), "%s", "1234567890");
     tassert_eqs("123456789", buffer);
+    tassert_eqi(str.cmp(s, s$(buffer)), 0);
+    tassert_eqi(s.len, 10);
+    tassert(s.buf == buffer);
 
     memset(buffer, 'z', sizeof(buffer));
-    tassert_eqe(Error.overflow, str.sprintf(buffer, sizeof(buffer), "%s", "12345678900129830128308"));
+    s = str.sprintf(buffer, sizeof(buffer), "%s", "12345678900129830128308");
     tassert_eqs("123456789", buffer);
+    tassert_eqi(s.len, 10);
+    tassert(s.buf == buffer);
 
     memset(buffer, 'z', sizeof(buffer));
-    tassert_eqe(Error.ok, str.sprintf(buffer, sizeof(buffer), "%s", ""));
+    s = str.sprintf(buffer, sizeof(buffer), "%s", "");
     tassert_eqs("", buffer);
+    tassert_eqi(s.len, 0);
+    tassert(s.buf == NULL);
 
     memset(buffer, 'z', sizeof(buffer));
-    tassert_eqe(Error.argument, str.sprintf(NULL, sizeof(buffer), "%s", ""));
+    s = str.sprintf(NULL, sizeof(buffer), "%s", "");
     tassert_eqi(buffer[0], 'z'); // untouched!
+    tassert_eqi(s.len, 0);
+    tassert(s.buf == NULL);
 
     memset(buffer, 'z', sizeof(buffer));
-    tassert_eqe(Error.argument, str.sprintf(buffer, 0, "%s", ""));
+    s = str.sprintf(buffer, 0, "%s", "");
     tassert_eqi(buffer[0], 'z'); // untouched!
+    tassert_eqi(s.len, 0);
+    tassert(s.buf == NULL);
 
     return EOK;
 }
