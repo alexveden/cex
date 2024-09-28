@@ -126,15 +126,11 @@ str_copy(str_c s, char* dest, size_t destlen)
 }
 
 str_c
-str_sprintf(char* dest, size_t dest_len, const char* format, ...)
+str_vsprintf(char* dest, size_t dest_len, const char* format, va_list va)
 {
     str_c out = { .buf = NULL, .len = 0 };
 
-    va_list va;
-    va_start(va, format);
-
     int result = STB_SPRINTF_DECORATE(vsnprintf)(dest, dest_len, format, va);
-    va_end(va);
 
     // NOTE: result equals dest_len if buffer overflow
     if (result > 0) {
@@ -144,6 +140,17 @@ str_sprintf(char* dest, size_t dest_len, const char* format, ...)
 
     return out;
 }
+
+str_c
+str_sprintf(char* dest, size_t dest_len, const char* format, ...)
+{
+    va_list va;
+    va_start(va, format);
+    str_c result =  str_vsprintf(dest, dest_len, format, va);
+    va_end(va);
+    return result;
+}
+
 
 size_t
 str_len(str_c s)
@@ -1016,6 +1023,7 @@ const struct __module__str str = {
     .cbuf = str_cbuf,
     .sub = str_sub,
     .copy = str_copy,
+    .vsprintf = str_vsprintf,
     .sprintf = str_sprintf,
     .len = str_len,
     .is_valid = str_is_valid,

@@ -986,6 +986,9 @@ Exception
 (*copy)(str_c s, char* dest, size_t destlen);
 
 str_c
+(*vsprintf)(char* dest, size_t dest_len, const char* format, va_list va);
+
+str_c
 (*sprintf)(char* dest, size_t dest_len, const char* format, ...);
 
 size_t
