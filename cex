@@ -1133,7 +1133,7 @@ class CEXProcessor:
             g = re.match(
                 rf"^{self.ifc_prefix}__([\w]+)__(\w+)", self.name, re.MULTILINE
             )
-            g2 = re.match(rf"^{self.ifc_prefix}_(\w+)", self.name, re.MULTILINE)
+            g2 = re.match(rf"^{self.ifc_prefix}_([a-z]\w+)", self.name, re.MULTILINE)
 
             if not g and not g2:
                 # private function, and not second level namespace
