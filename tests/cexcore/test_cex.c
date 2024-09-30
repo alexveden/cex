@@ -95,6 +95,14 @@ check_with_dollar(int condition)
     return EOK;
 }
 
+Exception
+check_with_assert(int condition)
+{
+    e$assert(condition != -1);
+
+    return EOK;
+}
+
 Exception check_optimized(int e){
 
     int ret = 0;
@@ -224,6 +232,20 @@ test$case(test_all_errors_set)
 
     return EOK;
 }
+test$case(test_eassert)
+{
+    Exc result = EOK;
+
+    // On fail jumps to 'fail' label + sets the result to returned by check_with_dollar()
+    e$goto(result = check_with_assert(-1), fail);
+
+    tassert(false && "unreacheble, the above must fail");
+
+fail:
+    tassert_eqe(Error.assert, result);
+
+    return EOK;
+}
 /*
  *
  * MAIN (AUTO GENERATED)
@@ -242,6 +264,7 @@ main(int argc, char* argv[])
     test$run(test_null_ptr);
     test$run(test_nested_excepts);
     test$run(test_all_errors_set);
+    test$run(test_eassert);
     
     test$print_footer();  // ^^^^^ all tests runs are above
     return test$exit_code();

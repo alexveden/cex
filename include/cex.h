@@ -60,6 +60,7 @@ extern const struct _CEX_Error_struct
     Exc eof;
     Exc argsparse;
     Exc runtime;
+    Exc assert;
 } Error;
 
 /// Strips full path of __FILENAME__ to the file basename
@@ -198,7 +199,7 @@ int __cex_eraise_assert__should_pass = 1;
 static inline bool
 _cex_e_raise_check_assert_if_enabled(Exc e)
 {
-    if (e != NULL) {
+    if (unlikely(e != NULL)) {
         uassert(e$raise_is_ok() && "failed because e$raise_enable()");
         return true; // error, pass to the trace back
     } else {
@@ -245,6 +246,37 @@ _cex_e_raise_check_assert_if_enabled(Exc e)
 #define raise_exc(return_uerr, error_msg, ...)                                                     \
     (uperrorf("[%s] " error_msg, return_uerr, ##__VA_ARGS__), (return_uerr))
 
+#define e$assert(A)                                                                                \
+    do {                                                                                           \
+        if (unlikely(!((A)))) {                                                                    \
+            __cex__fprintf(                                                                        \
+                stdout,                                                                            \
+                "[ASSERT] ( %s:%d %s() ) %s\n",                                                    \
+                __FILENAME__,                                                                      \
+                __LINE__,                                                                          \
+                __func__,                                                                          \
+                #A                                                                                 \
+            );                                                                                     \
+            return Error.assert;                                                                  \
+        }                                                                                          \
+    } while (0)
+
+
+#define e$assertf(A, format, ...)                                                                  \
+    do {                                                                                           \
+        if (unlikely(!((A)))) {                                                                    \
+            __cex__fprintf(                                                                        \
+                stdout,                                                                            \
+                "[ASSERT] ( %s:%d %s() ) %s " format "\n",                                         \
+                __FILENAME__,                                                                      \
+                __LINE__,                                                                          \
+                __func__,                                                                          \
+                #A,                                                                                \
+                ##__VA_ARGS__                                                                      \
+            );                                                                                     \
+            return Error.assert;                                                                  \
+        }                                                                                          \
+    } while (0)
 
 /*
  *                  ARRAY / ITERATORS INTERFACE

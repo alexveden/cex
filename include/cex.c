@@ -14,6 +14,7 @@ const struct _CEX_Error_struct Error = {
     .eof = "EOF",                    // end of file reached
     .argsparse = "ProgramArgsError", // program arguments empty or incorrect
     .runtime = "RuntimeError",       // generic runtime error
+    .assert = "AssertError",         // generic runtime check
 };
 
 
