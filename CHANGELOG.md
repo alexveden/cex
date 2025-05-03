@@ -1,6 +1,13 @@
 # CEX Release Notes
 
+## latest
+### Changes / improvements
+- Code base cleanup
+### Fixes
+
+
 ## 0.11.0 Change list
+2025-05-03
 
 ### Changes / improvements
 - `os.cmd.exists()` - added function for checking if command exists in PATH
@@ -20,6 +27,7 @@
 - `cex.h` - bare project fixed windows specific lock/initialization issue when building new proj
 
 ## 0.10.0 Change list
+2025-04-27
 
 ### Changes / improvements
 - Added 32-bit support + CI tests
