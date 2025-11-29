@@ -43,7 +43,7 @@ test$case(my_test_case)
 }
 
 
-test$case(json_iter_struct_fill)
+test$case(json_reader_struct_fill)
 {
     struct Foo
     {
@@ -59,7 +59,7 @@ test$case(json_iter_struct_fill)
         "{ \"foo\" : {\"baz\": 3, \"fuzz\": 8, \"oops\": 0}, \"next\": 7, \"baz\": 17 }"
     );
 
-    json_iter_c js;
+    json_reader_c js;
 
     jr$scope(&js, content.buf, 0, JsonType__obj)
     {

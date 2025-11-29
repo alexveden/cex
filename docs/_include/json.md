@@ -34,14 +34,14 @@ Reading JSON buffer:
     str_s content = str$s(
         "{ \"foo\" : {\"baz\": 3, \"fuzz\": 8, \"oops\": 0}, \"next\": 7, \"baz\": 17 }"
     );
-    json_iter_c js;
-    e$ret(json.iter.create(&js, content.buf, 0, false));
-    if (json.iter.next(&js)) { e$ret(json.iter.step_in(&js, JsonType__obj)); }
-    while (json.iter.next(&js)) {
+    json_reader_c js;
+    e$ret(json.reader.create(&js, content.buf, 0, false));
+    if (json.reader.next(&js)) { e$ret(json.reader.step_in(&js, JsonType__obj)); }
+    while (json.reader.next(&js)) {
         json$key_invalid (&js) {}
         json$key_match (&js, "foo") {
-            e$ret(json.iter.step_in(&js, JsonType__obj));
-            while (json.iter.next(&js)) {
+            e$ret(json.reader.step_in(&js, JsonType__obj));
+            while (json.reader.next(&js)) {
                 json$key_invalid (&js) {}
                 json$key_match (&js, "fuzz") { e$ret(str$convert(js.val, &data.foo.fuzz)); }
                 json$key_match (&js, "baz") { e$ret(str$convert(js.val, &data.foo.baz)); }
@@ -74,13 +74,13 @@ Reading JSON buffer:
 #define json$karr(key)
 
 /// Beginning of json$key_match chain (always first, checks if key is NULL)
-#define json$key_invalid(json_iter)
+#define json$key_invalid(json_reader)
 
 /// Matches object key by key literal name (compile time optimized string compare)
-#define json$key_match(json_iter, key_literal)
+#define json$key_match(json_reader, key_literal)
 
 /// Checks if there is unexpected key
-#define json$key_unmatched(json_iter)
+#define json$key_unmatched(json_reader)
 
 /// Add new key: {...} scope into (json$buf)
 #define json$kobj(key)
@@ -102,7 +102,7 @@ Reading JSON buffer:
 
 typedef json_writer_c
 
-typedef json_iter_c
+typedef json_reader_c
 
 
 
@@ -124,13 +124,13 @@ json {
 
     struct {
         /// Create new JSON reader (it doesn't allocate memory and uses content slicing)
-        Exception       (*create)(json_iter_c* it, char* content, usize content_len, bool strict_mode);
+        Exception       (*create)(json_reader_c* it, char* content, usize content_len, bool strict_mode);
         /// Get next JSON item for a scope
-        bool            (*next)(json_iter_c* it);
-        /// Make step inside JSON object or array scope (json.iter.next() starts emitting this scope)
-        Exception       (*step_in)(json_iter_c* it, JsonType_e expected_type);
+        bool            (*next)(json_reader_c* it);
+        /// Make step inside JSON object or array scope (json.reader.next() starts emitting this scope)
+        Exception       (*step_in)(json_reader_c* it, JsonType_e expected_type);
         /// Early step out from JSON scope (you must immediately break the loop/func after step out)
-        Exception       (*step_out)(json_iter_c* it);
+        Exception       (*step_out)(json_reader_c* it);
     } iter;
 
     // clang-format on

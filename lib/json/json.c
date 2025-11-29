@@ -24,11 +24,11 @@
  * @return
  */
 Exception
-cex_json__iter__create(json_iter_c* it, char* content, usize content_len, bool strict_mode)
+cex_json__reader__create(json_reader_c* it, char* content, usize content_len, bool strict_mode)
 {
     uassert(it != NULL);
     if (content == NULL) { return Error.argument; }
-    *it = (json_iter_c){
+    *it = (json_reader_c){
         ._impl = {
             .strict_mode = strict_mode,
             .lexer = CexParser.create(content, content_len, false),
@@ -39,14 +39,14 @@ cex_json__iter__create(json_iter_c* it, char* content, usize content_len, bool s
 }
 
 /**
- * @brief Make step inside JSON object or array scope (json.iter.next() starts emitting this scope)
+ * @brief Make step inside JSON object or array scope (json.reader.next() starts emitting this scope)
  *
  * @param it
  * @param expected_type Expected scope type (for sanity checks)
  * @return
  */
 Exception
-cex_json__iter__step_in(json_iter_c* it, JsonType_e expected_type)
+cex_json__reader__step_in(json_reader_c* it, JsonType_e expected_type)
 {
     if (unlikely(it->error != EOK)) { goto error; }
     if (unlikely(it->_impl.scope_depth >= sizeof(it->_impl.scope_stack) - 1)) {
@@ -67,11 +67,11 @@ cex_json__iter__step_in(json_iter_c* it, JsonType_e expected_type)
         it->_impl.scope_stack[it->_impl.scope_depth] = '[';
         it->_impl.scope_depth++;
     } else {
-        // return json.iter.next(it);
+        // return json.reader.next(it);
         it->error = "Stepping in is only for objects or arrays";
         goto error;
     }
-    // json.iter.next() is going to check if we step in or skipping whole block
+    // json.reader.next() is going to check if we step in or skipping whole block
     it->_impl.prev_token = it->_impl.curr_token;
     it->_impl.curr_token = CexTkn__unk;
     it->_impl.has_items = false;
@@ -87,37 +87,37 @@ error:
 /**
  * @brief Early step out from JSON scope (you must immediately break the loop/func after step out)
  *
- * After calling step out, next call of `json.iter.next()` will return outer scope item,
+ * After calling step out, next call of `json.reader.next()` will return outer scope item,
  * make sure that you also break the loop or exiting parsing function for current scope.
  *
  * @param it
  * @return
  */
 Exception
-cex_json__iter__step_out(json_iter_c* it)
+cex_json__reader__step_out(json_reader_c* it)
 {
     if (unlikely(it->_impl.scope_depth == 0)) {
         it->error = "Bad scope/level for step out";
         return it->error;
     }
     u32 scope_depth_initial = it->_impl.scope_depth - 1;
-    while (it->_impl.scope_depth > scope_depth_initial && json.iter.next(it)) {}
+    while (it->_impl.scope_depth > scope_depth_initial && json.reader.next(it)) {}
     return it->error;
 }
 
 static Exc
-_cex_json__iter__skip(json_iter_c* it)
+_cex_json__reader__skip(json_reader_c* it)
 {
     // Simulate full step-in/next sequence for all nested stuff (because it serves as syntax check)
     u32 scope_depth_initial = it->_impl.scope_depth;
-    if (json.iter.step_in(it, it->type)) { return it->error; }
+    if (json.reader.step_in(it, it->type)) { return it->error; }
 
     while (it->_impl.scope_depth > scope_depth_initial) {
-        if (!json.iter.next(it) && it->error) { break; }
+        if (!json.reader.next(it) && it->error) { break; }
         switch (it->type) {
             case JsonType__arr:
             case JsonType__obj:
-                if (json.iter.step_in(it, it->type)) { return it->error; }
+                if (json.reader.step_in(it, it->type)) { return it->error; }
             default:
                 break;
         }
@@ -129,10 +129,10 @@ _cex_json__iter__skip(json_iter_c* it)
  * @brief Get next JSON item for a scope
  *
  * @param it
- * @return false - on end of file, error, or json.iter.step_in() scope
+ * @return false - on end of file, error, or json.reader.step_in() scope
  */
 bool
-cex_json__iter__next(json_iter_c* it)
+cex_json__reader__next(json_reader_c* it)
 {
     if (unlikely(it->error != EOK)) { goto error; }
     it->key = (str_s){ 0 };
@@ -141,7 +141,7 @@ cex_json__iter__next(json_iter_c* it)
             it->_impl.curr_token == CexTkn__lbrace || it->_impl.curr_token == CexTkn__lbracket
         )) {
         // User didn't step into object/array, skipping it
-        if (_cex_json__iter__skip(it) != EOK) { goto error; }
+        if (_cex_json__reader__skip(it) != EOK) { goto error; }
     }
 
     cex_token_s t = $next_tok();
@@ -558,11 +558,11 @@ const struct __cex_namespace__json json = {
     // clang-format off
 
 
-    .iter = {
-        .create = cex_json__iter__create,
-        .next = cex_json__iter__next,
-        .step_in = cex_json__iter__step_in,
-        .step_out = cex_json__iter__step_out,
+    .reader = {
+        .create = cex_json__reader__create,
+        .next = cex_json__reader__next,
+        .step_in = cex_json__reader__step_in,
+        .step_out = cex_json__reader__step_out,
     },
 
     .writer = {

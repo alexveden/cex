@@ -6,18 +6,18 @@
 
 #define _jr$var _cex_json_reader_macro_scope
 
-#define jr$scope(json_iter, content, len, expected_root_item)                                      \
-    (json_iter)->error = json.iter.create((json_iter), (content), (len), false);                   \
-    if ((json_iter)->error == EOK) {                                                               \
-        if (json.iter.next((json_iter))) {                                                         \
-            (json_iter)->error = json.iter.step_in((json_iter), (expected_root_item));             \
+#define jr$scope(json_reader, content, len, expected_root_item)                                      \
+    (json_reader)->error = json.reader.create((json_reader), (content), (len), false);                   \
+    if ((json_reader)->error == EOK) {                                                               \
+        if (json.reader.next((json_reader))) {                                                         \
+            (json_reader)->error = json.reader.step_in((json_reader), (expected_root_item));             \
         }                                                                                          \
     }                                                                                              \
-    for (json_iter_c* _jr$var = (json_iter); json.iter.next((json_iter));)
+    for (json_reader_c* _jr$var = (json_reader); json.reader.next((json_reader));)
 
 #define jr$switch()                                                                                \
-    if (_jr$var->error == EOK) _jr$var->error = json.iter.step_in(&js, JsonType__obj);             \
-    while (json.iter.next((_jr$var)))
+    if (_jr$var->error == EOK) _jr$var->error = json.reader.step_in(&js, JsonType__obj);             \
+    while (json.reader.next((_jr$var)))
 
 /// Beginning of jr$key_match chain (always first, checks if key is NULL)
 #define jr$case_invalid() if (unlikely(_jr$var->key.buf == NULL))
@@ -28,11 +28,11 @@
              memcmp(_jr$var->key.buf, key_literal, sizeof(key_literal) - 1) == 0)
 
 /// Checks if there is unexpected key
-#define jr$case_default(json_iter) else
+#define jr$case_default(json_reader) else
 
 typedef enum JsonType_e
 {
-    JsonType__eos = -2, // end of scope (after json.iter.step_in())
+    JsonType__eos = -2, // end of scope (after json.reader.step_in())
     JsonType__err = -1, // data/integrity error
     JsonType__eof = 0,  // end of file reached
     JsonType__str,      // quoted string
@@ -46,7 +46,7 @@ typedef enum JsonType_e
 } JsonType_e;
 
 
-typedef struct json_iter_c
+typedef struct json_reader_c
 {
     str_s val;       // string value of the json item
     str_s key;       // associated key of the val (if inside object)
@@ -64,7 +64,7 @@ typedef struct json_iter_c
         char scope_stack[CEX_MAX_JSON_DEPTH];
     } _impl;
 
-} json_iter_c;
+} json_reader_c;
 
 typedef struct json_writer_c
 {
@@ -174,14 +174,14 @@ Reading JSON buffer:
     str_s content = str$s(
         "{ \"foo\" : {\"baz\": 3, \"fuzz\": 8, \"oops\": 0}, \"next\": 7, \"baz\": 17 }"
     );
-    json_iter_c js;
-    e$ret(json.iter.create(&js, content.buf, 0, false));
-    if (json.iter.next(&js)) { e$ret(json.iter.step_in(&js, JsonType__obj)); }
-    while (json.iter.next(&js)) {
+    json_reader_c js;
+    e$ret(json.reader.create(&js, content.buf, 0, false));
+    if (json.reader.next(&js)) { e$ret(json.reader.step_in(&js, JsonType__obj)); }
+    while (json.reader.next(&js)) {
         jr$case_invalid (&js) {}
         jr$case (&js, "foo") {
-            e$ret(json.iter.step_in(&js, JsonType__obj));
-            while (json.iter.next(&js)) {
+            e$ret(json.reader.step_in(&js, JsonType__obj));
+            while (json.reader.next(&js)) {
                 jr$case_invalid (&js) {}
                 jr$case (&js, "fuzz") { e$ret(str$convert(js.val, &data.foo.fuzz)); }
                 jr$case (&js, "baz") { e$ret(str$convert(js.val, &data.foo.baz)); }
@@ -206,14 +206,14 @@ struct __cex_namespace__json {
 
     struct {
         /// Create new JSON reader (it doesn't allocate memory and uses content slicing)
-        Exception       (*create)(json_iter_c* it, char* content, usize content_len, bool strict_mode_2);
+        Exception       (*create)(json_reader_c* it, char* content, usize content_len, bool strict_mode);
         /// Get next JSON item for a scope
-        bool            (*next)(json_iter_c* it);
-        /// Make step inside JSON object or array scope (json.iter.next() starts emitting this scope)
-        Exception       (*step_in)(json_iter_c* it, JsonType_e expected_type);
+        bool            (*next)(json_reader_c* it);
+        /// Make step inside JSON object or array scope (json.reader.next() starts emitting this scope)
+        Exception       (*step_in)(json_reader_c* it, JsonType_e expected_type);
         /// Early step out from JSON scope (you must immediately break the loop/func after step out)
-        Exception       (*step_out)(json_iter_c* it);
-    } iter;
+        Exception       (*step_out)(json_reader_c* it);
+    } reader;
 
     struct {
         /// Create JSON buffer/builder container used with json$buf / json$fmt / json$kstr macros

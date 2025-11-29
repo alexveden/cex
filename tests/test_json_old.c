@@ -6,133 +6,133 @@
 // test$setup_suite() {return EOK;}
 // test$teardown_suite() {return EOK;}
 
-test$case(json_iter_simple)
+test$case(json_reader_simple)
 {
     // str_s content = str$s(str$m({ "foo" : "bar" }));
     str_s content = str$s("{ \"foo\" : \"bar\" }");
-    json_iter_c js;
-    tassert_eq(EOK, json.iter.create(&js, content.buf, 0, true));
+    json_reader_c js;
+    tassert_eq(EOK, json.reader.create(&js, content.buf, 0, true));
 
-    tassert_eq(json.iter.next(&js), true);
+    tassert_eq(json.reader.next(&js), true);
     tassert_eq(js.type, JsonType__obj);
     tassert_eq(js.key.buf, NULL);
     tassert_eq(js.key.len, 0);
     tassert_eq(js._impl.scope_depth, 0);
     tassert_eq(js._impl.scope_stack[0], '\0');
 
-    tassert_er(EOK, json.iter.step_in(&js, JsonType__obj));
-    tassertf(json.iter.next(&js) == JsonType__str, "error: %s", js.error);
+    tassert_er(EOK, json.reader.step_in(&js, JsonType__obj));
+    tassertf(json.reader.next(&js) == JsonType__str, "error: %s", js.error);
     tassert_eq(js._impl.scope_depth, 1);
     tassert_eq(js._impl.scope_stack[0], '{');
     tassert_eq(js.type, JsonType__str);
     tassert_eq(js.val, str$s("bar"));
     tassert_eq(js.key, str$s("foo"));
 
-    tassert_eq(json.iter.next(&js), false);
+    tassert_eq(json.reader.next(&js), false);
     tassert_eq(js.type, JsonType__eos);
     tassert_eq(js._impl.scope_depth, 0);
     tassert_eq(js._impl.scope_stack[0], '\0');
-    tassert_eq(json.iter.next(&js), JsonType__eof);
+    tassert_eq(json.reader.next(&js), JsonType__eof);
 
     return EOK;
 }
 
-test$case(json_iter_simple_2elem)
+test$case(json_reader_simple_2elem)
 {
     // str_s content = str$s(str$m({ "foo" : "bar" }));
     str_s content = str$s("{ \"foo\" : \"bar\", \"baz\": 1, }");
-    json_iter_c js;
-    tassert_eq(EOK, json.iter.create(&js, content.buf, 0, false));
+    json_reader_c js;
+    tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
 
-    tassert_eq(json.iter.next(&js), true);
+    tassert_eq(json.reader.next(&js), true);
     tassert_eq(js.type, JsonType__obj);
     tassert_eq(js.key.buf, NULL);
     tassert_eq(js.key.len, 0);
     tassert_eq(js._impl.scope_depth, 0);
     tassert_eq(js._impl.scope_stack[0], '\0');
 
-    tassert_er(EOK, json.iter.step_in(&js, JsonType__obj));
-    tassertf(json.iter.next(&js), "error: %s", js.error);
+    tassert_er(EOK, json.reader.step_in(&js, JsonType__obj));
+    tassertf(json.reader.next(&js), "error: %s", js.error);
     tassert_eq(js._impl.scope_depth, 1);
     tassert_eq(js._impl.scope_stack[0], '{');
     tassert_eq(js.type, JsonType__str);
     tassert_eq(js.val, str$s("bar"));
     tassert_eq(js.key, str$s("foo"));
 
-    tassertf(json.iter.next(&js), "error: %s", js.error);
+    tassertf(json.reader.next(&js), "error: %s", js.error);
     tassert_eq(js._impl.scope_depth, 1);
     tassert_eq(js._impl.scope_stack[0], '{');
     tassert_eq(js.type, JsonType__num);
     tassert_eq(js.val, str$s("1"));
     tassert_eq(js.key, str$s("baz"));
 
-    tassert_eq(json.iter.next(&js), false);
+    tassert_eq(json.reader.next(&js), false);
     tassert_eq(js.type, JsonType__eos);
     tassert_eq(js._impl.scope_depth, 0);
     tassert_eq(js._impl.scope_stack[0], '\0');
 
-    tassert_eq(json.iter.next(&js), false);
+    tassert_eq(json.reader.next(&js), false);
     tassert_eq(js.type, JsonType__eof);
     tassert_eq(js.error, NULL);
 
     return EOK;
 }
 
-test$case(json_iter_simple_array)
+test$case(json_reader_simple_array)
 {
     str_s content = str$s("[ \"foo\", \"bar\", \"baz\", ]");
-    json_iter_c js;
-    tassert_eq(EOK, json.iter.create(&js, content.buf, 0, false));
+    json_reader_c js;
+    tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
 
-    tassert_eq(json.iter.next(&js), true);
+    tassert_eq(json.reader.next(&js), true);
     tassert_eq(js.type, JsonType__arr);
     tassert_eq(js.key.buf, NULL);
     tassert_eq(js.key.len, 0);
     tassert_eq(js._impl.scope_depth, 0);
     tassert_eq(js._impl.scope_stack[0], '\0');
 
-    tassert_er(EOK, json.iter.step_in(&js, JsonType__arr));
-    tassertf(json.iter.next(&js) == JsonType__str, "error: %s", js.error);
+    tassert_er(EOK, json.reader.step_in(&js, JsonType__arr));
+    tassertf(json.reader.next(&js) == JsonType__str, "error: %s", js.error);
     tassert_eq(js._impl.scope_depth, 1);
     tassert_eq(js._impl.scope_stack[0], '[');
     tassert_eq(js.type, JsonType__str);
     tassert_eq(js.val, str$s("foo"));
     tassert_eq(js.key.buf, NULL);
 
-    tassert_eq(json.iter.next(&js), JsonType__str);
+    tassert_eq(json.reader.next(&js), JsonType__str);
     tassert_eq(js.type, JsonType__str);
     tassert_eq(js.val, str$s("bar"));
     tassert_eq(js.key.buf, NULL);
 
-    tassert_eq(json.iter.next(&js), JsonType__str);
+    tassert_eq(json.reader.next(&js), JsonType__str);
     tassert_eq(js.type, JsonType__str);
     tassert_eq(js.val, str$s("baz"));
     tassert_eq(js.key.buf, NULL);
 
-    tassert_eq(json.iter.next(&js), false);
+    tassert_eq(json.reader.next(&js), false);
     tassert_eq(js.type, JsonType__eos);
     tassert_eq(js._impl.scope_depth, 0);
     tassert_eq(js._impl.scope_stack[0], '\0');
-    tassert_eq(json.iter.next(&js), false);
+    tassert_eq(json.reader.next(&js), false);
     tassert_eq(js.type, JsonType__eof);
 
     return EOK;
 }
 
-test$case(json_iter_obj_no_step_in)
+test$case(json_reader_obj_no_step_in)
 {
     str_s content = str$s("{ \"foo\" : 1, \"baz\": 3 }");
-    json_iter_c js;
-    tassert_eq(EOK, json.iter.create(&js, content.buf, 0, false));
+    json_reader_c js;
+    tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
 
-    tassert_eq(json.iter.next(&js), true);
+    tassert_eq(json.reader.next(&js), true);
     tassert_eq(js.type, JsonType__obj);
     tassert_eq(js.key.buf, NULL);
     tassert_eq(js.key.len, 0);
     tassert_eq(js._impl.scope_depth, 0);
     tassert_eq(js._impl.scope_stack[0], '\0');
 
-    tassertf(json.iter.next(&js) == false, "error: %s", js.error);
+    tassertf(json.reader.next(&js) == false, "error: %s", js.error);
     tassert_eq(js._impl.scope_depth, 0);
     tassert_eq(js._impl.scope_stack[0], '\0');
     tassert_eq(js.key.buf, NULL);
@@ -144,29 +144,29 @@ test$case(json_iter_obj_no_step_in)
     return EOK;
 }
 
-test$case(json_iter_nested_obj)
+test$case(json_reader_nested_obj)
 {
     str_s content = str$s("{ \"foo\" : {\"baz\": 3 } }");
-    json_iter_c js;
-    tassert_eq(EOK, json.iter.create(&js, content.buf, 0, false));
+    json_reader_c js;
+    tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
 
-    tassert_eq(json.iter.next(&js), true);
+    tassert_eq(json.reader.next(&js), true);
     tassert_eq(js.type, JsonType__obj);
     tassert_eq(js.key.buf, NULL);
     tassert_eq(js.key.len, 0);
     tassert_eq(js._impl.scope_depth, 0);
     tassert_eq(js._impl.scope_stack[0], '\0');
 
-    tassert_er(EOK, json.iter.step_in(&js, JsonType__obj));
-    tassertf(json.iter.next(&js), "error: %s", js.error);
+    tassert_er(EOK, json.reader.step_in(&js, JsonType__obj));
+    tassertf(json.reader.next(&js), "error: %s", js.error);
     tassert_eq(js._impl.scope_depth, 1);
     tassert_eq(js._impl.scope_stack[0], '{');
     tassert_eq(js.type, JsonType__obj);
     tassert_eq(js.val, (str_s){ 0 });
     tassert_eq(js.key, str$s("foo"));
 
-    tassert_er(EOK, json.iter.step_in(&js, JsonType__obj));
-    tassertf(json.iter.next(&js), "error: %s", js.error);
+    tassert_er(EOK, json.reader.step_in(&js, JsonType__obj));
+    tassertf(json.reader.next(&js), "error: %s", js.error);
     tassert_eq(js._impl.scope_depth, 2);
     tassert_eq(js._impl.scope_stack[0], '{');
     tassert_eq(js._impl.scope_stack[1], '{');
@@ -174,12 +174,12 @@ test$case(json_iter_nested_obj)
     tassert_eq(js.val, str$s("3"));
     tassert_eq(js.key, str$s("baz"));
 
-    tassertf(!json.iter.next(&js), "error: %s", js.error);
+    tassertf(!json.reader.next(&js), "error: %s", js.error);
     tassert_eq(js._impl.scope_depth, 1);
     tassert_eq(js._impl.scope_stack[0], '{');
     tassert_eq(js._impl.scope_stack[1], '\0');
 
-    tassertf(!json.iter.next(&js), "error: %s", js.error);
+    tassertf(!json.reader.next(&js), "error: %s", js.error);
     tassert_eq(js._impl.scope_depth, 0);
     tassert_eq(js._impl.scope_stack[0], '\0');
     tassert_eq(js._impl.scope_stack[1], '\0');
@@ -187,28 +187,28 @@ test$case(json_iter_nested_obj)
     return EOK;
 }
 
-test$case(json_iter_nested_obj_skip)
+test$case(json_reader_nested_obj_skip)
 {
     str_s content = str$s("{ \"foo\" : {\"baz\": 3 }, \"zoo\": 8 }");
-    json_iter_c js;
-    tassert_eq(EOK, json.iter.create(&js, content.buf, 0, false));
+    json_reader_c js;
+    tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
 
-    tassert_eq(json.iter.next(&js), true);
+    tassert_eq(json.reader.next(&js), true);
     tassert_eq(js.type, JsonType__obj);
     tassert_eq(js.key.buf, NULL);
     tassert_eq(js.key.len, 0);
     tassert_eq(js._impl.scope_depth, 0);
     tassert_eq(js._impl.scope_stack[0], '\0');
 
-    tassert_er(EOK, json.iter.step_in(&js, JsonType__obj));
-    tassertf(json.iter.next(&js), "error: %s", js.error);
+    tassert_er(EOK, json.reader.step_in(&js, JsonType__obj));
+    tassertf(json.reader.next(&js), "error: %s", js.error);
     tassert_eq(js._impl.scope_depth, 1);
     tassert_eq(js._impl.scope_stack[0], '{');
     tassert_eq(js.type, JsonType__obj);
     tassert_eq(js.val, (str_s){ 0 });
     tassert_eq(js.key, str$s("foo"));
 
-    tassertf(json.iter.next(&js), "error: %s", js.error);
+    tassertf(json.reader.next(&js), "error: %s", js.error);
     tassert_eq(js._impl.scope_depth, 1);
     tassert_eq(js._impl.scope_stack[0], '{');
     tassert_eq(js._impl.scope_stack[1], '\0');
@@ -216,38 +216,38 @@ test$case(json_iter_nested_obj_skip)
     tassert_eq(js.val, str$s("8"));
     tassert_eq(js.key, str$s("zoo"));
 
-    tassertf(!json.iter.next(&js), "error: %s", js.error);
+    tassertf(!json.reader.next(&js), "error: %s", js.error);
     tassert_eq(js._impl.scope_depth, 0);
     tassert_eq(js._impl.scope_stack[0], '\0');
     tassert_eq(js._impl.scope_stack[1], '\0');
 
-    tassertf(json.iter.next(&js) == JsonType__eof, "error: %s", js.error);
+    tassertf(json.reader.next(&js) == JsonType__eof, "error: %s", js.error);
 
     return EOK;
 }
 
-test$case(json_iter_empty_obj)
+test$case(json_reader_empty_obj)
 {
     str_s content = str$s("{}");
-    json_iter_c js;
-    tassert_eq(EOK, json.iter.create(&js, content.buf, 0, false));
+    json_reader_c js;
+    tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
 
-    tassert_eq(json.iter.next(&js), true);
+    tassert_eq(json.reader.next(&js), true);
     tassert_eq(js.type, JsonType__obj);
     tassert_eq(js.key.buf, NULL);
     tassert_eq(js.key.len, 0);
     tassert_eq(js._impl.scope_depth, 0);
     tassert_eq(js._impl.scope_stack[0], '\0');
 
-    tassert_er(EOK, json.iter.step_in(&js, JsonType__obj));
-    tassertf(!json.iter.next(&js), "error: %s", js.error);
+    tassert_er(EOK, json.reader.step_in(&js, JsonType__obj));
+    tassertf(!json.reader.next(&js), "error: %s", js.error);
     tassert_eq(js._impl.scope_depth, 0);
     tassert_eq(js._impl.scope_stack[0], '\0');
     tassert_eq(js.type, JsonType__eos);
     tassert_eq(js.val, (str_s){ 0 });
     tassert_eq(js.key, (str_s){ 0 });
 
-    tassertf(json.iter.next(&js) == JsonType__eof, "error: %s", js.error);
+    tassertf(json.reader.next(&js) == JsonType__eof, "error: %s", js.error);
     tassert_eq(js._impl.scope_depth, 0);
     tassert_eq(js._impl.scope_stack[0], '\0');
     tassert_eq(js.key.buf, NULL);
@@ -258,29 +258,29 @@ test$case(json_iter_empty_obj)
     return EOK;
 }
 
-test$case(json_iter_nested_obj_step_out)
+test$case(json_reader_nested_obj_step_out)
 {
     str_s content = str$s("{ \"foo\" : {\"baz\": 3, \"fuzz\": 8 }, \"next\": 7 }");
-    json_iter_c js;
-    tassert_eq(EOK, json.iter.create(&js, content.buf, 0, false));
+    json_reader_c js;
+    tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
 
-    tassert_eq(json.iter.next(&js), true);
+    tassert_eq(json.reader.next(&js), true);
     tassert_eq(js.type, JsonType__obj);
     tassert_eq(js.key.buf, NULL);
     tassert_eq(js.key.len, 0);
     tassert_eq(js._impl.scope_depth, 0);
     tassert_eq(js._impl.scope_stack[0], '\0');
 
-    tassert_er(EOK, json.iter.step_in(&js, JsonType__obj));
-    tassertf(json.iter.next(&js), "error: %s", js.error);
+    tassert_er(EOK, json.reader.step_in(&js, JsonType__obj));
+    tassertf(json.reader.next(&js), "error: %s", js.error);
     tassert_eq(js._impl.scope_depth, 1);
     tassert_eq(js._impl.scope_stack[0], '{');
     tassert_eq(js.type, JsonType__obj);
     tassert_eq(js.val, (str_s){ 0 });
     tassert_eq(js.key, str$s("foo"));
 
-    tassert_er(EOK, json.iter.step_in(&js, JsonType__obj));
-    tassertf(json.iter.next(&js), "error: %s", js.error);
+    tassert_er(EOK, json.reader.step_in(&js, JsonType__obj));
+    tassertf(json.reader.next(&js), "error: %s", js.error);
     tassert_eq(js._impl.scope_depth, 2);
     tassert_eq(js._impl.scope_stack[0], '{');
     tassert_eq(js._impl.scope_stack[1], '{');
@@ -288,12 +288,12 @@ test$case(json_iter_nested_obj_step_out)
     tassert_eq(js.val, str$s("3"));
     tassert_eq(js.key, str$s("baz"));
 
-    tassert_eq(json.iter.step_out(&js), EOK);
+    tassert_eq(json.reader.step_out(&js), EOK);
     tassert_eq(js._impl.scope_depth, 1);
     tassert_eq(js._impl.scope_stack[0], '{');
     tassert_eq(js._impl.scope_stack[1], '\0');
 
-    tassertf(json.iter.next(&js), "error: %s", js.error);
+    tassertf(json.reader.next(&js), "error: %s", js.error);
     tassert_eq(js._impl.scope_depth, 1);
     tassert_eq(js._impl.scope_stack[0], '{');
     tassert_eq(js.type, JsonType__num);
@@ -303,29 +303,29 @@ test$case(json_iter_nested_obj_step_out)
     return EOK;
 }
 
-test$case(json_iter_nested_obj_step_out_2lev)
+test$case(json_reader_nested_obj_step_out_2lev)
 {
     str_s content = str$s("{ \"foo\" : {\"baz\": 3, \"fuzz\": 8 }, \"next\": 7 }");
-    json_iter_c js;
-    tassert_eq(EOK, json.iter.create(&js, content.buf, 0, false));
+    json_reader_c js;
+    tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
 
-    tassert_eq(json.iter.next(&js), true);
+    tassert_eq(json.reader.next(&js), true);
     tassert_eq(js.type, JsonType__obj);
     tassert_eq(js.key.buf, NULL);
     tassert_eq(js.key.len, 0);
     tassert_eq(js._impl.scope_depth, 0);
     tassert_eq(js._impl.scope_stack[0], '\0');
 
-    tassert_er(EOK, json.iter.step_in(&js, JsonType__obj));
-    tassertf(json.iter.next(&js), "error: %s", js.error);
+    tassert_er(EOK, json.reader.step_in(&js, JsonType__obj));
+    tassertf(json.reader.next(&js), "error: %s", js.error);
     tassert_eq(js._impl.scope_depth, 1);
     tassert_eq(js._impl.scope_stack[0], '{');
     tassert_eq(js.type, JsonType__obj);
     tassert_eq(js.val, (str_s){ 0 });
     tassert_eq(js.key, str$s("foo"));
 
-    tassert_er(EOK, json.iter.step_in(&js, JsonType__obj));
-    tassertf(json.iter.next(&js), "error: %s", js.error);
+    tassert_er(EOK, json.reader.step_in(&js, JsonType__obj));
+    tassertf(json.reader.next(&js), "error: %s", js.error);
     tassert_eq(js._impl.scope_depth, 2);
     tassert_eq(js._impl.scope_stack[0], '{');
     tassert_eq(js._impl.scope_stack[1], '{');
@@ -333,13 +333,13 @@ test$case(json_iter_nested_obj_step_out_2lev)
     tassert_eq(js.val, str$s("3"));
     tassert_eq(js.key, str$s("baz"));
 
-    tassert_eq(json.iter.step_out(&js), EOK);
-    tassert_eq(json.iter.step_out(&js), EOK);
+    tassert_eq(json.reader.step_out(&js), EOK);
+    tassert_eq(json.reader.step_out(&js), EOK);
     tassert_eq(js._impl.scope_depth, 0);
     tassert_eq(js._impl.scope_stack[0], '\0');
     tassert_eq(js._impl.scope_stack[1], '\0');
 
-    tassertf(json.iter.next(&js) == false, "error: %s", js.error);
+    tassertf(json.reader.next(&js) == false, "error: %s", js.error);
     tassert_eq(js._impl.scope_depth, 0);
     tassert_eq(js._impl.scope_stack[0], '\0');
     tassert_eq(js.type, JsonType__eof);
@@ -349,7 +349,7 @@ test$case(json_iter_nested_obj_step_out_2lev)
     return EOK;
 }
 
-test$case(json_iter_struct_fill)
+test$case(json_reader_struct_fill)
 {
     struct Foo
     {
@@ -364,16 +364,16 @@ test$case(json_iter_struct_fill)
     str_s content = str$s(
         "{ \"foo\" : {\"baz\": 3, \"fuzz\": 8, \"oops\": 0}, \"next\": 7, \"baz\": 17 }"
     );
-    json_iter_c js;
+    json_reader_c js;
 
-    tassert_eq(EOK, json.iter.create(&js, content.buf, 0, false));
-    if (json.iter.next(&js)) { e$ret(json.iter.step_in(&js, JsonType__obj)); }
+    tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
+    if (json.reader.next(&js)) { e$ret(json.reader.step_in(&js, JsonType__obj)); }
 
-    while (json.iter.next(&js)) {
+    while (json.reader.next(&js)) {
         json$key_invalid (&js) {}
         json$key_match (&js, "foo") {
-            e$ret(json.iter.step_in(&js, JsonType__obj));
-            while (json.iter.next(&js)) {
+            e$ret(json.reader.step_in(&js, JsonType__obj));
+            while (json.reader.next(&js)) {
                 json$key_invalid (&js) {}
                 json$key_match (&js, "fuzz") { e$ret(str$convert(js.val, &data.foo.fuzz)); }
                 json$key_match (&js, "baz") { e$ret(str$convert(js.val, &data.foo.baz)); }
@@ -396,340 +396,340 @@ test$case(json_iter_struct_fill)
     return EOK;
 }
 
-test$case(json_iter_bool)
+test$case(json_reader_bool)
 {
     str_s content = str$s("{ \"foo\" : true, \"bar\": false }");
-    json_iter_c js;
-    tassert_eq(EOK, json.iter.create(&js, content.buf, 0, false));
+    json_reader_c js;
+    tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
 
-    tassert_eq(json.iter.next(&js), true);
+    tassert_eq(json.reader.next(&js), true);
     tassert_eq(js.type, JsonType__obj);
     tassert_eq(js.key.buf, NULL);
     tassert_eq(js.key.len, 0);
     tassert_eq(js._impl.scope_depth, 0);
     tassert_eq(js._impl.scope_stack[0], '\0');
 
-    tassert_er(EOK, json.iter.step_in(&js, JsonType__obj));
-    tassertf(json.iter.next(&js), "error: %s", js.error);
+    tassert_er(EOK, json.reader.step_in(&js, JsonType__obj));
+    tassertf(json.reader.next(&js), "error: %s", js.error);
     tassert_eq(js.type, JsonType__bool);
     tassert_eq(js.val, str$s("true"));
     tassert_eq(js.key, str$s("foo"));
 
-    tassertf(json.iter.next(&js), "error: %s", js.error);
+    tassertf(json.reader.next(&js), "error: %s", js.error);
     tassert_eq(js.type, JsonType__bool);
     tassert_eq(js.key, str$s("bar"));
     tassert_eq(js.val, str$s("false"));
 
-    tassertf(!json.iter.next(&js), "error: %s", js.error);
+    tassertf(!json.reader.next(&js), "error: %s", js.error);
 
     return EOK;
 }
 
-test$case(json_iter_null)
+test$case(json_reader_null)
 {
     str_s content = str$s("{ \"foo\" : null }");
-    json_iter_c js;
-    tassert_eq(EOK, json.iter.create(&js, content.buf, 0, false));
+    json_reader_c js;
+    tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
 
-    tassert_eq(json.iter.next(&js), true);
+    tassert_eq(json.reader.next(&js), true);
     tassert_eq(js.type, JsonType__obj);
     tassert_eq(js.key.buf, NULL);
     tassert_eq(js.key.len, 0);
     tassert_eq(js._impl.scope_depth, 0);
     tassert_eq(js._impl.scope_stack[0], '\0');
 
-    tassert_er(EOK, json.iter.step_in(&js, JsonType__obj));
-    tassertf(json.iter.next(&js), "error: %s", js.error);
+    tassert_er(EOK, json.reader.step_in(&js, JsonType__obj));
+    tassertf(json.reader.next(&js), "error: %s", js.error);
     tassert_eq(js.type, JsonType__null);
     tassert_eq(js.val, str$s("null"));
     tassert_eq(js.key, str$s("foo"));
 
-    tassertf(!json.iter.next(&js), "error: %s", js.error);
+    tassertf(!json.reader.next(&js), "error: %s", js.error);
 
     return EOK;
 }
 
-test$case(json_iter_signed_nums)
+test$case(json_reader_signed_nums)
 {
     str_s content = str$s("{ \"foo\" : -1, \"bar\": +2 }");
-    json_iter_c js;
-    tassert_eq(EOK, json.iter.create(&js, content.buf, 0, false));
+    json_reader_c js;
+    tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
 
-    tassert_eq(json.iter.next(&js), true);
+    tassert_eq(json.reader.next(&js), true);
     tassert_eq(js.type, JsonType__obj);
     tassert_eq(js.key.buf, NULL);
     tassert_eq(js.key.len, 0);
     tassert_eq(js._impl.scope_depth, 0);
     tassert_eq(js._impl.scope_stack[0], '\0');
 
-    tassert_er(EOK, json.iter.step_in(&js, JsonType__obj));
-    tassertf(json.iter.next(&js), "error: %s", js.error);
+    tassert_er(EOK, json.reader.step_in(&js, JsonType__obj));
+    tassertf(json.reader.next(&js), "error: %s", js.error);
     tassert_eq(js.type, JsonType__num);
     tassert_eq(js.val, str$s("-1"));
     tassert_eq(js.key, str$s("foo"));
 
-    tassertf(json.iter.next(&js), "error: %s", js.error);
+    tassertf(json.reader.next(&js), "error: %s", js.error);
     tassert_eq(js.type, JsonType__num);
     tassert_eq(js.val, str$s("+2"));
     tassert_eq(js.key, str$s("bar"));
 
-    tassertf(!json.iter.next(&js), "error: %s", js.error);
+    tassertf(!json.reader.next(&js), "error: %s", js.error);
 
     return EOK;
 }
 
-test$case(json_iter_signed_nums_bad)
+test$case(json_reader_signed_nums_bad)
 {
     str_s content = str$s("{ \"foo\" : - 1 }");
-    json_iter_c js;
-    tassert_eq(EOK, json.iter.create(&js, content.buf, 0, false));
+    json_reader_c js;
+    tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
 
-    tassert_eq(json.iter.next(&js), true);
+    tassert_eq(json.reader.next(&js), true);
     tassert_eq(js.type, JsonType__obj);
     tassert_eq(js.key.buf, NULL);
     tassert_eq(js.key.len, 0);
     tassert_eq(js._impl.scope_depth, 0);
     tassert_eq(js._impl.scope_stack[0], '\0');
 
-    tassert_er(EOK, json.iter.step_in(&js, JsonType__obj));
-    tassertf(!json.iter.next(&js), "error: %s", js.error);
+    tassert_er(EOK, json.reader.step_in(&js, JsonType__obj));
+    tassertf(!json.reader.next(&js), "error: %s", js.error);
     tassert_eq(js.error, "Unexpected token");
     tassert_eq(js.type, JsonType__err);
     tassert_eq(js.val, (str_s){ 0 });
     tassert_eq(js.key, (str_s){ 0 });
 
-    tassertf(!json.iter.next(&js), "error: %s", js.error);
+    tassertf(!json.reader.next(&js), "error: %s", js.error);
 
     return EOK;
 }
 
-test$case(json_iter_signed_nums_indent)
+test$case(json_reader_signed_nums_indent)
 {
     str_s content = str$s("{ \"foo\" : -false }");
-    json_iter_c js;
-    tassert_eq(EOK, json.iter.create(&js, content.buf, 0, false));
+    json_reader_c js;
+    tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
 
-    tassert_eq(json.iter.next(&js), true);
+    tassert_eq(json.reader.next(&js), true);
     tassert_eq(js.type, JsonType__obj);
     tassert_eq(js.key.buf, NULL);
     tassert_eq(js.key.len, 0);
     tassert_eq(js._impl.scope_depth, 0);
     tassert_eq(js._impl.scope_stack[0], '\0');
 
-    tassert_er(EOK, json.iter.step_in(&js, JsonType__obj));
-    tassertf(!json.iter.next(&js), "error: %s", js.error);
+    tassert_er(EOK, json.reader.step_in(&js, JsonType__obj));
+    tassertf(!json.reader.next(&js), "error: %s", js.error);
     tassert_eq(js.error, "Unexpected token");
     tassert_eq(js.type, JsonType__err);
     tassert_eq(js.val, (str_s){ 0 });
     tassert_eq(js.key, (str_s){ 0 });
 
-    tassertf(!json.iter.next(&js), "error: %s", js.error);
+    tassertf(!json.reader.next(&js), "error: %s", js.error);
 
     return EOK;
 }
 
-test$case(json_iter_signed_nums_inf)
+test$case(json_reader_signed_nums_inf)
 {
     str_s content = str$s("{ \"foo\" : -inf, \"bar\": +Inf }");
-    json_iter_c js;
-    tassert_eq(EOK, json.iter.create(&js, content.buf, 0, false));
+    json_reader_c js;
+    tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
 
-    tassert_eq(json.iter.next(&js), true);
+    tassert_eq(json.reader.next(&js), true);
     tassert_eq(js.type, JsonType__obj);
     tassert_eq(js.key.buf, NULL);
     tassert_eq(js.key.len, 0);
     tassert_eq(js._impl.scope_depth, 0);
     tassert_eq(js._impl.scope_stack[0], '\0');
 
-    tassert_er(EOK, json.iter.step_in(&js, JsonType__obj));
-    tassertf(json.iter.next(&js), "error: %s", js.error);
+    tassert_er(EOK, json.reader.step_in(&js, JsonType__obj));
+    tassertf(json.reader.next(&js), "error: %s", js.error);
     tassert_eq(js.type, JsonType__num);
     tassert_eq(js.val, str$s("-inf"));
     tassert_eq(js.key, str$s("foo"));
 
-    tassertf(json.iter.next(&js), "error: %s", js.error);
+    tassertf(json.reader.next(&js), "error: %s", js.error);
     tassert_eq(js.type, JsonType__num);
     tassert_eq(js.val, str$s("+Inf"));
     tassert_eq(js.key, str$s("bar"));
 
-    tassertf(!json.iter.next(&js), "error: %s", js.error);
+    tassertf(!json.reader.next(&js), "error: %s", js.error);
 
     return EOK;
 }
 
-test$case(json_iter_signed_nums_nan_inf)
+test$case(json_reader_signed_nums_nan_inf)
 {
     str_s content = str$s("{ \"foo\" : iNf, \"bar\": NaN }");
-    json_iter_c js;
-    tassert_eq(EOK, json.iter.create(&js, content.buf, 0, false));
+    json_reader_c js;
+    tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
 
-    tassert_eq(json.iter.next(&js), true);
+    tassert_eq(json.reader.next(&js), true);
     tassert_eq(js.type, JsonType__obj);
     tassert_eq(js.key.buf, NULL);
     tassert_eq(js.key.len, 0);
     tassert_eq(js._impl.scope_depth, 0);
     tassert_eq(js._impl.scope_stack[0], '\0');
 
-    tassert_er(EOK, json.iter.step_in(&js, JsonType__obj));
-    tassertf(json.iter.next(&js), "error: %s", js.error);
+    tassert_er(EOK, json.reader.step_in(&js, JsonType__obj));
+    tassertf(json.reader.next(&js), "error: %s", js.error);
     tassert_eq(js.type, JsonType__num);
     tassert_eq(js.val, str$s("iNf"));
     tassert_eq(js.key, str$s("foo"));
 
-    tassertf(json.iter.next(&js), "error: %s", js.error);
+    tassertf(json.reader.next(&js), "error: %s", js.error);
     tassert_eq(js.type, JsonType__num);
     tassert_eq(js.val, str$s("NaN"));
     tassert_eq(js.key, str$s("bar"));
 
-    tassertf(!json.iter.next(&js), "error: %s", js.error);
+    tassertf(!json.reader.next(&js), "error: %s", js.error);
 
     return EOK;
 }
 
-test$case(json_iter_comments_single_line)
+test$case(json_reader_comments_single_line)
 {
     str_s content = str$s("{ // Hi comment \n \"foo\" : -inf, \"bar\": +Inf, }");
-    json_iter_c js;
-    tassert_eq(EOK, json.iter.create(&js, content.buf, 0, false));
+    json_reader_c js;
+    tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
 
-    tassert_eq(json.iter.next(&js), true);
+    tassert_eq(json.reader.next(&js), true);
     tassert_eq(js.type, JsonType__obj);
     tassert_eq(js.key.buf, NULL);
     tassert_eq(js.key.len, 0);
     tassert_eq(js._impl.scope_depth, 0);
     tassert_eq(js._impl.scope_stack[0], '\0');
 
-    tassert_er(EOK, json.iter.step_in(&js, JsonType__obj));
-    tassertf(json.iter.next(&js), "error: %s", js.error);
+    tassert_er(EOK, json.reader.step_in(&js, JsonType__obj));
+    tassertf(json.reader.next(&js), "error: %s", js.error);
     tassert_eq(js.type, JsonType__num);
     tassert_eq(js.val, str$s("-inf"));
     tassert_eq(js.key, str$s("foo"));
 
-    tassertf(json.iter.next(&js), "error: %s", js.error);
+    tassertf(json.reader.next(&js), "error: %s", js.error);
     tassert_eq(js.type, JsonType__num);
     tassert_eq(js.val, str$s("+Inf"));
     tassert_eq(js.key, str$s("bar"));
 
-    tassertf(!json.iter.next(&js), "error: %s", js.error);
+    tassertf(!json.reader.next(&js), "error: %s", js.error);
 
     // Strict mode fails
-    tassert_eq(EOK, json.iter.create(&js, content.buf, 0, true));
-    tassert_eq(json.iter.next(&js), true);
-    tassert_er(EOK, json.iter.step_in(&js, JsonType__obj));
-    tassertf(!json.iter.next(&js), "error: %s", js.error);
+    tassert_eq(EOK, json.reader.create(&js, content.buf, 0, true));
+    tassert_eq(json.reader.next(&js), true);
+    tassert_er(EOK, json.reader.step_in(&js, JsonType__obj));
+    tassertf(!json.reader.next(&js), "error: %s", js.error);
     tassert_eq(js.type, JsonType__err);
     tassert_eq(js.error, "Unexpected token");
 
     return EOK;
 }
 
-test$case(json_iter_comments_multi_line)
+test$case(json_reader_comments_multi_line)
 {
     str_s content = str$s(
         "{ // Hi comment \n \"foo\" /* my key */ : /* my value */ -inf, \"bar\": +Inf }"
     );
-    json_iter_c js;
-    tassert_eq(EOK, json.iter.create(&js, content.buf, 0, false));
+    json_reader_c js;
+    tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
 
-    tassert_eq(json.iter.next(&js), true);
+    tassert_eq(json.reader.next(&js), true);
     tassert_eq(js.type, JsonType__obj);
     tassert_eq(js.key.buf, NULL);
     tassert_eq(js.key.len, 0);
     tassert_eq(js._impl.scope_depth, 0);
     tassert_eq(js._impl.scope_stack[0], '\0');
 
-    tassert_er(EOK, json.iter.step_in(&js, JsonType__obj));
-    tassertf(json.iter.next(&js), "error: %s", js.error);
+    tassert_er(EOK, json.reader.step_in(&js, JsonType__obj));
+    tassertf(json.reader.next(&js), "error: %s", js.error);
     tassert_eq(js.type, JsonType__num);
     tassert_eq(js.val, str$s("-inf"));
     tassert_eq(js.key, str$s("foo"));
 
-    tassertf(json.iter.next(&js), "error: %s", js.error);
+    tassertf(json.reader.next(&js), "error: %s", js.error);
     tassert_eq(js.type, JsonType__num);
     tassert_eq(js.val, str$s("+Inf"));
     tassert_eq(js.key, str$s("bar"));
 
-    tassertf(!json.iter.next(&js), "error: %s", js.error);
+    tassertf(!json.reader.next(&js), "error: %s", js.error);
 
     // Strict mode fails
-    tassert_eq(EOK, json.iter.create(&js, content.buf, 0, true));
-    tassert_eq(json.iter.next(&js), true);
-    tassert_er(EOK, json.iter.step_in(&js, JsonType__obj));
-    tassertf(!json.iter.next(&js), "error: %s", js.error);
+    tassert_eq(EOK, json.reader.create(&js, content.buf, 0, true));
+    tassert_eq(json.reader.next(&js), true);
+    tassert_er(EOK, json.reader.step_in(&js, JsonType__obj));
+    tassertf(!json.reader.next(&js), "error: %s", js.error);
     tassert_eq(js.type, JsonType__err);
     tassert_eq(js.error, "Unexpected token");
 
     return EOK;
 }
 
-test$case(json_iter_simple_array_strict_no_commas)
+test$case(json_reader_simple_array_strict_no_commas)
 {
     str_s content = str$s("[ \"foo\", \"bar\", \"baz\", ]");
-    json_iter_c js;
-    tassert_eq(EOK, json.iter.create(&js, content.buf, 0, true));
+    json_reader_c js;
+    tassert_eq(EOK, json.reader.create(&js, content.buf, 0, true));
 
-    tassert_eq(json.iter.next(&js), true);
+    tassert_eq(json.reader.next(&js), true);
     tassert_eq(js.type, JsonType__arr);
     tassert_eq(js.key.buf, NULL);
     tassert_eq(js.key.len, 0);
     tassert_eq(js._impl.scope_depth, 0);
     tassert_eq(js._impl.scope_stack[0], '\0');
 
-    tassert_er(EOK, json.iter.step_in(&js, JsonType__arr));
-    tassertf(json.iter.next(&js) == JsonType__str, "error: %s", js.error);
+    tassert_er(EOK, json.reader.step_in(&js, JsonType__arr));
+    tassertf(json.reader.next(&js) == JsonType__str, "error: %s", js.error);
     tassert_eq(js._impl.scope_depth, 1);
     tassert_eq(js._impl.scope_stack[0], '[');
     tassert_eq(js.type, JsonType__str);
     tassert_eq(js.val, str$s("foo"));
     tassert_eq(js.key.buf, NULL);
 
-    tassert_eq(json.iter.next(&js), JsonType__str);
+    tassert_eq(json.reader.next(&js), JsonType__str);
     tassert_eq(js.type, JsonType__str);
     tassert_eq(js.val, str$s("bar"));
     tassert_eq(js.key.buf, NULL);
 
-    tassert_eq(json.iter.next(&js), JsonType__str);
+    tassert_eq(json.reader.next(&js), JsonType__str);
     tassert_eq(js.type, JsonType__str);
     tassert_eq(js.val, str$s("baz"));
     tassert_eq(js.key.buf, NULL);
 
-    tassert_eq(json.iter.next(&js), false);
+    tassert_eq(json.reader.next(&js), false);
     tassert_eq(js.type, JsonType__err);
     tassert_eq(js.error, "Ending comma in array");
 
     return EOK;
 }
 
-test$case(json_iter_simple_strict_no_commas)
+test$case(json_reader_simple_strict_no_commas)
 {
     // str_s content = str$s(str$m({ "foo" : "bar" }));
     str_s content = str$s("{ \"foo\" : \"bar\", }");
-    json_iter_c js;
-    tassert_eq(EOK, json.iter.create(&js, content.buf, 0, true));
+    json_reader_c js;
+    tassert_eq(EOK, json.reader.create(&js, content.buf, 0, true));
 
-    tassert_eq(json.iter.next(&js), true);
+    tassert_eq(json.reader.next(&js), true);
     tassert_eq(js.type, JsonType__obj);
     tassert_eq(js.key.buf, NULL);
     tassert_eq(js.key.len, 0);
     tassert_eq(js._impl.scope_depth, 0);
     tassert_eq(js._impl.scope_stack[0], '\0');
 
-    tassert_er(EOK, json.iter.step_in(&js, JsonType__obj));
-    tassertf(json.iter.next(&js) == JsonType__str, "error: %s", js.error);
+    tassert_er(EOK, json.reader.step_in(&js, JsonType__obj));
+    tassertf(json.reader.next(&js) == JsonType__str, "error: %s", js.error);
     tassert_eq(js._impl.scope_depth, 1);
     tassert_eq(js._impl.scope_stack[0], '{');
     tassert_eq(js.type, JsonType__str);
     tassert_eq(js.val, str$s("bar"));
     tassert_eq(js.key, str$s("foo"));
 
-    tassert_eq(json.iter.next(&js), false);
+    tassert_eq(json.reader.next(&js), false);
     tassert_eq(js.error, "Ending comma in object");
     tassert_eq(js.type, JsonType__err);
 
     return EOK;
 }
 
-test$case(json_iter_bad_stuff_handling)
+test$case(json_reader_bad_stuff_handling)
 {
     char* variants[] = {
         "{ \"foo\" : \"bar\" ",
@@ -763,9 +763,9 @@ test$case(json_iter_bad_stuff_handling)
     };
 
     for$each (it, variants) {
-        json_iter_c ji;
-        tassert_eq(EOK, json.iter.create(&ji, it, 0, true));
-        while (json.iter.next(&ji)) {}
+        json_reader_c ji;
+        tassert_eq(EOK, json.reader.create(&ji, it, 0, true));
+        while (json.reader.next(&ji)) {}
         tassertf(ji.type == JsonType__err, "source: '%s', error: %s", it, ji.error);
     }
 
