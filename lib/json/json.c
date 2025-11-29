@@ -24,10 +24,16 @@
  * @return
  */
 Exception
-cex_json__reader__create(json_reader_c* it, char* content, usize content_len, bool strict_mode)
+cex_json__reader__create(json_reader_c* it, char* content, usize content_len, json_reader_kw* kwargs)
 {
     uassert(it != NULL);
     if (content == NULL) { return Error.argument; }
+
+    bool strict_mode = false; 
+    if (kwargs != NULL) {
+        strict_mode = kwargs->strict_mode;
+    }
+
     *it = (json_reader_c){
         ._impl = {
             .strict_mode = strict_mode,

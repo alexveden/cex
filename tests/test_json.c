@@ -60,6 +60,7 @@ test$case(json_reader_struct_fill)
     );
 
     json_reader_c js;
+    jr$new(&js, content.buf, content.len, .strict_mode = true);
 
     jr$scope(&js, content.buf, 0, JsonType__obj)
     {
@@ -67,9 +68,16 @@ test$case(json_reader_struct_fill)
         jr$case ("foo") {
             jr$switch()
             {
+                // 1. OK case: assert we are in the JSON obj
+                // 2. Bad: non object type
+
+                // if
                 jr$case_invalid () {}
+                // else if
                 jr$case ("fuzz") { e$ret(str$convert(js.val, &data.foo.fuzz)); }
+                // else if
                 jr$case ("baz") { e$ret(str$convert(js.val, &data.foo.baz)); }
+                // else
                 jr$case_default (&js) { tassert_eq(js.key, str$s("oops")); }
             }
         }
@@ -86,4 +94,6 @@ test$case(json_reader_struct_fill)
 
     return EOK;
 }
+
+
 test$main();

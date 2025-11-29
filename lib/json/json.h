@@ -6,17 +6,23 @@
 
 #define _jr$var _cex_json_reader_macro_scope
 
-#define jr$scope(json_reader, content, len, expected_root_item)                                      \
-    (json_reader)->error = json.reader.create((json_reader), (content), (len), false);                   \
-    if ((json_reader)->error == EOK) {                                                               \
-        if (json.reader.next((json_reader))) {                                                         \
-            (json_reader)->error = json.reader.step_in((json_reader), (expected_root_item));             \
+#define jr$new(json_reader, content, len, kwargs...)                                               \
+    ({                                                                                             \
+        json_reader_kw _kwargs = { kwargs };                                                \
+        (json_reader)->error = json.reader.create((json_reader), (content), (len), &_kwargs);      \
+    })
+
+#define jr$scope(json_reader, content, len, expected_root_item)                                    \
+    (json_reader)->error = json.reader.create((json_reader), (content), (len), false);             \
+    if ((json_reader)->error == EOK) {                                                             \
+        if (json.reader.next((json_reader))) {                                                     \
+            (json_reader)->error = json.reader.step_in((json_reader), (expected_root_item));       \
         }                                                                                          \
     }                                                                                              \
     for (json_reader_c* _jr$var = (json_reader); json.reader.next((json_reader));)
 
 #define jr$switch()                                                                                \
-    if (_jr$var->error == EOK) _jr$var->error = json.reader.step_in(&js, JsonType__obj);             \
+    if (_jr$var->error == EOK) _jr$var->error = json.reader.step_in(&js, JsonType__obj);           \
     while (json.reader.next((_jr$var)))
 
 /// Beginning of jr$key_match chain (always first, checks if key is NULL)
@@ -45,6 +51,10 @@ typedef enum JsonType_e
     JsonType__cnt,
 } JsonType_e;
 
+typedef struct json_reader_kw
+{
+    bool strict_mode;
+} json_reader_kw;
 
 typedef struct json_reader_c
 {
@@ -79,40 +89,41 @@ typedef struct json_writer_c
 #define _jw$buf_var _json_writer_macro_scope
 
 /// Opens JSON buffer scope (json_writer_ptr data is cleared out)
-#define jw$buf(json_writer_ptr, jsontype_arr_or_obj)                                                  \
-    _cex_json__writer__clear((json_writer_ptr));                                                         \
-    for (json_writer_c * _jw$buf_var __attribute__((__cleanup__(_cex__jsonbuf_print_scope_exit))) =   \
-             _cex__jsonbuf_print_scope_enter((json_writer_ptr), jsontype_arr_or_obj),                 \
-                                  *cex$tmpname(jsonbuf_sentinel) = _jw$buf_var;                    \
+#define jw$buf(json_writer_ptr, jsontype_arr_or_obj)                                               \
+    _cex_json__writer__clear((json_writer_ptr));                                                   \
+    for (json_writer_c * _jw$buf_var                                                               \
+             __attribute__((__cleanup__(_cex__jsonbuf_print_scope_exit))) =                        \
+             _cex__jsonbuf_print_scope_enter((json_writer_ptr), jsontype_arr_or_obj),              \
+             *cex$tmpname(jsonbuf_sentinel) = _jw$buf_var;                                         \
          cex$tmpname(jsonbuf_sentinel) && _jw$buf_var != NULL;                                     \
          cex$tmpname(jsonbuf_sentinel) = NULL)
 
 
 /// Add new key: {...} scope into (jw$buf)
 #define jw$kobj_scope(key)                                                                         \
-    _cex_json__writer__print(_jw$buf_var, "\"%s\": ", key);                                           \
+    _cex_json__writer__print(_jw$buf_var, "\"%s\": ", key);                                        \
     jw$obj_scope()
 
 /// Add new key: [...] scope into (jw$buf)
 #define jw$karr_scope(key)                                                                         \
-    _cex_json__writer__print(_jw$buf_var, "\"%s\": ", key);                                           \
+    _cex_json__writer__print(_jw$buf_var, "\"%s\": ", key);                                        \
     jw$arr_scope()
 
 /// Add new {...} scope into (jw$buf)
 #define jw$obj_scope()                                                                             \
-    for (json_writer_c * cex$tmpname(jsonbuf_scope)                                                   \
-                          __attribute__((__cleanup__(_cex__jsonbuf_print_scope_exit))) =           \
+    for (json_writer_c * cex$tmpname(jsonbuf_scope)                                                \
+                             __attribute__((__cleanup__(_cex__jsonbuf_print_scope_exit))) =        \
              _cex__jsonbuf_print_scope_enter(_jw$buf_var, JsonType__obj),                          \
-                          *cex$tmpname(jsonbuf_sentinel) = cex$tmpname(jsonbuf_scope);             \
+                             *cex$tmpname(jsonbuf_sentinel) = cex$tmpname(jsonbuf_scope);          \
          cex$tmpname(jsonbuf_sentinel) && cex$tmpname(jsonbuf_scope) != NULL;                      \
          cex$tmpname(jsonbuf_sentinel) = NULL)
 
 /// Add new [...] scope into (jw$buf)
 #define jw$arr_scope()                                                                             \
-    for (json_writer_c * cex$tmpname(jsonbuf_scope)                                                   \
-                          __attribute__((__cleanup__(_cex__jsonbuf_print_scope_exit))) =           \
+    for (json_writer_c * cex$tmpname(jsonbuf_scope)                                                \
+                             __attribute__((__cleanup__(_cex__jsonbuf_print_scope_exit))) =        \
              _cex__jsonbuf_print_scope_enter(_jw$buf_var, JsonType__arr),                          \
-                          *cex$tmpname(jsonbuf_sentinel) = cex$tmpname(jsonbuf_scope);             \
+                             *cex$tmpname(jsonbuf_sentinel) = cex$tmpname(jsonbuf_scope);          \
          cex$tmpname(jsonbuf_sentinel) && cex$tmpname(jsonbuf_scope) != NULL;                      \
          cex$tmpname(jsonbuf_sentinel) = NULL)
 
@@ -120,7 +131,8 @@ typedef struct json_writer_c
 #define jw$fmt(format, ...) _cex_json__writer__print(_jw$buf_var, format, __VA_ARGS__)
 
 /// Append string item into array scope (jw$buf)
-#define jw$str(format, ...) _cex_json__writer__print_item(_jw$buf_var, "\"" format "\"", __VA_ARGS__)
+#define jw$str(format, ...)                                                                        \
+    _cex_json__writer__print_item(_jw$buf_var, "\"" format "\"", __VA_ARGS__)
 
 /// Append value item into array scope (jw$buf)
 #define jw$val(format, ...) _cex_json__writer__print_item(_jw$buf_var, format "", __VA_ARGS__)
@@ -130,7 +142,8 @@ typedef struct json_writer_c
     _cex_json__writer__print_key(_jw$buf_var, (key), "\"" format "\"", __VA_ARGS__)
 
 /// Append `"<key>": <format>` into object scope (jw$buf)
-#define jw$kval(key, format, ...) _cex_json__writer__print_key(_jw$buf_var, (key), format, __VA_ARGS__)
+#define jw$kval(key, format, ...)                                                                  \
+    _cex_json__writer__print_key(_jw$buf_var, (key), format, __VA_ARGS__)
 
 void _cex_json__writer__clear(json_writer_c* jb);
 void _cex_json__writer__print(json_writer_c* jb, char* format, ...);
@@ -206,7 +219,7 @@ struct __cex_namespace__json {
 
     struct {
         /// Create new JSON reader (it doesn't allocate memory and uses content slicing)
-        Exception       (*create)(json_reader_c* it, char* content, usize content_len, bool strict_mode);
+        Exception       (*create)(json_reader_c* it, char* content, usize content_len, json_reader_kw* kwargs);
         /// Get next JSON item for a scope
         bool            (*next)(json_reader_c* it);
         /// Make step inside JSON object or array scope (json.reader.next() starts emitting this scope)
