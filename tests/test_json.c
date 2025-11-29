@@ -56,37 +56,48 @@ test$case(json_reader_struct_fill)
         u32 baz;
     } data = { 0 };
     str_s content = str$s(
-        "{ \"foo\" : {\"baz\": 3, \"fuzz\": 8, \"oops\": 0}, \"next\": 7, \"baz\": 17 }"
+        "{ \"foo\" : {\"baz\": 3, \"fuzz\": 8, \"oops\": 0}, \"next\": [1, 2, 3], \"baz\": 17 }"
     );
 
     json_reader_c js;
     jr$new(&js, content.buf, content.len, .strict_mode = true);
 
-    jr$scope(&js, content.buf, 0, JsonType__obj)
+    jr$foreach(k, v, &js)
     {
-        jr$case_invalid () {}
-        jr$case ("foo") {
-            jr$switch()
+        io.printf("key=%S value=%S\n", k, v);
+        if (str$eq(k, "foo")) {
+            jr$foreach(k, v, &js)
             {
-                // 1. OK case: assert we are in the JSON obj
-                // 2. Bad: non object type
-
-                // if
-                jr$case_invalid () {}
-                // else if
-                jr$case ("fuzz") { e$ret(str$convert(js.val, &data.foo.fuzz)); }
-                // else if
-                jr$case ("baz") { e$ret(str$convert(js.val, &data.foo.baz)); }
-                // else
-                jr$case_default (&js) { tassert_eq(js.key, str$s("oops")); }
+                io.printf("\tkey=%S value=%S\n", k, v);
+                if (str$eq(k, "fuzz")) {
+                    e$ret(str$convert(v, &data.foo.fuzz));
+                } else if (str$eq(k, "baz")) {
+                    e$goto(str$convert(v, &data.foo.baz), fail);
+                }
             }
+        } else if (str$eq(k, "next")) {
+            u32 sum = 0;
+            jr$foreach(v, &js)
+            {
+                u32 _value = 0;
+                e$ret(str$convert(v, &_value));
+                sum += _value;
+            }
+            data.next = sum;
+        } else if (str$eq(k, "baz")) {
+            e$ret(str$convert(v, &data.baz));
         }
-        jr$case ("next") { e$ret(str$convert(js.val, &data.next)); }
-        jr$case ("baz") { e$ret(str$convert(js.val, &data.baz)); }
     }
+
+fail:
+    if (js.error) {
+        // We can report JSON file, line:col + error message
+        return Error.runtime;
+    }
+
     tassert_er(js.error, EOK);
 
-    tassert_eq(data.next, 7);
+    tassert_eq(data.next, 1 + 2 + 3);
     tassert_eq(data.baz, 17);
     tassert_eq(data.foo.baz, 3);
     tassert_eq(data.foo.fuzz, 8);
