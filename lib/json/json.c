@@ -354,7 +354,7 @@ error:
 
 
 void
-_cex__jsonbuf_indent(json_buf_c* jb)
+_cex__jsonbuf_indent(json_writer_c* jb)
 {
     if (unlikely(jb->error != EOK)) { return; }
     for (u32 i = 0; i < jb->indent; i++) { $print(" ", ""); }
@@ -370,12 +370,12 @@ _cex__jsonbuf_indent(json_buf_c* jb)
  * @return
  */
 Exception
-cex_json__buf__create(json_buf_c* jb, u32 capacity, u8 indent, IAllocator allc)
+cex_json__writer__create(json_writer_c* jb, u32 capacity, u8 indent, IAllocator allc)
 {
     e$assert(jb != NULL);
     e$assert(allc != NULL);
 
-    *jb = (json_buf_c){
+    *jb = (json_writer_c){
         .indent_width = indent,
         .buf = sbuf.create(capacity, allc),
     };
@@ -388,7 +388,7 @@ cex_json__buf__create(json_buf_c* jb, u32 capacity, u8 indent, IAllocator allc)
  * @param jb
  */
 void
-cex_json__buf__destroy(json_buf_c* jb)
+cex_json__writer__destroy(json_writer_c* jb)
 {
     if (jb != NULL) {
         if (jb->buf != NULL) { sbuf.destroy(&jb->buf); }
@@ -403,7 +403,7 @@ cex_json__buf__destroy(json_buf_c* jb)
  * @return
  */
 char*
-cex_json__buf__get(json_buf_c* jb)
+cex_json__writer__get(json_writer_c* jb)
 {
     if (jb->error != EOK) {
         return NULL;
@@ -419,13 +419,13 @@ cex_json__buf__get(json_buf_c* jb)
  * @return
  */
 Exception
-cex_json__buf__validate(json_buf_c* jb)
+cex_json__writer__validate(json_writer_c* jb)
 {
     return jb->error;
 }
 
 void
-_cex_json__buf__clear(json_buf_c* jb)
+_cex_json__writer__clear(json_writer_c* jb)
 {
     uassert(jb);
     uassert(jb->buf != NULL && "uninitialized or already destroyed");
@@ -440,14 +440,14 @@ _cex_json__buf__clear(json_buf_c* jb)
 }
 
 void
-_cex_json__buf__print(json_buf_c* jb, char* format, ...)
+_cex_json__writer__print(json_writer_c* jb, char* format, ...)
 {
     _cex__jsonbuf_indent(jb);
     $printva();
 }
 
 void
-_cex_json__buf__print_item(json_buf_c* jb, char* format, ...)
+_cex_json__writer__print_item(json_writer_c* jb, char* format, ...)
 {
     uassertf(
         jb->scope_depth > 0 && jb->scope_stack[jb->scope_depth - 1] == '[',
@@ -459,7 +459,7 @@ _cex_json__buf__print_item(json_buf_c* jb, char* format, ...)
 }
 
 void
-_cex_json__buf__print_key(json_buf_c* jb, char* key, char* format, ...)
+_cex_json__writer__print_key(json_writer_c* jb, char* key, char* format, ...)
 {
     uassertf(
         jb->scope_depth > 0 && jb->scope_stack[jb->scope_depth - 1] == '{',
@@ -471,8 +471,8 @@ _cex_json__buf__print_key(json_buf_c* jb, char* key, char* format, ...)
     $print(",%s", (jb->indent_width > 0) ? "\n" : " ");
 }
 
-json_buf_c*
-_cex__jsonbuf_print_scope_enter(json_buf_c* jb, JsonType_e scope_type)
+json_writer_c*
+_cex__jsonbuf_print_scope_enter(json_writer_c* jb, JsonType_e scope_type)
 {
     usize slen = sbuf.len(&jb->buf);
     if (slen && jb->buf[slen - 1] == '\n') { _cex__jsonbuf_indent(jb); }
@@ -500,10 +500,10 @@ _cex__jsonbuf_print_scope_enter(json_buf_c* jb, JsonType_e scope_type)
 }
 
 void
-_cex__jsonbuf_print_scope_exit(json_buf_c** jbptr)
+_cex__jsonbuf_print_scope_exit(json_writer_c** jbptr)
 {
     uassert(*jbptr != NULL);
-    json_buf_c* jb = *jbptr;
+    json_writer_c* jb = *jbptr;
 
     if (jb->indent >= jb->indent_width) { jb->indent -= jb->indent_width; }
     if (jb->scope_depth > 0) {
@@ -558,18 +558,18 @@ const struct __cex_namespace__json json = {
     // clang-format off
 
 
-    .buf = {
-        .create = cex_json__buf__create,
-        .destroy = cex_json__buf__destroy,
-        .get = cex_json__buf__get,
-        .validate = cex_json__buf__validate,
-    },
-
     .iter = {
         .create = cex_json__iter__create,
         .next = cex_json__iter__next,
         .step_in = cex_json__iter__step_in,
         .step_out = cex_json__iter__step_out,
+    },
+
+    .writer = {
+        .create = cex_json__writer__create,
+        .destroy = cex_json__writer__destroy,
+        .get = cex_json__writer__get,
+        .validate = cex_json__writer__validate,
     },
 
     // clang-format on

@@ -4,16 +4,31 @@
 #    define CEX_MAX_JSON_DEPTH 128
 #endif
 
-/// Beginning of json$key_match chain (always first, checks if key is NULL)
-#define json$key_invalid(json_iter) if (unlikely((json_iter)->key.buf == NULL))
+#define _jr$var _cex_json_reader_macro_scope
+
+#define jr$scope(json_iter, content, len, expected_root_item)                                      \
+    (json_iter)->error = json.iter.create((json_iter), (content), (len), false);                   \
+    if ((json_iter)->error == EOK) {                                                               \
+        if (json.iter.next((json_iter))) {                                                         \
+            (json_iter)->error = json.iter.step_in((json_iter), (expected_root_item));             \
+        }                                                                                          \
+    }                                                                                              \
+    for (json_iter_c* _jr$var = (json_iter); json.iter.next((json_iter));)
+
+#define jr$switch()                                                                                \
+    if (_jr$var->error == EOK) _jr$var->error = json.iter.step_in(&js, JsonType__obj);             \
+    while (json.iter.next((_jr$var)))
+
+/// Beginning of jr$key_match chain (always first, checks if key is NULL)
+#define jr$case_invalid() if (unlikely(_jr$var->key.buf == NULL))
 
 /// Matches object key by key literal name (compile time optimized string compare)
-#define json$key_match(json_iter, key_literal)                                                     \
-    else if ((json_iter)->key.len == sizeof(key_literal) - 1 &&                                    \
-             memcmp((json_iter)->key.buf, key_literal, sizeof(key_literal) - 1) == 0)
+#define jr$case(key_literal)                                                                       \
+    else if (_jr$var->key.len == sizeof(key_literal) - 1 &&                                        \
+             memcmp(_jr$var->key.buf, key_literal, sizeof(key_literal) - 1) == 0)
 
 /// Checks if there is unexpected key
-#define json$key_unmatched(json_iter) else
+#define jr$case_default(json_iter) else
 
 typedef enum JsonType_e
 {
@@ -51,7 +66,7 @@ typedef struct json_iter_c
 
 } json_iter_c;
 
-typedef struct json_buf_c
+typedef struct json_writer_c
 {
     sbuf_c buf;
     u32 indent;
@@ -59,72 +74,70 @@ typedef struct json_buf_c
     Exc error;
     u32 scope_depth;
     char scope_stack[CEX_MAX_JSON_DEPTH];
-} json_buf_c;
+} json_writer_c;
 
-#define _json$buf_var _json_buf_macro_scope
+#define _jw$buf_var _json_writer_macro_scope
 
-/// Opens JSON buffer scope (json_buf_ptr data is cleared out)
-#define json$buf(json_buf_ptr, jsontype_arr_or_obj)                                                \
-    _cex_json__buf__clear((json_buf_ptr));                                                         \
-    for (json_buf_c * _json$buf_var __attribute__((__cleanup__(_cex__jsonbuf_print_scope_exit))) = \
-             _cex__jsonbuf_print_scope_enter((json_buf_ptr), jsontype_arr_or_obj),                 \
-                                    *cex$tmpname(jsonbuf_sentinel) = _json$buf_var;                \
-         cex$tmpname(jsonbuf_sentinel) && _json$buf_var != NULL;                                   \
+/// Opens JSON buffer scope (json_writer_ptr data is cleared out)
+#define jw$buf(json_writer_ptr, jsontype_arr_or_obj)                                                  \
+    _cex_json__writer__clear((json_writer_ptr));                                                         \
+    for (json_writer_c * _jw$buf_var __attribute__((__cleanup__(_cex__jsonbuf_print_scope_exit))) =   \
+             _cex__jsonbuf_print_scope_enter((json_writer_ptr), jsontype_arr_or_obj),                 \
+                                  *cex$tmpname(jsonbuf_sentinel) = _jw$buf_var;                    \
+         cex$tmpname(jsonbuf_sentinel) && _jw$buf_var != NULL;                                     \
          cex$tmpname(jsonbuf_sentinel) = NULL)
 
 
-/// Add new key: {...} scope into (json$buf)
-#define json$kobj(key)                                                                             \
-    _cex_json__buf__print(_json$buf_var, "\"%s\": ", key);                                         \
-    json$obj()
+/// Add new key: {...} scope into (jw$buf)
+#define jw$kobj_scope(key)                                                                         \
+    _cex_json__writer__print(_jw$buf_var, "\"%s\": ", key);                                           \
+    jw$obj_scope()
 
-/// Add new key: [...] scope into (json$buf)
-#define json$karr(key)                                                                             \
-    _cex_json__buf__print(_json$buf_var, "\"%s\": ", key);                                         \
-    json$arr()
+/// Add new key: [...] scope into (jw$buf)
+#define jw$karr_scope(key)                                                                         \
+    _cex_json__writer__print(_jw$buf_var, "\"%s\": ", key);                                           \
+    jw$arr_scope()
 
-/// Add new {...} scope into (json$buf)
-#define json$obj()                                                                                 \
-    for (json_buf_c * cex$tmpname(jsonbuf_scope)                                                   \
+/// Add new {...} scope into (jw$buf)
+#define jw$obj_scope()                                                                             \
+    for (json_writer_c * cex$tmpname(jsonbuf_scope)                                                   \
                           __attribute__((__cleanup__(_cex__jsonbuf_print_scope_exit))) =           \
-             _cex__jsonbuf_print_scope_enter(_json$buf_var, JsonType__obj),                        \
+             _cex__jsonbuf_print_scope_enter(_jw$buf_var, JsonType__obj),                          \
                           *cex$tmpname(jsonbuf_sentinel) = cex$tmpname(jsonbuf_scope);             \
          cex$tmpname(jsonbuf_sentinel) && cex$tmpname(jsonbuf_scope) != NULL;                      \
          cex$tmpname(jsonbuf_sentinel) = NULL)
 
-/// Add new [...] scope into (json$buf)
-#define json$arr()                                                                                 \
-    for (json_buf_c * cex$tmpname(jsonbuf_scope)                                                   \
+/// Add new [...] scope into (jw$buf)
+#define jw$arr_scope()                                                                             \
+    for (json_writer_c * cex$tmpname(jsonbuf_scope)                                                   \
                           __attribute__((__cleanup__(_cex__jsonbuf_print_scope_exit))) =           \
-             _cex__jsonbuf_print_scope_enter(_json$buf_var, JsonType__arr),                        \
+             _cex__jsonbuf_print_scope_enter(_jw$buf_var, JsonType__arr),                          \
                           *cex$tmpname(jsonbuf_sentinel) = cex$tmpname(jsonbuf_scope);             \
          cex$tmpname(jsonbuf_sentinel) && cex$tmpname(jsonbuf_scope) != NULL;                      \
          cex$tmpname(jsonbuf_sentinel) = NULL)
 
-/// Append any formatted string, it's for low level printing (json$buf)
-#define json$fmt(format, ...) _cex_json__buf__print(_json$buf_var, format, __VA_ARGS__)
+/// Append any formatted string, it's for low level printing (jw$buf)
+#define jw$fmt(format, ...) _cex_json__writer__print(_jw$buf_var, format, __VA_ARGS__)
 
-/// Append string item into array scope (json$buf)
-#define json$str(format, ...)                                                                      \
-    _cex_json__buf__print_item(_json$buf_var, "\"" format "\"", __VA_ARGS__)
+/// Append string item into array scope (jw$buf)
+#define jw$str(format, ...) _cex_json__writer__print_item(_jw$buf_var, "\"" format "\"", __VA_ARGS__)
 
-/// Append value item into array scope (json$buf)
-#define json$val(format, ...) _cex_json__buf__print_item(_json$buf_var, format "", __VA_ARGS__)
+/// Append value item into array scope (jw$buf)
+#define jw$val(format, ...) _cex_json__writer__print_item(_jw$buf_var, format "", __VA_ARGS__)
 
-/// Append `"<key>": "<format>"` (with your own format) into object scope (json$buf)
-#define json$kstr(key, format, ...)                                                                \
-    _cex_json__buf__print_key(_json$buf_var, (key), "\"" format "\"", __VA_ARGS__)
+/// Append `"<key>": "<format>"` (with your own format) into object scope (jw$buf)
+#define jw$kstr(key, format, ...)                                                                  \
+    _cex_json__writer__print_key(_jw$buf_var, (key), "\"" format "\"", __VA_ARGS__)
 
-/// Append `"<key>": <format>` into object scope (json$buf)
-#define json$kval(key, format, ...)                                                                \
-    _cex_json__buf__print_key(_json$buf_var, (key), format, __VA_ARGS__)
+/// Append `"<key>": <format>` into object scope (jw$buf)
+#define jw$kval(key, format, ...) _cex_json__writer__print_key(_jw$buf_var, (key), format, __VA_ARGS__)
 
-void _cex_json__buf__clear(json_buf_c* jb);
-void _cex_json__buf__print(json_buf_c* jb, char* format, ...);
-void _cex_json__buf__print_item(json_buf_c* jb, char* format, ...);
-void _cex_json__buf__print_key(json_buf_c* jb, char* key, char* format, ...);
-json_buf_c* _cex__jsonbuf_print_scope_enter(json_buf_c* jb, JsonType_e scope_type);
-void _cex__jsonbuf_print_scope_exit(json_buf_c** jbptr);
+void _cex_json__writer__clear(json_writer_c* jb);
+void _cex_json__writer__print(json_writer_c* jb, char* format, ...);
+void _cex_json__writer__print_item(json_writer_c* jb, char* format, ...);
+void _cex_json__writer__print_key(json_writer_c* jb, char* key, char* format, ...);
+json_writer_c* _cex__jsonbuf_print_scope_enter(json_writer_c* jb, JsonType_e scope_type);
+void _cex__jsonbuf_print_scope_exit(json_writer_c** jbptr);
 
 
 /**
@@ -133,17 +146,17 @@ Low level JSON reader/writer namespace
 Making own JSON buffer:
 
 ```c
-json_buf_c jb;
+json_writer_c jb;
 e$ret(json.buf.create(&jb, 1024, 0, mem$));
-json$buf(&jb, JsonType__obj)
+jw$buf(&jb, JsonType__obj)
 {
-    json$kstr("foo2", "%d", 1);
-    json$kobj("foo3") {
-        json$kval("bar", "%s", "3");
+    jw$kstr("foo2", "%d", 1);
+    jw$kobj_scope("foo3") {
+        jw$kval("bar", "%s", "3");
     }
-    json$karr("foo3") {
-        json$val("%d", 8);
-        json$str("%d", 9);
+    jw$karr_scope("foo3") {
+        jw$val("%d", 8);
+        jw$str("%d", 9);
     }
 }
 >> json.buf.get(&jb) ->
@@ -165,21 +178,21 @@ Reading JSON buffer:
     e$ret(json.iter.create(&js, content.buf, 0, false));
     if (json.iter.next(&js)) { e$ret(json.iter.step_in(&js, JsonType__obj)); }
     while (json.iter.next(&js)) {
-        json$key_invalid (&js) {}
-        json$key_match (&js, "foo") {
+        jr$case_invalid (&js) {}
+        jr$case (&js, "foo") {
             e$ret(json.iter.step_in(&js, JsonType__obj));
             while (json.iter.next(&js)) {
-                json$key_invalid (&js) {}
-                json$key_match (&js, "fuzz") { e$ret(str$convert(js.val, &data.foo.fuzz)); }
-                json$key_match (&js, "baz") { e$ret(str$convert(js.val, &data.foo.baz)); }
-                json$key_unmatched(&js)
+                jr$case_invalid (&js) {}
+                jr$case (&js, "fuzz") { e$ret(str$convert(js.val, &data.foo.fuzz)); }
+                jr$case (&js, "baz") { e$ret(str$convert(js.val, &data.foo.baz)); }
+                jr$case_default(&js)
                 {
                     tassert_eq(js.key, str$s("oops"));
                 }
             }
         }
-        json$key_match (&js, "next") { e$ret(str$convert(js.val, &data.next)); }
-        json$key_match (&js, "baz") { e$ret(str$convert(js.val, &data.baz)); }
+        jr$case (&js, "next") { e$ret(str$convert(js.val, &data.next)); }
+        jr$case (&js, "baz") { e$ret(str$convert(js.val, &data.baz)); }
     }
     e$assert(js.error == EOK && "No parsing errors");
 
@@ -192,19 +205,8 @@ struct __cex_namespace__json {
 
 
     struct {
-        /// Create JSON buffer/builder container used with json$buf / json$fmt / json$kstr macros
-        Exception       (*create)(json_buf_c* jb, u32 capacity, u8 indent, IAllocator allc);
-        /// Destroy JSON buffer instance (not necessary to call if initialized on tmem$ allocator)
-        void            (*destroy)(json_buf_c* jb);
-        /// Get JSON buffer contents (NULL if any error occurred)
-        char*           (*get)(json_buf_c* jb);
-        /// Check if there is any error in JSON buffer
-        Exception       (*validate)(json_buf_c* jb);
-    } buf;
-
-    struct {
         /// Create new JSON reader (it doesn't allocate memory and uses content slicing)
-        Exception       (*create)(json_iter_c* it, char* content, usize content_len, bool strict_mode);
+        Exception       (*create)(json_iter_c* it, char* content, usize content_len, bool strict_mode_2);
         /// Get next JSON item for a scope
         bool            (*next)(json_iter_c* it);
         /// Make step inside JSON object or array scope (json.iter.next() starts emitting this scope)
@@ -212,6 +214,17 @@ struct __cex_namespace__json {
         /// Early step out from JSON scope (you must immediately break the loop/func after step out)
         Exception       (*step_out)(json_iter_c* it);
     } iter;
+
+    struct {
+        /// Create JSON buffer/builder container used with json$buf / json$fmt / json$kstr macros
+        Exception       (*create)(json_writer_c* jb, u32 capacity, u8 indent, IAllocator allc);
+        /// Destroy JSON buffer instance (not necessary to call if initialized on tmem$ allocator)
+        void            (*destroy)(json_writer_c* jb);
+        /// Get JSON buffer contents (NULL if any error occurred)
+        char*           (*get)(json_writer_c* jb);
+        /// Check if there is any error in JSON buffer
+        Exception       (*validate)(json_writer_c* jb);
+    } writer;
 
     // clang-format on
 };
