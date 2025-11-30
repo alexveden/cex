@@ -41,6 +41,7 @@ cex_json__reader__create(json_reader_c* it, char* content, usize content_len, js
         },
     };
     if (it->_impl.lexer.content == it->_impl.lexer.content_end) { return Error.empty; }
+    json.reader.next(it);
     return EOK;
 }
 
@@ -172,10 +173,16 @@ cex_json__reader__next(json_reader_c* it)
                     t = $next_tok();
                     if (t.type == CexTkn__rbrace) {
                         goto parse_generic;
-                    } else if (t.type != CexTkn__string) {
+                    } else if (t.type != CexTkn__string && t.type != CexTkn__ident) {
                         goto error_unexpected;
                     }
                     fallthrough(); // we get another key: value
+                }
+                case CexTkn__ident: {
+                    if (it->_impl.strict_mode) {
+                        goto error_unexpected;
+                    }
+                    fallthrough();
                 }
                 case CexTkn__string: {
                     // Getting key of a object

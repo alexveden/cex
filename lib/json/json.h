@@ -8,7 +8,6 @@
     ({                                                                                             \
         json_reader_kw _kwargs = { kwargs };                                                       \
         (json_reader)->error = json.reader.create((json_reader), (content), (len), &_kwargs);      \
-        if ((json_reader)->error == EOK) { json.reader.next(json_reader); }                        \
     })
 
 
@@ -17,6 +16,7 @@
 #define _jr$foreach_impl(_1, _2, _3, NAME, ...) NAME
 
 #define _jr$foreach_arr(_val, json_reader)                                                         \
+    (void)_val;                                                                                    \
     if ((json_reader)->error == EOK) {                                                             \
         (json_reader)->error = json.reader.step_in((json_reader), JsonType__arr);                  \
     }                                                                                              \
