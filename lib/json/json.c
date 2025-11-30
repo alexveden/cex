@@ -29,10 +29,8 @@ cex_json__reader__create(json_reader_c* it, char* content, usize content_len, js
     uassert(it != NULL);
     if (content == NULL) { return Error.argument; }
 
-    bool strict_mode = false; 
-    if (kwargs != NULL) {
-        strict_mode = kwargs->strict_mode;
-    }
+    bool strict_mode = false;
+    if (kwargs != NULL) { strict_mode = kwargs->strict_mode; }
 
     *it = (json_reader_c){
         ._impl = {
@@ -173,14 +171,20 @@ cex_json__reader__next(json_reader_c* it)
                     t = $next_tok();
                     if (t.type == CexTkn__rbrace) {
                         goto parse_generic;
-                    } else if (t.type != CexTkn__string && t.type != CexTkn__ident) {
+                    } else if (t.type != CexTkn__string && t.type != CexTkn__ident &&
+                               t.type != CexTkn__char) {
                         goto error_unexpected;
                     }
                     fallthrough(); // we get another key: value
                 }
+                case CexTkn__char:
                 case CexTkn__ident: {
-                    if (it->_impl.strict_mode) {
-                        goto error_unexpected;
+                    // NOTE: it->_impl.curr_token != CexTkn__string because of fallthrough()
+                    if (t.type != CexTkn__string && it->_impl.strict_mode &&
+                        (it->_impl.prev_token == CexTkn__comma ||
+                         it->_impl.prev_token == CexTkn__unk)) {
+                        it->error = "Keys without double quotes (strict mode)";
+                        goto error;
                     }
                     fallthrough();
                 }

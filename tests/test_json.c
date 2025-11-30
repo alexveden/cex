@@ -91,11 +91,6 @@ test$case(json_reader_macro_proto)
     }
 
 fail:
-    if (js.error) {
-        // We can report JSON file, line:col + error message
-        return Error.runtime;
-    }
-
     tassert_er(js.error, EOK);
 
     tassert_eq(data.next, 1 + 2 + 3);
@@ -200,10 +195,10 @@ test$case(json_reader_low_level_next_empty_str)
 }
 
 
-
 test$case(json_reader_low_level_json5_key_names)
 {
-    struct Items {
+    struct Items
+    {
         u32 qty;
         f32 price;
     };
@@ -214,9 +209,7 @@ test$case(json_reader_low_level_json5_key_names)
     } data = { 0 };
     (void)data;
 
-    str_s content = str$s(
-        "{ items : [{qty: 1, price: 123}, {qty: -100, price: 999}]  }"
-    );
+    str_s content = str$s("{ items : [{qty: 1, price: 123}, {qty: -100, price: 999}]  }");
 
     json_reader_c js;
     e$ret(json.reader.create(&js, content.buf, content.len, NULL));
@@ -229,13 +222,169 @@ test$case(json_reader_low_level_json5_key_names)
             tassert_eq(js.type, JsonType__arr);
             e$ret(json.reader.step_in(&js, JsonType__arr));
             while (json.reader.next(&js)) {
-                io.printf("--type=%d key=%S val=%S\n", js.type,  js.key, js.val);
+                io.printf("--type=%d key=%S val=%S\n", js.type, js.key, js.val);
             }
         }
     }
     tassert_er(js.error, EOK);
-    tassert(false);
 
     return EOK;
 }
+
+test$case(json_reader_array_of_objects)
+{
+    struct Item
+    {
+        i32 qty;
+        f32 price;
+    };
+
+    arr$(struct Item) items = arr$new(items, mem$);
+
+    str_s content = str$s("{ items : [{qty: 1, price: 123}, {qty: -100, price: 999}]  }");
+
+    json_reader_c js;
+    jr$new(&js, content.buf, content.len, .strict_mode = false);
+    jr$foreach(k, v, &js)
+    {
+        (void)v;
+        if (str$eq(k, "items")) {
+            jr$foreach(it, &js)
+            {
+                (void)it;
+                struct Item i = { 0 };
+                jr$foreach(k, v, &js)
+                {
+                    io.printf("k=%S, v=%S\n", k, v);
+                    if (str$eq(k, "qty")) { e$goto(str$convert(v, &i.qty), end); }
+                    else if (str$eq(k, "price")) { e$goto(str$convert(v, &i.price), end); }
+                }
+
+                arr$push(items, i);
+            }
+        }
+    }
+
+end:
+    tassert_er(js.error, EOK);
+
+    tassert_eq(arr$len(items), 2);
+    tassert_eq(items[0].price, 123);
+    tassert_eq(items[0].qty, 1);
+    tassert_eq(items[1].price, 999);
+    tassert_eq(items[1].qty, -100);
+
+    arr$free(items);
+
+    return EOK;
+}
+
+test$case(json_reader_strict_mode_keys)
+{
+
+    str_s content = str$s("{ \"items\" : 1, \"foo\": 2  }");
+
+    json_reader_c js;
+    jr$new(&js, content.buf, content.len, .strict_mode = true);
+
+    bool has_items = false;
+    bool has_foo = false;
+    jr$foreach(k, v, &js)
+    {
+        (void)v;
+        if (str$eq(k, "items")) {
+            has_items = true;
+        }
+        else if (str$eq(k, "foo")) {
+            has_foo = true;
+        }
+    }
+    tassert_er(js.error, EOK);
+    tassert_eq(has_items, true);
+    tassert_eq(has_foo, true);
+
+    return EOK;
+}
+
+test$case(json_reader_strict_mode_keys_bad_start)
+{
+
+    str_s content = str$s("{ items : 1, \"foo\": 2  }");
+
+    json_reader_c js;
+    jr$new(&js, content.buf, content.len, .strict_mode = true);
+
+    bool has_items = false;
+    bool has_foo = false;
+    jr$foreach(k, v, &js)
+    {
+        (void)v;
+        if (str$eq(k, "items")) {
+            has_items = true;
+        }
+        else if (str$eq(k, "foo")) {
+            has_foo = true;
+        }
+    }
+    tassert_er(js.error, "Keys without double quotes (strict mode)");
+    tassert_eq(has_items, false);
+    tassert_eq(has_foo, false);
+
+    return EOK;
+}
+
+test$case(json_reader_strict_mode_keys_bad_following)
+{
+
+    str_s content = str$s("{ \"items\" : 1, foo: 2  }");
+
+    json_reader_c js;
+    jr$new(&js, content.buf, content.len, .strict_mode = true);
+
+    bool has_items = false;
+    bool has_foo = false;
+    jr$foreach(k, v, &js)
+    {
+        (void)v;
+        if (str$eq(k, "items")) {
+            has_items = true;
+        }
+        else if (str$eq(k, "foo")) {
+            has_foo = true;
+        }
+    }
+    tassert_er(js.error, "Keys without double quotes (strict mode)");
+    tassert_eq(has_items, true);
+    tassert_eq(has_foo, false);
+
+    return EOK;
+}
+
+test$case(json_reader_json5_single_quote_keys)
+{
+
+    str_s content = str$s("{ 'items' : 1, 'foo': 2  }");
+
+    json_reader_c js;
+    jr$new(&js, content.buf, content.len, .strict_mode = false);
+
+    bool has_items = false;
+    bool has_foo = false;
+    jr$foreach(k, v, &js)
+    {
+        (void)v;
+        if (str$eq(k, "items")) {
+            has_items = true;
+        }
+        else if (str$eq(k, "foo")) {
+            has_foo = true;
+        }
+    }
+    tassert_er(js.error, EOK);
+    tassert_eq(has_items, true);
+    tassert_eq(has_foo, true);
+
+    return EOK;
+}
+
 test$main();
