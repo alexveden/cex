@@ -394,7 +394,7 @@ _cex__jsonbuf_indent(json_writer_c* jw, bool last_item)
         if (jw->indent_width) { $print("\n", ""); }
     } else {
         if (!last_item) {
-            if (jw->indent_width) { $print("\n", ""); }
+            if (jw->indent_width && jw->scope_depth) { $print("\n", ""); }
         } else {
             // skipping indent for empty obj/arr -> {} or []
             return;

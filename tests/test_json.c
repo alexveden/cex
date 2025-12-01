@@ -363,8 +363,8 @@ test$case(json_writer_macro_proto)
         json_writer_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         (void)buf;
-        // tassert_er(EOK, jw$new(&jb, buf));
-        tassert_er(EOK, jw$new(&jb, stdout, .indent = 4));
+        tassert_er(EOK, jw$new(&jb, buf, .indent = 4));
+        // tassert_er(EOK, jw$new(&jb, stdout, .indent = 0));
 
         jw$buf(&jb, JsonType__obj)
         {
@@ -386,11 +386,11 @@ test$case(json_writer_macro_proto)
             {
                 jw$kval("zoo", "%d", 1);
             }
-            
             jw$karr_scope("arr_empty"){}
             jw$kobj_scope("obj_empty"){}
         }
-        // io.printf("JSON: \n`%s`", buf);
+
+        io.printf("\nJSON (buf): \n`%s`", buf);
         tassert_er(EOK, jb.error);
         tassert(false);
         // tassert_eq(jb.buf, json.writer.get(&jb));
