@@ -1,5 +1,36 @@
 #include "json.h"
 
+/* TEMP MACROS - for private implementation*/
+#define $scope_obj (1 << 1)
+#define $scope_arr (1 << 2)
+#define $scope_has_items (1 << 3)
+
+#define $print(format, ...) /* temp macro */                                                       \
+    ({                                                                                             \
+        if (jw->error == EOK) {                                                                    \
+            if (jw->buf) {                                                                         \
+                Exc err = sbuf.appendf(&jw->buf, format, __VA_ARGS__);                             \
+                if (unlikely(err != EOK && jw->error == EOK)) { jw->error = err; }                 \
+            } else if (jw->stream) {                                                               \
+                io.fprintf(jw->stream, format, __VA_ARGS__);                                       \
+            }                                                                                      \
+        }                                                                                          \
+    })
+
+#define $printva() /* temp macro! */                                                               \
+    if (jw->error == EOK) {                                                                        \
+        va_list va;                                                                                \
+        va_start(va, format);                                                                      \
+        if (jw->buf) {                                                                             \
+            Exc err = sbuf.appendfva(&jw->buf, format, va);                                        \
+            if (unlikely(err != EOK && jw->error != EOK)) { jw->error = err; }                     \
+        } else if (jw->stream) {                                                                   \
+            int result = cexsp__vfprintf(jw->stream, format, va);                                  \
+            if (result == -1) { jw->error = Error.io; }                                            \
+        }                                                                                          \
+        va_end(va);                                                                                \
+    }
+
 #define $next_tok() /* TEMP MACRO */                                                               \
     ({                                                                                             \
         cex_token_s _tok = CexParser.next_token(&it->_impl.lexer);                                 \
@@ -65,11 +96,11 @@ cex_json__reader__step_in(json_reader_c* it, JsonType_e expected_type)
 
     if (it->type == JsonType__obj) {
         uassert(it->_impl.curr_token == CexTkn__lbrace);
-        it->_impl.scope_stack[it->_impl.scope_depth] = '{';
+        it->_impl.scope_stack[it->_impl.scope_depth] = $scope_obj;
         it->_impl.scope_depth++;
     } else if (it->type == JsonType__arr) {
         uassert(it->_impl.curr_token == CexTkn__lbracket);
-        it->_impl.scope_stack[it->_impl.scope_depth] = '[';
+        it->_impl.scope_stack[it->_impl.scope_depth] = $scope_arr;
         it->_impl.scope_depth++;
     } else {
         // return json.reader.next(it);
@@ -159,7 +190,7 @@ cex_json__reader__next(json_reader_c* it)
         }
     }
     if (it->_impl.scope_depth > 0) {
-        if (it->_impl.scope_stack[it->_impl.scope_depth - 1] == '{') {
+        if (it->_impl.scope_stack[it->_impl.scope_depth - 1] == $scope_obj) {
             // OBJECT: {"foo": "bar"}
             switch (t.type) {
                 case CexTkn__comma: {
@@ -201,7 +232,7 @@ cex_json__reader__next(json_reader_c* it)
                     goto parse_generic;
                 }
             }
-        } else if (it->_impl.scope_stack[it->_impl.scope_depth - 1] == '[') {
+        } else if (it->_impl.scope_stack[it->_impl.scope_depth - 1] == $scope_arr) {
             // ARRAY: ["foo", "bar"]
             switch (t.type) {
                 case CexTkn__rbracket: {
@@ -241,12 +272,12 @@ parse_generic:
         }
         case CexTkn__rbrace: {
             if (it->_impl.scope_depth > 0 &&
-                it->_impl.scope_stack[it->_impl.scope_depth - 1] == '{') {
+                it->_impl.scope_stack[it->_impl.scope_depth - 1] & $scope_obj) {
                 if (it->_impl.strict_mode && it->_impl.prev_token == CexTkn__comma) {
                     it->error = "Ending comma in object";
                     goto error;
                 }
-                it->_impl.scope_stack[it->_impl.scope_depth - 1] = '\0';
+                it->_impl.scope_stack[it->_impl.scope_depth - 1] = 0;
                 it->_impl.scope_depth--;
                 it->type = JsonType__eos;
                 it->val = (str_s){ 0 };
@@ -258,12 +289,12 @@ parse_generic:
         }
         case CexTkn__rbracket: {
             if (it->_impl.scope_depth > 0 &&
-                it->_impl.scope_stack[it->_impl.scope_depth - 1] == '[') {
+                it->_impl.scope_stack[it->_impl.scope_depth - 1] & $scope_arr) {
                 if (it->_impl.strict_mode && it->_impl.prev_token == CexTkn__comma) {
                     it->error = "Ending comma in array";
                     goto error;
                 }
-                it->_impl.scope_stack[it->_impl.scope_depth - 1] = '\0';
+                it->_impl.scope_stack[it->_impl.scope_depth - 1] = 0;
                 it->_impl.scope_depth--;
                 it->type = JsonType__eos;
                 it->val = (str_s){ 0 };
@@ -352,29 +383,40 @@ error:
     goto end;
 }
 
-#define $print(format, ...) /* temp macro */                                                       \
-    ({                                                                                             \
-        if (jb->error == EOK) {                                                                    \
-            Exc err = sbuf.appendf(&jb->buf, format, __VA_ARGS__);                                 \
-            if (unlikely(err != EOK && jb->error == EOK)) { jb->error = err; }                     \
-        }                                                                                          \
-    })
-
-#define $printva() /* temp macro! */                                                               \
-    if (jb->error == EOK) {                                                                        \
-        va_list va;                                                                                \
-        va_start(va, format);                                                                      \
-        Exc err = sbuf.appendfva(&jb->buf, format, va);                                            \
-        if (unlikely(err != EOK && jb->error != EOK)) { jb->error = err; }                         \
-        va_end(va);                                                                                \
+void
+_cex__jsonbuf_indent(json_writer_c* jw, bool last_item)
+{
+    if (unlikely(jw->error != EOK)) { return; }
+    if (jw->scope_depth && jw->scope_stack[jw->scope_depth - 1] & $scope_has_items){
+        if (!last_item) {
+             $print(", ", ""); 
+        }
+        if (jw->indent_width) { $print("\n", ""); }
+    } else {
+        if (!last_item) {
+            if (jw->indent_width) { $print("\n", ""); }
+        } else {
+            // skipping indent for empty obj/arr -> {} or []
+            return;
+        }
     }
-
+    for (u32 i = 0; i < jw->indent; i++) { $print(" ", ""); }
+}
 
 void
-_cex__jsonbuf_indent(json_writer_c* jb)
+_cex_json__writer__set_buf(json_writer_kw* kwargs, void* sbuf)
 {
-    if (unlikely(jb->error != EOK)) { return; }
-    for (u32 i = 0; i < jb->indent; i++) { $print(" ", ""); }
+    uassert(kwargs);
+    uassert(sbuf);
+    kwargs->buf = sbuf;
+}
+
+void
+_cex_json__writer__set_stream(json_writer_kw* kwargs, void* stream)
+{
+    uassert(kwargs);
+    uassert(stream);
+    kwargs->stream = stream;
 }
 
 /**
@@ -387,15 +429,22 @@ _cex__jsonbuf_indent(json_writer_c* jb)
  * @return
  */
 Exception
-cex_json__writer__create(json_writer_c* jb, u32 capacity, u8 indent, IAllocator allc)
+cex_json__writer__create(json_writer_c* jw, json_writer_kw* kwargs)
 {
-    e$assert(jb != NULL);
-    e$assert(allc != NULL);
+    e$assert(jw != NULL);
+    e$assert(kwargs != NULL);
 
-    *jb = (json_writer_c){
-        .indent_width = indent,
-        .buf = sbuf.create(capacity, allc),
+    if (kwargs->buf == NULL && kwargs->stream == NULL) { return "Empty buf and stream kwargs"; }
+    if (kwargs->buf != NULL && kwargs->stream != NULL) {
+        return "buf and stream kwargs are mutually exclusive";
+    }
+
+    *jw = (json_writer_c){
+        .indent_width = kwargs->indent,
+        .buf = kwargs->buf,
+        .stream = kwargs->stream,
     };
+
     return EOK;
 }
 
@@ -405,11 +454,11 @@ cex_json__writer__create(json_writer_c* jb, u32 capacity, u8 indent, IAllocator 
  * @param jb
  */
 void
-cex_json__writer__destroy(json_writer_c* jb)
+cex_json__writer__destroy(json_writer_c* jw)
 {
-    if (jb != NULL) {
-        if (jb->buf != NULL) { sbuf.destroy(&jb->buf); }
-        memset(jb, 0, sizeof(*jb));
+    if (jw != NULL) {
+        if (jw->buf != NULL) { sbuf.destroy(&jw->buf); }
+        memset(jw, 0, sizeof(*jw));
     }
 }
 
@@ -420,12 +469,12 @@ cex_json__writer__destroy(json_writer_c* jb)
  * @return
  */
 char*
-cex_json__writer__get(json_writer_c* jb)
+cex_json__writer__get(json_writer_c* jw)
 {
-    if (jb->error != EOK) {
+    if (jw->error != EOK) {
         return NULL;
     } else {
-        return jb->buf;
+        return jw->buf;
     }
 }
 
@@ -436,139 +485,110 @@ cex_json__writer__get(json_writer_c* jb)
  * @return
  */
 Exception
-cex_json__writer__validate(json_writer_c* jb)
+cex_json__writer__validate(json_writer_c* jw)
 {
-    return jb->error;
+    return jw->error;
 }
 
 void
-_cex_json__writer__clear(json_writer_c* jb)
+_cex_json__writer__reset_scope(json_writer_c* jw)
 {
-    uassert(jb);
-    uassert(jb->buf != NULL && "uninitialized or already destroyed");
+    // Prevent indent + comma on the next write
+    if (jw->scope_depth && jw->scope_stack[jw->scope_depth - 1]) {
+        jw->scope_stack[jw->scope_depth - 1] &= ~$scope_has_items;
+    }
+}
+void
+_cex_json__writer__print(json_writer_c* jw, char* format, ...)
+{
+    _cex__jsonbuf_indent(jw, false);
+    $printva();
 
-    sbuf.clear(&jb->buf);
-    jb->indent = 0;
-    jb->error = EOK;
-    if (jb->scope_depth > 0) {
-        jb->scope_depth = 0;
-        memset(jb->scope_stack, 0, sizeof(jb->scope_stack));
+    if (jw->scope_depth && jw->scope_stack[jw->scope_depth - 1]) {
+        jw->scope_stack[jw->scope_depth - 1] |= $scope_has_items;
     }
 }
 
 void
-_cex_json__writer__print(json_writer_c* jb, char* format, ...)
-{
-    _cex__jsonbuf_indent(jb);
-    $printva();
-}
-
-void
-_cex_json__writer__print_item(json_writer_c* jb, char* format, ...)
+_cex_json__writer__print_item(json_writer_c* jw, char* format, ...)
 {
     uassertf(
-        jb->scope_depth > 0 && jb->scope_stack[jb->scope_depth - 1] == '[',
+        jw->scope_depth > 0 && jw->scope_stack[jw->scope_depth - 1] & $scope_arr,
         "Expected to be in json array scope"
     );
-    _cex__jsonbuf_indent(jb);
+    _cex__jsonbuf_indent(jw, false);
     $printva();
-    $print(",%s", (jb->indent_width > 0) ? "\n" : " ");
+    if (jw->scope_depth && jw->scope_stack[jw->scope_depth - 1]) {
+        jw->scope_stack[jw->scope_depth - 1] |= $scope_has_items;
+    }
 }
 
 void
-_cex_json__writer__print_key(json_writer_c* jb, char* key, char* format, ...)
+_cex_json__writer__print_key(json_writer_c* jw, char* key, char* format, ...)
 {
     uassertf(
-        jb->scope_depth > 0 && jb->scope_stack[jb->scope_depth - 1] == '{',
+        jw->scope_depth > 0 && jw->scope_stack[jw->scope_depth - 1] & $scope_obj,
         "Expected to be in json object scope"
     );
-    _cex__jsonbuf_indent(jb);
+    _cex__jsonbuf_indent(jw, false);
     $print("\"%s\": ", key);
     $printva();
-    $print(",%s", (jb->indent_width > 0) ? "\n" : " ");
+    if (jw->scope_depth && jw->scope_stack[jw->scope_depth - 1]) {
+        jw->scope_stack[jw->scope_depth - 1] |= $scope_has_items;
+    }
 }
 
 json_writer_c*
-_cex__jsonbuf_print_scope_enter(json_writer_c* jb, JsonType_e scope_type)
+_cex__jsonbuf_print_scope_enter(json_writer_c* jw, JsonType_e scope_type, bool should_indent)
 {
-    usize slen = sbuf.len(&jb->buf);
-    if (slen && jb->buf[slen - 1] == '\n') { _cex__jsonbuf_indent(jb); }
+    if (should_indent) { _cex__jsonbuf_indent(jw, false); }
+
     if (scope_type == JsonType__obj) {
-        $print("%c%s", '{', (jb->indent_width > 0) ? "\n" : "");
-        if (jb->scope_depth <= sizeof(jb->scope_stack) - 1) {
-            jb->scope_stack[jb->scope_depth] = '{';
-            jb->scope_depth++;
+        $print("%c", '{');
+        if (jw->scope_depth <= sizeof(jw->scope_stack) - 1) {
+            jw->scope_stack[jw->scope_depth] = $scope_obj;
+            jw->scope_depth++;
         } else {
-            jb->error = "Scope overflow";
+            jw->error = "Scope overflow";
         }
     } else if (scope_type == JsonType__arr) {
-        $print("%c%s", '[', (jb->indent_width > 0) ? "\n" : "");
-        if (jb->scope_depth <= sizeof(jb->scope_stack) - 1) {
-            jb->scope_stack[jb->scope_depth] = '[';
-            jb->scope_depth++;
+        $print("%c", '[');
+        if (jw->scope_depth <= sizeof(jw->scope_stack) - 1) {
+            jw->scope_stack[jw->scope_depth] = $scope_arr;
+            jw->scope_depth++;
         } else {
-            jb->error = "Scope overflow";
+            jw->error = "Scope overflow";
         }
     } else {
         unreachable();
     }
-    jb->indent += jb->indent_width;
-    return jb;
+    jw->indent += jw->indent_width;
+    return jw;
 }
 
 void
 _cex__jsonbuf_print_scope_exit(json_writer_c** jbptr)
 {
     uassert(*jbptr != NULL);
-    json_writer_c* jb = *jbptr;
+    json_writer_c* jw = *jbptr;
 
-    if (jb->indent >= jb->indent_width) { jb->indent -= jb->indent_width; }
-    if (jb->scope_depth > 0) {
-        // Removing last comma
-        usize slen = sbuf.len(&jb->buf);
-        if (slen > 0) {
-            bool has_new_line = false;
-            for (u32 i = slen; --i > 0;) {
-                char c = jb->buf[i];
-                switch (c) {
-                    case '\n':
-                        has_new_line = true;
-                        break;
-                    case ' ':
-                    case '\t':
-                    case '\r':
-                        break; // skip whitespace
-                    case ',':
-                        sbuf.shrink(&jb->buf, i);
-                        if (has_new_line) {
-                            e$except_silent (err, sbuf.append(&jb->buf, "\n")) {
-                                if (jb->error == EOK) { jb->error = err; }
-                            }
-                        }
-                        goto loop_break;
-                    default:
-                        goto loop_break;
-                }
-            }
-        }
-    loop_break:
-        _cex__jsonbuf_indent(jb);
+    if (jw->indent >= jw->indent_width) { jw->indent -= jw->indent_width; }
+    if (jw->scope_depth > 0) {
+        _cex__jsonbuf_indent(jw, true);
 
-        $print(
-            "%c%s%s",
-            (jb->scope_stack[jb->scope_depth - 1] == '[') ? ']' : '}',
-            (jb->scope_depth > 1) ? "," : "",
-            (jb->indent_width > 0) ? "\n" : ""
-        );
-        jb->scope_depth--;
+        $print("%c", (jw->scope_stack[jw->scope_depth - 1] & $scope_arr) ? ']' : '}');
+        jw->scope_depth--;
     } else {
-        jb->error = "Scope overflow";
+        jw->error = "Scope overflow";
     }
 }
 
 #undef $next_tok /* TEMP MACRO */
 #undef $print
 #undef $printva
+#undef $scope_obj
+#undef $scope_arr
+#undef $scope_has_items
 
 const struct __cex_namespace__json json = {
     // Autogenerated by CEX

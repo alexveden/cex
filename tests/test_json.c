@@ -8,39 +8,7 @@
 // test$setup_suite() {return EOK;}
 // test$teardown_suite() {return EOK;}
 
-test$case(json_writer_macro_proto)
-{
-    mem$scope(tmem$, _)
-    {
-        json_writer_c jb;
-        tassert_er(EOK, json.writer.create(&jb, 1024, 4, _));
-        jw$buf(&jb, JsonType__obj)
-        {
-            jw$fmt("// How about a comment? %d\n", 2);
-            jw$kstr("foo2", "%d", 1);
-            jw$kval("foo3", "%d", 4);
-            jw$karr_scope("bar")
-            {
-                jw$str("%s", "foo");
-                jw$val("%d", 39);
-                jw$arr_scope()
-                {
-                    for (u32 i = 0; i < 10; i++) { jw$val("%d", i); }
-                }
-            }
-            jw$kobj_scope("far")
-            {
-                jw$fmt("\"%s_%d\": %d,\n", "mykey", 2, 77);
-                jw$kval("zoo", "%d", 1);
-            }
-        }
-        io.printf("JSON: \n`%s`", jb.buf);
-        // tassert(false);
-        tassert_eq(jb.buf, json.writer.get(&jb));
-        tassert_er(EOK, jb.error);
-    }
-    return EOK;
-}
+
 
 
 test$case(json_reader_macro_proto)
@@ -256,8 +224,11 @@ test$case(json_reader_array_of_objects)
                 jr$foreach(k, v, &js)
                 {
                     io.printf("k=%S, v=%S\n", k, v);
-                    if (str$eq(k, "qty")) { e$goto(str$convert(v, &i.qty), end); }
-                    else if (str$eq(k, "price")) { e$goto(str$convert(v, &i.price), end); }
+                    if (str$eq(k, "qty")) {
+                        e$goto(str$convert(v, &i.qty), end);
+                    } else if (str$eq(k, "price")) {
+                        e$goto(str$convert(v, &i.price), end);
+                    }
                 }
 
                 arr$push(items, i);
@@ -294,8 +265,7 @@ test$case(json_reader_strict_mode_keys)
         (void)v;
         if (str$eq(k, "items")) {
             has_items = true;
-        }
-        else if (str$eq(k, "foo")) {
+        } else if (str$eq(k, "foo")) {
             has_foo = true;
         }
     }
@@ -321,8 +291,7 @@ test$case(json_reader_strict_mode_keys_bad_start)
         (void)v;
         if (str$eq(k, "items")) {
             has_items = true;
-        }
-        else if (str$eq(k, "foo")) {
+        } else if (str$eq(k, "foo")) {
             has_foo = true;
         }
     }
@@ -348,8 +317,7 @@ test$case(json_reader_strict_mode_keys_bad_following)
         (void)v;
         if (str$eq(k, "items")) {
             has_items = true;
-        }
-        else if (str$eq(k, "foo")) {
+        } else if (str$eq(k, "foo")) {
             has_foo = true;
         }
     }
@@ -375,8 +343,7 @@ test$case(json_reader_json5_single_quote_keys)
         (void)v;
         if (str$eq(k, "items")) {
             has_items = true;
-        }
-        else if (str$eq(k, "foo")) {
+        } else if (str$eq(k, "foo")) {
             has_foo = true;
         }
     }
@@ -387,4 +354,47 @@ test$case(json_reader_json5_single_quote_keys)
     return EOK;
 }
 
+
+
+test$case(json_writer_macro_proto)
+{
+    mem$scope(tmem$, _)
+    {
+        json_writer_c jb;
+        sbuf_c buf = sbuf.create(1024, _);
+        (void)buf;
+        // tassert_er(EOK, jw$new(&jb, buf));
+        tassert_er(EOK, jw$new(&jb, stdout, .indent = 4));
+
+        jw$buf(&jb, JsonType__obj)
+        {
+            // jw$fmt("// How about a comment? %d\n", 2);
+            jw$kstr("foo2", "%d", 1);
+            jw$kval("foo3", "%d", 4);
+            jw$karr_scope("bar")
+            {
+                jw$str("%s", "foo");
+                jw$val("%d", 39);
+                jw$arr_scope()
+                {
+                    for (u32 i = 0; i < 10; i++) { jw$val("%d", i); }
+                }
+                jw$obj_scope() {}
+                jw$arr_scope() {}
+            }
+            jw$kobj_scope("far")
+            {
+                jw$kval("zoo", "%d", 1);
+            }
+            
+            jw$karr_scope("arr_empty"){}
+            jw$kobj_scope("obj_empty"){}
+        }
+        // io.printf("JSON: \n`%s`", buf);
+        tassert_er(EOK, jb.error);
+        tassert(false);
+        // tassert_eq(jb.buf, json.writer.get(&jb));
+    }
+    return EOK;
+}
 test$main();
