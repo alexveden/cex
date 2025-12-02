@@ -102,12 +102,20 @@ typedef struct json_writer_c
     ({                                                                                             \
         char* format = _Generic(                                                                   \
             json_compatible_val,                                                                   \
+            u8: "%d",                                                                             \
+            i8: "%d",                                                                             \
+            i16: "%d",                                                                             \
+            u16: "%d",                                                                             \
+            i32: "%d",                                                                             \
+            u32: "%u",                                                                             \
+            i64: "%ld",                                                                             \
+            u64: "%lu",                                                                             \
             f32: "%f",                                                                             \
             f64: "%f",                                                                             \
-            u32: "%d",                                                                             \
-            i32: "%d",                                                                             \
+            char: "\"%c\"",                                                                             \
             _Bool: "%d",                                                                           \
             str_s: "\"%S\"",                                                                       \
+            const char*: "\"%s\"",                                                                        \
             char*: "\"%s\""                                                                        \
         );                                                                                         \
         _cex_json__writer__print_item(jw$scope_var, format, json_compatible_val);                  \

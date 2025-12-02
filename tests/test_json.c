@@ -1,6 +1,8 @@
 #define CEX_IMPLEMENTATION
 #define CEX_TEST
 #include "cex.h"
+#include <stdint.h>
+#include <math.h>
 #include "lib/json/json.c"
 
 // test$setup_case() {return EOK;}
@@ -523,6 +525,96 @@ test$case(json_writer_multi_func_concept)
         tassert_eq(buf, expected);
     }
 
+    return EOK;
+}
+
+test$case(json_writer_val_types)
+{
+    mem$scope(tmem$, _)
+    {
+        json_writer_c jb;
+        sbuf_c buf = sbuf.create(1024, _);
+        (void)buf;
+        tassert_er(EOK, jw$new(&jb, .buf = buf, .indent = 4));
+
+        jw$scope(&jb, JsonType__arr)
+        {
+            u8 v1 = UINT8_MAX; 
+            jw$val(v1);
+            i8 v2 = INT8_MIN; 
+            jw$val(v2);
+            i16 v3 = INT16_MIN; 
+            jw$val(v3);
+            u16 v4 = UINT16_MAX; 
+            jw$val(v4);
+            i32 v5 = INT32_MIN; 
+            jw$val(v5);
+            u32 v6 = UINT32_MAX; 
+            jw$val(v6);
+            i64 v7 = INT64_MIN;
+            jw$val(v7);
+            u64 v8 = UINT64_MAX;
+            jw$val(v8);
+            char v9 = '@';
+            jw$val(v9);
+            f32 v10 = HUGE_VAL;
+            jw$val(v10);
+            f32 v11 = -HUGE_VAL;
+            jw$val(v11);
+            f32 v12 = NAN;
+            jw$val(v12);
+            f64 v13 = HUGE_VAL;
+            jw$val(v13);
+            f64 v14 = -HUGE_VAL;
+            jw$val(v14);
+            f64 v15 = NAN;
+            jw$val(v15);
+            bool v16 = true;
+            jw$val(v16);
+
+            const char* s1 = "const"; 
+            jw$val(s1);
+            char* s2 = "str"; 
+            jw$val(s2);
+            str_s s3 = str$s("str_s"); 
+            jw$val(s3);
+            char* s4 = NULL; 
+            jw$val(s4);
+
+            // usize v17 = SIZE_MAX;
+            // jw$val(v17);
+            // isize v18 = PTRDIFF_MIN;
+            // jw$val(v18);
+        }
+
+        tassert_er(EOK, jb.error);
+        io.printf("\nJSON (buf): \n%s\n", buf);
+        print_json_expected(buf);
+
+        char* expected = "[\n\
+    255, \n\
+    -128, \n\
+    -32768, \n\
+    65535, \n\
+    -2147483648, \n\
+    4294967295, \n\
+    -9223372036854775808, \n\
+    18446744073709551615, \n\
+    \"@\", \n\
+    inf, \n\
+    -inf, \n\
+    nan, \n\
+    inf, \n\
+    -inf, \n\
+    nan, \n\
+    1, \n\
+    \"const\", \n\
+    \"str\", \n\
+    \"str_s\", \n\
+    \"(null)\"\n\
+]";
+        tassert_eq(buf, expected);
+    }
     return EOK;
 }
 test$main();
