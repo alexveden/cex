@@ -8,13 +8,14 @@
 // test$setup_suite() {return EOK;}
 // test$teardown_suite() {return EOK;}
 
-
-void print_json_expected(sbuf_c s) {
+void
+print_json_expected(sbuf_c s)
+{
     uassert(s);
 
     io.printf("char* expected = \"");
-    for$each(c, s, sbuf.len(&s)) {
-        switch(c){
+    for$each (c, s, sbuf.len(&s)) {
+        switch (c) {
             case '\n':
                 io.printf("\\n\\");
                 break;
@@ -28,19 +29,124 @@ void print_json_expected(sbuf_c s) {
     io.printf("\";");
 }
 
+typedef struct Foo
+{
+    struct
+    {
+        u32 baz;
+        u32 fuzz;
+    } foo;
+    u32 next;
+    u32 baz;
+} Foo;
+
+typedef struct Stock
+{
+    char* ticker;
+    u32 id;
+} Stock;
+
+typedef struct Order
+{
+    u32 qty;
+    f32 price;
+    Stock* stock;
+} Order;
+
+
+Exception
+print_stock(json_writer_c* jw$var, Stock* stk)
+{
+    json_writer_c _jw;
+    if (!jw$var) {
+        e$ret(jw$new(&_jw, stdout, .indent = 4));
+        jw$var = &_jw;
+    }
+    jw$scope(jw$var, JsonType__obj)
+    {
+        jw$key("ticker");
+        jw$val(stk->ticker);
+
+        jw$key("id");
+        jw$val(stk->id);
+    }
+
+    return EOK;
+}
+
+Exception
+print_order(json_writer_c* jw, Order* ord)
+{
+    json_writer_c _jw;
+    if (!jw) {
+        e$ret(jw$new(&_jw, stdout, .indent = 4));
+        jw = &_jw;
+    }
+    jw$scope(jw, JsonType__obj)
+    {
+        jw$key("price");
+        jw$val(ord->price);
+
+        jw$key("qty");
+        jw$val(ord->qty);
+
+
+        jw$key("name");
+        jw$val("foo");
+
+        jw$key("name");
+        jw$val("foo");
+
+        jw$key("name");
+        jw$val(str$s("str_slice"));
+        //
+        // jw$key("stock");
+        // jw$scope(jw, JsonType__arr)
+        // {
+        //     for (u32 i = 0; i < 3; i++) {
+        //         jw$scope(jw, JsonType__obj)
+        //         {
+        //             jw$key("id");
+        //             jw$val("%d", i);
+        //
+        //             jw$key("price_%d", i);
+        //             jw$val("%0.4f", ord->price + i);
+        //         }
+        //     }
+        //     jw$val(1);
+        //     jw$val(2);
+        // }
+        // jw$kval("price", "%0.4f", ord->price);
+        // jw$kval("qty", "%d", ord->qty);
+        // jw$kobj_scope("stock") {
+        //     e$ret(print_stock(jw, ord->stock));
+        // }
+    }
+
+    return EOK;
+}
+
+test$case(json_writer_multi_func)
+{
+    Stock stk = {
+        .id = 8899,
+        .ticker = "UBER",
+    };
+
+    Order ord = {
+        .price = 100.33,
+        .qty = 33,
+        .stock = &stk,
+    };
+    e$ret(print_order(NULL, &ord));
+    tassert(false);
+
+    return EOK;
+}
 
 test$case(json_reader_macro_proto)
 {
-    struct Foo
-    {
-        struct
-        {
-            u32 baz;
-            u32 fuzz;
-        } foo;
-        u32 next;
-        u32 baz;
-    } data = { 0 };
+    Foo data = { 0 };
     str_s content = str$s(
         "{ \"foo\" : {\"baz\": 3, \"fuzz\": 8, \"oops\": 0}, \"next\": [1, 2, 3], \"baz\": 17 }"
     );
@@ -373,7 +479,6 @@ test$case(json_reader_json5_single_quote_keys)
 }
 
 
-
 test$case(json_writer_macro_proto_indent4)
 {
     mem$scope(tmem$, _)
@@ -386,26 +491,36 @@ test$case(json_writer_macro_proto_indent4)
 
         jw$scope(&jb, JsonType__obj)
         {
-            // jw$fmt("// How about a comment? %d\n", 2);
-            jw$kstr("foo2", "%d", 1);
-            jw$kval("foo3", "%d", 4);
-            jw$karr_scope("bar")
+            jw$key("foo2");
+            jw$val("1");
+
+            jw$key("foo3");
+            jw$fmt("%d", 4);
+
+            jw$key("bar");
+            jw$scope(&jb, JsonType__arr)
             {
-                jw$str("%s", "foo");
-                jw$val("%d", 39);
-                jw$arr_scope()
+                jw$val("foo");
+                jw$fmt("%d", 39);
+
+                jw$scope(&jb, JsonType__arr)
                 {
-                    for (u32 i = 0; i < 10; i++) { jw$val("%d", i); }
+                    for (u32 i = 0; i < 10; i++) { jw$val(i); }
                 }
-                jw$obj_scope() {}
-                jw$arr_scope() {}
+                jw$scope(&jb, JsonType__obj) {}
+                jw$scope(&jb, JsonType__arr) {}
             }
-            jw$kobj_scope("far")
+            jw$key("far");
+            jw$scope(&jb, JsonType__obj)
             {
-                jw$kval("zoo", "%d", 1);
+                jw$key("zoo");
+                jw$val(1);
             }
-            jw$karr_scope("arr_empty"){}
-            jw$kobj_scope("obj_empty"){}
+            jw$key("arr_empty");
+            jw$scope(&jb, JsonType__arr) {}
+
+            jw$key("obj_empty");
+            jw$scope(&jb, JsonType__obj) {}
         }
 
         tassert_er(EOK, jb.error);
@@ -455,33 +570,90 @@ test$case(json_writer_macro_proto_no_indent)
 
         jw$scope(&jb, JsonType__obj)
         {
-            jw$kstr("foo2", "%d", 1);
-            jw$kval("foo3", "%d", 4);
-            jw$karr_scope("bar")
+            jw$key("foo2");
+            jw$val("1");
+
+            jw$key("foo3");
+            jw$fmt("%d", 4);
+
+            jw$key("bar");
+            jw$scope(&jb, JsonType__arr)
             {
-                jw$str("%s", "foo");
-                jw$val("%d", 39);
-                jw$arr_scope()
+                jw$val("foo");
+                jw$fmt("%d", 39);
+
+                jw$scope(&jb, JsonType__arr)
                 {
-                    for (u32 i = 0; i < 10; i++) { jw$val("%d", i); }
+                    for (u32 i = 0; i < 10; i++) { jw$val(i); }
                 }
-                jw$obj_scope() {}
-                jw$arr_scope() {}
+                jw$scope(&jb, JsonType__obj) {}
+                jw$scope(&jb, JsonType__arr) {}
             }
-            jw$kobj_scope("far")
+            jw$key("far");
+            jw$scope(&jb, JsonType__obj)
             {
-                jw$kval("zoo", "%d", 1);
+                jw$key("zoo");
+                jw$val(1);
             }
-            jw$karr_scope("arr_empty"){}
-            jw$kobj_scope("obj_empty"){}
+            jw$key("arr_empty");
+            jw$scope(&jb, JsonType__arr) {}
+
+            jw$key("obj_empty");
+            jw$scope(&jb, JsonType__obj) {}
         }
 
         tassert_er(EOK, jb.error);
         io.printf("\nJSON (buf): \n%s\n", buf);
         print_json_expected(buf);
 
-        char* expected = "{\"foo2\": \"1\", \"foo3\": 4, \"bar\": [\"foo\", 39, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], {}, []], \"far\": {\"zoo\": 1}, \"arr_empty\": [], \"obj_empty\": {}}";
+        char* expected =
+            "{\"foo2\": \"1\", \"foo3\": 4, \"bar\": [\"foo\", 39, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], {}, []], \"far\": {\"zoo\": 1}, \"arr_empty\": [], \"obj_empty\": {}}";
 
+        tassert_eq(buf, expected);
+    }
+    return EOK;
+}
+
+test$case(json_writer_macro_only_fmt)
+{
+    mem$scope(tmem$, _)
+    {
+        json_writer_c jb;
+        sbuf_c buf = sbuf.create(1024, _);
+        (void)buf;
+        tassert_er(EOK, jw$new(&jb, buf, .indent = 4));
+        // tassert_er(EOK, jw$new(&jb, stdout, .indent = 0));
+
+        jw$scope(&jb, JsonType__obj)
+        {
+            jw$fmt("\"cool\": %d", 4);
+
+            jw$key("arr");
+            jw$scope(&jb, JsonType__arr)
+            {
+                for (u32 i = 0; i < 10; i++) { jw$val(i); }
+            }
+        }
+
+        tassert_er(EOK, jb.error);
+        io.printf("\nJSON (buf): \n%s\n", buf);
+        print_json_expected(buf);
+
+        char* expected = "{\n\
+    \"cool\": 4, \n\
+    \"arr\": [\n\
+        0, \n\
+        1, \n\
+        2, \n\
+        3, \n\
+        4, \n\
+        5, \n\
+        6, \n\
+        7, \n\
+        8, \n\
+        9\n\
+    ]\n\
+}";
         tassert_eq(buf, expected);
     }
     return EOK;
