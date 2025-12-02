@@ -9,6 +9,24 @@
 // test$teardown_suite() {return EOK;}
 
 
+void print_json_expected(sbuf_c s) {
+    uassert(s);
+
+    io.printf("char* expected = \"");
+    for$each(c, s, sbuf.len(&s)) {
+        switch(c){
+            case '\n':
+                io.printf("\\n\\");
+                break;
+            case '"':
+                io.printf("\\");
+                break;
+        }
+        io.printf("%c", c);
+    }
+
+    io.printf("\";");
+}
 
 
 test$case(json_reader_macro_proto)
@@ -356,7 +374,7 @@ test$case(json_reader_json5_single_quote_keys)
 
 
 
-test$case(json_writer_macro_proto)
+test$case(json_writer_macro_proto_indent4)
 {
     mem$scope(tmem$, _)
     {
@@ -390,14 +408,81 @@ test$case(json_writer_macro_proto)
             jw$kobj_scope("obj_empty"){}
         }
 
-        char* expected = "{\n    \"foo2\": \"1\",\n    \"foo3\": 4,\n    \"bar\": [\n        \"foo\",\n        39,\n        [\n            0,\n            1,\n            2,\n            3,\n            4,\n            5,\n            6,\n            7,\n            8,\n            9\n        ],\n        {},\n        []\n    ],\n    \"far\": {\n        \"zoo\": 1\n    },\n    \"arr_empty\": [],\n    \"obj_empty\": {}\n}";
         tassert_er(EOK, jb.error);
-        io.printf("%s\n", expected);
-        io.printf("%s\n", buf);
+        io.printf("\nJSON (buf): \n%s\n", buf);
+        print_json_expected(buf);
+
+        char* expected = "{\n\
+    \"foo2\": \"1\", \n\
+    \"foo3\": 4, \n\
+    \"bar\": [\n\
+        \"foo\", \n\
+        39, \n\
+        [\n\
+            0, \n\
+            1, \n\
+            2, \n\
+            3, \n\
+            4, \n\
+            5, \n\
+            6, \n\
+            7, \n\
+            8, \n\
+            9\n\
+        ], \n\
+        {}, \n\
+        []\n\
+    ], \n\
+    \"far\": {\n\
+        \"zoo\": 1\n\
+    }, \n\
+    \"arr_empty\": [], \n\
+    \"obj_empty\": {}\n\
+}";
         tassert_eq(buf, expected);
-        io.printf("\nJSON (buf): \n`%s`", buf);
-        tassert(false);
-        // tassert_eq(jb.buf, json.writer.get(&jb));
+    }
+    return EOK;
+}
+
+test$case(json_writer_macro_proto_no_indent)
+{
+    mem$scope(tmem$, _)
+    {
+        json_writer_c jb;
+        sbuf_c buf = sbuf.create(1024, _);
+        (void)buf;
+        tassert_er(EOK, jw$new(&jb, buf, .indent = 0));
+
+        jw$scope(&jb, JsonType__obj)
+        {
+            jw$kstr("foo2", "%d", 1);
+            jw$kval("foo3", "%d", 4);
+            jw$karr_scope("bar")
+            {
+                jw$str("%s", "foo");
+                jw$val("%d", 39);
+                jw$arr_scope()
+                {
+                    for (u32 i = 0; i < 10; i++) { jw$val("%d", i); }
+                }
+                jw$obj_scope() {}
+                jw$arr_scope() {}
+            }
+            jw$kobj_scope("far")
+            {
+                jw$kval("zoo", "%d", 1);
+            }
+            jw$karr_scope("arr_empty"){}
+            jw$kobj_scope("obj_empty"){}
+        }
+
+        tassert_er(EOK, jb.error);
+        io.printf("\nJSON (buf): \n%s\n", buf);
+        print_json_expected(buf);
+
+        char* expected = "{\"foo2\": \"1\", \"foo3\": 4, \"bar\": [\"foo\", 39, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], {}, []], \"far\": {\"zoo\": 1}, \"arr_empty\": [], \"obj_empty\": {}}";
+
+        tassert_eq(buf, expected);
     }
     return EOK;
 }
