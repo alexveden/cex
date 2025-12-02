@@ -366,7 +366,7 @@ test$case(json_writer_macro_proto)
         tassert_er(EOK, jw$new(&jb, buf, .indent = 4));
         // tassert_er(EOK, jw$new(&jb, stdout, .indent = 0));
 
-        jw$buf(&jb, JsonType__obj)
+        jw$scope(&jb, JsonType__obj)
         {
             // jw$fmt("// How about a comment? %d\n", 2);
             jw$kstr("foo2", "%d", 1);
@@ -390,8 +390,12 @@ test$case(json_writer_macro_proto)
             jw$kobj_scope("obj_empty"){}
         }
 
-        io.printf("\nJSON (buf): \n`%s`", buf);
+        char* expected = "{\n    \"foo2\": \"1\",\n    \"foo3\": 4,\n    \"bar\": [\n        \"foo\",\n        39,\n        [\n            0,\n            1,\n            2,\n            3,\n            4,\n            5,\n            6,\n            7,\n            8,\n            9\n        ],\n        {},\n        []\n    ],\n    \"far\": {\n        \"zoo\": 1\n    },\n    \"arr_empty\": [],\n    \"obj_empty\": {}\n}";
         tassert_er(EOK, jb.error);
+        io.printf("%s\n", expected);
+        io.printf("%s\n", buf);
+        tassert_eq(buf, expected);
+        io.printf("\nJSON (buf): \n`%s`", buf);
         tassert(false);
         // tassert_eq(jb.buf, json.writer.get(&jb));
     }
