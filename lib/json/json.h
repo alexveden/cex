@@ -7,6 +7,11 @@
 #define jr$new(json_reader, content, len, kwargs...)                                               \
     _cex_json__reader__create((json_reader), (content), (len), &(json_reader_kw){ kwargs })
 
+#define jr$err(json_reader) (json_reader)->error
+
+#define jr$err_fmt(json_reader)                                                                    \
+    "JSON (%s) at line: %d col: %d\n", (json_reader)->error ? (json_reader)->error : "OK",                 \
+        (json_reader)->_impl.lexer.line + 1, (json_reader)->_impl.lexer.col
 
 #define jr$foreach(...) _jr$foreach_impl(__VA_ARGS__, _jr$foreach_obj, _jr$foreach_arr)(__VA_ARGS__)
 
@@ -14,17 +19,17 @@
 
 #define _jr$foreach_arr(_val, json_reader)                                                         \
     if ((json_reader)->error == EOK) {                                                             \
-        (json_reader)->error = _cex_json__reader__step_in((json_reader), JsonType__arr);                  \
+        (json_reader)->error = _cex_json__reader__step_in((json_reader), JsonType__arr);           \
     }                                                                                              \
     for (str_s(_val) = { 0 };                                                                      \
          _cex_json__reader__next((json_reader)) ? ((_val) = ((json_reader)->val), 1) : 0;)
 
 #define _jr$foreach_obj(_key, _val, json_reader)                                                   \
     if ((json_reader)->error == EOK) {                                                             \
-        (json_reader)->error = _cex_json__reader__step_in((json_reader), JsonType__obj);                  \
+        (json_reader)->error = _cex_json__reader__step_in((json_reader), JsonType__obj);           \
     }                                                                                              \
     for (str_s(_key) = { 0 }, (_val) = { 0 };                                                      \
-         _cex_json__reader__next((json_reader))                                                           \
+         _cex_json__reader__next((json_reader))                                                    \
              ? ((_key) = ((json_reader)->key), (_val) = ((json_reader)->val), 1)                   \
              : 0;)
 
@@ -91,8 +96,8 @@ typedef struct json_writer_c
     u8 scope_stack[CEX_MAX_JSON_DEPTH];
 } json_writer_c;
 
-#define jw$new(json_writer, kwargs...)                                             \
-    _cex_json__writer__create((json_writer), &(json_writer_kw){ kwargs })                            \
+#define jw$new(json_writer, kwargs...)                                                             \
+    _cex_json__writer__create((json_writer), &(json_writer_kw){ kwargs })
 
 #define jw$validate(json_writer) _cex_json__writer__validate((json_writer))
 
@@ -102,20 +107,20 @@ typedef struct json_writer_c
     ({                                                                                             \
         char* format = _Generic(                                                                   \
             json_compatible_val,                                                                   \
-            u8: "%d",                                                                             \
-            i8: "%d",                                                                             \
+            u8: "%d",                                                                              \
+            i8: "%d",                                                                              \
             i16: "%d",                                                                             \
             u16: "%d",                                                                             \
             i32: "%d",                                                                             \
             u32: "%u",                                                                             \
-            i64: "%ld",                                                                             \
-            u64: "%lu",                                                                             \
+            i64: "%ld",                                                                            \
+            u64: "%lu",                                                                            \
             f32: "%f",                                                                             \
             f64: "%f",                                                                             \
-            char: "\"%c\"",                                                                             \
+            char: "\"%c\"",                                                                        \
             _Bool: "%d",                                                                           \
             str_s: "\"%S\"",                                                                       \
-            const char*: "\"%s\"",                                                                        \
+            const char*: "\"%s\"",                                                                 \
             char*: "\"%s\""                                                                        \
         );                                                                                         \
         _cex_json__writer__print_item(jw$scope_var, format, json_compatible_val);                  \
@@ -126,8 +131,8 @@ typedef struct json_writer_c
 /// Opens JSON buffer scope (json_writer_ptr data is cleared out)
 #define jw$scope(json_writer_ptr, jsontype_arr_or_obj)                                             \
     for (json_writer_c * jw$scope_var                                                              \
-             __attribute__((__cleanup__(_cex_json__writer__print_scope_exit))) =                     \
-             _cex_json__writer__print_scope_enter((json_writer_ptr), jsontype_arr_or_obj, true),     \
+             __attribute__((__cleanup__(_cex_json__writer__print_scope_exit))) =                   \
+             _cex_json__writer__print_scope_enter((json_writer_ptr), jsontype_arr_or_obj, true),   \
              *cex$tmpname(jsonbuf_sentinel) = jw$scope_var;                                        \
          cex$tmpname(jsonbuf_sentinel) && jw$scope_var != NULL;                                    \
          cex$tmpname(jsonbuf_sentinel) = NULL)

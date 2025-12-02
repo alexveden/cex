@@ -617,4 +617,35 @@ test$case(json_writer_val_types)
     }
     return EOK;
 }
+
+test$case(json_reader_error_handling)
+{
+    str_s content = str$s(
+        "{\n \"foo\": \n}"
+    );
+
+    json_reader_c js;
+    e$ret(jr$new(&js, content.buf, content.len, .strict_mode = true));
+    tassert_eq(js.type, JsonType__obj);
+
+    u32 val = 0;
+    jr$foreach(k, v, &js)
+    {
+        if (str$eq(k, "foo")) {
+            e$ret(str$convert(v, &val));
+        }
+    }
+    tassert_er(jr$err(&js), "Unexpected token");
+    tassert_eq(val, 0);
+
+    // NOTE: jr$err_fmt can work with any printf function
+    io.printf(jr$err_fmt(&js));
+    fprintf(stdout,jr$err_fmt(&js));
+    char* s = str.fmt(mem$, jr$err_fmt(&js));
+    io.printf(s);
+    mem$free(mem$, s);
+
+    return EOK;
+}
+
 test$main();

@@ -230,6 +230,7 @@ _cex_json__reader__next(json_reader_c* it)
                     t = $next_tok();
                     if (t.type != CexTkn__colon) { goto error_unexpected; }
                     t = $next_tok();
+                    if (t.type == CexTkn__rbrace) { goto error_unexpected; }
                     it->_impl.has_items = true;
                     goto parse_generic; // parsing value
                 }
