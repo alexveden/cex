@@ -389,7 +389,7 @@ error:
 }
 
 void
-_cex__jsonbuf_indent(json_writer_c* jw, bool last_item)
+_cex_json_writer_indent(json_writer_c* jw, bool last_item)
 {
     if (unlikely(jw->error != EOK)) { return; }
     if (jw->scope_depth && jw->scope_stack[jw->scope_depth - 1] & $scope_has_items) {
@@ -406,22 +406,6 @@ _cex__jsonbuf_indent(json_writer_c* jw, bool last_item)
     for (u32 i = 0; i < jw->indent; i++) { $print(" ", ""); }
 }
 
-void
-_cex_json__writer__set_buf(json_writer_kw* kwargs, void* sbuf)
-{
-    uassert(kwargs);
-    uassert(sbuf);
-    kwargs->buf = sbuf;
-}
-
-void
-_cex_json__writer__set_stream(json_writer_kw* kwargs, void* stream)
-{
-    uassert(kwargs);
-    uassert(stream);
-    kwargs->stream = stream;
-}
-
 /**
  * @brief Create JSON buffer/builder container used with json$buf / json$fmt / json$kstr macros
  *
@@ -432,20 +416,22 @@ _cex_json__writer__set_stream(json_writer_kw* kwargs, void* stream)
  * @return
  */
 Exception
-cex_json__writer__create(json_writer_c* jw, json_writer_kw* kwargs)
+_cex_json__writer__create(json_writer_c* jw, sbuf_c buf, FILE* stream, json_writer_kw* kwargs)
 {
     e$assert(jw != NULL);
-    e$assert(kwargs != NULL);
 
-    if (kwargs->buf == NULL && kwargs->stream == NULL) { return "Empty buf and stream kwargs"; }
-    if (kwargs->buf != NULL && kwargs->stream != NULL) {
-        return "buf and stream kwargs are mutually exclusive";
+    if (buf == NULL && stream == NULL) { return "Empty buf and stream kwargs"; }
+    if (buf != NULL && stream != NULL) { return "buf and stream kwargs are mutually exclusive"; }
+
+    u32 indent = 0;
+    if (kwargs) {
+        indent = kwargs->indent;
     }
 
     *jw = (json_writer_c){
-        .indent_width = kwargs->indent,
-        .buf = kwargs->buf,
-        .stream = kwargs->stream,
+        .indent_width = indent,
+        .buf = buf,
+        .stream = stream,
     };
 
     return EOK;
@@ -498,7 +484,7 @@ void
 _cex_json__writer__print(json_writer_c* jw, char* format, ...)
 {
     u8 last_scope = $last_scope(jw);
-    if (!(last_scope & $scope_has_key)) { _cex__jsonbuf_indent(jw, false); }
+    if (!(last_scope & $scope_has_key)) { _cex_json_writer_indent(jw, false); }
 
     $printva();
 
@@ -513,18 +499,15 @@ void
 _cex_json__writer__print_item(json_writer_c* jw, char* format, ...)
 {
     u8 last_scope = $last_scope(jw);
-    // if (!(last_scope & $scope_has_key)) { _cex__jsonbuf_indent(jw, false); }
+    // if (!(last_scope & $scope_has_key)) { _cex_json_writer_indent(jw, false); }
 
     if (!(last_scope & $scope_has_key)) {
-        uassertf(
-            !(last_scope & $scope_obj),
-            "Writing jw$val() without setting jw$key() before"
-        );
-        _cex__jsonbuf_indent(jw, false);
+        uassertf(!(last_scope & $scope_obj), "Writing jw$val() without setting jw$key() before");
+        _cex_json_writer_indent(jw, false);
     }
 
     // if (!(last_scope & $scope_has_key) && (last_scope & $scope_has_items)) {
-    // _cex__jsonbuf_indent(jw, false); }
+    // _cex_json_writer_indent(jw, false); }
     $printva();
     if (jw->scope_depth && jw->scope_stack[jw->scope_depth - 1]) {
         jw->scope_stack[jw->scope_depth - 1] |= $scope_has_items;
@@ -539,7 +522,7 @@ _cex_json__writer__print_key(json_writer_c* jw, char* format, ...)
         jw->scope_depth > 0 && jw->scope_stack[jw->scope_depth - 1] & $scope_obj,
         "Expected to be in json object scope"
     );
-    _cex__jsonbuf_indent(jw, false);
+    _cex_json_writer_indent(jw, false);
     $print("\"", "");
     $printva();
     $print("\": ", "");
@@ -550,7 +533,7 @@ _cex_json__writer__print_key(json_writer_c* jw, char* format, ...)
 }
 
 json_writer_c*
-_cex__jsonbuf_print_scope_enter(json_writer_c* jw, JsonType_e scope_type, bool should_indent)
+_cex_json_writer_print_scope_enter(json_writer_c* jw, JsonType_e scope_type, bool should_indent)
 {
     (void)should_indent;
     u8 last_scope = $last_scope(jw);
@@ -560,7 +543,7 @@ _cex__jsonbuf_print_scope_enter(json_writer_c* jw, JsonType_e scope_type, bool s
             !(last_scope & $scope_obj),
             "Entering jw$scope() value without setting jw$key() before"
         );
-        if (last_scope & $scope_has_items) { _cex__jsonbuf_indent(jw, false); }
+        if (last_scope & $scope_has_items) { _cex_json_writer_indent(jw, false); }
     }
 
     if (scope_type == JsonType__obj) {
@@ -588,14 +571,14 @@ _cex__jsonbuf_print_scope_enter(json_writer_c* jw, JsonType_e scope_type, bool s
 }
 
 void
-_cex__jsonbuf_print_scope_exit(json_writer_c** jbptr)
+_cex_json_writer_print_scope_exit(json_writer_c** jbptr)
 {
     uassert(*jbptr != NULL);
     json_writer_c* jw = *jbptr;
 
     if (jw->indent >= jw->indent_width) { jw->indent -= jw->indent_width; }
     if (jw->scope_depth > 0) {
-        _cex__jsonbuf_indent(jw, true);
+        _cex_json_writer_indent(jw, true);
 
         $print("%c", (jw->scope_stack[jw->scope_depth - 1] & $scope_arr) ? ']' : '}');
         jw->scope_depth--;
@@ -626,7 +609,7 @@ const struct __cex_namespace__json json = {
     },
 
     .writer = {
-        .create = cex_json__writer__create,
+        .create = NULL,
         .destroy = cex_json__writer__destroy,
         .get = cex_json__writer__get,
         .validate = cex_json__writer__validate,

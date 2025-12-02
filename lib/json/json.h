@@ -78,8 +78,6 @@ typedef struct json_reader_c
 
 typedef struct json_writer_kw
 {
-    FILE* stream;
-    sbuf_c buf;
     u32 indent;
 } json_writer_kw;
 
@@ -97,17 +95,15 @@ typedef struct json_writer_c
 #define jw$new(json_writer, sbuf_or_stream, kwargs...)                                             \
     ({                                                                                             \
         json_writer_kw _kwargs = { kwargs };                                                       \
-        _Generic(                                                                                  \
-            (sbuf_or_stream),                                                                      \
-            sbuf_c: _cex_json__writer__set_buf((&_kwargs), (sbuf_or_stream)),                      \
-            FILE*: _cex_json__writer__set_stream((&_kwargs), (sbuf_or_stream))                     \
-        );                                                                                         \
-        (json_writer)->error = json.writer.create((json_writer), &_kwargs);                        \
+        void* stream = NULL;                                                                       \
+        void* sb = NULL;                                                                           \
+        _Generic((sbuf_or_stream), sbuf_c: sb = sbuf_or_stream, FILE*: stream = sbuf_or_stream);   \
+        _cex_json__writer__create((json_writer), sb, stream, &_kwargs);                            \
     })
 
 #define jw$key(format, ...) _cex_json__writer__print_key(jw$scope_var, format, ##__VA_ARGS__)
 
-#define jw$val(json_compatible_val)                                                               \
+#define jw$val(json_compatible_val)                                                                \
     ({                                                                                             \
         char* format = _Generic(                                                                   \
             json_compatible_val,                                                                   \
@@ -115,11 +111,11 @@ typedef struct json_writer_c
             f64: "%f",                                                                             \
             u32: "%d",                                                                             \
             i32: "%d",                                                                             \
-            _Bool: "%d",                                                                             \
+            _Bool: "%d",                                                                           \
             str_s: "\"%S\"",                                                                       \
             char*: "\"%s\""                                                                        \
         );                                                                                         \
-        _cex_json__writer__print_item(jw$scope_var, format, json_compatible_val);                 \
+        _cex_json__writer__print_item(jw$scope_var, format, json_compatible_val);                  \
     })
 
 #define jw$scope_var _json_writer_macro_scope
@@ -127,8 +123,8 @@ typedef struct json_writer_c
 /// Opens JSON buffer scope (json_writer_ptr data is cleared out)
 #define jw$scope(json_writer_ptr, jsontype_arr_or_obj)                                             \
     for (json_writer_c * jw$scope_var                                                              \
-             __attribute__((__cleanup__(_cex__jsonbuf_print_scope_exit))) =                        \
-             _cex__jsonbuf_print_scope_enter((json_writer_ptr), jsontype_arr_or_obj, true),        \
+             __attribute__((__cleanup__(_cex_json_writer_print_scope_exit))) =                     \
+             _cex_json_writer_print_scope_enter((json_writer_ptr), jsontype_arr_or_obj, true),     \
              *cex$tmpname(jsonbuf_sentinel) = jw$scope_var;                                        \
          cex$tmpname(jsonbuf_sentinel) && jw$scope_var != NULL;                                    \
          cex$tmpname(jsonbuf_sentinel) = NULL)
@@ -137,75 +133,16 @@ typedef struct json_writer_c
 /// Append any formatted string, it's for low level printing (jw$scope)
 #define jw$fmt(format, ...) _cex_json__writer__print(jw$scope_var, format, ##__VA_ARGS__)
 
+// clang-format off
 void _cex_json__writer__print(json_writer_c* jb, char* format, ...);
 void _cex_json__writer__print_item(json_writer_c* jb, char* format, ...);
 void _cex_json__writer__print_key(json_writer_c* jb, char* format, ...);
-json_writer_c*
-_cex__jsonbuf_print_scope_enter(json_writer_c* jb, JsonType_e scope_type, bool should_indent);
-void _cex__jsonbuf_print_scope_exit(json_writer_c** jbptr);
-void _cex_json__writer__set_buf(json_writer_kw* jb, void* sbuf);
-void _cex_json__writer__set_stream(json_writer_kw* jb, void* stream);
+json_writer_c* _cex_json_writer_print_scope_enter(json_writer_c* jb, JsonType_e scope_type, bool should_indent);
+void _cex_json_writer_print_scope_exit(json_writer_c** jbptr);
+Exception _cex_json__writer__create(json_writer_c* jw, sbuf_c buf, FILE* stream, json_writer_kw* kwargs);
+// clang-format on
 
 
-/**
-Low level JSON reader/writer namespace
-
-Making own JSON buffer:
-
-```c
-json_writer_c jb;
-e$ret(json.buf.create(&jb, 1024, 0, mem$));
-jw$scope(&jb, JsonType__obj)
-{
-    jw$kstr("foo2", "%d", 1);
-    jw$kobj_scope("foo3") {
-        jw$kval("bar", "%s", "3");
-    }
-    jw$karr_scope("foo3") {
-        jw$val("%d", 8);
-        jw$str("%d", 9);
-    }
-}
->> json.buf.get(&jb) ->
->> {"foo2": "1", "foo3": {"bar": 3},"foo3": [8, "9"]}
-
-
-Reading JSON buffer:
-```c
-    struct Foo
-    {
-        struct { u32 baz; u32 fuzz; } foo;
-        u32 next;
-        u32 baz;
-    } data = { 0 };
-    str_s content = str$s(
-        "{ \"foo\" : {\"baz\": 3, \"fuzz\": 8, \"oops\": 0}, \"next\": 7, \"baz\": 17 }"
-    );
-    json_reader_c js;
-    e$ret(json.reader.create(&js, content.buf, 0, false));
-    if (json.reader.next(&js)) { e$ret(json.reader.step_in(&js, JsonType__obj)); }
-    while (json.reader.next(&js)) {
-        jr$case_invalid (&js) {}
-        jr$case (&js, "foo") {
-            e$ret(json.reader.step_in(&js, JsonType__obj));
-            while (json.reader.next(&js)) {
-                jr$case_invalid (&js) {}
-                jr$case (&js, "fuzz") { e$ret(str$convert(js.val, &data.foo.fuzz)); }
-                jr$case (&js, "baz") { e$ret(str$convert(js.val, &data.foo.baz)); }
-                jr$case_default(&js)
-                {
-                    tassert_eq(js.key, str$s("oops"));
-                }
-            }
-        }
-        jr$case (&js, "next") { e$ret(str$convert(js.val, &data.next)); }
-        jr$case (&js, "baz") { e$ret(str$convert(js.val, &data.baz)); }
-    }
-    e$assert(js.error == EOK && "No parsing errors");
-
-```
-
-*/
 struct __cex_namespace__json
 {
     // Autogenerated by CEX
