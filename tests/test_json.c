@@ -631,11 +631,14 @@ test$case(json_writer_multi_func_concept)
     {
         json_writer_c jb;
         sbuf_c buf = sbuf.create(1024, _);
-        tassert_er(EOK, jw$new(&jb, buf, .indent = 4));
+        // tassert_er(EOK, jw$new(&jb, buf, .indent = 4));
+        jw$new(&jb, buf, .indent = 4);
 
         e$ret(print_order(&jb, &ord));
 
         tassert_er(EOK, jb.error);
+        e$ret(jw$validate(&jb));
+
         io.printf("\nJSON (buf): \n%s\n", buf);
         print_json_expected(buf);
 

@@ -437,49 +437,6 @@ _cex_json__writer__create(json_writer_c* jw, sbuf_c buf, FILE* stream, json_writ
     return EOK;
 }
 
-/**
- * @brief Destroy JSON buffer instance (not necessary to call if initialized on tmem$ allocator)
- *
- * @param jb
- */
-void
-cex_json__writer__destroy(json_writer_c* jw)
-{
-    if (jw != NULL) {
-        if (jw->buf != NULL) { sbuf.destroy(&jw->buf); }
-        memset(jw, 0, sizeof(*jw));
-    }
-}
-
-/**
- * @brief Get JSON buffer contents (NULL if any error occurred)
- *
- * @param jb
- * @return
- */
-char*
-cex_json__writer__get(json_writer_c* jw)
-{
-    if (jw->error != EOK) {
-        return NULL;
-    } else {
-        return jw->buf;
-    }
-}
-
-/**
- * @brief Check if there is any error in JSON buffer
- *
- * @param jb
- * @return
- */
-Exception
-cex_json__writer__validate(json_writer_c* jw)
-{
-    return jw->error;
-}
-
-
 void
 _cex_json__writer__print(json_writer_c* jw, char* format, ...)
 {
@@ -493,7 +450,6 @@ _cex_json__writer__print(json_writer_c* jw, char* format, ...)
         jw->scope_stack[jw->scope_depth - 1] &= ~$scope_has_key;
     }
 }
-
 
 void
 _cex_json__writer__print_item(json_writer_c* jw, char* format, ...)
@@ -587,6 +543,14 @@ _cex_json_writer_print_scope_exit(json_writer_c** jbptr)
     }
 }
 
+Exception
+_cex_json__writer__validate(json_writer_c* jw) {
+    if (jw == NULL) {
+        return Error.argument;
+    }
+    return jw->error;
+}
+
 #undef $next_tok /* TEMP MACRO */
 #undef $print
 #undef $printva
@@ -606,13 +570,6 @@ const struct __cex_namespace__json json = {
         .next = cex_json__reader__next,
         .step_in = cex_json__reader__step_in,
         .step_out = cex_json__reader__step_out,
-    },
-
-    .writer = {
-        .create = NULL,
-        .destroy = cex_json__writer__destroy,
-        .get = cex_json__writer__get,
-        .validate = cex_json__writer__validate,
     },
 
     // clang-format on
