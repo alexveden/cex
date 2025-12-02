@@ -118,8 +118,8 @@ typedef struct json_writer_c
 /// Opens JSON buffer scope (json_writer_ptr data is cleared out)
 #define jw$scope(json_writer_ptr, jsontype_arr_or_obj)                                             \
     for (json_writer_c * jw$scope_var                                                              \
-             __attribute__((__cleanup__(_cex_json_writer_print_scope_exit))) =                     \
-             _cex_json_writer_print_scope_enter((json_writer_ptr), jsontype_arr_or_obj, true),     \
+             __attribute__((__cleanup__(_cex_json__writer__print_scope_exit))) =                     \
+             _cex_json__writer__print_scope_enter((json_writer_ptr), jsontype_arr_or_obj, true),     \
              *cex$tmpname(jsonbuf_sentinel) = jw$scope_var;                                        \
          cex$tmpname(jsonbuf_sentinel) && jw$scope_var != NULL;                                    \
          cex$tmpname(jsonbuf_sentinel) = NULL)
@@ -129,11 +129,11 @@ typedef struct json_writer_c
 #define jw$fmt(format, ...) _cex_json__writer__print(jw$scope_var, format, ##__VA_ARGS__)
 
 // clang-format off
-void _cex_json__writer__print(json_writer_c* jb, char* format, ...);
-void _cex_json__writer__print_item(json_writer_c* jb, char* format, ...);
-void _cex_json__writer__print_key(json_writer_c* jb, char* format, ...);
-json_writer_c* _cex_json_writer_print_scope_enter(json_writer_c* jb, JsonType_e scope_type, bool should_indent);
-void _cex_json_writer_print_scope_exit(json_writer_c** jbptr);
+void _cex_json__writer__print(json_writer_c* jw, char* format, ...);
+void _cex_json__writer__print_item(json_writer_c* jw, char* format, ...);
+void _cex_json__writer__print_key(json_writer_c* jw, char* format, ...);
+void _cex_json__writer__print_scope_exit(json_writer_c** jwptr);
+json_writer_c* _cex_json__writer__print_scope_enter(json_writer_c* jw, JsonType_e scope_type, bool should_indent);
 Exception _cex_json__writer__create(json_writer_c* jw, json_writer_kw* kwargs);
 Exception _cex_json__writer__validate(json_writer_c* jw);
 

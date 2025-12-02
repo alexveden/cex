@@ -409,7 +409,7 @@ _cex_json_writer_indent(json_writer_c* jw, bool last_item)
 /**
  * @brief Create JSON buffer/builder container used with json$buf / json$fmt / json$kstr macros
  *
- * @param jb
+ * @param jw
  * @param capacity initial capacity of buffer (will be resized if not enough)
  * @param indent JSON indentation (0 - to produce minified version)
  * @param allc allocator for buffer
@@ -487,7 +487,7 @@ _cex_json__writer__print_key(json_writer_c* jw, char* format, ...)
 }
 
 json_writer_c*
-_cex_json_writer_print_scope_enter(json_writer_c* jw, JsonType_e scope_type, bool should_indent)
+_cex_json__writer__print_scope_enter(json_writer_c* jw, JsonType_e scope_type, bool should_indent)
 {
     (void)should_indent;
     u8 last_scope = $last_scope(jw);
@@ -525,10 +525,10 @@ _cex_json_writer_print_scope_enter(json_writer_c* jw, JsonType_e scope_type, boo
 }
 
 void
-_cex_json_writer_print_scope_exit(json_writer_c** jbptr)
+_cex_json__writer__print_scope_exit(json_writer_c** jwptr)
 {
-    uassert(*jbptr != NULL);
-    json_writer_c* jw = *jbptr;
+    uassert(*jwptr != NULL);
+    json_writer_c* jw = *jwptr;
 
     if (jw->indent >= jw->indent_width) { jw->indent -= jw->indent_width; }
     if (jw->scope_depth > 0) {
