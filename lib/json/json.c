@@ -416,22 +416,20 @@ _cex_json_writer_indent(json_writer_c* jw, bool last_item)
  * @return
  */
 Exception
-_cex_json__writer__create(json_writer_c* jw, sbuf_c buf, FILE* stream, json_writer_kw* kwargs)
+_cex_json__writer__create(json_writer_c* jw, json_writer_kw* kwargs)
 {
-    e$assert(jw != NULL);
+    uassert(jw != NULL);
+    uassert(kwargs != NULL);
 
-    if (buf == NULL && stream == NULL) { return "Empty buf and stream kwargs"; }
-    if (buf != NULL && stream != NULL) { return "buf and stream kwargs are mutually exclusive"; }
-
-    u32 indent = 0;
-    if (kwargs) {
-        indent = kwargs->indent;
+    if (kwargs->buf == NULL && kwargs->stream == NULL) { return "Empty buf and stream kwargs"; }
+    if (kwargs->buf != NULL && kwargs->stream != NULL) {
+        return "buf and stream kwargs are mutually exclusive";
     }
 
     *jw = (json_writer_c){
-        .indent_width = indent,
-        .buf = buf,
-        .stream = stream,
+        .indent_width = kwargs->indent,
+        .buf = kwargs->buf,
+        .stream = kwargs->stream,
     };
 
     return EOK;
@@ -544,10 +542,9 @@ _cex_json_writer_print_scope_exit(json_writer_c** jbptr)
 }
 
 Exception
-_cex_json__writer__validate(json_writer_c* jw) {
-    if (jw == NULL) {
-        return Error.argument;
-    }
+_cex_json__writer__validate(json_writer_c* jw)
+{
+    if (jw == NULL) { return Error.argument; }
     return jw->error;
 }
 

@@ -107,7 +107,7 @@ test$case(json_reader_macro_proto)
     );
 
     json_reader_c js;
-    jr$new(&js, content.buf, content.len, .strict_mode = true);
+    e$ret(jr$new(&js, content.buf, content.len, .strict_mode = true));
     tassert_eq(js.type, JsonType__obj);
 
     jr$foreach(k, v, &js)
@@ -291,7 +291,7 @@ test$case(json_reader_array_of_objects)
     str_s content = str$s("{ items : [{qty: 1, price: 123}, {qty: -100, price: 999}]  }");
 
     json_reader_c js;
-    jr$new(&js, content.buf, content.len, .strict_mode = false);
+    e$ret(jr$new(&js, content.buf, content.len, .strict_mode = false));
     jr$foreach(k, v, &js)
     {
         (void)v;
@@ -335,7 +335,7 @@ test$case(json_reader_strict_mode_keys)
     str_s content = str$s("{ \"items\" : 1, \"foo\": 2  }");
 
     json_reader_c js;
-    jr$new(&js, content.buf, content.len, .strict_mode = true);
+    e$ret(jr$new(&js, content.buf, content.len, .strict_mode = true));
 
     bool has_items = false;
     bool has_foo = false;
@@ -361,7 +361,7 @@ test$case(json_reader_strict_mode_keys_bad_start)
     str_s content = str$s("{ items : 1, \"foo\": 2  }");
 
     json_reader_c js;
-    jr$new(&js, content.buf, content.len, .strict_mode = true);
+    e$ret(jr$new(&js, content.buf, content.len, .strict_mode = true));
 
     bool has_items = false;
     bool has_foo = false;
@@ -387,7 +387,7 @@ test$case(json_reader_strict_mode_keys_bad_following)
     str_s content = str$s("{ \"items\" : 1, foo: 2  }");
 
     json_reader_c js;
-    jr$new(&js, content.buf, content.len, .strict_mode = true);
+    e$ret(jr$new(&js, content.buf, content.len, .strict_mode = true));
 
     bool has_items = false;
     bool has_foo = false;
@@ -413,7 +413,7 @@ test$case(json_reader_json5_single_quote_keys)
     str_s content = str$s("{ 'items' : 1, 'foo': 2  }");
 
     json_reader_c js;
-    jr$new(&js, content.buf, content.len, .strict_mode = false);
+    e$ret(jr$new(&js, content.buf, content.len, .strict_mode = false));
 
     bool has_items = false;
     bool has_foo = false;
@@ -441,7 +441,7 @@ test$case(json_writer_macro_proto_indent4)
         json_writer_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         (void)buf;
-        tassert_er(EOK, jw$new(&jb, buf, .indent = 4));
+        tassert_er(EOK, jw$new(&jb, .buf = buf, .indent = 4));
         // tassert_er(EOK, jw$new(&jb, stdout, .indent = 0));
 
         jw$scope(&jb, JsonType__obj)
@@ -521,7 +521,7 @@ test$case(json_writer_macro_proto_no_indent)
         json_writer_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         (void)buf;
-        tassert_er(EOK, jw$new(&jb, buf, .indent = 0));
+        tassert_er(EOK, jw$new(&jb, .buf = buf, .indent = 0));
 
         jw$scope(&jb, JsonType__obj)
         {
@@ -576,8 +576,7 @@ test$case(json_writer_macro_only_fmt)
         json_writer_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         (void)buf;
-        tassert_er(EOK, jw$new(&jb, buf, .indent = 4));
-        // tassert_er(EOK, jw$new(&jb, stdout, .indent = 0));
+        tassert_er(EOK, jw$new(&jb, .buf = buf, .indent = 4));
 
         jw$scope(&jb, JsonType__obj)
         {
@@ -631,8 +630,7 @@ test$case(json_writer_multi_func_concept)
     {
         json_writer_c jb;
         sbuf_c buf = sbuf.create(1024, _);
-        // tassert_er(EOK, jw$new(&jb, buf, .indent = 4));
-        jw$new(&jb, buf, .indent = 4);
+        e$ret(jw$new(&jb, .buf = buf, .indent = 4));
 
         e$ret(print_order(&jb, &ord));
 
