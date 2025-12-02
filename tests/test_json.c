@@ -55,14 +55,15 @@ typedef struct Order
 
 
 Exception
-print_stock(json_writer_c* jw$var, Stock* stk)
+print_stock(json_writer_c* jw, Stock* stk)
 {
     json_writer_c _jw;
-    if (!jw$var) {
+    if (!jw) {
         e$ret(jw$new(&_jw, stdout, .indent = 4));
-        jw$var = &_jw;
+        jw = &_jw;
     }
-    jw$scope(jw$var, JsonType__obj)
+
+    jw$scope(jw, JsonType__obj)
     {
         jw$key("ticker");
         jw$val(stk->ticker);
@@ -90,59 +91,13 @@ print_order(json_writer_c* jw, Order* ord)
         jw$key("qty");
         jw$val(ord->qty);
 
-
-        jw$key("name");
-        jw$val("foo");
-
-        jw$key("name");
-        jw$val("foo");
-
-        jw$key("name");
-        jw$val(str$s("str_slice"));
-        //
-        // jw$key("stock");
-        // jw$scope(jw, JsonType__arr)
-        // {
-        //     for (u32 i = 0; i < 3; i++) {
-        //         jw$scope(jw, JsonType__obj)
-        //         {
-        //             jw$key("id");
-        //             jw$val("%d", i);
-        //
-        //             jw$key("price_%d", i);
-        //             jw$val("%0.4f", ord->price + i);
-        //         }
-        //     }
-        //     jw$val(1);
-        //     jw$val(2);
-        // }
-        // jw$kval("price", "%0.4f", ord->price);
-        // jw$kval("qty", "%d", ord->qty);
-        // jw$kobj_scope("stock") {
-        //     e$ret(print_stock(jw, ord->stock));
-        // }
+        jw$key("stock");
+        e$ret(print_stock(jw, ord->stock));
     }
 
     return EOK;
 }
 
-test$case(json_writer_multi_func)
-{
-    Stock stk = {
-        .id = 8899,
-        .ticker = "UBER",
-    };
-
-    Order ord = {
-        .price = 100.33,
-        .qty = 33,
-        .stock = &stk,
-    };
-    e$ret(print_order(NULL, &ord));
-    tassert(false);
-
-    return EOK;
-}
 
 test$case(json_reader_macro_proto)
 {
@@ -656,6 +611,45 @@ test$case(json_writer_macro_only_fmt)
 }";
         tassert_eq(buf, expected);
     }
+    return EOK;
+}
+
+test$case(json_writer_multi_func_concept)
+{
+    Stock stk = {
+        .id = 8899,
+        .ticker = "UBER",
+    };
+
+    Order ord = {
+        .price = 100.33,
+        .qty = 33,
+        .stock = &stk,
+    };
+
+    mem$scope(tmem$, _)
+    {
+        json_writer_c jb;
+        sbuf_c buf = sbuf.create(1024, _);
+        tassert_er(EOK, jw$new(&jb, buf, .indent = 4));
+
+        e$ret(print_order(&jb, &ord));
+
+        tassert_er(EOK, jb.error);
+        io.printf("\nJSON (buf): \n%s\n", buf);
+        print_json_expected(buf);
+
+        char* expected = "{\n\
+    \"price\": 100.330002, \n\
+    \"qty\": 33, \n\
+    \"stock\": {\n\
+        \"ticker\": \"UBER\", \n\
+        \"id\": 8899\n\
+    }\n\
+}";
+        tassert_eq(buf, expected);
+    }
+
     return EOK;
 }
 test$main();
