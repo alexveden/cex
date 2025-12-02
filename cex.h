@@ -5576,6 +5576,7 @@ typedef struct CexParser_c
     char* cur;         // current cursor in the source
     char* content_end; // last pointer of the source
     u32 line;          // current cursor line relative to content beginning
+    u32 col;           // current cursor column relative to start of the line
     bool fold_scopes;  // count all {} / () / [] as a single token CexTkn_*_block
 } CexParser_c;
 
@@ -18286,7 +18287,8 @@ const char* CexTkn_str[] = {
     ({                                                                                             \
         char res = '\0';                                                                           \
         if ((lx->cur < lx->content_end)) {                                                         \
-            if (*lx->cur == '\n') { lx->line++; }                                                  \
+            if (*lx->cur == '\n') { lx->line++; lx->col = 0;}                                                  \
+            lx->col++;\
             res = *(lx->cur++);                                                                    \
         }                                                                                          \
         res;                                                                                       \

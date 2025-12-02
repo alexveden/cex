@@ -15,7 +15,8 @@ const char* CexTkn_str[] = {
     ({                                                                                             \
         char res = '\0';                                                                           \
         if ((lx->cur < lx->content_end)) {                                                         \
-            if (*lx->cur == '\n') { lx->line++; }                                                  \
+            if (*lx->cur == '\n') { lx->line++; lx->col = 0;}                                                  \
+            lx->col++;\
             res = *(lx->cur++);                                                                    \
         }                                                                                          \
         res;                                                                                       \
