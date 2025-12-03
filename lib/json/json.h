@@ -7,10 +7,10 @@
 /// JSON Reader Namespace
 #define __jr$
 
-/// Creates new json reader container, kwargs... are optional see: json_reader_kw. json_reader is a
+/// Creates new json reader container, kwargs... are optional see: jr_kw. json_reader is a
 /// one pass, non-allocating parser.
 #define jr$new(json_reader, content, len, kwargs...)                                               \
-    _cex_json__reader__create((json_reader), (content), (len), &(json_reader_kw){ kwargs })
+    _cex_json__reader__create((json_reader), (content), (len), &(jr_kw){ kwargs })
 
 /// Gets last json reader error
 #define jr$err(json_reader) (json_reader)->error
@@ -90,12 +90,12 @@ typedef enum JsonType_e
 } JsonType_e;
 
 
-typedef struct json_reader_kw
+typedef struct jr_kw
 {
     bool strict_mode;
-} json_reader_kw;
+} jr_kw;
 
-typedef struct json_reader_c
+typedef struct jr_c
 {
     str_s val;       // string value of the json item
     str_s key;       // associated key of the val (if inside object)
@@ -113,7 +113,7 @@ typedef struct json_reader_c
         u8 scope_stack[CEX_MAX_JSON_DEPTH];
     } _impl;
 
-} json_reader_c;
+} jr_c;
 
 /// JSON Writer jw$new() keyword arguments 
 typedef struct jw_kw
@@ -190,10 +190,10 @@ typedef struct jw_c
 #define jw$fmt(format, ...) _cex_json__writer__print(_jw$scope_var, format, ##__VA_ARGS__)
 
 // clang-format off
-Exception _cex_json__reader__create(json_reader_c* it, char* content, usize content_len, json_reader_kw* kwargs);
-Exception _cex_json__reader__step_in(json_reader_c* it, JsonType_e expected_type);
-bool _cex_json__reader__next(json_reader_c* it);
-str_s _cex_json__reader__get_scope(json_reader_c* it, JsonType_e scope_type);
+Exception _cex_json__reader__create(jr_c* it, char* content, usize content_len, jr_kw* kwargs);
+Exception _cex_json__reader__step_in(jr_c* it, JsonType_e expected_type);
+bool _cex_json__reader__next(jr_c* it);
+str_s _cex_json__reader__get_scope(jr_c* it, JsonType_e scope_type);
 
 
 void _cex_json__writer__print(jw_c* jw, char* format, ...);

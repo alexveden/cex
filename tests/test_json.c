@@ -65,7 +65,7 @@ destroy_stock(Stock* stk, IAllocator allc)
 }
 
 Exception
-deserialize_stock(json_reader_c* jr, Stock* stk, IAllocator allc)
+deserialize_stock(jr_c* jr, Stock* stk, IAllocator allc)
 {
     uassert(stk);
     uassert(jr);
@@ -97,7 +97,7 @@ destroy_order(Order* item, IAllocator allc)
 }
 
 Exception
-deserialize_order(json_reader_c* jr, Order* item, IAllocator allc)
+deserialize_order(jr_c* jr, Order* item, IAllocator allc)
 {
     uassert(item);
     uassert(jr);
@@ -173,7 +173,7 @@ test$case(json_reader_macro_proto)
         "{ \"foo\" : {\"baz\": 3, \"fuzz\": 8, \"oops\": 0}, \"next\": [1, 2, 3], \"baz\": 17 }"
     );
 
-    json_reader_c js;
+    jr_c js;
     e$ret(jr$new(&js, content.buf, content.len, .strict_mode = true));
     tassert_eq(js.type, JsonType__obj);
 
@@ -222,7 +222,7 @@ test$case(json_reader_macro_get_scope)
         "{\"arr\": [1, 2, 3], \"args\" : {\"baz\": 3, \"fuzz\": 8}, \"req_type\": 17 }"
     );
 
-    json_reader_c js;
+    jr_c js;
     e$ret(jr$new(&js, content.buf, content.len, .strict_mode = true));
     tassert_eq(js.type, JsonType__obj);
 
@@ -294,7 +294,7 @@ test$case(json_reader_array_of_objects)
 
     str_s content = str$s("{ items : [{qty: 1, price: 123}, {qty: -100, price: 999}]  }");
 
-    json_reader_c js;
+    jr_c js;
     e$ret(jr$new(&js, content.buf, content.len, .strict_mode = false));
     jr$foreach(k, v, &js)
     {
@@ -338,7 +338,7 @@ test$case(json_reader_strict_mode_keys)
 
     str_s content = str$s("{ \"items\" : 1, \"foo\": 2  }");
 
-    json_reader_c js;
+    jr_c js;
     e$ret(jr$new(&js, content.buf, content.len, .strict_mode = true));
 
     bool has_items = false;
@@ -364,7 +364,7 @@ test$case(json_reader_strict_mode_keys_bad_start)
 
     str_s content = str$s("{ items : 1, \"foo\": 2  }");
 
-    json_reader_c js;
+    jr_c js;
     e$ret(jr$new(&js, content.buf, content.len, .strict_mode = true));
 
     bool has_items = false;
@@ -390,7 +390,7 @@ test$case(json_reader_strict_mode_keys_bad_following)
 
     str_s content = str$s("{ \"items\" : 1, foo: 2  }");
 
-    json_reader_c js;
+    jr_c js;
     e$ret(jr$new(&js, content.buf, content.len, .strict_mode = true));
 
     bool has_items = false;
@@ -416,7 +416,7 @@ test$case(json_reader_json5_single_quote_keys)
 
     str_s content = str$s("{ 'items' : 1, 'foo': 2  }");
 
-    json_reader_c js;
+    jr_c js;
     e$ret(jr$new(&js, content.buf, content.len, .strict_mode = false));
 
     bool has_items = false;
@@ -654,7 +654,7 @@ test$case(json_writer_multi_func_serde_concept)
 }";
         tassert_eq(buf, expected);
 
-        json_reader_c jr;
+        jr_c jr;
         e$ret(jr$new(&jr, expected, 0, .strict_mode = true));
 
         Order ord2 = { 0 };
@@ -683,7 +683,7 @@ test$case(json_writer_multi_func_deser_order_err)
         \"id\": null\n\
     }\n\
 }";
-        json_reader_c jr;
+        jr_c jr;
         e$ret(jr$new(&jr, expected, 0, .strict_mode = true));
 
         Order ord2 = { 0 };
@@ -792,7 +792,7 @@ test$case(json_reader_error_handling)
 {
     str_s content = str$s("{\n \"foo\": \n}");
 
-    json_reader_c js;
+    jr_c js;
     e$ret(jr$new(&js, content.buf, content.len, .strict_mode = true));
     tassert_eq(js.type, JsonType__obj);
 

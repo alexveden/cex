@@ -60,7 +60,7 @@
  * @return
  */
 Exception
-_cex_json__reader__create(json_reader_c* it, char* content, usize content_len, json_reader_kw* kwargs)
+_cex_json__reader__create(jr_c* it, char* content, usize content_len, jr_kw* kwargs)
 {
     uassert(it != NULL);
     if (content == NULL) { return Error.argument; }
@@ -68,7 +68,7 @@ _cex_json__reader__create(json_reader_c* it, char* content, usize content_len, j
     bool strict_mode = false;
     if (kwargs != NULL) { strict_mode = kwargs->strict_mode; }
 
-    *it = (json_reader_c){
+    *it = (jr_c){
         ._impl = {
             .strict_mode = strict_mode,
             .lexer = CexParser.create(content, content_len, false),
@@ -87,7 +87,7 @@ _cex_json__reader__create(json_reader_c* it, char* content, usize content_len, j
  * @return
  */
 Exception
-_cex_json__reader__step_in(json_reader_c* it, JsonType_e expected_type)
+_cex_json__reader__step_in(jr_c* it, JsonType_e expected_type)
 {
     if (unlikely(it->error != EOK)) { goto error; }
     if (unlikely(it->_impl.scope_depth >= sizeof(it->_impl.scope_stack) - 1)) {
@@ -135,7 +135,7 @@ error:
 //  * @return
 //  */
 // Exception
-// cex_json__reader__step_out(json_reader_c* it)
+// cex_json__reader__step_out(jr_c* it)
 // {
 //     if (unlikely(it->_impl.scope_depth == 0)) {
 //         it->error = "Bad scope/level for step out";
@@ -147,7 +147,7 @@ error:
 // }
 
 static Exc
-_cex_json__reader__skip(json_reader_c* it)
+_cex_json__reader__skip(jr_c* it)
 {
     // Simulate full step-in/next sequence for all nested stuff (because it serves as syntax check)
     u32 scope_depth_initial = it->_impl.scope_depth;
@@ -166,7 +166,7 @@ _cex_json__reader__skip(json_reader_c* it)
     return it->error;
 }
 
-str_s _cex_json__reader__get_scope(json_reader_c* it, JsonType_e scope_type) {
+str_s _cex_json__reader__get_scope(jr_c* it, JsonType_e scope_type) {
     uassert(scope_type == JsonType__arr || scope_type == JsonType__obj);
 
     str_s result = { 0 };
@@ -203,7 +203,7 @@ str_s _cex_json__reader__get_scope(json_reader_c* it, JsonType_e scope_type) {
 }
 
 bool
-_cex_json__reader__next(json_reader_c* it)
+_cex_json__reader__next(jr_c* it)
 {
     if (unlikely(it->error != EOK)) { goto error; }
     it->key = (str_s){ 0 };

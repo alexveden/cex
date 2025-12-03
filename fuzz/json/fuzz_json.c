@@ -10,7 +10,7 @@ int
 fuzz$case(const u8* data, usize size)
 {
     if (size == 0) { return -1; }
-    json_reader_c js;
+    jr_c js;
 
     // permissive mode
     if (json.reader.create(&js, (char*)data, size, false)) { return 0; }

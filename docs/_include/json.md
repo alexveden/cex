@@ -34,7 +34,7 @@ Reading JSON buffer:
     str_s content = str$s(
         "{ \"foo\" : {\"baz\": 3, \"fuzz\": 8, \"oops\": 0}, \"next\": 7, \"baz\": 17 }"
     );
-    json_reader_c js;
+    jr_c js;
     e$ret(json.reader.create(&js, content.buf, 0, false));
     if (json.reader.next(&js)) { e$ret(json.reader.step_in(&js, JsonType__obj)); }
     while (json.reader.next(&js)) {
@@ -102,7 +102,7 @@ Reading JSON buffer:
 
 typedef jw_c
 
-typedef json_reader_c
+typedef jr_c
 
 
 
@@ -124,13 +124,13 @@ json {
 
     struct {
         /// Create new JSON reader (it doesn't allocate memory and uses content slicing)
-        Exception       (*create)(json_reader_c* it, char* content, usize content_len, bool strict_mode);
+        Exception       (*create)(jr_c* it, char* content, usize content_len, bool strict_mode);
         /// Get next JSON item for a scope
-        bool            (*next)(json_reader_c* it);
+        bool            (*next)(jr_c* it);
         /// Make step inside JSON object or array scope (json.reader.next() starts emitting this scope)
-        Exception       (*step_in)(json_reader_c* it, JsonType_e expected_type);
+        Exception       (*step_in)(jr_c* it, JsonType_e expected_type);
         /// Early step out from JSON scope (you must immediately break the loop/func after step out)
-        Exception       (*step_out)(json_reader_c* it);
+        Exception       (*step_out)(jr_c* it);
     } iter;
 
     // clang-format on
