@@ -115,14 +115,16 @@ typedef struct json_reader_c
 
 } json_reader_c;
 
-typedef struct json_writer_kw
+/// JSON Writer jw$new() keyword arguments 
+typedef struct jw_kw
 {
     FILE* stream;
     sbuf_c buf;
     u32 indent;
-} json_writer_kw;
+} jw_kw;
 
-typedef struct json_writer_c
+/// JSON Writer container type
+typedef struct jw_c
 {
     FILE* stream;
     sbuf_c buf;
@@ -131,7 +133,7 @@ typedef struct json_writer_c
     u32 indent_width;
     u32 scope_depth;
     u8 scope_stack[CEX_MAX_JSON_DEPTH];
-} json_writer_c;
+} jw_c;
 
 /// JSON Writer Namespace
 #define __jw$
@@ -139,7 +141,7 @@ typedef struct json_writer_c
 /// Creates new instance of json writer, non allocating serializer, with support of exporting to
 /// FILE* or backing by string buffer sbuf_c
 #define jw$new(json_writer, kwargs...)                                                             \
-    _cex_json__writer__create((json_writer), &(json_writer_kw){ kwargs })
+    _cex_json__writer__create((json_writer), &(jw_kw){ kwargs })
 
 /// Checks if json writer has no errors
 #define jw$validate(json_writer) _cex_json__writer__validate((json_writer))
@@ -176,7 +178,7 @@ typedef struct json_writer_c
 
 /// Opens JSON scope, jsontype_arr_or_obj expects JsonType__obj or JsonType__arr
 #define jw$scope(json_writer_ptr, jsontype_arr_or_obj)                                             \
-    for (json_writer_c * _jw$scope_var                                                              \
+    for (jw_c * _jw$scope_var                                                              \
              __attribute__((__cleanup__(_cex_json__writer__print_scope_exit))) =                   \
              _cex_json__writer__print_scope_enter((json_writer_ptr), jsontype_arr_or_obj, true),   \
              *cex$tmpname(jsonbuf_sentinel) = _jw$scope_var;                                        \
@@ -194,11 +196,11 @@ bool _cex_json__reader__next(json_reader_c* it);
 str_s _cex_json__reader__get_scope(json_reader_c* it, JsonType_e scope_type);
 
 
-void _cex_json__writer__print(json_writer_c* jw, char* format, ...);
-void _cex_json__writer__print_item(json_writer_c* jw, char* format, ...);
-void _cex_json__writer__print_key(json_writer_c* jw, char* format, ...);
-void _cex_json__writer__print_scope_exit(json_writer_c** jwptr);
-json_writer_c* _cex_json__writer__print_scope_enter(json_writer_c* jw, JsonType_e scope_type, bool should_indent);
-Exception _cex_json__writer__create(json_writer_c* jw, json_writer_kw* kwargs);
-Exception _cex_json__writer__validate(json_writer_c* jw);
+void _cex_json__writer__print(jw_c* jw, char* format, ...);
+void _cex_json__writer__print_item(jw_c* jw, char* format, ...);
+void _cex_json__writer__print_key(jw_c* jw, char* format, ...);
+void _cex_json__writer__print_scope_exit(jw_c** jwptr);
+jw_c* _cex_json__writer__print_scope_enter(jw_c* jw, JsonType_e scope_type, bool should_indent);
+Exception _cex_json__writer__create(jw_c* jw, jw_kw* kwargs);
+Exception _cex_json__writer__validate(jw_c* jw);
 

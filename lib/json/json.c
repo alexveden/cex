@@ -420,7 +420,7 @@ error:
 }
 
 void
-_cex_json_writer_indent(json_writer_c* jw, bool last_item)
+_cex_json_writer_indent(jw_c* jw, bool last_item)
 {
     if (unlikely(jw->error != EOK)) { return; }
     if (jw->scope_depth && jw->scope_stack[jw->scope_depth - 1] & $scope_has_items) {
@@ -447,7 +447,7 @@ _cex_json_writer_indent(json_writer_c* jw, bool last_item)
  * @return
  */
 Exception
-_cex_json__writer__create(json_writer_c* jw, json_writer_kw* kwargs)
+_cex_json__writer__create(jw_c* jw, jw_kw* kwargs)
 {
     uassert(jw != NULL);
     uassert(kwargs != NULL);
@@ -457,7 +457,7 @@ _cex_json__writer__create(json_writer_c* jw, json_writer_kw* kwargs)
         return "buf and stream kwargs are mutually exclusive";
     }
 
-    *jw = (json_writer_c){
+    *jw = (jw_c){
         .indent_width = kwargs->indent,
         .buf = kwargs->buf,
         .stream = kwargs->stream,
@@ -467,7 +467,7 @@ _cex_json__writer__create(json_writer_c* jw, json_writer_kw* kwargs)
 }
 
 void
-_cex_json__writer__print(json_writer_c* jw, char* format, ...)
+_cex_json__writer__print(jw_c* jw, char* format, ...)
 {
     u8 last_scope = $last_scope(jw);
     if (!(last_scope & $scope_has_key)) { _cex_json_writer_indent(jw, false); }
@@ -481,7 +481,7 @@ _cex_json__writer__print(json_writer_c* jw, char* format, ...)
 }
 
 void
-_cex_json__writer__print_item(json_writer_c* jw, char* format, ...)
+_cex_json__writer__print_item(jw_c* jw, char* format, ...)
 {
     u8 last_scope = $last_scope(jw);
     // if (!(last_scope & $scope_has_key)) { _cex_json_writer_indent(jw, false); }
@@ -501,7 +501,7 @@ _cex_json__writer__print_item(json_writer_c* jw, char* format, ...)
 }
 
 void
-_cex_json__writer__print_key(json_writer_c* jw, char* format, ...)
+_cex_json__writer__print_key(jw_c* jw, char* format, ...)
 {
     uassertf(
         jw->scope_depth > 0 && jw->scope_stack[jw->scope_depth - 1] & $scope_obj,
@@ -517,8 +517,8 @@ _cex_json__writer__print_key(json_writer_c* jw, char* format, ...)
     }
 }
 
-json_writer_c*
-_cex_json__writer__print_scope_enter(json_writer_c* jw, JsonType_e scope_type, bool should_indent)
+jw_c*
+_cex_json__writer__print_scope_enter(jw_c* jw, JsonType_e scope_type, bool should_indent)
 {
     (void)should_indent;
     u8 last_scope = $last_scope(jw);
@@ -556,10 +556,10 @@ _cex_json__writer__print_scope_enter(json_writer_c* jw, JsonType_e scope_type, b
 }
 
 void
-_cex_json__writer__print_scope_exit(json_writer_c** jwptr)
+_cex_json__writer__print_scope_exit(jw_c** jwptr)
 {
     uassert(*jwptr != NULL);
-    json_writer_c* jw = *jwptr;
+    jw_c* jw = *jwptr;
 
     if (jw->indent >= jw->indent_width) { jw->indent -= jw->indent_width; }
     if (jw->scope_depth > 0) {
@@ -573,7 +573,7 @@ _cex_json__writer__print_scope_exit(json_writer_c** jwptr)
 }
 
 Exception
-_cex_json__writer__validate(json_writer_c* jw)
+_cex_json__writer__validate(jw_c* jw)
 {
     if (jw == NULL) { return Error.argument; }
     return jw->error;

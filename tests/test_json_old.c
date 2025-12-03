@@ -776,7 +776,7 @@ test$case(json_writer_proto)
 {
     mem$scope(tmem$, _)
     {
-        json_writer_c jb;
+        jw_c jb;
         tassert_er(EOK, json.buf.create(&jb, 1024, 4, _));
         json$buf(&jb, JsonType__obj)
         {
@@ -812,7 +812,7 @@ test$case(json_writer_simple_obj)
 {
     mem$scope(tmem$, _)
     {
-        json_writer_c jb;
+        jw_c jb;
         tassert_er(EOK, json.buf.create(&jb, 1024, 0, _));
         json$buf(&jb, JsonType__obj)
         {
@@ -829,7 +829,7 @@ test$case(json_writer_simple_nested_obj)
 {
     mem$scope(tmem$, _)
     {
-        json_writer_c jb;
+        jw_c jb;
         tassert_er(EOK, json.buf.create(&jb, 1024, 0, _));
         json$buf(&jb, JsonType__obj)
         {
@@ -857,7 +857,7 @@ test$case(json_writer_simple_root_array)
 {
     mem$scope(tmem$, _)
     {
-        json_writer_c jb;
+        jw_c jb;
         tassert_er(EOK, json.buf.create(&jb, 1024, 0, _));
         json$buf(&jb, JsonType__arr)
         {
@@ -879,7 +879,7 @@ test$case(json_writer_simple_fmt_arbitrary)
 {
     mem$scope(tmem$, _)
     {
-        json_writer_c jb;
+        jw_c jb;
         tassert_er(EOK, json.buf.create(&jb, 1024, 0, _));
         json$buf(&jb, JsonType__obj)
         {

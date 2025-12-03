@@ -6,7 +6,7 @@ Low level JSON reader/writer namespace
 Making own JSON buffer:
 
 ```c
-json_writer_c jb;
+jw_c jb;
 e$ret(json.buf.create(&jb, 1024, 0, mem$));
 json$buf(&jb, JsonType__obj)
 {
@@ -100,7 +100,7 @@ Reading JSON buffer:
 /// Append value item into array scope (json$buf)
 #define json$val(format, ...)
 
-typedef json_writer_c
+typedef jw_c
 
 typedef json_reader_c
 
@@ -113,13 +113,13 @@ json {
 
     struct {
         /// Create JSON buffer/builder container used with json$buf / json$fmt / json$kstr macros
-        Exception       (*create)(json_writer_c* jb, u32 capacity, u8 indent, IAllocator allc);
+        Exception       (*create)(jw_c* jb, u32 capacity, u8 indent, IAllocator allc);
         /// Destroy JSON buffer instance (not necessary to call if initialized on tmem$ allocator)
-        void            (*destroy)(json_writer_c* jb);
+        void            (*destroy)(jw_c* jb);
         /// Get JSON buffer contents (NULL if any error occurred)
-        char*           (*get)(json_writer_c* jb);
+        char*           (*get)(jw_c* jb);
         /// Check if there is any error in JSON buffer
-        Exception       (*validate)(json_writer_c* jb);
+        Exception       (*validate)(jw_c* jb);
     } buf;
 
     struct {

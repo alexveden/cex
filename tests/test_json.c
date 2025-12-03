@@ -122,9 +122,9 @@ err:
 }
 
 Exception
-print_stock(json_writer_c* jw, Stock* stk)
+print_stock(jw_c* jw, Stock* stk)
 {
-    json_writer_c _jw;
+    jw_c _jw;
     if (!jw) {
         e$ret(jw$new(&_jw, stdout, .indent = 4));
         jw = &_jw;
@@ -143,9 +143,9 @@ print_stock(json_writer_c* jw, Stock* stk)
 }
 
 Exception
-print_order(json_writer_c* jw, Order* ord)
+print_order(jw_c* jw, Order* ord)
 {
-    json_writer_c _jw;
+    jw_c _jw;
     if (!jw) {
         e$ret(jw$new(&_jw, stdout, .indent = 4));
         jw = &_jw;
@@ -442,7 +442,7 @@ test$case(json_writer_macro_proto_indent4)
 {
     mem$scope(tmem$, _)
     {
-        json_writer_c jb;
+        jw_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         (void)buf;
         tassert_er(EOK, jw$new(&jb, .buf = buf, .indent = 4));
@@ -522,7 +522,7 @@ test$case(json_writer_macro_proto_no_indent)
 {
     mem$scope(tmem$, _)
     {
-        json_writer_c jb;
+        jw_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         (void)buf;
         tassert_er(EOK, jw$new(&jb, .buf = buf, .indent = 0));
@@ -577,7 +577,7 @@ test$case(json_writer_macro_only_fmt)
 {
     mem$scope(tmem$, _)
     {
-        json_writer_c jb;
+        jw_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         (void)buf;
         tassert_er(EOK, jw$new(&jb, .buf = buf, .indent = 4));
@@ -632,7 +632,7 @@ test$case(json_writer_multi_func_serde_concept)
 
     mem$scope(tmem$, _)
     {
-        json_writer_c jb;
+        jw_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         e$ret(jw$new(&jb, .buf = buf, .indent = 4));
 
@@ -687,7 +687,7 @@ test$case(json_writer_multi_func_deser_order_err)
         e$ret(jr$new(&jr, expected, 0, .strict_mode = true));
 
         Order ord2 = { 0 };
-        if(deserialize_order(&jr, &ord2, _)) {
+        if (deserialize_order(&jr, &ord2, _)) {
             io.printf(jr$err_fmt(&jr));
             tassert_eq(jr.error, Error.argument);
             tassert_eq(jr._impl.lexer.line + 1, 6);
@@ -702,7 +702,7 @@ test$case(json_writer_val_types)
 {
     mem$scope(tmem$, _)
     {
-        json_writer_c jb;
+        jw_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         (void)buf;
         tassert_er(EOK, jw$new(&jb, .buf = buf, .indent = 4));
