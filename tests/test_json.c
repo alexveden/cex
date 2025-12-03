@@ -55,6 +55,71 @@ typedef struct Order
     Stock* stock;
 } Order;
 
+void
+destroy_stock(Stock* stk, IAllocator allc)
+{
+    if (stk) {
+        uassert(allc);
+        if (stk->ticker) { mem$free(allc, stk->ticker); }
+    }
+}
+
+Exception
+deserialize_stock(json_reader_c* jr, Stock* stk, IAllocator allc)
+{
+    uassert(stk);
+    uassert(jr);
+    uassert(allc);
+
+    jr$foreach(k, v, jr)
+    {
+        if (str$eq(k, "ticker")) {
+            stk->ticker = str.slice.clone(v, allc);
+        } else if (str$eq(k, "id")) {
+            jr$egoto(jr, str$convert(v, &stk->id), err);
+        }
+    }
+    return EOK;
+err:
+    destroy_stock(stk, allc);
+    return jr->error;
+}
+
+void
+destroy_order(Order* item, IAllocator allc)
+{
+    if (item) {
+        if (item->stock) {
+            destroy_stock(item->stock, allc);
+            mem$free(allc, item->stock);
+        }
+    }
+}
+
+Exception
+deserialize_order(json_reader_c* jr, Order* item, IAllocator allc)
+{
+    uassert(item);
+    uassert(jr);
+    uassert(allc);
+
+    jr$foreach(k, v, jr)
+    {
+        if (str$eq(k, "stock")) {
+            item->stock = mem$new(allc, Stock);
+            if (item->stock == NULL) { jr$egoto(jr, Error.memory, err); }
+            jr$egoto(jr, deserialize_stock(jr, item->stock, allc), err);
+        } else if (str$eq(k, "qty")) {
+            jr$egoto(jr, str$convert(v, &item->qty), err);
+        } else if (str$eq(k, "price")) {
+            jr$egoto(jr, str$convert(v, &item->price), err);
+        }
+    }
+    return EOK;
+err:
+    destroy_order(item, allc);
+    return jr->error;
+}
 
 Exception
 print_stock(json_writer_c* jw, Stock* stk)
@@ -169,10 +234,10 @@ test$case(json_reader_macro_get_scope)
         (void)k;
         (void)v;
         if (str$eq(k, "arr")) {
-            arr_scope = jr$get_scope(&js, JsonType__arr);
+            arr_scope = jr$get_scope_str_s(&js, JsonType__arr);
             tassert_eq(arr_scope, str$s("[1, 2, 3]"));
         } else if (str$eq(k, "args")) {
-            obj_scope = jr$get_scope(&js, JsonType__obj);
+            obj_scope = jr$get_scope_str_s(&js, JsonType__obj);
             tassert_eq(obj_scope, str$s("{\"baz\": 3, \"fuzz\": 8}"));
         } else if (str$eq(k, "req_type")) {
             e$ret(str$convert(v, &req_type));
@@ -184,20 +249,22 @@ test$case(json_reader_macro_get_scope)
     u32 arr_sum = 0;
     e$ret(jr$new(&js, arr_scope.buf, arr_scope.len, .strict_mode = true));
     tassert_eq(js.type, JsonType__arr);
-    jr$foreach(v, &js) {
+    jr$foreach(v, &js)
+    {
         u32 res = 0;
         e$ret(str$convert(v, &res));
         tassert(res > 0);
         arr_sum += res;
     }
     tassert_er(js.error, EOK);
-    tassert_eq(arr_sum, 1+2+3);
+    tassert_eq(arr_sum, 1 + 2 + 3);
 
     e$ret(jr$new(&js, obj_scope.buf, obj_scope.len, .strict_mode = true));
     tassert_eq(js.type, JsonType__obj);
     bool has_baz = false;
     bool has_fuzz = false;
-    jr$foreach(k, v, &js) {
+    jr$foreach(k, v, &js)
+    {
         (void)v;
         if (str$eq(k, "baz")) {
             has_baz = true;
@@ -550,7 +617,7 @@ test$case(json_writer_macro_only_fmt)
     return EOK;
 }
 
-test$case(json_writer_multi_func_concept)
+test$case(json_writer_multi_func_serde_concept)
 {
     Stock stk = {
         .id = 8899,
@@ -586,9 +653,49 @@ test$case(json_writer_multi_func_concept)
     }\n\
 }";
         tassert_eq(buf, expected);
+
+        json_reader_c jr;
+        e$ret(jr$new(&jr, expected, 0, .strict_mode = true));
+
+        Order ord2 = { 0 };
+        e$ret(deserialize_order(&jr, &ord2, _));
+
+        tassert_eq((int)ord2.price, 100);
+        tassert_eq(ord2.qty, 33);
+        tassert(ord2.stock != NULL);
+        tassert_eq(ord2.stock->ticker, "UBER");
+        tassert_eq(ord2.stock->id, 8899);
     }
 
     return EOK;
+}
+
+test$case(json_writer_multi_func_deser_order_err)
+{
+    mem$scope(tmem$, _)
+    {
+
+        char* expected = "{\n\
+    \"price\": 100.330002, \n\
+    \"qty\": 33, \n\
+    \"stock\": {\n\
+        \"ticker\": \"UBER\", \n\
+        \"id\": null\n\
+    }\n\
+}";
+        json_reader_c jr;
+        e$ret(jr$new(&jr, expected, 0, .strict_mode = true));
+
+        Order ord2 = { 0 };
+        if(deserialize_order(&jr, &ord2, _)) {
+            io.printf(jr$err_fmt(&jr));
+            tassert_eq(jr.error, Error.argument);
+            tassert_eq(jr._impl.lexer.line + 1, 6);
+            return EOK;
+        }
+    }
+
+    return Error.assert;
 }
 
 test$case(json_writer_val_types)

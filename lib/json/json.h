@@ -10,10 +10,19 @@
 #define jr$err(json_reader) (json_reader)->error
 
 #define jr$err_fmt(json_reader)                                                                    \
-    "JSON (%s) at line: %d col: %d\n", (json_reader)->error ? (json_reader)->error : "OK",         \
-        (json_reader)->_impl.lexer.line + 1, (json_reader)->_impl.lexer.col
+    "JSON %s(%s) at line: %d col: %d\n", (json_reader)->error ? "Parsing Error " : "",             \
+        (json_reader)->error ? (json_reader)->error : "OK", (json_reader)->_impl.lexer.line + 1,   \
+        (json_reader)->_impl.lexer.col
 
-#define jr$get_scope(json_reader, json_type) _cex_json__reader__get_scope((json_reader), json_type)
+#define jr$egoto(json_reader, try_expression, goto_on_fail_label)                                  \
+    if (!(json_reader)->error) {                                                                   \
+        e$except_silent (err, try_expression) {                                                    \
+            (json_reader)->error = err;                                                            \
+            goto goto_on_fail_label;                                                               \
+        }                                                                                          \
+    }
+
+#define jr$get_scope_str_s(json_reader, json_type) _cex_json__reader__get_scope((json_reader), json_type)
 
 #define jr$foreach(...) _jr$foreach_impl(__VA_ARGS__, _jr$foreach_obj, _jr$foreach_arr)(__VA_ARGS__)
 
