@@ -1,9 +1,9 @@
 #define CEX_IMPLEMENTATION
 #define CEX_TEST
 #include "cex.h"
-#include <stdint.h>
-#include <math.h>
 #include "lib/json/json.c"
+#include <math.h>
+#include <stdint.h>
 
 // test$setup_case() {return EOK;}
 // test$teardown_case() {return EOK;}
@@ -151,6 +151,69 @@ fail:
     return EOK;
 }
 
+test$case(json_reader_macro_get_scope)
+{
+    str_s content = str$s(
+        "{\"arr\": [1, 2, 3], \"args\" : {\"baz\": 3, \"fuzz\": 8}, \"req_type\": 17 }"
+    );
+
+    json_reader_c js;
+    e$ret(jr$new(&js, content.buf, content.len, .strict_mode = true));
+    tassert_eq(js.type, JsonType__obj);
+
+    str_s arr_scope = { 0 };
+    str_s obj_scope = { 0 };
+    u32 req_type = 0;
+    jr$foreach(k, v, &js)
+    {
+        (void)k;
+        (void)v;
+        if (str$eq(k, "arr")) {
+            arr_scope = jr$get_scope(&js, JsonType__arr);
+            tassert_eq(arr_scope, str$s("[1, 2, 3]"));
+        } else if (str$eq(k, "args")) {
+            obj_scope = jr$get_scope(&js, JsonType__obj);
+            tassert_eq(obj_scope, str$s("{\"baz\": 3, \"fuzz\": 8}"));
+        } else if (str$eq(k, "req_type")) {
+            e$ret(str$convert(v, &req_type));
+        }
+    }
+    tassert_er(js.error, EOK);
+    tassert_eq(req_type, 17);
+
+    u32 arr_sum = 0;
+    e$ret(jr$new(&js, arr_scope.buf, arr_scope.len, .strict_mode = true));
+    tassert_eq(js.type, JsonType__arr);
+    jr$foreach(v, &js) {
+        u32 res = 0;
+        e$ret(str$convert(v, &res));
+        tassert(res > 0);
+        arr_sum += res;
+    }
+    tassert_er(js.error, EOK);
+    tassert_eq(arr_sum, 1+2+3);
+
+    e$ret(jr$new(&js, obj_scope.buf, obj_scope.len, .strict_mode = true));
+    tassert_eq(js.type, JsonType__obj);
+    bool has_baz = false;
+    bool has_fuzz = false;
+    jr$foreach(k, v, &js) {
+        (void)v;
+        if (str$eq(k, "baz")) {
+            has_baz = true;
+        } else if (str$eq(k, "fuzz")) {
+            has_fuzz = true;
+        } else {
+            tassert(false);
+        }
+    }
+
+    tassert_er(js.error, EOK);
+    tassert(has_baz);
+    tassert(has_fuzz);
+
+    return EOK;
+}
 
 test$case(json_reader_array_of_objects)
 {
@@ -539,17 +602,17 @@ test$case(json_writer_val_types)
 
         jw$scope(&jb, JsonType__arr)
         {
-            u8 v1 = UINT8_MAX; 
+            u8 v1 = UINT8_MAX;
             jw$val(v1);
-            i8 v2 = INT8_MIN; 
+            i8 v2 = INT8_MIN;
             jw$val(v2);
-            i16 v3 = INT16_MIN; 
+            i16 v3 = INT16_MIN;
             jw$val(v3);
-            u16 v4 = UINT16_MAX; 
+            u16 v4 = UINT16_MAX;
             jw$val(v4);
-            i32 v5 = INT32_MIN; 
+            i32 v5 = INT32_MIN;
             jw$val(v5);
-            u32 v6 = UINT32_MAX; 
+            u32 v6 = UINT32_MAX;
             jw$val(v6);
             i64 v7 = INT64_MIN;
             jw$val(v7);
@@ -572,13 +635,13 @@ test$case(json_writer_val_types)
             bool v16 = true;
             jw$val(v16);
 
-            const char* s1 = "const"; 
+            const char* s1 = "const";
             jw$val(s1);
-            char* s2 = "str"; 
+            char* s2 = "str";
             jw$val(s2);
-            str_s s3 = str$s("str_s"); 
+            str_s s3 = str$s("str_s");
             jw$val(s3);
-            char* s4 = NULL; 
+            char* s4 = NULL;
             jw$val(s4);
 
             // usize v17 = SIZE_MAX;
@@ -620,9 +683,7 @@ test$case(json_writer_val_types)
 
 test$case(json_reader_error_handling)
 {
-    str_s content = str$s(
-        "{\n \"foo\": \n}"
-    );
+    str_s content = str$s("{\n \"foo\": \n}");
 
     json_reader_c js;
     e$ret(jr$new(&js, content.buf, content.len, .strict_mode = true));
@@ -631,16 +692,14 @@ test$case(json_reader_error_handling)
     u32 val = 0;
     jr$foreach(k, v, &js)
     {
-        if (str$eq(k, "foo")) {
-            e$ret(str$convert(v, &val));
-        }
+        if (str$eq(k, "foo")) { e$ret(str$convert(v, &val)); }
     }
     tassert_er(jr$err(&js), "Unexpected token");
     tassert_eq(val, 0);
 
     // NOTE: jr$err_fmt can work with any printf function
     io.printf(jr$err_fmt(&js));
-    fprintf(stdout,jr$err_fmt(&js));
+    fprintf(stdout, jr$err_fmt(&js));
     char* s = str.fmt(mem$, jr$err_fmt(&js));
     io.printf(s);
     mem$free(mem$, s);

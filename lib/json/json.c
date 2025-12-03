@@ -166,12 +166,42 @@ _cex_json__reader__skip(json_reader_c* it)
     return it->error;
 }
 
-/**
- * @brief Get next JSON item for a scope
- *
- * @param it
- * @return false - on end of file, error, or _cex_json__reader__step_in() scope
- */
+str_s _cex_json__reader__get_scope(json_reader_c* it, JsonType_e scope_type) {
+    uassert(scope_type == JsonType__arr || scope_type == JsonType__obj);
+
+    str_s result = { 0 };
+    if (unlikely(it->error != EOK)) { return result; }
+
+    if (unlikely(it->type != scope_type)) {
+        if (scope_type == JsonType__arr) {
+            it->error = "Expected array scope";
+        } else {
+            it->error = "Expected object scope";
+        }
+        return result;
+    }
+
+    uassert(it->_impl.curr_token == CexTkn__lbrace || it->_impl.curr_token == CexTkn__lbracket);
+
+    char* cur = it->_impl.lexer.cur - 1;
+    uassert(cur >= it->_impl.lexer.content);
+
+    if(_cex_json__reader__skip(it) == EOK){
+        char* last_cur = it->_impl.lexer.cur;
+        uassert(last_cur > cur);
+        uassert(last_cur < it->_impl.lexer.content_end);
+        uassert(it->type == JsonType__eos);
+        if (last_cur > cur) {
+            // NOTE: we must have at least something in result,
+            // valid .buf with .len=0, may lead to full text parse
+            // if the jr$new()
+            result = (str_s){.buf = cur, .len = last_cur - cur};
+        }
+    }
+
+    return result;
+}
+
 bool
 _cex_json__reader__next(json_reader_c* it)
 {

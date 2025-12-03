@@ -10,8 +10,10 @@
 #define jr$err(json_reader) (json_reader)->error
 
 #define jr$err_fmt(json_reader)                                                                    \
-    "JSON (%s) at line: %d col: %d\n", (json_reader)->error ? (json_reader)->error : "OK",                 \
+    "JSON (%s) at line: %d col: %d\n", (json_reader)->error ? (json_reader)->error : "OK",         \
         (json_reader)->_impl.lexer.line + 1, (json_reader)->_impl.lexer.col
+
+#define jr$get_scope(json_reader, json_type) _cex_json__reader__get_scope((json_reader), json_type)
 
 #define jr$foreach(...) _jr$foreach_impl(__VA_ARGS__, _jr$foreach_obj, _jr$foreach_arr)(__VA_ARGS__)
 
@@ -145,6 +147,7 @@ typedef struct json_writer_c
 Exception _cex_json__reader__create(json_reader_c* it, char* content, usize content_len, json_reader_kw* kwargs);
 Exception _cex_json__reader__step_in(json_reader_c* it, JsonType_e expected_type);
 bool _cex_json__reader__next(json_reader_c* it);
+str_s _cex_json__reader__get_scope(json_reader_c* it, JsonType_e scope_type);
 
 
 void _cex_json__writer__print(json_writer_c* jw, char* format, ...);
