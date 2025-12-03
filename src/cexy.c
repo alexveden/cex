@@ -1312,7 +1312,7 @@ _cexy__colorize_ansi(str_s token, str_s exact_match, char current_char)
 
         // CEX style type suffix
         if (str.slice.ends_with(token, str$s("_s")) || str.slice.ends_with(token, str$s("_e")) ||
-            str.slice.ends_with(token, str$s("_c"))) {
+            str.slice.ends_with(token, str$s("_c")) || str.slice.ends_with(token, str$s("_kw"))) {
             return types[2];
         }
 
@@ -1458,7 +1458,7 @@ _cexy__display_full_info(
                     } else if (it->type == CexTkn__typedef) {
                         if (it->name.buf[base_name.len] != '_') { continue; }
                         if (!(str.slice.ends_with(it->name, str$s("_c")) ||
-                              str.slice.ends_with(it->name, str$s("_s")))) {
+                              str.slice.ends_with(it->name, str$s("_s")) || str.slice.ends_with(it->name, str$s("_kw")))) {
                             continue;
                         }
                     } else if (it->type == CexTkn__cex_module_struct) {
