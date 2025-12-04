@@ -1232,4 +1232,30 @@ test$case(test_struct_with_many_attributes_too_many)
     }
     return EOK;
 }
+
+test$case(test_attr_for_func)
+{
+    // clang-format off
+    char* code = 
+        "some$$attr()\n"
+        "int foo(int a);"
+        "";
+    CexParser_c lx = CexParser_create(code, 0, true);
+    cex_token_s t;
+    mem$scope(tmem$, _){
+        arr$(cex_token_s) items = arr$new(items, _);
+
+        t = CexParser_next_entity(&lx, &items);
+        log$debug("Entity:  type: %d type_str: '%s' children: %zu\n%S\n", t.type, CexTkn_str[t.type], arr$len(items), t.value);
+        tassert_eq(t.type, CexTkn__func_decl);
+
+        auto d = CexParser.decl_parse(&lx, t, items, NULL, _);
+        tassert(d != NULL);
+        tassert_eq(lx.error, EOK);
+        tassert_eq(d->attr_count, 1);
+        tassert_eq(d->attr[0], str$s("some$$attr()"));
+    }
+    return EOK;
+}
+
 test$main();
