@@ -70,10 +70,6 @@
              ? ((_key) = ((json_reader)->key), (_val) = ((json_reader)->val), 1)                   \
              : 0;)
 
-#define str$eq(str_s_slice, compare_to_literal)                                                    \
-    ((str_s_slice).buf && (str_s_slice).len == sizeof(compare_to_literal) - 1 &&                   \
-     memcmp((str_s_slice).buf, compare_to_literal, sizeof(compare_to_literal) - 1) == 0)
-
 typedef enum JsonType_e
 {
     JsonType__eos = -2, // end of scope (after _cex_json__reader__step_in())

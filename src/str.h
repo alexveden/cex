@@ -7,6 +7,10 @@
 #if !defined(cex$enable_minimal) || defined(cex$enable_str)
 #include "all.h"
 
+/// Compares str_s (slice) with literal in performance efficient way
+#define str$eq(str_s_slice, compare_to_literal)                                                    \
+    ((str_s_slice).buf && (str_s_slice).len == sizeof(compare_to_literal) - 1 &&                   \
+     memcmp((str_s_slice).buf, compare_to_literal, sizeof(compare_to_literal) - 1) == 0)
 
 /// Joins parts of strings using a separator str$join(allc, ",", "a", "b", "c") -> "a,b,c"
 #define str$join(allocator, str_join_by, str_parts...)                                             \
