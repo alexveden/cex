@@ -1051,24 +1051,8 @@ test$case(test_struct_def_with_serde_attr)
 
         t = CexParser_next_entity(&lx, &items);
         log$debug("Entity:  type: %d type_str: '%s' children: %zu\n%S\n", t.type, CexTkn_str[t.type], arr$len(items), t.value);
-        tassert_eq(t.type, CexTkn__cex_attribute);
-        tassert_eq(arr$len(items), 2);
 
         cex_decl_s* d = CexParser.decl_parse(&lx, t, items, NULL, _);
-        tassert(d != NULL);
-        tassert_eq(d->type, CexTkn__cex_attribute);
-        tassert_eq(d->name, str$s("serde$$struct"));
-        tassert_eq(d->ret_type, "");
-        tassert_eq(d->body.buf, NULL);
-        tassert_eq(d->args, ".name = \"MyStock\"");
-        tassert_eq(d->docs, (str_s){0});
-
-        t = CexParser_next_entity(&lx, &items);
-        log$debug("Entity:  type: %d type_str: '%s' children: %zu\n%S\n", t.type, CexTkn_str[t.type], arr$len(items), t.value);
-        tassert_eq(t.type, CexTkn__typedef);
-        tassert_eq(arr$len(items), 7);
-
-        d = CexParser.decl_parse(&lx, t, items, NULL, _);
         tassert(d != NULL);
         tassert_eq(d->type, CexTkn__typedef);
         tassert_eq(d->name, str$s("my_struct1")); // using last name after typedef scope
@@ -1076,6 +1060,8 @@ test$case(test_struct_def_with_serde_attr)
         tassert_eq(d->body, str$s("{ CexTkn_e type;  str_s value;}"));
         tassert_eq(d->args, "");
         tassert_eq(d->docs, str$s("/// My Doc"));
+        tassert_eq(d->attr_count, 1);
+        tassert_eq(d->attr[0], str$s("serde$$struct(.name = \"MyStock\")"));
     }
     return EOK;
 }
@@ -1094,27 +1080,14 @@ test$case(test_struct_def_with_serde_attr_no_args)
 
         t = CexParser_next_entity(&lx, &items);
         log$debug("Entity:  type: %d type_str: '%s' children: %zu\n%S\n", t.type, CexTkn_str[t.type], arr$len(items), t.value);
-        tassert_eq(t.type, CexTkn__cex_attribute);
-        tassert_eq(arr$len(items), 2);
-
-        cex_decl_s* d = CexParser.decl_parse(&lx, t, items, NULL, _);
-        tassert(d != NULL);
-        tassert_eq(d->type, CexTkn__cex_attribute);
-        tassert_eq(d->name, str$s("serde$$struct"));
-        tassert_eq(d->ret_type, "");
-        tassert_eq(d->body.buf, NULL);
-        tassert_eq(d->args, "");
-        tassert_eq(d->docs, (str_s){0});
-
-        t = CexParser_next_entity(&lx, &items);
-        log$debug("Entity:  type: %d type_str: '%s' children: %zu\n%S\n", t.type, CexTkn_str[t.type], arr$len(items), t.value);
         tassert_eq(t.type, CexTkn__typedef);
-        tassert_eq(arr$len(items), 6);
 
-        d = CexParser.decl_parse(&lx, t, items, NULL, _);
+        auto d = CexParser.decl_parse(&lx, t, items, NULL, _);
         tassert(d != NULL);
         tassert_eq(d->type, CexTkn__typedef);
         tassert_eq(d->name, str$s("my_struct1")); // using last name after typedef scope
+        tassert_eq(d->attr_count, 1);
+        tassert_eq(d->attr[0], str$s("serde$$struct()"));
         tassert_eq(d->ret_type, "typedef struct");
         tassert_eq(d->body, str$s("{ CexTkn_e type;  str_s value;}"));
         tassert_eq(d->args, "");
@@ -1138,7 +1111,7 @@ test$case(test_struct_def_with_serde_attr_no_parens)
         log$debug("Entity:  type: %d type_str: '%s' children: %zu\n%S\n", t.type, CexTkn_str[t.type], arr$len(items), t.value);
         tassert_eq(t.type, CexTkn__error);
         tassert_eq(arr$len(items), 0);
-        tassert_eq(lx.error, "Cex attribute requires ()");
+        tassert_eq(lx.error, "cex$$attribute requires ()");
 
         cex_decl_s* d = CexParser.decl_parse(&lx, t, items, NULL, _);
         tassert(d == NULL);
@@ -1192,6 +1165,71 @@ test$case(test_struct_no_name)
         tassert(d == NULL);
     }
 
+    return EOK;
+}
+
+test$case(test_struct_with_many_attributes)
+{
+    // clang-format off
+    char* code = 
+        "serde$$struct()\n"
+        "serde$$struct()\n"
+        "serde$$struct()\n"
+        "serde$$struct()\n"
+        "serde$$struct()\n"
+        "serde$$struct()\n"
+        "serde$$struct()\n"
+        "typedef struct my_struct { CexTkn_e type;  str_s value;} my_struct1;\n"
+        "";
+    CexParser_c lx = CexParser_create(code, 0, true);
+    cex_token_s t;
+    mem$scope(tmem$, _){
+        arr$(cex_token_s) items = arr$new(items, _);
+
+        t = CexParser_next_entity(&lx, &items);
+        log$debug("Entity:  type: %d type_str: '%s' children: %zu\n%S\n", t.type, CexTkn_str[t.type], arr$len(items), t.value);
+        tassert_eq(t.type, CexTkn__typedef);
+
+        auto d = CexParser.decl_parse(&lx, t, items, NULL, _);
+        tassert(d != NULL);
+        tassert_eq(d->type, CexTkn__typedef);
+        tassert_eq(d->name, str$s("my_struct1")); // using last name after typedef scope
+        tassert_eq(d->attr_count, 7);
+        tassert_eq(d->attr[0], str$s("serde$$struct()"));
+        tassert_eq(d->ret_type, "typedef struct");
+        tassert_eq(d->body, str$s("{ CexTkn_e type;  str_s value;}"));
+        tassert_eq(d->args, "");
+    }
+    return EOK;
+}
+
+test$case(test_struct_with_many_attributes_too_many)
+{
+    // clang-format off
+    char* code = 
+        "serde$$struct()\n"
+        "serde$$struct()\n"
+        "serde$$struct()\n"
+        "serde$$struct()\n"
+        "serde$$struct()\n"
+        "serde$$struct()\n"
+        "serde$$struct()\n"
+        "serde$$struct()\n"
+        "typedef struct my_struct { CexTkn_e type;  str_s value;} my_struct1;\n"
+        "";
+    CexParser_c lx = CexParser_create(code, 0, true);
+    cex_token_s t;
+    mem$scope(tmem$, _){
+        arr$(cex_token_s) items = arr$new(items, _);
+
+        t = CexParser_next_entity(&lx, &items);
+        log$debug("Entity:  type: %d type_str: '%s' children: %zu\n%S\n", t.type, CexTkn_str[t.type], arr$len(items), t.value);
+        tassert_eq(t.type, CexTkn__typedef);
+
+        auto d = CexParser.decl_parse(&lx, t, items, NULL, _);
+        tassert(d == NULL);
+        tassert_eq(lx.error, "Too many cex$$attributes");
+    }
     return EOK;
 }
 test$main();

@@ -5598,6 +5598,8 @@ typedef struct cex_decl_s
     CexTkn_e type;    // decl type (typedef, func, macro, etc)
     bool is_static;   // decl is a static func
     bool is_inline;   // decl is a inline func
+    u32 attr_count;   // Number of comptime cex$$attributes(...)
+    str_s attr[8];    // List of comptime any$$attributes(...)
 } cex_decl_s;
 
 
@@ -18737,13 +18739,6 @@ CexParser_next_entity(CexParser_c* lx, arr$(cex_token_s) * children)
             uassert(result.value.len < 1024 * 1024 && "token diff it too high, bad pointers?");
         }
 
-        if (unlikely(result.type == CexTkn__cex_attribute)) {
-            if (t.type != CexTkn__paren_block) {
-                lx->error = "Cex attribute requires ()";
-                goto error;
-            }
-        }
-
         arr$push(*children, t);
         switch (t.type) {
             case CexTkn__preproc: {
@@ -18770,8 +18765,6 @@ CexParser_next_entity(CexParser_c* lx, arr$(cex_token_s) * children)
                     if (!str.slice.match(t.value, "\\(\\(*\\)\\)")) {
                         result.type = CexTkn__func_decl; // Check if not __attribute__(())
                     }
-                } else if (result.type == CexTkn__cex_attribute) {
-                    goto end;
                 } else {
                     if (i > 0 && children[0][i - 1].type == CexTkn__ident) {
                         if (!str.slice.match(children[0][i - 1].value, "__attribute__")) {
@@ -18810,9 +18803,20 @@ CexParser_next_entity(CexParser_c* lx, arr$(cex_token_s) * children)
                         result.type = CexTkn__cex_module_struct;
                     }
                 } else if (str.slice.index_of(t.value, str$s("$$")) != -1) {
-                    // generic macro attribute
-                    result.type = CexTkn__cex_attribute;
-                } 
+                    cex_token_s attr_tok = t;
+                    t = CexParser.next_token(lx);
+                    if (unlikely(t.type != CexTkn__paren_block)) {
+                        lx->error = "cex$$attribute requires ()";
+                        goto error;
+                    }
+                    // Extending attribute text
+                    uassert(t.value.buf > attr_tok.value.buf);
+                    attr_tok.type = CexTkn__cex_attribute;
+                    attr_tok.value.len = t.value.buf - attr_tok.value.buf + t.value.len;
+                    uassert(result.value.len < 1024 * 1024 && "token diff it too high, bad pointers?");
+                    (*children)[i] = attr_tok; // rewrite because cex_token_s saved by value
+                }
+
                 break;
             }
             case CexTkn__eos: {
@@ -18866,7 +18870,6 @@ CexParser_decl_parse(
         case CexTkn__typedef:
         case CexTkn__cex_module_struct:
         case CexTkn__cex_module_def:
-        case CexTkn__cex_attribute:
             break;
         default:
             return NULL;
@@ -18923,10 +18926,18 @@ CexParser_decl_parse(
                         result->name = str.slice.sub(it.value, ns_prefix.len, 0);
                     }
                 } 
-                else if (decl_token.type == CexTkn__cex_attribute) {
-                    result->name = it.value;
-                }
                 prev_skipped = false;
+                break;
+            }
+            case CexTkn__cex_attribute: {
+                if (result->attr_count < arr$len(result->attr)-1) {
+                    result->attr[result->attr_count] = it.value;
+                    result->attr_count++;
+                } else {
+                    lx->error = "Too many cex$$attributes";
+                    goto fail;
+                }
+
                 break;
             }
             case CexTkn__preproc: {
@@ -19029,11 +19040,6 @@ CexParser_decl_parse(
                     // we'll check it after the end of entity block
                     result->name = prev_t.value;
                     name_idx = idx - 1;
-
-                    if (decl_token.type == CexTkn__cex_attribute) {
-                        auto _args = it.value.len > 2 ? str.slice.sub(it.value, 1, -1) : str$s("");
-                        e$goto(sbuf.appendf(&result->args, "%S", _args), fail);
-                    }
                 } 
 
                 break;
@@ -19099,6 +19105,7 @@ CexParser_decl_parse(
                     break;
                 }
                 case CexTkn__brace_block:
+                case CexTkn__cex_attribute:
                 case CexTkn__comment_multi:
                 case CexTkn__comment_single:
                     continue;

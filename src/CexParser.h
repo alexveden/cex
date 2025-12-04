@@ -86,6 +86,8 @@ typedef struct cex_decl_s
     CexTkn_e type;    // decl type (typedef, func, macro, etc)
     bool is_static;   // decl is a static func
     bool is_inline;   // decl is a inline func
+    u32 attr_count;   // Number of comptime cex$$attributes(...)
+    str_s attr[8];    // List of comptime any$$attributes(...)
 } cex_decl_s;
 
 
