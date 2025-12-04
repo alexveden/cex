@@ -1138,6 +1138,7 @@ test$case(test_struct_def_with_serde_attr_no_parens)
         log$debug("Entity:  type: %d type_str: '%s' children: %zu\n%S\n", t.type, CexTkn_str[t.type], arr$len(items), t.value);
         tassert_eq(t.type, CexTkn__error);
         tassert_eq(arr$len(items), 0);
+        tassert_eq(lx.error, "Cex attribute requires ()");
 
         cex_decl_s* d = CexParser.decl_parse(&lx, t, items, NULL, _);
         tassert(d == NULL);
@@ -1145,4 +1146,52 @@ test$case(test_struct_def_with_serde_attr_no_parens)
     return EOK;
 }
 
+test$case(test_struct_no_typedef)
+{
+    // clang-format off
+    char* code = 
+        "struct my_struct { CexTkn_e type;  str_s value;};\n"
+        "";
+    CexParser_c lx = CexParser_create(code, 0, true);
+    cex_token_s t;
+    mem$scope(tmem$, _){
+        arr$(cex_token_s) items = arr$new(items, _);
+
+        t = CexParser_next_entity(&lx, &items);
+        log$debug("Entity:  type: %d type_str: '%s' children: %zu\n%S\n", t.type, CexTkn_str[t.type], arr$len(items), t.value);
+        tassert_eq(t.type, CexTkn__typedef);
+        tassert_eq(arr$len(items), 4);
+
+        cex_decl_s* d = CexParser.decl_parse(&lx, t, items, NULL, _);
+        tassert(d != NULL);
+        tassert_eq(d->type, CexTkn__typedef);
+        tassert_eq(d->name, str$s("my_struct")); // using last name after typedef scope
+        tassert_eq(d->ret_type, "struct");
+        tassert_eq(d->body, str$s("{ CexTkn_e type;  str_s value;}"));
+        tassert_eq(d->args, "");
+    }
+    return EOK;
+}
+
+test$case(test_struct_no_name)
+{
+    // clang-format off
+    char* code = 
+        "struct { CexTkn_e type;  str_s value;};\n"
+        "";
+    CexParser_c lx = CexParser_create(code, 0, true);
+    cex_token_s t;
+    mem$scope(tmem$, _){
+        arr$(cex_token_s) items = arr$new(items, _);
+
+        t = CexParser_next_entity(&lx, &items);
+        log$debug("Entity:  type: %d type_str: '%s' children: %zu\n%S\n", t.type, CexTkn_str[t.type], arr$len(items), t.value);
+        tassert_eq(t.type, CexTkn__typedef);
+
+        cex_decl_s* d = CexParser.decl_parse(&lx, t, items, NULL, _);
+        tassert(d == NULL);
+    }
+
+    return EOK;
+}
 test$main();

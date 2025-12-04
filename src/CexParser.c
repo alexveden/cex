@@ -324,6 +324,9 @@ end:
 cex_token_s
 CexParser_next_token(CexParser_c* lx)
 {
+    if (unlikely(lx->error)) {
+        return (cex_token_s){.type = CexTkn__error};
+    }
 
 #define tok$new(tok_type)                                                                          \
     ({                                                                                             \
@@ -431,6 +434,7 @@ CexParser_next_entity(CexParser_c* lx, arr$(cex_token_s) * children)
 #ifdef CEX_TEST
     log$trace("New entity check...\n");
 #endif
+
     arr$clear(*children);
     cex_token_s t;
     bool has_cex_namespace = false;
@@ -471,7 +475,7 @@ CexParser_next_entity(CexParser_c* lx, arr$(cex_token_s) * children)
 
                     _t = CexParser.next_token(&_lx);
                     if (unlikely(_t.type != CexTkn__ident)) {
-                        lx->error = "Expected indent";
+                        lx->error = "Expected identifier after #define";
                         goto error;
                     }
                     result.type = CexTkn__macro_const;
@@ -659,7 +663,7 @@ CexParser_decl_parse(
 
                     _t = CexParser.next_token(&_lx);
                     if (_t.type != CexTkn__ident) {
-                        log$trace("Expected ident at %S\n", it.value);
+                        lx->error = "Expected identifier after #define";
                         goto fail;
                     }
                     result->name = _t.value;
@@ -891,11 +895,6 @@ CexParser_decl_parse(
         }
     }
     if (!result->name.buf) {
-        log$trace(
-            "Decl without name of type %s, at line: %d\n",
-            CexTkn_str[result->type],
-            result->line
-        );
         goto fail;
     }
 #undef $append_fmt
