@@ -57,6 +57,7 @@ CexParser_reset(CexParser_c* lx)
     uassert(lx != NULL);
     lx->cur = lx->content;
     lx->line = 0;
+    lx->error = EOK;
 }
 
 static cex_token_s
@@ -423,6 +424,9 @@ CexParser_next_entity(CexParser_c* lx, arr$(cex_token_s) * children)
     uassert(children != NULL && "non initialized arr$");
     uassert(*children != NULL && "non initialized arr$");
     cex_token_s result = { 0 };
+    if (unlikely(lx->error)){
+        goto error;
+    }
 
 #ifdef CEX_TEST
     log$trace("New entity check...\n");
@@ -450,6 +454,14 @@ CexParser_next_entity(CexParser_c* lx, arr$(cex_token_s) * children)
             result.value.len = t.value.buf - result.value.buf + t.value.len;
             uassert(result.value.len < 1024 * 1024 && "token diff it too high, bad pointers?");
         }
+
+        if (unlikely(result.type == CexTkn__cex_attribute)) {
+            if (t.type != CexTkn__paren_block) {
+                lx->error = "Cex attribute requires ()";
+                goto error;
+            }
+        }
+
         arr$push(*children, t);
         switch (t.type) {
             case CexTkn__preproc: {
@@ -459,7 +471,7 @@ CexParser_next_entity(CexParser_c* lx, arr$(cex_token_s) * children)
 
                     _t = CexParser.next_token(&_lx);
                     if (unlikely(_t.type != CexTkn__ident)) {
-                        log$trace("Expected ident at %S line: %d\n", t.value, lx->line);
+                        lx->error = "Expected indent";
                         goto error;
                     }
                     result.type = CexTkn__macro_const;
@@ -476,6 +488,8 @@ CexParser_next_entity(CexParser_c* lx, arr$(cex_token_s) * children)
                     if (!str.slice.match(t.value, "\\(\\(*\\)\\)")) {
                         result.type = CexTkn__func_decl; // Check if not __attribute__(())
                     }
+                } else if (result.type == CexTkn__cex_attribute) {
+                    goto end;
                 } else {
                     if (i > 0 && children[0][i - 1].type == CexTkn__ident) {
                         if (!str.slice.match(children[0][i - 1].value, "__attribute__")) {
@@ -513,7 +527,10 @@ CexParser_next_entity(CexParser_c* lx, arr$(cex_token_s) * children)
                     } else if (result.type == CexTkn__typedef) {
                         result.type = CexTkn__cex_module_struct;
                     }
-                }
+                } else if (str.slice.index_of(t.value, str$s("$$")) != -1) {
+                    // generic macro attribute
+                    result.type = CexTkn__cex_attribute;
+                } 
                 break;
             }
             case CexTkn__eos: {
@@ -554,6 +571,10 @@ CexParser_decl_parse(
     IAllocator alloc
 )
 {
+    if (unlikely(lx->error)) {
+        return NULL;
+    }
+
     (void)children;
     switch (decl_token.type) {
         case CexTkn__func_decl:
@@ -563,6 +584,7 @@ CexParser_decl_parse(
         case CexTkn__typedef:
         case CexTkn__cex_module_struct:
         case CexTkn__cex_module_def:
+        case CexTkn__cex_attribute:
             break;
         default:
             return NULL;
@@ -600,6 +622,7 @@ CexParser_decl_parse(
                     prev_skipped = true;
                     continue;
                 }
+
                 if (decl_token.type == CexTkn__typedef) {
                     if (str.slice.match(prev_t.value, "(struct|enum|union)")) {
                         name_idx = idx;
@@ -617,6 +640,9 @@ CexParser_decl_parse(
                     if (str.slice.starts_with(it.value, ns_prefix)) {
                         result->name = str.slice.sub(it.value, ns_prefix.len, 0);
                     }
+                } 
+                else if (decl_token.type == CexTkn__cex_attribute) {
+                    result->name = it.value;
                 }
                 prev_skipped = false;
                 break;
@@ -691,7 +717,7 @@ CexParser_decl_parse(
                 if (prev_t.type == CexTkn__paren_block) { args_idx = prev_idx; }
                 if (decl_token.type == CexTkn__typedef && prev_t.type == CexTkn__ident &&
                     !str.slice.match(prev_t.value, "(struct|enum|union)")) {
-                    if (name_idx < 0) { name_idx = idx; }
+                    if (name_idx < 0) { name_idx = idx - 1; }
                     result->name = prev_t.value;
                 }
                 break;
@@ -720,8 +746,13 @@ CexParser_decl_parse(
                     // because in C is common to use MACRO(foo) which may look as args block
                     // we'll check it after the end of entity block
                     result->name = prev_t.value;
-                    name_idx = idx;
-                }
+                    name_idx = idx - 1;
+
+                    if (decl_token.type == CexTkn__cex_attribute) {
+                        auto _args = it.value.len > 2 ? str.slice.sub(it.value, 1, -1) : str$s("");
+                        e$goto(sbuf.appendf(&result->args, "%S", _args), fail);
+                    }
+                } 
 
                 break;
             }
@@ -761,7 +792,7 @@ CexParser_decl_parse(
     if (name_idx > 0) {
         // NOTE: parsing return type
         prev_skipped = false;
-        for$each (it, children, name_idx - 1) {
+        for$each (it, children, name_idx) {
             switch (it.type) {
                 case CexTkn__ident: {
                     if (str.slice.match(it.value, ignore_pattern)) {

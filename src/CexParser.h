@@ -44,6 +44,7 @@
     X(cex_module_struct)                                                                           \
     X(cex_module_decl)                                                                             \
     X(cex_module_def)                                                                              \
+    X(cex_attribute)                                                                             \
     X(global_misc)                                                                                 \
     X(count)
 
@@ -70,6 +71,7 @@ typedef struct CexParser_c
     u32 line;          // current cursor line relative to content beginning
     u32 col;           // current cursor column relative to start of the line
     bool fold_scopes;  // count all {} / () / [] as a single token CexTkn_*_block
+    Exc error;         // Last Parser error
 } CexParser_c;
 
 typedef struct cex_decl_s
