@@ -1,5 +1,8 @@
 #include "cex.h"
 
+#define serde$$struct(...)
+#define serde$$field(...)
+
 #ifndef CEX_MAX_JSON_DEPTH
 #    define CEX_MAX_JSON_DEPTH 128
 #endif
