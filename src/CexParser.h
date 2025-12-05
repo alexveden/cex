@@ -91,6 +91,9 @@ typedef struct cex_decl_s
 } cex_decl_s;
 
 
+#define CexParser$err_fmt(parser, file) \
+    "CexParser %s[%s], %s%s cursor at line: %d, col: %d, offset: %d", (parser)->error ? "Error " : "Done ", (parser)->error ? (parser)->error : "OK", (file) ? " in file: " : "", (file) ? (file) : "", (parser)->line, (parser)->col, (i32)((parser)->cur - (parser)->content) 
+
 CEX_NAMESPACE struct __cex_namespace__CexParser CexParser;
 
 struct __cex_namespace__CexParser {
