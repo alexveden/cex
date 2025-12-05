@@ -2,14 +2,34 @@
 #include "cex.h"
 
 
-typedef struct serdegen_type_s {
+typedef struct serdegen_field_s
+{
+    str_s type;
+    char* name;
+    char* json_name;
+    struct
+    {
+        bool is_ptr;
+        bool is_array;
+        bool is_hashmap;
+        bool is_optional;
+        bool is_skipped;
+    } flags;
+} serdegen_field_s;
 
+typedef struct serdegen_type_s
+{
+    char* name;
+    arr$(serdegen_field_s*) fields;
+    struct {
+        bool is_struct;
+    } flags;
 } serdegen_type_s;
 
 typedef struct SerdeGen_c
 {
     IAllocator allc;
-    arr$(serdegen_type_s) types;
+    hm$(char*, serdegen_type_s*) types;
 } SerdeGen_c;
 
 struct __cex_namespace__SerdeGen {
@@ -18,6 +38,7 @@ struct __cex_namespace__SerdeGen {
 
     Exception       (*create)(SerdeGen_c* self, IAllocator allc);
     Exception       (*process_code)(SerdeGen_c* self, char* code, usize code_len);
+    Exception       (*process_decl)(SerdeGen_c* self, CexParser_c* lx, cex_decl_s* d);
 
     // clang-format on
 };

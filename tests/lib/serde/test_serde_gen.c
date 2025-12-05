@@ -16,6 +16,10 @@ test$case(my_test_case) {
         e$ret(SerdeGen.create(&sg, _));
         tassert(code && "Load filed");
         e$ret(SerdeGen.process_code(&sg, code, 0));
+
+        for$each(it, sg.types, arr$len(sg.types)) {
+            log$info("Type: %s #%d fields\n", it.value->name, arr$len(it.value->fields));
+        }
     }
     tassert_eq(1, 0);
     return EOK;

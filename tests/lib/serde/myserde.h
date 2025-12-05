@@ -1,18 +1,18 @@
 #include "cex.h"
 #include "lib/json/json.h"
 
-//
-serde$struct(.name = "MyStock")
+/// Hi this is my comment
+serde$$struct(.name = "MyStock")
 typedef struct Stock {
     u64 id;
     char* ticker;
     char* exchange;
 
-    serde$field(.name = "my_json_name", .skip = true)
+    serde$$field(.name = "my_json_name", .skip = true)
     char* my_field;
 } Stock;
 
-serde$struct()
+serde$$struct()
 typedef struct Position {
     i32 qty;
     f32 fill_price;

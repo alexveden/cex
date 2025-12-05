@@ -121,7 +121,7 @@ Use `cex -D config` to reset all project config flags to defaults
 #define cex$version_major 0
 #define cex$version_minor 18
 #define cex$version_patch 0
-#define cex$version_date "2025-12-04"
+#define cex$version_date "2025-12-05"
 
 
 
@@ -5602,6 +5602,9 @@ typedef struct cex_decl_s
     str_s attr[8];    // List of comptime any$$attributes(...)
 } cex_decl_s;
 
+
+#define CexParser$err_fmt(parser, file) \
+    "CexParser %s[%s], %s%s cursor at line: %d, col: %d, offset: %d", (parser)->error ? "Error " : "Done ", (parser)->error ? (parser)->error : "OK", (file) ? " in file: " : "", (file) ? (file) : "", (parser)->line, (parser)->col, (i32)((parser)->cur - (parser)->content) 
 
 CEX_NAMESPACE struct __cex_namespace__CexParser CexParser;
 
