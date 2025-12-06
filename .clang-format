@@ -27,7 +27,7 @@ InsertBraces: true
 BreakStringLiterals: false
 BreakBeforeTernaryOperators: true
 IndentPPDirectives: AfterHash
-IfMacros: [json$key_match, json$key_invalid]
+IfMacros: [json$key_match, json$key_invalid, cg$func, cg$if, cg$elseif, cg$else, cg$scope, cg$while, cg$for, cg$foreach, cg$switch, cg$case, cg$default]
 ForEachMacros: [for$each, for$eachp, for$iter, e$except, e$except_silent, e$except_errno, e$except_null, e$except_true]
 ---
 Language:        Cpp
