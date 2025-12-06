@@ -41,7 +41,7 @@ test$case(my_test_case)
         // e$ret(CexSerdeGen.generate_full(&sg));
 
         io.printf("-------------------------\n");
-        e$ret(CexSerdeGen.process(&sg));
+        e$ret(CexSerdeGen.run(&sg));
         // io.printf("%s\n", sg.c_file_content);
         // io.printf("%s\n", sg.h_file_content);
         e$ret(io.file.save(str.fmt(_, TESTDIR "%s.c", sg.namespace), sg.c_file_content));

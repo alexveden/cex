@@ -121,7 +121,7 @@ Use `cex -D config` to reset all project config flags to defaults
 #define cex$version_major 0
 #define cex$version_minor 18
 #define cex$version_patch 0
-#define cex$version_date "2025-12-05"
+#define cex$version_date "2025-12-06"
 
 
 
@@ -5075,6 +5075,13 @@ test$case(test_codegen_test)
 #    define cg$init(out_sbuf)                                                                      \
         cex_codegen_s cex$tmpname(code_gen) = { .buf = (out_sbuf) };                             \
         cex_codegen_s* cg$var = &cex$tmpname(code_gen)
+
+#    define cg$init_scope(out_sbuf)                                                                      \
+    cex_codegen_s cex$tmpname(code_gen) = { .buf = (out_sbuf) };                             \
+    for (cex_codegen_s* cg$var = &cex$tmpname(code_gen), \
+             *cex$tmpname(cg_scope_init_sentinel) = cg$var;                                        \
+         cex$tmpname(cg_scope_init_sentinel) && cg$var != NULL;                                    \
+         cex$tmpname(cg_scope_init_sentinel) = NULL)
 
 /// false if any cg$ operation failed, use cg$var->error to get Exception type of error
 #    define cg$is_valid() (cg$var != NULL && cg$var->buf != NULL && cg$var->error == EOK)

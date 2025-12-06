@@ -1,3 +1,4 @@
+#pragma once
 #include "cex.h"
 
 #define serde$$struct(...)

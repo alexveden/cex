@@ -30,17 +30,22 @@ typedef struct CexSerdeGen_kw {
     char* namespace;
     u32 buf_initial_capacity;
     char* workdir;
+    char* outdir;
 } CexSerdeGen_kw;
 
 typedef struct CexSerdeGen_c
 {
     IAllocator allc;
     hm$(str_s, serdegen_type_s*) types;
+    arr$(char*) includes;
     char* namespace;
     sbuf_c c_file_content;
     sbuf_c h_file_content;
     char* workdir;
+    char* outdir;
     char* target;
+    char* c_out_name;
+    char* h_out_name;
 } CexSerdeGen_c;
 
 struct __cex_namespace__CexSerdeGen {
@@ -49,9 +54,8 @@ struct __cex_namespace__CexSerdeGen {
 
     Exception       (*create)(CexSerdeGen_c* self, IAllocator allc, CexSerdeGen_kw* kwargs);
     Exception       (*generate_full)(CexSerdeGen_c* self);
-    Exception       (*process)(CexSerdeGen_c* self);
-    Exception       (*process_decl)(CexSerdeGen_c* self, CexParser_c* lx, cex_decl_s* d);
     Exception       (*process_file)(CexSerdeGen_c* self, char* path);
+    Exception       (*run)(CexSerdeGen_c* self);
 
     // clang-format on
 };
