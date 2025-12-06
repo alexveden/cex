@@ -79,3 +79,5 @@ docs/README.html
 /.quarto/
 **/*.quarto_ipynb
 docs/docs.html
+tests/lib/serde/serdegen.h
+tests/lib/serde/serdegen.c
