@@ -117,6 +117,13 @@ test$case(test_codegen_test)
         cex_codegen_s cex$tmpname(code_gen) = { .buf = (out_sbuf) };                             \
         cex_codegen_s* cg$var = &cex$tmpname(code_gen)
 
+#    define cg$init_scope(out_sbuf)                                                                      \
+    cex_codegen_s cex$tmpname(code_gen) = { .buf = (out_sbuf) };                             \
+    for (cex_codegen_s* cg$var = &cex$tmpname(code_gen), \
+             *cex$tmpname(cg_scope_init_sentinel) = cg$var;                                        \
+         cex$tmpname(cg_scope_init_sentinel) && cg$var != NULL;                                    \
+         cex$tmpname(cg_scope_init_sentinel) = NULL)
+
 /// false if any cg$ operation failed, use cg$var->error to get Exception type of error
 #    define cg$is_valid() (cg$var != NULL && cg$var->buf != NULL && cg$var->error == EOK)
 
