@@ -4,7 +4,7 @@
 #include "all.h"
 
 void
-_cex__codegen_indent(_cex__codegen_s* cg)
+_cex__codegen_indent(cex_codegen_s* cg)
 {
     if (unlikely(cg->error != EOK)) { return; }
     for (u32 i = 0; i < cg->indent; i++) {
@@ -23,7 +23,7 @@ _cex__codegen_indent(_cex__codegen_s* cg)
         } while (0)
 
 void
-_cex__codegen_print(_cex__codegen_s* cg, bool rep_new_line, char* format, ...)
+_cex__codegen_print(cex_codegen_s* cg, bool rep_new_line, char* format, ...)
 {
     if (unlikely(cg->error != EOK)) { return; }
     if (rep_new_line) {
@@ -34,15 +34,15 @@ _cex__codegen_print(_cex__codegen_s* cg, bool rep_new_line, char* format, ...)
 }
 
 void
-_cex__codegen_print_line(_cex__codegen_s* cg, char* format, ...)
+_cex__codegen_print_line(cex_codegen_s* cg, char* format, ...)
 {
     if (unlikely(cg->error != EOK)) { return; }
     if (format[0] != '\n') { _cex__codegen_indent(cg); }
     cg$printva(cg);
 }
 
-_cex__codegen_s*
-_cex__codegen_print_scope_enter(_cex__codegen_s* cg, char* format, ...)
+cex_codegen_s*
+_cex__codegen_print_scope_enter(cex_codegen_s* cg, char* format, ...)
 {
     usize slen = sbuf.len(cg->buf);
     if (slen && cg->buf[0][slen - 1] == '\n') { _cex__codegen_indent(cg); }
@@ -53,10 +53,10 @@ _cex__codegen_print_scope_enter(_cex__codegen_s* cg, char* format, ...)
 }
 
 void
-_cex__codegen_print_scope_exit(_cex__codegen_s** cgptr)
+_cex__codegen_print_scope_exit(cex_codegen_s** cgptr)
 {
     uassert(*cgptr != NULL);
-    _cex__codegen_s* cg = *cgptr;
+    cex_codegen_s* cg = *cgptr;
 
     if (cg->indent >= 4) { cg->indent -= 4; }
     _cex__codegen_indent(cg);
@@ -64,8 +64,8 @@ _cex__codegen_print_scope_exit(_cex__codegen_s** cgptr)
 }
 
 
-_cex__codegen_s*
-_cex__codegen_print_case_enter(_cex__codegen_s* cg, char* format, ...)
+cex_codegen_s*
+_cex__codegen_print_case_enter(cex_codegen_s* cg, char* format, ...)
 {
     _cex__codegen_indent(cg);
     cg$printva(cg);
@@ -75,10 +75,10 @@ _cex__codegen_print_case_enter(_cex__codegen_s* cg, char* format, ...)
 }
 
 void
-_cex__codegen_print_case_exit(_cex__codegen_s** cgptr)
+_cex__codegen_print_case_exit(cex_codegen_s** cgptr)
 {
     uassert(*cgptr != NULL);
-    _cex__codegen_s* cg = *cgptr;
+    cex_codegen_s* cg = *cgptr;
 
     if (cg->indent >= 4) { cg->indent -= 4; }
     _cex__codegen_indent(cg);

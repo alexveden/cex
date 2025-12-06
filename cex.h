@@ -4962,12 +4962,12 @@ cex_test_main_fn(int argc, char** argv)
 #if !defined(cex$enable_minimal)
 
 
-typedef struct _cex__codegen_s
+typedef struct cex_codegen_s
 {
     sbuf_c* buf;
     u32 indent;
     Exc error;
-} _cex__codegen_s;
+} cex_codegen_s;
 
 /*
  *                  CODE GEN MACROS
@@ -5073,8 +5073,8 @@ test$case(test_codegen_test)
 
 /// Initializes new code generator (uses sbuf instance as backing buffer)
 #    define cg$init(out_sbuf)                                                                      \
-        _cex__codegen_s cex$tmpname(code_gen) = { .buf = (out_sbuf) };                             \
-        _cex__codegen_s* cg$var = &cex$tmpname(code_gen)
+        cex_codegen_s cex$tmpname(code_gen) = { .buf = (out_sbuf) };                             \
+        cex_codegen_s* cg$var = &cex$tmpname(code_gen)
 
 /// false if any cg$ operation failed, use cg$var->error to get Exception type of error
 #    define cg$is_valid() (cg$var != NULL && cg$var->buf != NULL && cg$var->error == EOK)
@@ -5097,18 +5097,18 @@ test$case(test_codegen_test)
                                    : _cex__codegen_print_line(cg$var, "%s\n", text))
 
 /// add new line of code with formatting
-#    define cg$pf(format, ...) _cex__codegen_print_line(cg$var, format "\n", __VA_ARGS__)
+#    define cg$pf(format, ...) _cex__codegen_print_line(cg$var, format "\n", ##__VA_ARGS__)
 
 /// append code at the current line without "\n"
-#    define cg$pa(format, ...) _cex__codegen_print(cg$var, true, format, __VA_ARGS__)
+#    define cg$pa(format, ...) _cex__codegen_print(cg$var, true, format, ##__VA_ARGS__)
 
 // clang-format off
 
 /// add new code scope with indent (use for low-level stuff)
 #define cg$scope(format, ...) \
-    for (_cex__codegen_s* cex$tmpname(codegen_scope)  \
+    for (cex_codegen_s* cex$tmpname(codegen_scope)  \
                 __attribute__ ((__cleanup__(_cex__codegen_print_scope_exit))) =     \
-                _cex__codegen_print_scope_enter(cg$var, format, __VA_ARGS__),       \
+                _cex__codegen_print_scope_enter(cg$var, format, ##__VA_ARGS__),       \
         *cex$tmpname(codegen_sentinel) = cg$var;                                    \
         cex$tmpname(codegen_sentinel) && cex$tmpname(codegen_scope) != NULL;        \
         cex$tmpname(codegen_sentinel) = NULL)
@@ -5116,15 +5116,15 @@ test$case(test_codegen_test)
 
 
 /// add new function     cg$func("void my_func(int arg_%d)", 2)
-#    define cg$func(format, ...) cg$scope(format, __VA_ARGS__)
+#    define cg$func(format, ...) cg$scope(format, ##__VA_ARGS__)
 
 /// add if statement
-#    define cg$if(format, ...) cg$scope("if (" format ") ", __VA_ARGS__)
+#    define cg$if(format, ...) cg$scope("if (" format ") ", ##__VA_ARGS__)
 
 /// add else if
 #    define cg$elseif(format, ...)                                                                   \
         cg$pa(" else ", "");                                                                       \
-        cg$if(format, __VA_ARGS__)
+        cg$if(format, ##__VA_ARGS__)
 
 /// add else 
 #    define cg$else()                                                                                \
@@ -5132,29 +5132,29 @@ test$case(test_codegen_test)
         cg$scope(" ", "")
 
 /// add while loop
-#    define cg$while(format, ...) cg$scope("while (" format ") ", __VA_ARGS__)
+#    define cg$while(format, ...) cg$scope("while (" format ") ", ##__VA_ARGS__)
 
 /// add for loop
-#    define cg$for(format, ...) cg$scope("for (" format ") ", __VA_ARGS__)
+#    define cg$for(format, ...) cg$scope("for (" format ") ", ##__VA_ARGS__)
 
 /// add CEX for$each loop
-#    define cg$foreach(format, ...) cg$scope("for$each (" format ") ", __VA_ARGS__)
+#    define cg$foreach(format, ...) cg$scope("for$each (" format ") ", ##__VA_ARGS__)
 
 /// add switch() statement
-#    define cg$switch(format, ...) cg$scope("switch (" format ") ", __VA_ARGS__)
+#    define cg$switch(format, ...) cg$scope("switch (" format ") ", ##__VA_ARGS__)
 
 /// add case in switch() statement
 #    define cg$case(format, ...)                                                                     \
-        for (_cex__codegen_s * cex$tmpname(codegen_scope)                                          \
+        for (cex_codegen_s * cex$tmpname(codegen_scope)                                          \
                                    __attribute__((__cleanup__(_cex__codegen_print_case_exit))) =   \
-                 _cex__codegen_print_case_enter(cg$var, "case " format, __VA_ARGS__),              \
+                 _cex__codegen_print_case_enter(cg$var, "case " format, ##__VA_ARGS__),              \
                                    *cex$tmpname(codegen_sentinel) = cg$var;                        \
              cex$tmpname(codegen_sentinel) && cex$tmpname(codegen_scope) != NULL;                  \
              cex$tmpname(codegen_sentinel) = NULL)
 
 /// add default in switch() statement
 #    define cg$default()                                                                             \
-        for (_cex__codegen_s * cex$tmpname(codegen_scope)                                          \
+        for (cex_codegen_s * cex$tmpname(codegen_scope)                                          \
                                    __attribute__((__cleanup__(_cex__codegen_print_case_exit))) =   \
                  _cex__codegen_print_case_enter(cg$var, "default", NULL),                          \
                                    *cex$tmpname(codegen_sentinel) = cg$var;                        \
@@ -5162,13 +5162,13 @@ test$case(test_codegen_test)
              cex$tmpname(codegen_sentinel) = NULL)
 
 
-void _cex__codegen_print_line(_cex__codegen_s* cg, char* format, ...);
-void _cex__codegen_print(_cex__codegen_s* cg, bool rep_new_line, char* format, ...);
-_cex__codegen_s* _cex__codegen_print_scope_enter(_cex__codegen_s* cg, char* format, ...);
-void _cex__codegen_print_scope_exit(_cex__codegen_s** cgptr);
-_cex__codegen_s* _cex__codegen_print_case_enter(_cex__codegen_s* cg, char* format, ...);
-void _cex__codegen_print_case_exit(_cex__codegen_s** cgptr);
-void _cex__codegen_indent(_cex__codegen_s* cg);
+void _cex__codegen_print_line(cex_codegen_s* cg, char* format, ...);
+void _cex__codegen_print(cex_codegen_s* cg, bool rep_new_line, char* format, ...);
+cex_codegen_s* _cex__codegen_print_scope_enter(cex_codegen_s* cg, char* format, ...);
+void _cex__codegen_print_scope_exit(cex_codegen_s** cgptr);
+cex_codegen_s* _cex__codegen_print_case_enter(cex_codegen_s* cg, char* format, ...);
+void _cex__codegen_print_case_exit(cex_codegen_s** cgptr);
+void _cex__codegen_indent(cex_codegen_s* cg);
 
 #endif
 
@@ -15029,7 +15029,7 @@ const struct __cex_namespace__os os = {
 
 
 void
-_cex__codegen_indent(_cex__codegen_s* cg)
+_cex__codegen_indent(cex_codegen_s* cg)
 {
     if (unlikely(cg->error != EOK)) { return; }
     for (u32 i = 0; i < cg->indent; i++) {
@@ -15048,7 +15048,7 @@ _cex__codegen_indent(_cex__codegen_s* cg)
         } while (0)
 
 void
-_cex__codegen_print(_cex__codegen_s* cg, bool rep_new_line, char* format, ...)
+_cex__codegen_print(cex_codegen_s* cg, bool rep_new_line, char* format, ...)
 {
     if (unlikely(cg->error != EOK)) { return; }
     if (rep_new_line) {
@@ -15059,15 +15059,15 @@ _cex__codegen_print(_cex__codegen_s* cg, bool rep_new_line, char* format, ...)
 }
 
 void
-_cex__codegen_print_line(_cex__codegen_s* cg, char* format, ...)
+_cex__codegen_print_line(cex_codegen_s* cg, char* format, ...)
 {
     if (unlikely(cg->error != EOK)) { return; }
     if (format[0] != '\n') { _cex__codegen_indent(cg); }
     cg$printva(cg);
 }
 
-_cex__codegen_s*
-_cex__codegen_print_scope_enter(_cex__codegen_s* cg, char* format, ...)
+cex_codegen_s*
+_cex__codegen_print_scope_enter(cex_codegen_s* cg, char* format, ...)
 {
     usize slen = sbuf.len(cg->buf);
     if (slen && cg->buf[0][slen - 1] == '\n') { _cex__codegen_indent(cg); }
@@ -15078,10 +15078,10 @@ _cex__codegen_print_scope_enter(_cex__codegen_s* cg, char* format, ...)
 }
 
 void
-_cex__codegen_print_scope_exit(_cex__codegen_s** cgptr)
+_cex__codegen_print_scope_exit(cex_codegen_s** cgptr)
 {
     uassert(*cgptr != NULL);
-    _cex__codegen_s* cg = *cgptr;
+    cex_codegen_s* cg = *cgptr;
 
     if (cg->indent >= 4) { cg->indent -= 4; }
     _cex__codegen_indent(cg);
@@ -15089,8 +15089,8 @@ _cex__codegen_print_scope_exit(_cex__codegen_s** cgptr)
 }
 
 
-_cex__codegen_s*
-_cex__codegen_print_case_enter(_cex__codegen_s* cg, char* format, ...)
+cex_codegen_s*
+_cex__codegen_print_case_enter(cex_codegen_s* cg, char* format, ...)
 {
     _cex__codegen_indent(cg);
     cg$printva(cg);
@@ -15100,10 +15100,10 @@ _cex__codegen_print_case_enter(_cex__codegen_s* cg, char* format, ...)
 }
 
 void
-_cex__codegen_print_case_exit(_cex__codegen_s** cgptr)
+_cex__codegen_print_case_exit(cex_codegen_s** cgptr)
 {
     uassert(*cgptr != NULL);
-    _cex__codegen_s* cg = *cgptr;
+    cex_codegen_s* cg = *cgptr;
 
     if (cg->indent >= 4) { cg->indent -= 4; }
     _cex__codegen_indent(cg);
