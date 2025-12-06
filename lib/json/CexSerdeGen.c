@@ -72,6 +72,10 @@ _CexSerdeGen__process_field_attr(
 
     cex_token_s prev_t = t;
     field->type = str.sstr(str.slice.clone(t.value, self->allc));
+    if (str$eq(field->type, "sbuf_c") || str$eq(field->type, "str_s")) {
+        field->flags.is_string = true;
+    }
+
     while ((t = CexParser.next_token(lx)).type) {
         if (t.type == CexTkn__error) { return Error.integrity; }
 
@@ -85,6 +89,7 @@ _CexSerdeGen__process_field_attr(
             } break;
             case CexTkn__star: {
                 field->flags.is_ptr = true;
+                if (str$eq(field->type, "char")) { field->flags.is_string = true; }
             } break;
             case CexTkn__ident:
                 break;
@@ -130,6 +135,80 @@ _CexSerdeGen_codegen_serialize_field(CexSerdeGen_c* self, cex_codegen_s* cg$var,
 }
 
 Exception
+_CexSerdeGen_codegen_deserialize_field(
+    CexSerdeGen_c* self,
+    cex_codegen_s* cg$var,
+    serdegen_field_s* f
+)
+{
+    (void)self;
+    (void)f;
+    e$assert(f->type.buf && f->type.len != 0);
+
+    cg$elseif ("str$eq(k, \"%s\")", f->name) {
+        serdegen_type_s* field_type = hm$get(self->types, f->type);
+        if (field_type) {
+            // Project registered type
+
+            // We need preallocate pointer to a new type!
+            if (f->flags.is_ptr) { cg$pf("out_item->%s = mem$new(allc, %S);", f->name, f->type); }
+
+            cg$scope ("e$except_silent (err, %s.%s.deserialize(jr, out_item->%s, allc)) ",
+                      self->namespace,
+                      field_type->name,
+                      f->name) {
+                cg$pn("jr->error = err;");
+                cg$pn("goto fail;");
+            }
+        } else if (f->flags.is_string) {
+            if (str$eq(f->type, "char")) {
+                uassert(f->flags.is_ptr);
+                cg$pf("out_item->%s = str.slice.clone(v, allc);", f->name);
+            } else {
+                uassert(false && "not implemented yet");
+            }
+
+        } else {
+            // Primitive type
+            cg$scope ("e$except_silent(err, str$convert(v, &out_item->%s)) ", f->name) {
+                cg$pn("jr->error = err;");
+                cg$pn("goto fail;");
+            }
+        }
+        cg$pn("");
+    }
+
+
+    return EOK;
+}
+
+Exception
+_CexSerdeGen_codegen_destroy_field(CexSerdeGen_c* self, cex_codegen_s* cg$var, serdegen_field_s* f)
+{
+    (void)self;
+    (void)f;
+    e$assert(f->type.buf && f->type.len != 0);
+
+    serdegen_type_s* field_type = hm$get(self->types, f->type);
+    if (field_type) {
+        cg$pf("%s.%s.destroy(item->%s, allc);", self->namespace, field_type->name, f->name);
+        if (f->flags.is_ptr) {
+            cg$pf("mem$free(allc, item->%s);", f->name);
+        }
+    } else if (f->flags.is_string) {
+        if (str$eq(f->type, "char")) {
+            cg$pf("mem$free(allc, item->%s);", f->name);
+        } else {
+            uassert(false && "not implemented yet");
+        }
+    } else {
+        // Primitive type do nothing
+    }
+
+    return EOK;
+}
+
+Exception
 _CexSerdeGen_generate_type(CexSerdeGen_c* self, cex_codegen_s* cg$var, serdegen_type_s* t)
 {
     cg$pn("");
@@ -138,6 +217,9 @@ _CexSerdeGen_generate_type(CexSerdeGen_c* self, cex_codegen_s* cg$var, serdegen_
     cg$pn("//");
 
 
+    //
+    // serialize codegen
+    //
     cg$func ("Exception %s__%s__serialize(jw_c* jw, %s* item) ", self->namespace, t->name, t->name) {
         cg$if ("!item") {
             cg$scope ("jw$scope(jw, JsonType__null)") { cg$pn("jw$val(NULL);"); }
@@ -153,23 +235,63 @@ _CexSerdeGen_generate_type(CexSerdeGen_c* self, cex_codegen_s* cg$var, serdegen_
         cg$pn("return jw->error;");
     }
 
-
+    //
+    // print codegen
+    //
     cg$func ("Exc %s__%s__print(%s* item, jw_kw* json_writer_kwargs) ",
              self->namespace,
              t->name,
              t->name) {
         cg$pn("jw_c jw;");
         cg$pn("jw_kw kwargs = {.stream = stdout, .indent = 0};");
-        cg$if("json_writer_kwargs") {
+        cg$if ("json_writer_kwargs") {
             cg$pn("kwargs = *json_writer_kwargs;");
-            cg$if("!kwargs.stream && !kwargs.buf") {
-                cg$pn("kwargs.stream = stdout;");
-            }
+            cg$if ("!kwargs.stream && !kwargs.buf") { cg$pn("kwargs.stream = stdout;"); }
         }
         cg$pn("e$ret(_cex_json__writer__create(&jw, &kwargs));");
         cg$pf("return %s.%s.serialize(&jw, item);", self->namespace, t->name);
     }
 
+    //
+    // deserialize codegen
+    //
+    cg$func ("Exception %s__%s__deserialize(jr_c* jr, %s* out_item, IAllocator allc) ",
+             self->namespace,
+             t->name,
+             t->name) {
+        cg$pn("uassert(jr != NULL);");
+        cg$pn("uassert(out_item != NULL);");
+
+        cg$scope ("jr$foreach(k, v, jr) ") {
+            cg$if ("!k.buf") {
+                cg$pn("jr->error = Error.integrity;");
+                cg$pn("goto fail;");
+            }
+            for$each (it, t->fields) {
+                e$ret(_CexSerdeGen_codegen_deserialize_field(self, cg$var, it));
+            }
+        }
+        cg$pn("return EOK;");
+
+        cg$dedent();
+        cg$pn("fail: ");
+        cg$indent();
+        cg$pf("%s.%s.destroy(out_item, allc);", self->namespace, t->name);
+        cg$pn("return jr->error;");
+    }
+
+    //
+    // destroy codegen
+    //
+    cg$func ("void %s__%s__destroy(%s* item, IAllocator allc) ", self->namespace, t->name, t->name) {
+        cg$pn("uassert(allc != NULL);");
+        cg$if ("item") {
+            for$each (it, t->fields) {
+                e$ret(_CexSerdeGen_codegen_destroy_field(self, cg$var, it));
+            }
+            cg$pn("memset(item, 0, sizeof(*item));");
+        }
+    }
 
     return EOK;
 }
@@ -356,7 +478,7 @@ CexSerdeGen_run(CexSerdeGen_c* self)
     e$ret(io.file.save(self->c_out_name, self->c_file_content));
     e$ret(io.file.save(self->h_out_name, self->h_file_content));
 
-    char* argv[] = {"process", self->c_out_name};
+    char* argv[] = { "process", self->c_out_name };
     e$ret(cexy.cmd.process(arr$len(argv), argv, NULL));
 
     return EOK;

@@ -9,12 +9,6 @@
 
 test$setup_case()
 {
-    if (os.path.exists(TESTDIR "serdegen.h")) {
-        if (os.fs.remove(TESTDIR "serdegen.h")) {};
-    }
-    if (os.path.exists(TESTDIR "serdegen.c")) {
-        if (os.fs.remove(TESTDIR "serdegen.c")) {};
-    }
     return EOK;
 }
 // test$teardown_case() {return EOK;}
@@ -23,18 +17,22 @@ test$setup_case()
 
 test$case(serdegen_myserde_basic)
 {
+    if (os.path.exists(TESTDIR "basic/serdegen.h")) {
+        if (os.fs.remove(TESTDIR "basic/serdegen.h")) {};
+    }
+    if (os.path.exists(TESTDIR "basic/serdegen.c")) {
+        if (os.fs.remove(TESTDIR "basic/serdegen.c")) {};
+    }
+
     mem$scope(tmem$, _)
     {
-        char* code = io.file.load(TESTDIR "myserde.h", _);
-        tassert(code && "Load failed");
-
         CexSerdeGen_c sg;
         e$ret(CexSerdeGen.create(
             &sg,
             _,
             &(CexSerdeGen_kw){ .namespace = "serdegen",
                                .buf_initial_capacity = 32 * 1024,
-                               .workdir = TESTDIR }
+                               .workdir = TESTDIR"/basic/" }
         ));
         tassert_eq(sg.namespace, "serdegen");
         tassert_eq(sbuf.capacity(&sg.c_file_content), 32 * 1024 - sizeof(sbuf_head_s) - 1);
@@ -60,12 +58,12 @@ test$case(serdegen_myserde_basic)
                             "-g",
                             "-o",
                             TESTDIR "a.out",
-                            TESTDIR "serdegen_test_basic.c",
+                            TESTDIR "basic/serdegen_test_basic.c",
                             NULL };
 #else
         char* cc_args[] = { "cc",      "-I.",           "-Wall",
                             "-Wextra", "-Werror",       "-g",
-                            "-o",      TESTDIR "a.out", TESTDIR "serdegen_test_basic.c",
+                            "-o",      TESTDIR "a.out", TESTDIR "basic/serdegen_test_basic.c",
                             NULL };
 #endif
         _os$args_print("CMD: ", cc_args, arr$len(cc_args));
