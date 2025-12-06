@@ -1,25 +1,52 @@
 #define CEX_IMPLEMENTATION
 #define CEX_TEST
 #include "cex.h"
-#include "lib/json/SerdeGen.c"
+#include "lib/json/CexSerdeGen.c"
 
-//test$setup_case() {return EOK;}
-//test$teardown_case() {return EOK;}
-//test$setup_suite() {return EOK;}
-//test$teardown_suite() {return EOK;}
 
-test$case(my_test_case) {
-    mem$scope(tmem$, _) {
-        char* code = io.file.load("tests/lib/serde/myserde.h", _);
+#define TESTDIR "tests/lib/serde/"
 
-        SerdeGen_c sg;
-        e$ret(SerdeGen.create(&sg, _));
-        tassert(code && "Load filed");
-        e$ret(SerdeGen.process_code(&sg, code, 0));
+test$setup_case()
+{
+    if (os.path.exists(TESTDIR "serdegen.h")) {
+        if (os.fs.remove(TESTDIR "serdegen.h")) {};
+    }
+    if (os.path.exists(TESTDIR "serdegen.c")) {
+        if (os.fs.remove(TESTDIR "serdegen.c")) {};
+    }
+    return EOK;
+}
+// test$teardown_case() {return EOK;}
+// test$setup_suite() {return EOK;}
+// test$teardown_suite() {return EOK;}
 
-        for$each(it, sg.types, arr$len(sg.types)) {
-            log$info("Type: %s #%d fields\n", it.value->name, arr$len(it.value->fields));
-        }
+test$case(my_test_case)
+{
+    mem$scope(tmem$, _)
+    {
+        char* code = io.file.load(TESTDIR "myserde.h", _);
+        tassert(code && "Load failed");
+
+        CexSerdeGen_c sg;
+        e$ret(CexSerdeGen.create(
+            &sg,
+            _,
+            &(CexSerdeGen_kw){ .namespace = "serdegen",
+                               .buf_initial_capacity = 32 * 1024,
+                               .workdir = TESTDIR }
+        ));
+        tassert_eq(sg.namespace, "serdegen");
+        tassert_eq(sbuf.capacity(&sg.c_file_content), 32 * 1024 - sizeof(sbuf_head_s) - 1);
+        // e$ret(CexSerdeGen.process_code(&sg, code, 0));
+        // e$ret(CexSerdeGen.generate_full(&sg));
+
+        io.printf("-------------------------\n");
+        e$ret(CexSerdeGen.process(&sg));
+        // io.printf("%s\n", sg.c_file_content);
+        // io.printf("%s\n", sg.h_file_content);
+        e$ret(io.file.save(str.fmt(_, TESTDIR "%s.c", sg.namespace), sg.c_file_content));
+        e$ret(io.file.save(str.fmt(_, TESTDIR "%s.h", sg.namespace), sg.h_file_content));
+        io.printf("-------------------------\n");
     }
     tassert_eq(1, 0);
     return EOK;
