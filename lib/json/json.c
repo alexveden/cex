@@ -5,6 +5,8 @@
 #define $scope_arr (1 << 2)
 #define $scope_has_items (1 << 3)
 #define $scope_has_key (1 << 4)
+#define $scope_null (1 << 5)
+
 #define $last_scope(jw)                                                                            \
     ((jw)->scope_depth && (jw)->scope_stack[(jw)->scope_depth - 1])                                \
         ? (jw)->scope_stack[(jw)->scope_depth - 1]                                                 \
@@ -14,10 +16,10 @@
     ({                                                                                             \
         if (jw->error == EOK) {                                                                    \
             if (jw->buf) {                                                                         \
-                Exc err = sbuf.appendf(&jw->buf, format, __VA_ARGS__);                             \
+                Exc err = sbuf.appendf(&jw->buf, format, ##__VA_ARGS__);                           \
                 if (unlikely(err != EOK && jw->error == EOK)) { jw->error = err; }                 \
             } else if (jw->stream) {                                                               \
-                io.fprintf(jw->stream, format, __VA_ARGS__);                                       \
+                io.fprintf(jw->stream, format, ##__VA_ARGS__);                                     \
             }                                                                                      \
         }                                                                                          \
     })
@@ -484,7 +486,8 @@ void
 _cex_json__writer__print_item(jw_c* jw, char* format, ...)
 {
     u8 last_scope = $last_scope(jw);
-    // if (!(last_scope & $scope_has_key)) { _cex_json_writer_indent(jw, false); }
+
+    uassertf(!(last_scope & $scope_null) || !(last_scope & $scope_has_items), "Only one jw$val() is allowed in null scope");
 
     if (!(last_scope & $scope_has_key)) {
         uassertf(!(last_scope & $scope_obj), "Writing jw$val() without setting jw$key() before");
@@ -530,28 +533,35 @@ _cex_json__writer__print_scope_enter(jw_c* jw, JsonType_e scope_type, bool shoul
         );
         if (last_scope & $scope_has_items) { _cex_json_writer_indent(jw, false); }
     }
+    u8 scope = 0;
 
     if (scope_type == JsonType__obj) {
         $print("%c", '{');
-        if (jw->scope_depth <= sizeof(jw->scope_stack) - 1) {
-            jw->scope_stack[jw->scope_depth] = $scope_obj;
-            jw->scope_depth++;
-        } else {
-            jw->error = "Scope overflow";
-        }
+        scope = $scope_obj;
     } else if (scope_type == JsonType__arr) {
         $print("%c", '[');
-        if (jw->scope_depth <= sizeof(jw->scope_stack) - 1) {
-            jw->scope_stack[jw->scope_depth] = $scope_arr;
-            jw->scope_depth++;
-        } else {
-            jw->error = "Scope overflow";
-        }
+        scope = $scope_arr;
+    } else if (scope_type == JsonType__null) {
+        uassert(jw->scope_depth == 0 && "JsonType__null scope only used for 1st level scopes");
+        scope = $scope_null;
+        jw->scope_stack[jw->scope_depth] = scope;
+        jw->scope_depth++;
+        jw->scope_stack[jw->scope_depth - 1] |= $scope_has_key;
+        return jw;
     } else {
         unreachable();
     }
+
+    if (jw->scope_depth <= sizeof(jw->scope_stack) - 1) {
+        jw->scope_stack[jw->scope_depth] = scope;
+        jw->scope_depth++;
+    } else {
+        jw->error = "Scope overflow";
+    }
+
     jw->indent += jw->indent_width;
     jw->scope_stack[jw->scope_depth - 1] &= ~$scope_has_key;
+
     return jw;
 }
 
@@ -563,9 +573,12 @@ _cex_json__writer__print_scope_exit(jw_c** jwptr)
 
     if (jw->indent >= jw->indent_width) { jw->indent -= jw->indent_width; }
     if (jw->scope_depth > 0) {
-        _cex_json_writer_indent(jw, true);
-
-        $print("%c", (jw->scope_stack[jw->scope_depth - 1] & $scope_arr) ? ']' : '}');
+        u8 scope = jw->scope_stack[jw->scope_depth - 1];
+            
+        if (!(scope & $scope_null)){
+            _cex_json_writer_indent(jw, true);
+            $print("%c", (scope & $scope_arr) ? ']' : '}');
+        }
         jw->scope_depth--;
     } else {
         jw->error = "Scope overflow";

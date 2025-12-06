@@ -814,4 +814,80 @@ test$case(json_reader_error_handling)
     return EOK;
 }
 
+test$case(json_writer_null_scope)
+{
+    mem$scope(tmem$, _)
+    {
+        jw_c jb;
+        sbuf_c buf = sbuf.create(1024, _);
+        (void)buf;
+        tassert_er(EOK, jw$new(&jb, .buf = buf, .indent = 4));
+        // tassert_er(EOK, jw$new(&jb, stdout, .indent = 0));
+
+        jw$scope(&jb, JsonType__obj)
+        {
+            jw$key("bar");
+            jw$val(NULL);
+
+            jw$key("far");
+            jw$scope(&jb, JsonType__obj)
+            {
+                jw$key("zoo");
+                jw$val(NULL);
+
+                jw$key("zoo");
+                jw$val(NULL);
+            }
+            jw$key("arr_empty");
+            jw$scope(&jb, JsonType__arr)
+            {
+                jw$val(NULL);
+                jw$val(NULL);
+            }
+        }
+
+        tassert_er(EOK, jb.error);
+        io.printf("\nJSON (buf): \n%s\n", buf);
+        print_json_expected(buf);
+
+        char* expected = "{\n\
+    \"bar\": null, \n\
+    \"far\": {\n\
+        \"zoo\": null, \n\
+        \"zoo\": null\n\
+    }, \n\
+    \"arr_empty\": [\n\
+        null, \n\
+        null\n\
+    ]\n\
+}";
+        tassert_eq(buf, expected);
+    }
+    return EOK;
+}
+
+test$case(json_writer_null_object)
+{
+    mem$scope(tmem$, _)
+    {
+        jw_c jb;
+        sbuf_c buf = sbuf.create(1024, _);
+        (void)buf;
+        tassert_er(EOK, jw$new(&jb, .buf = buf, .indent = 4));
+        // tassert_er(EOK, jw$new(&jb, stdout, .indent = 0));
+
+        jw$scope(&jb, JsonType__null)
+        {
+            jw$val(NULL);
+        }
+
+        tassert_er(EOK, jb.error);
+        io.printf("\nJSON (buf): \n%s\n", buf);
+        print_json_expected(buf);
+
+        char* expected = "null";
+        tassert_eq(buf, expected);
+    }
+    return EOK;
+}
 test$main();

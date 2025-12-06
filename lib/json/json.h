@@ -169,7 +169,8 @@ typedef struct jw_c
             _Bool: "%d",                                                                           \
             str_s: "\"%S\"",                                                                       \
             const char*: "\"%s\"",                                                                 \
-            char*: "\"%s\""                                                                        \
+            char*: "\"%s\"",                                                                       \
+            void*: "null"                                                                          \
         );                                                                                         \
         _cex_json__writer__print_item(_jw$scope_var, format, json_compatible_val);                  \
     })
