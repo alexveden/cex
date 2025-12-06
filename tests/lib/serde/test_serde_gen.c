@@ -1,4 +1,5 @@
 #define CEX_IMPLEMENTATION
+#define CEX_BUILD
 #define CEX_TEST
 #include "cex.h"
 #include "lib/json/CexSerdeGen.c"
@@ -20,7 +21,7 @@ test$setup_case()
 // test$setup_suite() {return EOK;}
 // test$teardown_suite() {return EOK;}
 
-test$case(my_test_case)
+test$case(serdegen_myserde_basic)
 {
     mem$scope(tmem$, _)
     {
@@ -37,18 +38,70 @@ test$case(my_test_case)
         ));
         tassert_eq(sg.namespace, "serdegen");
         tassert_eq(sbuf.capacity(&sg.c_file_content), 32 * 1024 - sizeof(sbuf_head_s) - 1);
-        // e$ret(CexSerdeGen.process_code(&sg, code, 0));
-        // e$ret(CexSerdeGen.generate_full(&sg));
 
+        io.printf("\nParsing source code for serdegen\n");
         io.printf("-------------------------\n");
         e$ret(CexSerdeGen.run(&sg));
-        // io.printf("%s\n", sg.c_file_content);
-        // io.printf("%s\n", sg.h_file_content);
-        e$ret(io.file.save(str.fmt(_, TESTDIR "%s.c", sg.namespace), sg.c_file_content));
-        e$ret(io.file.save(str.fmt(_, TESTDIR "%s.h", sg.namespace), sg.h_file_content));
+        io.printf("-------------------------\n");
+
+        io.printf("\nCompiling and running serdegen program\n");
+        io.printf("-------------------------\n");
+        os_cmd_c cmd = { 0 };
+#if mem$asan_enabled()
+        char* cc_args[] = { "cc",
+                            "-I.",
+                            "-Wall",
+                            "-Wextra",
+                            "-Werror",
+                            "-fsanitize-address-use-after-scope",
+                            "-fsanitize=address",
+                            "-fsanitize=undefined",
+                            "-fstack-protector-strong",
+                            "-g",
+                            "-o",
+                            TESTDIR "a.out",
+                            TESTDIR "serdegen_test_basic.c",
+                            NULL };
+#else
+        char* cc_args[] = { "cc",      "-I.",           "-Wall",
+                            "-Wextra", "-Werror",       "-g",
+                            "-o",      TESTDIR "a.out", TESTDIR "serdegen_test_basic.c",
+                            NULL };
+#endif
+        _os$args_print("CMD: ", cc_args, arr$len(cc_args));
+        e$ret(os.cmd.create(
+            &cmd,
+            cc_args,
+            arr$len(cc_args),
+            &(os_cmd_flags_s){ .combine_stdouterr = true, .no_window = true }
+        ));
+        char* output = os.cmd.read_all(&cmd, _);
+        e$except (err, os.cmd.join(&cmd, 10, NULL)) {
+            log$error("Compiler error: \n%s\n", output);
+            return err;
+        }
+        io.printf("%s\n", output);
+
+        io.printf("-------------------------\n");
+        io.printf("\nRunning serdegen test (in separate process!)\n");
+        io.printf("-------------------------\n");
+        char* test_args[] = { TESTDIR "a.out", "--quiet", NULL };
+        e$ret(os.cmd.create(
+            &cmd,
+            test_args,
+            arr$len(test_args),
+            &(os_cmd_flags_s){ .combine_stdouterr = true, .no_window = true }
+        ));
+        output = os.cmd.read_all(&cmd, _);
+        e$except(err, os.cmd.join(&cmd, 10, NULL)) {
+            log$error("Test error: \n%s\n", output);
+            return err;
+        }
+        log$info("Test Passed: \n%s\n", output);
         io.printf("-------------------------\n");
     }
-    tassert_eq(1, 0);
+
+    // tassert_eq(1, 0);
     return EOK;
 }
 
