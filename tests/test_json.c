@@ -890,4 +890,32 @@ test$case(json_writer_null_object)
     }
     return EOK;
 }
+
+test$case(json_reader_null_field)
+{
+    str_s content = str$s(
+        "{ \"foo\" : null, \"bar\": "", \"baz\": \"null\" }"
+    );
+
+    jr_c js;
+    e$ret(jr$new(&js, content.buf, content.len, .strict_mode = true));
+    tassert_eq(js.type, JsonType__obj);
+
+    jr$foreach(k, v, &js)
+    {
+        io.printf("key=%S value=%S\n", k, v);
+        if (str$eq(k, "foo")) {
+            tassert_eq(js.type, JsonType__null);
+            tassert_eq(v.buf, NULL);
+            tassert_eq(v.len, 1);
+        } else if (str$eq(k, "baz")) {
+            tassert_eq(v, str$s("null"));
+        } else if (str$eq(k, "bar")) {
+            tassert_eq(v, str$s(""));
+            tassert_eq(v.len, 0);
+        }
+    }
+
+    return EOK;
+}
 test$main();

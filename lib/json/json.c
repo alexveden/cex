@@ -400,7 +400,11 @@ parse_generic:
                     goto error_unexpected;
                 }
             }
-            it->val = t.value;
+            if (it->type != JsonType__null){
+                it->val = t.value;
+            } else {
+                it->val  = (str_s) {.buf = NULL, .len = 1};
+            }
             goto end;
         }
         default: {
