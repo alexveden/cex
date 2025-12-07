@@ -157,36 +157,33 @@ _CexSerdeGen_codegen_deserialize_field(
                     cg$if ("!out_item->%s", f->name) { cg$pn("return Error.memory;"); }
                 }
 
-                cg$scope ("e$except_silent (err, %s.%s.deserialize(jr, out_item->%s, allc)) ",
+                cg$pf("jr$egoto(jr, %s.%s.deserialize(jr, out_item->%s, allc), fail);",
                           self->namespace,
                           field_type->name,
-                          f->name) {
-                    cg$pn("jr->error = err;");
-                    cg$pn("goto fail;");
-                }
+                          f->name);
             }
             cg$else () { cg$pf("out_item->%s = NULL;", f->name); }
         } else if (f->flags.is_string) {
             if (str$eq(f->type, "char")) {
                 uassert(f->flags.is_ptr);
-                cg$if ("!v.buf") { cg$pf("out_item->%s = NULL;", f->name); }
+                cg$if ("unlikely(!v.buf)") { cg$pf("out_item->%s = NULL;", f->name); }
                 cg$else () { cg$pf("out_item->%s = str.slice.clone(v, allc);", f->name); }
 
             } else if (str$eq(f->type, "sbuf_c")) {
-                cg$if ("!v.buf") { cg$pf("out_item->%s = NULL;", f->name); }
+                cg$if ("unlikely(!v.buf)") { cg$pf("out_item->%s = NULL;", f->name); }
                 cg$else () {
                     cg$pf(
                         "out_item->%s = sbuf.create(v.len + sizeof(sbuf_head_s) + 1, allc);",
                         f->name
                     );
-                    cg$if ("!out_item->%s", f->name) { cg$pn("return Error.memory;"); }
-                    cg$if ("sbuf.appendf(&out_item->%s, \"%%S\", v)", f->name) {
+                    cg$if ("unlikely(!out_item->%s)", f->name) { cg$pn("return Error.memory;"); }
+                    cg$if ("unlikely(sbuf.appendf(&out_item->%s, \"%%S\", v))", f->name) {
                         cg$pn("return Error.memory;");
                     }
                 }
 
             } else if (str$eq(f->type, "str_s")) {
-                cg$if ("!v.buf") { cg$pf("out_item->%s = (str_s){0};", f->name); }
+                cg$if ("unlikely(!v.buf)") { cg$pf("out_item->%s = (str_s){0};", f->name); }
                 cg$else () { cg$pf("out_item->%s = str.sstr(str.slice.clone(v, allc));", f->name); }
 
             } else {
@@ -195,12 +192,9 @@ _CexSerdeGen_codegen_deserialize_field(
 
         } else {
             // Primitive type
-            cg$scope ("e$except_silent(err, str$convert(v, &out_item->%s)) ", f->name) {
-                cg$pn("jr->error = err;");
-                cg$pn("goto fail;");
-            }
+            cg$pf("jr$egoto(jr, str$convert(v, &out_item->%s), fail);", f->name);
         }
-        cg$pn("");
+        // cg$pn("");
     }
 
 
