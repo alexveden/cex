@@ -14,29 +14,25 @@
 
 #define $print(format, ...) /* temp macro */                                                       \
     ({                                                                                             \
-        if (jw->error == EOK) {                                                                    \
-            if (jw->buf) {                                                                         \
-                Exc err = sbuf.appendf(&jw->buf, format, ##__VA_ARGS__);                           \
-                if (unlikely(err != EOK && jw->error == EOK)) { jw->error = err; }                 \
-            } else if (jw->stream) {                                                               \
-                io.fprintf(jw->stream, format, ##__VA_ARGS__);                                     \
-            }                                                                                      \
+        if (jw->buf) {                                                                             \
+            Exc err = sbuf.appendf(&jw->buf, format, ##__VA_ARGS__);                               \
+            if (unlikely(err != EOK && jw->error == EOK)) { jw->error = err; }                     \
+        } else if (jw->stream) {                                                                   \
+            io.fprintf(jw->stream, format, ##__VA_ARGS__);                                         \
         }                                                                                          \
     })
 
 #define $printva() /* temp macro! */                                                               \
-    if (jw->error == EOK) {                                                                        \
-        va_list va;                                                                                \
-        va_start(va, format);                                                                      \
-        if (jw->buf) {                                                                             \
-            Exc err = sbuf.appendfva(&jw->buf, format, va);                                        \
-            if (unlikely(err != EOK && jw->error != EOK)) { jw->error = err; }                     \
-        } else if (jw->stream) {                                                                   \
-            int result = cexsp__vfprintf(jw->stream, format, va);                                  \
-            if (result == -1) { jw->error = Error.io; }                                            \
-        }                                                                                          \
-        va_end(va);                                                                                \
-    }
+    va_list va;                                                                                    \
+    va_start(va, format);                                                                          \
+    if (jw->buf) {                                                                                 \
+        Exc err = sbuf.appendfva(&jw->buf, format, va);                                            \
+        if (unlikely(err != EOK && jw->error != EOK)) { jw->error = err; }                         \
+    } else if (jw->stream) {                                                                       \
+        int result = cexsp__vfprintf(jw->stream, format, va);                                      \
+        if (result == -1) { jw->error = Error.io; }                                                \
+    }                                                                                              \
+    va_end(va);
 
 #define $next_tok() /* TEMP MACRO */                                                               \
     ({                                                                                             \
@@ -431,7 +427,7 @@ error:
 void
 _cex_json_writer_indent(jw_c* jw, bool last_item)
 {
-    if (unlikely(jw->error != EOK)) { return; }
+    // if (unlikely(jw->error != EOK)) { return; }
     if (jw->scope_depth && jw->scope_stack[jw->scope_depth - 1] & $scope_has_items) {
         if (!last_item) { $print(", ", ""); }
         if (jw->indent_width) { $print("\n", ""); }
@@ -470,6 +466,7 @@ _cex_json__writer__create(jw_c* jw, jw_kw* kwargs)
         .indent_width = kwargs->indent,
         .buf = kwargs->buf,
         .stream = kwargs->stream,
+        .simplified = kwargs->simplified,
     };
 
     return EOK;
@@ -547,9 +544,15 @@ _cex_json__writer__print_key(jw_c* jw, char* format, ...)
         "Expected to be in json object scope"
     );
     _cex_json_writer_indent(jw, false);
-    $print("\"", "");
+    if (!jw->simplified) { $print("\""); }
+
     $printva();
-    $print("\": ", "");
+
+    if (!jw->simplified) {
+        $print("\": ");
+    } else {
+        $print(": ");
+    }
     if (jw->scope_depth && jw->scope_stack[jw->scope_depth - 1]) {
         jw->scope_stack[jw->scope_depth - 1] |= $scope_has_items;
         jw->scope_stack[jw->scope_depth - 1] |= $scope_has_key;
@@ -591,7 +594,7 @@ _cex_json__writer__print_scope_enter(jw_c* jw, JsonType_e scope_type, bool shoul
     }
 
     jw->indent += jw->indent_width;
-    if (scope == $scope_null){
+    if (scope == $scope_null) {
         jw->scope_stack[jw->scope_depth - 1] |= $scope_has_key;
     } else {
         jw->scope_stack[jw->scope_depth - 1] &= ~$scope_has_key;

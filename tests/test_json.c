@@ -958,4 +958,42 @@ test$case(json_writer_null_object_value)
     }
     return EOK;
 }
+
+test$case(json_writer_simplified)
+{
+    mem$scope(tmem$, _)
+    {
+        jw_c jb;
+        sbuf_c buf = sbuf.create(1024, _);
+        (void)buf;
+        tassert_er(EOK, jw$new(&jb, .buf = buf, .indent = 4, .simplified = true));
+
+        jw$scope(&jb, JsonType__obj)
+        {
+            jw$key("foo");
+            jw$scope(&jb, JsonType__null)
+            {
+                jw$val(NULL);
+            }
+
+            jw$key("bar");
+            jw$scope(&jb, JsonType__null)
+            {
+                jw$val(NULL);
+            }
+        }
+
+        tassert_er(EOK, jb.error);
+        io.printf("\nJSON (buf): \n%s\n", buf);
+        print_json_expected(buf);
+
+        char* expected = "{\n\
+    foo: null, \n\
+    bar: null\n\
+}";
+
+        tassert_eq(buf, expected);
+    }
+    return EOK;
+}
 test$main();

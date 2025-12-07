@@ -121,6 +121,7 @@ typedef struct jw_kw
     FILE* stream;
     sbuf_c buf;
     u32 indent;
+    bool simplified; // used in debug print: keys without "", serde.*.print() prepends type  
 } jw_kw;
 
 /// JSON Writer container type
@@ -132,6 +133,7 @@ typedef struct jw_c
     u32 indent;
     u32 indent_width;
     u32 scope_depth;
+    bool simplified;
     u8 scope_stack[CEX_MAX_JSON_DEPTH];
 } jw_c;
 
