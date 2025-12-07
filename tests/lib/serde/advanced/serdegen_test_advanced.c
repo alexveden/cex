@@ -3,8 +3,8 @@
 #define CEX_BUILD
 #define CEX_TEST
 #define CEX_IMPLEMENTATION
-#include "Position.h"
-#include "Stock.h"
+#include "AdvPosition.h"
+#include "AdvStock.h"
 #include "cex.h"
 #include "lib/json/json.c"
 #include "serdegen.c"
