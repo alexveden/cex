@@ -131,4 +131,92 @@ test$case(test_Position_serialize)
     return EOK;
 }
 
+test$case(test_NullableItems)
+{
+    ItemNullable s = { 0 };
+    serdegen.ItemNullable.print(&s, NULL);
+
+    sbuf_c sb = sbuf.create(1024, mem$);
+    jw_c jw;
+    e$ret(jw$new(&jw, .indent = 4, .buf = sb));
+    e$ret(serdegen.ItemNullable.serialize(&jw, &s));
+
+    io.printf("\nJSON OUTPUT\n%s\n", sb);
+    print_json_expected(sb);
+    char* expected = "{\n\
+    \"sbuf_field\": null, \n\
+    \"str_s_field\": null, \n\
+    \"char_field\": null, \n\
+    \"stock_field\": null\n\
+}";
+
+    tassert_eq(sb, expected);
+
+    jr_c jr;
+    e$ret(jr$new(&jr, sb, 0, .strict_mode = true));
+
+    ItemNullable s2 = { 0 };
+    e$ret(serdegen.ItemNullable.deserialize(&jr, &s2, mem$));
+
+    tassert_eq(s2.char_field, NULL);
+    tassert_eq(s2.sbuf_field, NULL);
+    tassert_eq(s2.str_s_field.buf, NULL);
+    tassert_eq(s2.str_s_field.len, 0);
+    tassert(s2.stock_field == NULL);
+
+    sbuf.destroy(&sb);
+    serdegen.ItemNullable.destroy(&s2, mem$);
+
+    return EOK;
+}
+
+test$case(test_NullableItems_initialized)
+{
+    sbuf_c sb_item = sbuf.create(1024, mem$);
+    e$ret(sbuf.append(&sb_item, "hello_sbuf"));
+
+    ItemNullable s = { .char_field = "hello_char",
+                       .sbuf_field = sb_item,
+                       .str_s_field = str$s("hello_str_s") };
+    serdegen.ItemNullable.print(&s, NULL);
+
+    sbuf_c sb = sbuf.create(1024, mem$);
+    jw_c jw;
+    e$ret(jw$new(&jw, .indent = 4, .buf = sb));
+    e$ret(serdegen.ItemNullable.serialize(&jw, &s));
+
+    io.printf("\nJSON OUTPUT\n%s\n", sb);
+    print_json_expected(sb);
+
+    char* expected = "{\n\
+    \"sbuf_field\": \"hello_sbuf\", \n\
+    \"str_s_field\": \"hello_str_s\", \n\
+    \"char_field\": \"hello_char\", \n\
+    \"stock_field\": null\n\
+}";
+    tassert_eq(sb, expected);
+
+    jr_c jr;
+    e$ret(jr$new(&jr, sb, 0, .strict_mode = true));
+
+    ItemNullable s2 = { 0 };
+    e$ret(serdegen.ItemNullable.deserialize(&jr, &s2, mem$));
+
+    tassert_eq(s2.char_field, "hello_char");
+    tassert_eq(s2.sbuf_field, "hello_sbuf");
+    tassert_eq(s2.str_s_field, str$s("hello_str_s"));
+    tassert(s2.stock_field == NULL);
+
+    // Make sure new strings are allocated separately
+    tassert(s2.char_field != s.char_field);
+    tassert(s2.sbuf_field != s.sbuf_field);
+    tassert(s2.str_s_field.buf != s.str_s_field.buf);
+
+    sbuf.destroy(&sb);
+    sbuf.destroy(&sb_item);
+    serdegen.ItemNullable.destroy(&s2, mem$);
+
+    return EOK;
+}
+
 test$main();

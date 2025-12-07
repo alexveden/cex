@@ -105,12 +105,12 @@ test$case(serdegen_myserde_basic)
 
 test$case(serdegen_myserde_advanced)
 {
-    if (os.path.exists(TESTDIR "advanced/serdegen.h")) {
-        if (os.fs.remove(TESTDIR "advanced/serdegen.h")) {};
-    }
-    if (os.path.exists(TESTDIR "advanced/serdegen.c")) {
-        if (os.fs.remove(TESTDIR "advanced/serdegen.c")) {};
-    }
+    // if (os.path.exists(TESTDIR "advanced/serdegen.h")) {
+    //     if (os.fs.remove(TESTDIR "advanced/serdegen.h")) {};
+    // }
+    // if (os.path.exists(TESTDIR "advanced/serdegen.c")) {
+    //     if (os.fs.remove(TESTDIR "advanced/serdegen.c")) {};
+    // }
 
     mem$scope(tmem$, _)
     {

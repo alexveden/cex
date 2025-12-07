@@ -52,10 +52,18 @@ Exception serdegen__Stock__deserialize(jr_c* jr, Stock* out_item, IAllocator all
             }
 
         } else if (str$eq(k, "ticker")) {
-            out_item->ticker = str.slice.clone(v, allc);
+            if (!v.buf) {
+                out_item->ticker = NULL;
+            } else {
+                out_item->ticker = str.slice.clone(v, allc);
+            }
 
         } else if (str$eq(k, "exchange")) {
-            out_item->exchange = str.slice.clone(v, allc);
+            if (!v.buf) {
+                out_item->exchange = NULL;
+            } else {
+                out_item->exchange = str.slice.clone(v, allc);
+            }
 
         }
     }

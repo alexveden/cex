@@ -11,3 +11,10 @@ typedef struct Stock {
 } Stock;
 
 
+serde$$struct()
+typedef struct ItemNullable {
+    sbuf_c sbuf_field;
+    str_s str_s_field;
+    char* char_field;
+    Stock* stock_field;
+} ItemNullable;

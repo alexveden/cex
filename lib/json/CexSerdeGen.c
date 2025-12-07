@@ -151,21 +151,46 @@ _CexSerdeGen_codegen_deserialize_field(
             // Project registered type
 
             // We need preallocate pointer to a new type!
-            if (f->flags.is_ptr) { cg$pf("out_item->%s = mem$new(allc, %S);", f->name, f->type); }
+            cg$if ("jr->type != JsonType__null") {
+                if (f->flags.is_ptr) {
+                    cg$pf("out_item->%s = mem$new(allc, %S);", f->name, f->type);
+                    cg$if ("!out_item->%s", f->name) { cg$pn("return Error.memory;"); }
+                }
 
-            cg$scope ("e$except_silent (err, %s.%s.deserialize(jr, out_item->%s, allc)) ",
-                      self->namespace,
-                      field_type->name,
-                      f->name) {
-                cg$pn("jr->error = err;");
-                cg$pn("goto fail;");
+                cg$scope ("e$except_silent (err, %s.%s.deserialize(jr, out_item->%s, allc)) ",
+                          self->namespace,
+                          field_type->name,
+                          f->name) {
+                    cg$pn("jr->error = err;");
+                    cg$pn("goto fail;");
+                }
             }
+            cg$else () { cg$pf("out_item->%s = NULL;", f->name); }
         } else if (f->flags.is_string) {
             if (str$eq(f->type, "char")) {
                 uassert(f->flags.is_ptr);
-                cg$pf("out_item->%s = str.slice.clone(v, allc);", f->name);
+                cg$if ("!v.buf") { cg$pf("out_item->%s = NULL;", f->name); }
+                cg$else () { cg$pf("out_item->%s = str.slice.clone(v, allc);", f->name); }
+
+            } else if (str$eq(f->type, "sbuf_c")) {
+                cg$if ("!v.buf") { cg$pf("out_item->%s = NULL;", f->name); }
+                cg$else () {
+                    cg$pf(
+                        "out_item->%s = sbuf.create(v.len + sizeof(sbuf_head_s) + 1, allc);",
+                        f->name
+                    );
+                    cg$if ("!out_item->%s", f->name) { cg$pn("return Error.memory;"); }
+                    cg$if ("sbuf.appendf(&out_item->%s, \"%%S\", v)", f->name) {
+                        cg$pn("return Error.memory;");
+                    }
+                }
+
+            } else if (str$eq(f->type, "str_s")) {
+                cg$if ("!v.buf") { cg$pf("out_item->%s = (str_s){0};", f->name); }
+                cg$else () { cg$pf("out_item->%s = str.sstr(str.slice.clone(v, allc));", f->name); }
+
             } else {
-                uassert(false && "not implemented yet");
+                uassertf(false, "field type, not implemented yet: type=%S\n", f->type);
             }
 
         } else {
@@ -192,14 +217,16 @@ _CexSerdeGen_codegen_destroy_field(CexSerdeGen_c* self, cex_codegen_s* cg$var, s
     serdegen_type_s* field_type = hm$get(self->types, f->type);
     if (field_type) {
         cg$pf("%s.%s.destroy(item->%s, allc);", self->namespace, field_type->name, f->name);
-        if (f->flags.is_ptr) {
-            cg$pf("mem$free(allc, item->%s);", f->name);
-        }
+        if (f->flags.is_ptr) { cg$pf("mem$free(allc, item->%s);", f->name); }
     } else if (f->flags.is_string) {
         if (str$eq(f->type, "char")) {
             cg$pf("mem$free(allc, item->%s);", f->name);
+        } else if (str$eq(f->type, "sbuf_c")) {
+            cg$pf("sbuf.destroy(&item->%s);", f->name);
+        } else if (str$eq(f->type, "str_s")) {
+            cg$pf("mem$free(allc, item->%s.buf);", f->name);
         } else {
-            uassert(false && "not implemented yet");
+            uassertf(false, "field type, not implemented yet: type=%S\n", f->type);
         }
     } else {
         // Primitive type do nothing
