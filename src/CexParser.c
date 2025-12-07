@@ -529,6 +529,11 @@ CexParser_next_entity(CexParser_c* lx, arr$(cex_token_s) * children)
                         lx->error = "cex$$attribute requires ()";
                         goto error;
                     }
+                    t = CexParser.next_token(lx);
+                    if (unlikely(t.type != CexTkn__eos)) {
+                        lx->error = "cex$$attribute missing semicolon";
+                        goto error;
+                    }
                     // Extending attribute text
                     uassert(t.value.buf > attr_tok.value.buf);
                     attr_tok.type = CexTkn__cex_attribute;

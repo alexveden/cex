@@ -1040,7 +1040,7 @@ test$case(test_struct_def_with_serde_attr)
 {
     // clang-format off
     char* code = 
-        "serde$$struct(.name = \"MyStock\")\n"
+        "serde$$struct(.name = \"MyStock\");\n"
         "/// My Doc\n"
         "typedef struct my_struct { CexTkn_e type;  str_s value;} my_struct1;\n"
         "";
@@ -1061,7 +1061,7 @@ test$case(test_struct_def_with_serde_attr)
         tassert_eq(d->args, "");
         tassert_eq(d->docs, str$s("/// My Doc"));
         tassert_eq(d->attr_count, 1);
-        tassert_eq(d->attr[0], str$s("serde$$struct(.name = \"MyStock\")"));
+        tassert_eq(d->attr[0], str$s("serde$$struct(.name = \"MyStock\");"));
     }
     return EOK;
 }
@@ -1070,7 +1070,7 @@ test$case(test_struct_def_with_serde_attr_no_args)
 {
     // clang-format off
     char* code = 
-        "serde$$struct()\n"
+        "serde$$struct();\n"
         "typedef struct my_struct { CexTkn_e type;  str_s value;} my_struct1;\n"
         "";
     CexParser_c lx = CexParser_create(code, 0, true);
@@ -1087,7 +1087,7 @@ test$case(test_struct_def_with_serde_attr_no_args)
         tassert_eq(d->type, CexTkn__typedef);
         tassert_eq(d->name, str$s("my_struct1")); // using last name after typedef scope
         tassert_eq(d->attr_count, 1);
-        tassert_eq(d->attr[0], str$s("serde$$struct()"));
+        tassert_eq(d->attr[0], str$s("serde$$struct();"));
         tassert_eq(d->ret_type, "typedef struct");
         tassert_eq(d->body, str$s("{ CexTkn_e type;  str_s value;}"));
         tassert_eq(d->args, "");
@@ -1172,13 +1172,13 @@ test$case(test_struct_with_many_attributes)
 {
     // clang-format off
     char* code = 
-        "serde$$struct()\n"
-        "serde$$struct()\n"
-        "serde$$struct()\n"
-        "serde$$struct()\n"
-        "serde$$struct()\n"
-        "serde$$struct()\n"
-        "serde$$struct()\n"
+        "serde$$struct();\n"
+        "serde$$struct();\n"
+        "serde$$struct();\n"
+        "serde$$struct();\n"
+        "serde$$struct();\n"
+        "serde$$struct();\n"
+        "serde$$struct();\n"
         "typedef struct my_struct { CexTkn_e type;  str_s value;} my_struct1;\n"
         "";
     CexParser_c lx = CexParser_create(code, 0, true);
@@ -1195,7 +1195,7 @@ test$case(test_struct_with_many_attributes)
         tassert_eq(d->type, CexTkn__typedef);
         tassert_eq(d->name, str$s("my_struct1")); // using last name after typedef scope
         tassert_eq(d->attr_count, 7);
-        tassert_eq(d->attr[0], str$s("serde$$struct()"));
+        tassert_eq(d->attr[0], str$s("serde$$struct();"));
         tassert_eq(d->ret_type, "typedef struct");
         tassert_eq(d->body, str$s("{ CexTkn_e type;  str_s value;}"));
         tassert_eq(d->args, "");
@@ -1207,14 +1207,14 @@ test$case(test_struct_with_many_attributes_too_many)
 {
     // clang-format off
     char* code = 
-        "serde$$struct()\n"
-        "serde$$struct()\n"
-        "serde$$struct()\n"
-        "serde$$struct()\n"
-        "serde$$struct()\n"
-        "serde$$struct()\n"
-        "serde$$struct()\n"
-        "serde$$struct()\n"
+        "serde$$struct();\n"
+        "serde$$struct();\n"
+        "serde$$struct();\n"
+        "serde$$struct();\n"
+        "serde$$struct();\n"
+        "serde$$struct();\n"
+        "serde$$struct();\n"
+        "serde$$struct();\n"
         "typedef struct my_struct { CexTkn_e type;  str_s value;} my_struct1;\n"
         "";
     CexParser_c lx = CexParser_create(code, 0, true);
@@ -1237,7 +1237,7 @@ test$case(test_attr_for_func)
 {
     // clang-format off
     char* code = 
-        "some$$attr()\n"
+        "some$$attr();\n"
         "int foo(int a);"
         "";
     CexParser_c lx = CexParser_create(code, 0, true);
@@ -1253,9 +1253,28 @@ test$case(test_attr_for_func)
         tassert(d != NULL);
         tassert_eq(lx.error, EOK);
         tassert_eq(d->attr_count, 1);
-        tassert_eq(d->attr[0], str$s("some$$attr()"));
+        tassert_eq(d->attr[0], str$s("some$$attr();"));
     }
     return EOK;
 }
 
+test$case(test_attr_requires_semicolon)
+{
+    // clang-format off
+    char* code = 
+        "some$$attr()\n"
+        "int foo(int a);"
+        "";
+    CexParser_c lx = CexParser_create(code, 0, true);
+    cex_token_s t;
+    mem$scope(tmem$, _){
+        arr$(cex_token_s) items = arr$new(items, _);
+
+        t = CexParser_next_entity(&lx, &items);
+        log$debug("Entity:  type: %d type_str: '%s' children: %zu\n%S\n", t.type, CexTkn_str[t.type], arr$len(items), t.value);
+        tassert_eq(t.type, CexTkn__error);
+        tassert_eq(lx.error, "cex$$attribute missing semicolon");
+    }
+    return EOK;
+}
 test$main();
