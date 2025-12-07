@@ -578,12 +578,7 @@ _cex_json__writer__print_scope_enter(jw_c* jw, JsonType_e scope_type, bool shoul
         $print("%c", '[');
         scope = $scope_arr;
     } else if (scope_type == JsonType__null) {
-        // uassert(jw->scope_depth == 0 && "JsonType__null scope only used for 1st level scopes");
         scope = $scope_null;
-        jw->scope_stack[jw->scope_depth] = scope;
-        jw->scope_depth++;
-        jw->scope_stack[jw->scope_depth - 1] |= $scope_has_key;
-        return jw;
     } else {
         unreachable();
     }
@@ -596,7 +591,11 @@ _cex_json__writer__print_scope_enter(jw_c* jw, JsonType_e scope_type, bool shoul
     }
 
     jw->indent += jw->indent_width;
-    jw->scope_stack[jw->scope_depth - 1] &= ~$scope_has_key;
+    if (scope == $scope_null){
+        jw->scope_stack[jw->scope_depth - 1] |= $scope_has_key;
+    } else {
+        jw->scope_stack[jw->scope_depth - 1] &= ~$scope_has_key;
+    }
 
     return jw;
 }

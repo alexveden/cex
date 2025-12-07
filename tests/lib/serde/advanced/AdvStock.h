@@ -17,4 +17,5 @@ typedef struct ItemNullable {
     str_s str_s_field;
     char* char_field;
     Stock* stock_field;
+    Stock stock_val;
 } ItemNullable;

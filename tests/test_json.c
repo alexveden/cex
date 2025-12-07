@@ -748,7 +748,7 @@ test$case(json_writer_val_types)
             jw$val(s3);
             char* s4 = NULL;
             jw$val(s4);
-            str_s s5 = {0};
+            str_s s5 = { 0 };
             jw$val(s5);
 
             // usize v17 = SIZE_MAX;
@@ -894,7 +894,8 @@ test$case(json_writer_null_object)
 test$case(json_reader_null_field)
 {
     str_s content = str$s(
-        "{ \"foo\" : null, \"bar\": "", \"baz\": \"null\" }"
+        "{ \"foo\" : null, \"bar\": "
+        ", \"baz\": \"null\" }"
     );
 
     jr_c js;
@@ -916,6 +917,45 @@ test$case(json_reader_null_field)
         }
     }
 
+    return EOK;
+}
+
+test$case(json_writer_null_object_value)
+{
+    mem$scope(tmem$, _)
+    {
+        jw_c jb;
+        sbuf_c buf = sbuf.create(1024, _);
+        (void)buf;
+        tassert_er(EOK, jw$new(&jb, .buf = buf, .indent = 4));
+        // tassert_er(EOK, jw$new(&jb, stdout, .indent = 0));
+
+        jw$scope(&jb, JsonType__obj)
+        {
+            jw$key("foo");
+            jw$scope(&jb, JsonType__null)
+            {
+                jw$val(NULL);
+            }
+
+            jw$key("bar");
+            jw$scope(&jb, JsonType__null)
+            {
+                jw$val(NULL);
+            }
+        }
+
+        tassert_er(EOK, jb.error);
+        io.printf("\nJSON (buf): \n%s\n", buf);
+        print_json_expected(buf);
+
+        char* expected = "{\n\
+    \"foo\": null, \n\
+    \"bar\": null\n\
+}";
+
+        tassert_eq(buf, expected);
+    }
     return EOK;
 }
 test$main();

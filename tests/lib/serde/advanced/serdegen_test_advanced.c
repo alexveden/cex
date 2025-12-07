@@ -143,13 +143,18 @@ test$case(test_NullableItems)
 
     io.printf("\nJSON OUTPUT\n%s\n", sb);
     print_json_expected(sb);
-    char* expected = "{\n\
+
+char* expected = "{\n\
     \"sbuf_field\": null, \n\
     \"str_s_field\": null, \n\
     \"char_field\": null, \n\
-    \"stock_field\": null\n\
+    \"stock_field\": null, \n\
+    \"stock_val\": {\n\
+        \"id\": 0, \n\
+        \"ticker\": null, \n\
+        \"exchange\": null\n\
+    }\n\
 }";
-
     tassert_eq(sb, expected);
 
     jr_c jr;
@@ -177,7 +182,12 @@ test$case(test_NullableItems_initialized)
 
     ItemNullable s = { .char_field = "hello_char",
                        .sbuf_field = sb_item,
-                       .str_s_field = str$s("hello_str_s") };
+                       .str_s_field = str$s("hello_str_s"),
+                       .stock_val = {
+                           .exchange = "EXCH",
+                           .ticker = "SPY",
+                           .id = 9988,
+                       } };
     serdegen.ItemNullable.print(&s, NULL);
 
     sbuf_c sb = sbuf.create(1024, mem$);
@@ -192,7 +202,12 @@ test$case(test_NullableItems_initialized)
     \"sbuf_field\": \"hello_sbuf\", \n\
     \"str_s_field\": \"hello_str_s\", \n\
     \"char_field\": \"hello_char\", \n\
-    \"stock_field\": null\n\
+    \"stock_field\": null, \n\
+    \"stock_val\": {\n\
+        \"id\": 9988, \n\
+        \"ticker\": \"SPY\", \n\
+        \"exchange\": \"EXCH\"\n\
+    }\n\
 }";
     tassert_eq(sb, expected);
 
@@ -211,6 +226,9 @@ test$case(test_NullableItems_initialized)
     tassert(s2.char_field != s.char_field);
     tassert(s2.sbuf_field != s.sbuf_field);
     tassert(s2.str_s_field.buf != s.str_s_field.buf);
+    tassert_eq(s2.stock_val.exchange, "EXCH");
+    tassert_eq(s2.stock_val.ticker, "SPY");
+    tassert_eq(s2.stock_val.id, 9988);
 
     sbuf.destroy(&sb);
     sbuf.destroy(&sb_item);

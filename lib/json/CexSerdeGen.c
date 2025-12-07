@@ -119,9 +119,10 @@ _CexSerdeGen_codegen_serialize_field(CexSerdeGen_c* self, cex_codegen_s* cg$var,
     serdegen_type_s* field_type = hm$get(self->types, f->type);
     if (field_type) {
         // Project Type
-        cg$scope ("e$except_silent (err, %s.%s.serialize(jw, item->%s)) ",
+        cg$scope ("e$except_silent (err, %s.%s.serialize(jw, %sitem->%s)) ",
                   self->namespace,
                   field_type->name,
+                  f->flags.is_ptr ? "" : "&",
                   f->name) {
             cg$pn("jw->error = err;");
         }
@@ -155,14 +156,28 @@ _CexSerdeGen_codegen_deserialize_field(
                 if (f->flags.is_ptr) {
                     cg$pf("out_item->%s = mem$new(allc, %S);", f->name, f->type);
                     cg$if ("!out_item->%s", f->name) { cg$pn("return Error.memory;"); }
+                    cg$pf(
+                        "jr$egoto(jr, %s.%s.deserialize(jr, out_item->%s, allc), fail);",
+                        self->namespace,
+                        field_type->name,
+                        f->name
+                    );
+                } else {
+                    cg$pf(
+                        "jr$egoto(jr, %s.%s.deserialize(jr, &out_item->%s, allc), fail);",
+                        self->namespace,
+                        field_type->name,
+                        f->name
+                    );
                 }
-
-                cg$pf("jr$egoto(jr, %s.%s.deserialize(jr, out_item->%s, allc), fail);",
-                          self->namespace,
-                          field_type->name,
-                          f->name);
             }
-            cg$else () { cg$pf("out_item->%s = NULL;", f->name); }
+            cg$else () {
+                if (f->flags.is_ptr) {
+                    cg$pf("out_item->%s = NULL;", f->name);
+                } else {
+                    cg$pf("jr$egoto(jr, Error.empty, fail);");
+                }
+            }
         } else if (f->flags.is_string) {
             if (str$eq(f->type, "char")) {
                 uassert(f->flags.is_ptr);
@@ -210,8 +225,12 @@ _CexSerdeGen_codegen_destroy_field(CexSerdeGen_c* self, cex_codegen_s* cg$var, s
 
     serdegen_type_s* field_type = hm$get(self->types, f->type);
     if (field_type) {
-        cg$pf("%s.%s.destroy(item->%s, allc);", self->namespace, field_type->name, f->name);
-        if (f->flags.is_ptr) { cg$pf("mem$free(allc, item->%s);", f->name); }
+        if (f->flags.is_ptr) {
+            cg$pf("%s.%s.destroy(item->%s, allc);", self->namespace, field_type->name, f->name);
+            cg$pf("mem$free(allc, item->%s);", f->name);
+        } else {
+            cg$pf("%s.%s.destroy(&item->%s, allc);", self->namespace, field_type->name, f->name);
+        }
     } else if (f->flags.is_string) {
         if (str$eq(f->type, "char")) {
             cg$pf("mem$free(allc, item->%s);", f->name);

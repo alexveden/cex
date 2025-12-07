@@ -100,6 +100,11 @@ Exception serdegen__ItemNullable__serialize(jw_c* jw, ItemNullable* item) {
             jw->error = err;
         }
 
+        jw$key("stock_val");
+        e$except_silent (err, serdegen.Stock.serialize(jw, &item->stock_val)) {
+            jw->error = err;
+        }
+
     }
     return jw->error;
 }
@@ -156,6 +161,12 @@ Exception serdegen__ItemNullable__deserialize(jr_c* jr, ItemNullable* out_item, 
             } else {
                 out_item->stock_field = NULL;
             }
+        } else if (str$eq(k, "stock_val")) {
+            if (jr->type != JsonType__null) {
+                jr$egoto(jr, serdegen.Stock.deserialize(jr, &out_item->stock_val, allc), fail);
+            } else {
+                jr$egoto(jr, Error.empty, fail);
+            }
         }
     }
     return EOK;
@@ -171,6 +182,7 @@ void serdegen__ItemNullable__destroy(ItemNullable* item, IAllocator allc) {
         mem$free(allc, item->char_field);
         serdegen.Stock.destroy(item->stock_field, allc);
         mem$free(allc, item->stock_field);
+        serdegen.Stock.destroy(&item->stock_val, allc);
         memset(item, 0, sizeof(*item));
     }
 }
