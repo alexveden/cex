@@ -28,7 +28,7 @@ Exception serdegen__Stock__serialize(jw_c* jw, Stock* item) {
 }
 Exc serdegen__Stock__print(Stock* item, jw_kw* json_writer_kwargs) {
     jw_c jw;
-    jw_kw kwargs = {.stream = stdout, .indent = 0};
+    jw_kw kwargs = {.stream = stdout, .indent = 0, .simplified = true};
     if (json_writer_kwargs) {
         kwargs = *json_writer_kwargs;
         if (!kwargs.stream && !kwargs.buf) {
@@ -36,7 +36,14 @@ Exc serdegen__Stock__print(Stock* item, jw_kw* json_writer_kwargs) {
         }
     }
     e$ret(_cex_json__writer__create(&jw, &kwargs));
-    return serdegen.Stock.serialize(&jw, item);
+    if (kwargs.simplified) {
+        _cex_json__writer__print_item(&jw, "Stock(");
+        Exc err = serdegen.Stock.serialize(&jw, item);
+        _cex_json__writer__print_item(&jw, ")%s%s%s\n", (err) ? " [error: ": "", (err) ? err : "", (err) ? "]": "" );
+        return err;
+    } else {
+        return serdegen.Stock.serialize(&jw, item);
+    }
 }
 Exception serdegen__Stock__deserialize(jr_c* jr, Stock* out_item, IAllocator allc) {
     uassert(jr != NULL);
@@ -110,7 +117,7 @@ Exception serdegen__ItemNullable__serialize(jw_c* jw, ItemNullable* item) {
 }
 Exc serdegen__ItemNullable__print(ItemNullable* item, jw_kw* json_writer_kwargs) {
     jw_c jw;
-    jw_kw kwargs = {.stream = stdout, .indent = 0};
+    jw_kw kwargs = {.stream = stdout, .indent = 0, .simplified = true};
     if (json_writer_kwargs) {
         kwargs = *json_writer_kwargs;
         if (!kwargs.stream && !kwargs.buf) {
@@ -118,7 +125,14 @@ Exc serdegen__ItemNullable__print(ItemNullable* item, jw_kw* json_writer_kwargs)
         }
     }
     e$ret(_cex_json__writer__create(&jw, &kwargs));
-    return serdegen.ItemNullable.serialize(&jw, item);
+    if (kwargs.simplified) {
+        _cex_json__writer__print_item(&jw, "ItemNullable(");
+        Exc err = serdegen.ItemNullable.serialize(&jw, item);
+        _cex_json__writer__print_item(&jw, ")%s%s%s\n", (err) ? " [error: ": "", (err) ? err : "", (err) ? "]": "" );
+        return err;
+    } else {
+        return serdegen.ItemNullable.serialize(&jw, item);
+    }
 }
 Exception serdegen__ItemNullable__deserialize(jr_c* jr, ItemNullable* out_item, IAllocator allc) {
     uassert(jr != NULL);
@@ -201,21 +215,18 @@ Exception serdegen__Item__serialize(jw_c* jw, Item* item) {
         jw$key("sbuf_field");
         if (unlikely(!item->sbuf_field)) {
             jw->error = Error.empty;
-            return jw->error;
         }
         jw$val(item->sbuf_field);
 
         jw$key("str_s_field");
         if (unlikely(!item->str_s_field.buf)) {
             jw->error = Error.empty;
-            return jw->error;
         }
         jw$val(item->str_s_field);
 
         jw$key("char_field");
         if (unlikely(!item->char_field)) {
             jw->error = Error.empty;
-            return jw->error;
         }
         jw$val(item->char_field);
 
@@ -229,7 +240,7 @@ Exception serdegen__Item__serialize(jw_c* jw, Item* item) {
 }
 Exc serdegen__Item__print(Item* item, jw_kw* json_writer_kwargs) {
     jw_c jw;
-    jw_kw kwargs = {.stream = stdout, .indent = 0};
+    jw_kw kwargs = {.stream = stdout, .indent = 0, .simplified = true};
     if (json_writer_kwargs) {
         kwargs = *json_writer_kwargs;
         if (!kwargs.stream && !kwargs.buf) {
@@ -237,7 +248,14 @@ Exc serdegen__Item__print(Item* item, jw_kw* json_writer_kwargs) {
         }
     }
     e$ret(_cex_json__writer__create(&jw, &kwargs));
-    return serdegen.Item.serialize(&jw, item);
+    if (kwargs.simplified) {
+        _cex_json__writer__print_item(&jw, "Item(");
+        Exc err = serdegen.Item.serialize(&jw, item);
+        _cex_json__writer__print_item(&jw, ")%s%s%s\n", (err) ? " [error: ": "", (err) ? err : "", (err) ? "]": "" );
+        return err;
+    } else {
+        return serdegen.Item.serialize(&jw, item);
+    }
 }
 Exception serdegen__Item__deserialize(jr_c* jr, Item* out_item, IAllocator allc) {
     uassert(jr != NULL);
@@ -326,7 +344,7 @@ Exception serdegen__Position__serialize(jw_c* jw, Position* item) {
 }
 Exc serdegen__Position__print(Position* item, jw_kw* json_writer_kwargs) {
     jw_c jw;
-    jw_kw kwargs = {.stream = stdout, .indent = 0};
+    jw_kw kwargs = {.stream = stdout, .indent = 0, .simplified = true};
     if (json_writer_kwargs) {
         kwargs = *json_writer_kwargs;
         if (!kwargs.stream && !kwargs.buf) {
@@ -334,7 +352,14 @@ Exc serdegen__Position__print(Position* item, jw_kw* json_writer_kwargs) {
         }
     }
     e$ret(_cex_json__writer__create(&jw, &kwargs));
-    return serdegen.Position.serialize(&jw, item);
+    if (kwargs.simplified) {
+        _cex_json__writer__print_item(&jw, "Position(");
+        Exc err = serdegen.Position.serialize(&jw, item);
+        _cex_json__writer__print_item(&jw, ")%s%s%s\n", (err) ? " [error: ": "", (err) ? err : "", (err) ? "]": "" );
+        return err;
+    } else {
+        return serdegen.Position.serialize(&jw, item);
+    }
 }
 Exception serdegen__Position__deserialize(jr_c* jr, Position* out_item, IAllocator allc) {
     uassert(jr != NULL);

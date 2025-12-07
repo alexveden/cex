@@ -237,4 +237,52 @@ test$case(test_NullableItems_initialized)
     return EOK;
 }
 
+test$case(test_Items_initialized_serialize_not_allowed)
+{
+    sbuf_c sb_item = sbuf.create(1024, mem$);
+    e$ret(sbuf.append(&sb_item, "hello_sbuf"));
+
+    Item s = { .char_field = "hello_char",
+                       //.sbuf_field = sb_item,
+                       .sbuf_field = NULL,
+                       .str_s_field = str$s("hello_str_s"),
+                       };
+    e$ret(serdegen.Item.print(&s, NULL));
+
+//     sbuf_c sb = sbuf.create(1024, mem$);
+//     jw_c jw;
+//     e$ret(jw$new(&jw, .indent = 4, .buf = sb));
+//     e$ret(serdegen.ItemNullable.serialize(&jw, &s));
+//
+//     io.printf("\nJSON OUTPUT\n%s\n", sb);
+//     print_json_expected(sb);
+//
+//     tassert_eq(sb, expected);
+//
+//     jr_c jr;
+//     e$ret(jr$new(&jr, sb, 0, .strict_mode = true));
+//
+//     ItemNullable s2 = { 0 };
+//     e$ret(serdegen.ItemNullable.deserialize(&jr, &s2, mem$));
+//
+//     tassert_eq(s2.char_field, "hello_char");
+//     tassert_eq(s2.sbuf_field, "hello_sbuf");
+//     tassert_eq(s2.str_s_field, str$s("hello_str_s"));
+//     tassert(s2.stock_field == NULL);
+//
+//     // Make sure new strings are allocated separately
+//     tassert(s2.char_field != s.char_field);
+//     tassert(s2.sbuf_field != s.sbuf_field);
+//     tassert(s2.str_s_field.buf != s.str_s_field.buf);
+//     tassert_eq(s2.stock_val.exchange, "EXCH");
+//     tassert_eq(s2.stock_val.ticker, "SPY");
+//     tassert_eq(s2.stock_val.id, 9988);
+//
+//     sbuf.destroy(&sb);
+//     sbuf.destroy(&sb_item);
+//     serdegen.ItemNullable.destroy(&s2, mem$);
+
+    return EOK;
+}
+
 test$main();

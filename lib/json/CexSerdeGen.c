@@ -170,7 +170,6 @@ _CexSerdeGen_codegen_serialize_field(CexSerdeGen_c* self, cex_codegen_s* cg$var,
         if (!f->flags.is_nullable) {
             cg$if ("unlikely(!item->%s%s)", f->name, (str$eq(f->type, "str_s") ? ".buf" : "")) {
                 cg$pf("jw->error = Error.empty;");
-                cg$pf("return jw->error;");
             }
         }
         cg$pf("jw$val(item->%s);", f->name);
@@ -331,13 +330,20 @@ _CexSerdeGen_generate_type(CexSerdeGen_c* self, cex_codegen_s* cg$var, serdegen_
              t->name,
              t->name) {
         cg$pn("jw_c jw;");
-        cg$pn("jw_kw kwargs = {.stream = stdout, .indent = 0};");
+        cg$pn("jw_kw kwargs = {.stream = stdout, .indent = 0, .simplified = true};");
         cg$if ("json_writer_kwargs") {
             cg$pn("kwargs = *json_writer_kwargs;");
             cg$if ("!kwargs.stream && !kwargs.buf") { cg$pn("kwargs.stream = stdout;"); }
         }
         cg$pn("e$ret(_cex_json__writer__create(&jw, &kwargs));");
-        cg$pf("return %s.%s.serialize(&jw, item);", self->namespace, t->name);
+        cg$if("kwargs.simplified") {
+            cg$pf("_cex_json__writer__print_item(&jw, \"%s(\");", t->name);
+            cg$pf("Exc err = %s.%s.serialize(&jw, item);", self->namespace, t->name);
+            cg$pf("_cex_json__writer__print_item(&jw, \")%%s%%s%%s\\n\", (err) ? \" [error: \": \"\", (err) ? err : \"\", (err) ? \"]\": \"\" );", t->name);
+            cg$pn("return err;");
+        } cg$else() {
+            cg$pf("return %s.%s.serialize(&jw, item);", self->namespace, t->name);
+        }
     }
 
     //
