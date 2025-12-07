@@ -57,14 +57,54 @@ _CexSerdeGen__process_field_attr(
     (void)lx;
     (void)field;
     (void)t;
-    if (str.slice.starts_with(t.value, str$s("serde$$field"))) {
+    if (str.slice.eq(t.value, str$s("serde$$field"))) {
+        str_s attr_name = t.value;
         log$info("Processing %S\n", t.value);
-        // FIX: broken stub!
         while ((t = CexParser.next_token(lx)).type) {
-            if (t.type == CexTkn__rparen) {
+            if (t.type == CexTkn__dot) {
                 t = CexParser.next_token(lx);
-                e$assert(t.type == CexTkn__ident);
+                if (t.type != CexTkn__ident) {
+                    return e$raise(Error.integrity, "cex$$attr expected identifier after dot");
+                }
+                str_s kw = t.value;
+
+                t = CexParser.next_token(lx);
+                if (t.type != CexTkn__eq) {
+                    return e$raise(Error.integrity, "cex$$attr expected `=` after `.%S`", kw);
+                }
+
+                t = CexParser.next_token(lx);
+                if (str$eq(kw, "nullable")) {
+                    if (str$eq(t.value, "true")) {
+                        field->flags.is_nullable = true;
+                    } else if (str$eq(t.value, "false")) {
+                        field->flags.is_nullable = false;
+                    } else {
+                        return e$raise(
+                            Error.integrity,
+                            "Expected .nulllable = true|false in %S, got `%S`",
+                            attr_name, 
+                            t.value
+                        );
+                    }
+                } else {
+                    return e$raise(Error.integrity, "Unknown param_field: .%S in `.%S`", kw, attr_name);
+                }
+            } else if (t.type == CexTkn__rparen) {
+                t = CexParser.next_token(lx);
+                e$assertf(t.type == CexTkn__eos, "Missing semicolon after cex$$attr field");
+                t = CexParser.next_token(lx);
+                e$assertf(t.type == CexTkn__ident, "Expected indent after cex$$attr field");
                 break;
+            } else if (t.type == CexTkn__comma || t.type == CexTkn__lparen) {
+                continue;
+            } else {
+                return e$raise(
+                    Error.integrity,
+                    "Unexpected token (%s) in %S",
+                    CexTkn_str[t.type],
+                    t.value
+                );
             }
         }
     }
@@ -126,6 +166,14 @@ _CexSerdeGen_codegen_serialize_field(CexSerdeGen_c* self, cex_codegen_s* cg$var,
                   f->name) {
             cg$pn("jw->error = err;");
         }
+    } else if (f->flags.is_string) {
+        if (!f->flags.is_nullable) {
+            cg$if ("unlikely(!item->%s%s)", f->name, (str$eq(f->type, "str_s") ? ".buf" : "")) {
+                cg$pf("jw->error = Error.empty;");
+                cg$pf("return jw->error;");
+            }
+        }
+        cg$pf("jw$val(item->%s);", f->name);
     } else {
         // Primitive type
         cg$pf("jw$val(item->%s);", f->name);

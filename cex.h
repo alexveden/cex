@@ -5611,7 +5611,7 @@ typedef struct cex_decl_s
 
 
 #define CexParser$err_fmt(parser, file) \
-    "CexParser %s[%s], %s%s cursor at line: %d, col: %d, offset: %d", (parser)->error ? "Error " : "Done ", (parser)->error ? (parser)->error : "OK", (file) ? " in file: " : "", (file) ? (file) : "", (parser)->line, (parser)->col, (i32)((parser)->cur - (parser)->content) 
+    "CexParser %s[%s], %s%s cursor at line: %d, col: %d, offset: %d\n", (parser)->error ? "Error " : "Done ", (parser)->error ? (parser)->error : "OK", (file) ? " in file: " : "", (file) ? (file) : "", (parser)->line, (parser)->col, (i32)((parser)->cur - (parser)->content) 
 
 CEX_NAMESPACE struct __cex_namespace__CexParser CexParser;
 
@@ -18817,6 +18817,11 @@ CexParser_next_entity(CexParser_c* lx, arr$(cex_token_s) * children)
                     t = CexParser.next_token(lx);
                     if (unlikely(t.type != CexTkn__paren_block)) {
                         lx->error = "cex$$attribute requires ()";
+                        goto error;
+                    }
+                    t = CexParser.next_token(lx);
+                    if (unlikely(t.type != CexTkn__eos)) {
+                        lx->error = "cex$$attribute missing semicolon";
                         goto error;
                     }
                     // Extending attribute text

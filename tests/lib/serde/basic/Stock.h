@@ -2,12 +2,11 @@
 #include "cex.h"
 #include "lib/json/json.h"
 
-serde$$struct()
+serde$$struct();
 /// Hi this is my comment
-typedef struct Stock {
+typedef struct Stock
+{
     u64 id;
     char* ticker;
     char* exchange;
 } Stock;
-
-

@@ -2,20 +2,38 @@
 #include "cex.h"
 #include "lib/json/json.h"
 
-serde$$struct()
 /// Hi this is my comment
-typedef struct Stock {
+serde$$struct();
+typedef struct Stock
+{
     u64 id;
+    serde$$field(.nullable = true);
     char* ticker;
+    serde$$field(.nullable = true);
     char* exchange;
 } Stock;
 
 
-serde$$struct()
-typedef struct ItemNullable {
+serde$$struct();
+typedef struct ItemNullable
+{
+    serde$$field(.nullable = true);
+    sbuf_c sbuf_field;
+    serde$$field(.nullable = true);
+    str_s str_s_field;
+    serde$$field(.nullable = true);
+    char* char_field;
+    serde$$field(.nullable = true);
+    Stock* stock_field;
+    serde$$field(.nullable = true);
+    Stock stock_val;
+} ItemNullable;
+
+serde$$struct();
+typedef struct Item
+{
     sbuf_c sbuf_field;
     str_s str_s_field;
     char* char_field;
     Stock* stock_field;
-    Stock stock_val;
-} ItemNullable;
+} Item;

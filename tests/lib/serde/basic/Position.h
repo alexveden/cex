@@ -3,7 +3,7 @@
 #include "lib/json/json.h"
 #include "Stock.h"
 
-serde$$struct()
+serde$$struct();
 typedef struct Position {
     i32 qty;
     f32 fill_price;

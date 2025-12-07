@@ -18,9 +18,17 @@ Exception serdegen__Stock__serialize(jw_c* jw, Stock* item) {
         jw$val(item->id);
 
         jw$key("ticker");
+        if (unlikely(!item->ticker)) {
+            jw->error = Error.empty;
+            return jw->error;
+        }
         jw$val(item->ticker);
 
         jw$key("exchange");
+        if (unlikely(!item->exchange)) {
+            jw->error = Error.empty;
+            return jw->error;
+        }
         jw$val(item->exchange);
 
     }
@@ -46,25 +54,19 @@ Exception serdegen__Stock__deserialize(jr_c* jr, Stock* out_item, IAllocator all
             jr->error = Error.integrity;
             goto fail;
         } else if (str$eq(k, "id")) {
-            e$except_silent(err, str$convert(v, &out_item->id)) {
-                jr->error = err;
-                goto fail;
-            }
-
+            jr$egoto(jr, str$convert(v, &out_item->id), fail);
         } else if (str$eq(k, "ticker")) {
-            if (!v.buf) {
+            if (unlikely(!v.buf)) {
                 out_item->ticker = NULL;
             } else {
                 out_item->ticker = str.slice.clone(v, allc);
             }
-
         } else if (str$eq(k, "exchange")) {
-            if (!v.buf) {
+            if (unlikely(!v.buf)) {
                 out_item->exchange = NULL;
             } else {
                 out_item->exchange = str.slice.clone(v, allc);
             }
-
         }
     }
     return EOK;
@@ -126,24 +128,19 @@ Exception serdegen__Position__deserialize(jr_c* jr, Position* out_item, IAllocat
             jr->error = Error.integrity;
             goto fail;
         } else if (str$eq(k, "qty")) {
-            e$except_silent(err, str$convert(v, &out_item->qty)) {
-                jr->error = err;
-                goto fail;
-            }
-
+            jr$egoto(jr, str$convert(v, &out_item->qty), fail);
         } else if (str$eq(k, "fill_price")) {
-            e$except_silent(err, str$convert(v, &out_item->fill_price)) {
-                jr->error = err;
-                goto fail;
-            }
-
+            jr$egoto(jr, str$convert(v, &out_item->fill_price), fail);
         } else if (str$eq(k, "stock")) {
-            out_item->stock = mem$new(allc, Stock);
-            e$except_silent (err, serdegen.Stock.deserialize(jr, out_item->stock, allc)) {
-                jr->error = err;
-                goto fail;
+            if (jr->type != JsonType__null) {
+                out_item->stock = mem$new(allc, Stock);
+                if (!out_item->stock) {
+                    return Error.memory;
+                }
+                jr$egoto(jr, serdegen.Stock.deserialize(jr, out_item->stock, allc), fail);
+            } else {
+                out_item->stock = NULL;
             }
-
         }
     }
     return EOK;

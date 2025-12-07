@@ -13,6 +13,7 @@ typedef struct serdegen_field_s
     struct
     {
         bool is_ptr;
+        bool is_nullable;
         bool is_string;
         bool is_array;
         bool is_hashmap;
