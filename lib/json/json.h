@@ -154,7 +154,7 @@ typedef struct jw_c
 #define jw$val(json_compatible_val)                                                                \
     ({                                                                                             \
         char* format = _Generic(                                                                   \
-            json_compatible_val,                                                                   \
+            (json_compatible_val),                                                                 \
             u8: "%d",                                                                              \
             i8: "%d",                                                                              \
             i16: "%d",                                                                             \
@@ -165,14 +165,13 @@ typedef struct jw_c
             u64: "%lu",                                                                            \
             f32: "%f",                                                                             \
             f64: "%f",                                                                             \
-            char: "\"%c\"",                                                                        \
             _Bool: "%d",                                                                           \
-            str_s: "\"%S\"",                                                                       \
-            const char*: "\"%s\"",                                                                 \
-            char*: "\"%s\"",                                                                       \
+            str_s: "\"%S\"",                                                                      \
+            const char*: "\"%s\"",                                                                \
+            char*: "\"%s\"",                                                                      \
             void*: "null"                                                                          \
         );                                                                                         \
-        _cex_json__writer__print_item(_jw$scope_var, format, json_compatible_val);                  \
+        _cex_json__writer__print_item(_jw$scope_var, format, (json_compatible_val));               \
     })
 
 #define _jw$scope_var _json_writer_macro_scope

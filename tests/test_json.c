@@ -725,8 +725,6 @@ test$case(json_writer_val_types)
             jw$val(v7);
             u64 v8 = UINT64_MAX;
             jw$val(v8);
-            char v9 = '@';
-            jw$val(v9);
             f32 v10 = HUGE_VAL;
             jw$val(v10);
             f32 v11 = -HUGE_VAL;
@@ -750,6 +748,8 @@ test$case(json_writer_val_types)
             jw$val(s3);
             char* s4 = NULL;
             jw$val(s4);
+            str_s s5 = {0};
+            jw$val(s5);
 
             // usize v17 = SIZE_MAX;
             // jw$val(v17);
@@ -770,7 +770,6 @@ test$case(json_writer_val_types)
     4294967295, \n\
     -9223372036854775808, \n\
     18446744073709551615, \n\
-    \"@\", \n\
     inf, \n\
     -inf, \n\
     nan, \n\
@@ -781,7 +780,8 @@ test$case(json_writer_val_types)
     \"const\", \n\
     \"str\", \n\
     \"str_s\", \n\
-    \"(null)\"\n\
+    null, \n\
+    null\n\
 ]";
         tassert_eq(buf, expected);
     }

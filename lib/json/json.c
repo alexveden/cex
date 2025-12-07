@@ -82,7 +82,8 @@ _cex_json__reader__create(jr_c* it, char* content, usize content_len, jr_kw* kwa
 }
 
 /**
- * @brief Make step inside JSON object or array scope (_cex_json__reader__next() starts emitting this scope)
+ * @brief Make step inside JSON object or array scope (_cex_json__reader__next() starts emitting
+ * this scope)
  *
  * @param it
  * @param expected_type Expected scope type (for sanity checks)
@@ -168,7 +169,9 @@ _cex_json__reader__skip(jr_c* it)
     return it->error;
 }
 
-str_s _cex_json__reader__get_scope(jr_c* it, JsonType_e scope_type) {
+str_s
+_cex_json__reader__get_scope(jr_c* it, JsonType_e scope_type)
+{
     uassert(scope_type == JsonType__arr || scope_type == JsonType__obj);
 
     str_s result = { 0 };
@@ -188,7 +191,7 @@ str_s _cex_json__reader__get_scope(jr_c* it, JsonType_e scope_type) {
     char* cur = it->_impl.lexer.cur - 1;
     uassert(cur >= it->_impl.lexer.content);
 
-    if(_cex_json__reader__skip(it) == EOK){
+    if (_cex_json__reader__skip(it) == EOK) {
         char* last_cur = it->_impl.lexer.cur;
         uassert(last_cur > cur);
         uassert(last_cur < it->_impl.lexer.content_end);
@@ -197,7 +200,7 @@ str_s _cex_json__reader__get_scope(jr_c* it, JsonType_e scope_type) {
             // NOTE: we must have at least something in result,
             // valid .buf with .len=0, may lead to full text parse
             // if the jr$new()
-            result = (str_s){.buf = cur, .len = last_cur - cur};
+            result = (str_s){ .buf = cur, .len = last_cur - cur };
         }
     }
 
@@ -400,10 +403,10 @@ parse_generic:
                     goto error_unexpected;
                 }
             }
-            if (it->type != JsonType__null){
+            if (it->type != JsonType__null) {
                 it->val = t.value;
             } else {
-                it->val  = (str_s) {.buf = NULL, .len = 1};
+                it->val = (str_s){ .buf = NULL, .len = 1 };
             }
             goto end;
         }
@@ -491,16 +494,45 @@ _cex_json__writer__print_item(jw_c* jw, char* format, ...)
 {
     u8 last_scope = $last_scope(jw);
 
-    uassertf(!(last_scope & $scope_null) || !(last_scope & $scope_has_items), "Only one jw$val() is allowed in null scope");
+    uassertf(
+        !(last_scope & $scope_null) || !(last_scope & $scope_has_items),
+        "Only one jw$val() is allowed in null scope"
+    );
+    uassert(format);
 
     if (!(last_scope & $scope_has_key)) {
         uassertf(!(last_scope & $scope_obj), "Writing jw$val() without setting jw$key() before");
         _cex_json_writer_indent(jw, false);
     }
 
-    // if (!(last_scope & $scope_has_key) && (last_scope & $scope_has_items)) {
-    // _cex_json_writer_indent(jw, false); }
-    $printva();
+    if (format[0] == '"') {
+        if (format[2] == 's') {
+            va_list va;
+            va_start(va, format);
+            char* s = va_arg(va, char*);
+            if (s == NULL) {
+                $print("null");
+            } else {
+                $print("\"%s\"", s);
+            }
+            va_end(va);
+        } else if (format[2] == 'S') {
+            va_list va;
+            va_start(va, format);
+            str_s s = va_arg(va, str_s);
+            if (s.buf == NULL) {
+                $print("null");
+            } else {
+                $print("\"%S\"", s);
+            }
+            va_end(va);
+        } else {
+            unreachable();
+        }
+    } else {
+        $printva();
+    }
+
     if (jw->scope_depth && jw->scope_stack[jw->scope_depth - 1]) {
         jw->scope_stack[jw->scope_depth - 1] |= $scope_has_items;
         jw->scope_stack[jw->scope_depth - 1] &= ~$scope_has_key;
@@ -546,7 +578,7 @@ _cex_json__writer__print_scope_enter(jw_c* jw, JsonType_e scope_type, bool shoul
         $print("%c", '[');
         scope = $scope_arr;
     } else if (scope_type == JsonType__null) {
-        uassert(jw->scope_depth == 0 && "JsonType__null scope only used for 1st level scopes");
+        // uassert(jw->scope_depth == 0 && "JsonType__null scope only used for 1st level scopes");
         scope = $scope_null;
         jw->scope_stack[jw->scope_depth] = scope;
         jw->scope_depth++;
@@ -578,8 +610,8 @@ _cex_json__writer__print_scope_exit(jw_c** jwptr)
     if (jw->indent >= jw->indent_width) { jw->indent -= jw->indent_width; }
     if (jw->scope_depth > 0) {
         u8 scope = jw->scope_stack[jw->scope_depth - 1];
-            
-        if (!(scope & $scope_null)){
+
+        if (!(scope & $scope_null)) {
             _cex_json_writer_indent(jw, true);
             $print("%c", (scope & $scope_arr) ? ']' : '}');
         }
