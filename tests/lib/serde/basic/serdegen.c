@@ -23,9 +23,6 @@ Exception serdegen__Stock__serialize(jw_c* jw, Stock* item) {
         jw$key("exchange");
         jw$val(item->exchange);
 
-        jw$key("my_field");
-        jw$val(item->my_field);
-
     }
     return jw->error;
 }
@@ -60,9 +57,6 @@ Exception serdegen__Stock__deserialize(jr_c* jr, Stock* out_item, IAllocator all
         } else if (str$eq(k, "exchange")) {
             out_item->exchange = str.slice.clone(v, allc);
 
-        } else if (str$eq(k, "my_field")) {
-            out_item->my_field = str.slice.clone(v, allc);
-
         }
     }
     return EOK;
@@ -75,7 +69,6 @@ void serdegen__Stock__destroy(Stock* item, IAllocator allc) {
     if (item) {
         mem$free(allc, item->ticker);
         mem$free(allc, item->exchange);
-        mem$free(allc, item->my_field);
         memset(item, 0, sizeof(*item));
     }
 }
