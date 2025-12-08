@@ -3,13 +3,17 @@
 #include "_sprintf.h"
 #include "all.h"
 
-static inline int _cex_str__toupper(int c) {
-    if ((unsigned)c - 'a' < 26) return c & 0x5f;
+static inline int
+_cex_str__toupper(int c)
+{
+    if ((unsigned)c - 'a' < 26) { return c & 0x5f; }
     return c;
 }
 
-static inline int _cex_str__tolower(int c) {
-    if ((unsigned)c - 'A' < 26) return c | 0x20;
+static inline int
+_cex_str__tolower(int c)
+{
+    if ((unsigned)c - 'A' < 26) { return c | 0x20; }
     return c;
 }
 
@@ -933,9 +937,23 @@ cex_str__to_double(char* self, usize len, double* num, i32 exp_min, i32 exp_max)
 }
 
 static Exception
+cex_str__convert__to_bools(str_s s, bool* num)
+{
+    if (unlikely(!num)) { return Error.argument; }
+    if (str$eq(s, "true")) {
+        *num = true;
+    } else if (str$eq(s, "false")) {
+        *num = false;
+    } else {
+        return Error.argument;
+    }
+    return EOK;
+}
+
+static Exception
 cex_str__convert__to_f32s(str_s s, f32* num)
 {
-    uassert(num != NULL);
+    if (unlikely(!num)) { return Error.argument; }
     f64 res = 0;
     Exc r = cex_str__to_double(s.buf, s.len, &res, -37, 38);
     *num = (f32)res;
@@ -945,14 +963,14 @@ cex_str__convert__to_f32s(str_s s, f32* num)
 static Exception
 cex_str__convert__to_f64s(str_s s, f64* num)
 {
-    uassert(num != NULL);
+    if (unlikely(!num)) { return Error.argument; }
     return cex_str__to_double(s.buf, s.len, num, -307, 308);
 }
 
 static Exception
 cex_str__convert__to_i8s(str_s s, i8* num)
 {
-    uassert(num != NULL);
+    if (unlikely(!num)) { return Error.argument; }
     i64 res = 0;
     Exc r = cex_str__to_signed_num(s.buf, s.len, &res, INT8_MIN, INT8_MAX);
     *num = res;
@@ -962,7 +980,7 @@ cex_str__convert__to_i8s(str_s s, i8* num)
 static Exception
 cex_str__convert__to_i16s(str_s s, i16* num)
 {
-    uassert(num != NULL);
+    if (unlikely(!num)) { return Error.argument; }
     i64 res = 0;
     auto r = cex_str__to_signed_num(s.buf, s.len, &res, INT16_MIN, INT16_MAX);
     *num = res;
@@ -972,7 +990,7 @@ cex_str__convert__to_i16s(str_s s, i16* num)
 static Exception
 cex_str__convert__to_i32s(str_s s, i32* num)
 {
-    uassert(num != NULL);
+    if (unlikely(!num)) { return Error.argument; }
     i64 res = 0;
     auto r = cex_str__to_signed_num(s.buf, s.len, &res, INT32_MIN, INT32_MAX);
     *num = res;
@@ -983,7 +1001,7 @@ cex_str__convert__to_i32s(str_s s, i32* num)
 static Exception
 cex_str__convert__to_i64s(str_s s, i64* num)
 {
-    uassert(num != NULL);
+    if (unlikely(!num)) { return Error.argument; }
     i64 res = 0;
     // NOTE:INT64_MIN+1 because negating of INT64_MIN leads to UB!
     auto r = cex_str__to_signed_num(s.buf, s.len, &res, INT64_MIN + 1, INT64_MAX);
@@ -994,7 +1012,7 @@ cex_str__convert__to_i64s(str_s s, i64* num)
 static Exception
 cex_str__convert__to_u8s(str_s s, u8* num)
 {
-    uassert(num != NULL);
+    if (unlikely(!num)) { return Error.argument; }
     u64 res = 0;
     Exc r = cex_str__to_unsigned_num(s.buf, s.len, &res, UINT8_MAX);
     *num = res;
@@ -1004,7 +1022,7 @@ cex_str__convert__to_u8s(str_s s, u8* num)
 static Exception
 cex_str__convert__to_u16s(str_s s, u16* num)
 {
-    uassert(num != NULL);
+    if (unlikely(!num)) { return Error.argument; }
     u64 res = 0;
     Exc r = cex_str__to_unsigned_num(s.buf, s.len, &res, UINT16_MAX);
     *num = res;
@@ -1014,7 +1032,7 @@ cex_str__convert__to_u16s(str_s s, u16* num)
 static Exception
 cex_str__convert__to_u32s(str_s s, u32* num)
 {
-    uassert(num != NULL);
+    if (unlikely(!num)) { return Error.argument; }
     u64 res = 0;
     Exc r = cex_str__to_unsigned_num(s.buf, s.len, &res, UINT32_MAX);
     *num = res;
@@ -1024,12 +1042,18 @@ cex_str__convert__to_u32s(str_s s, u32* num)
 static Exception
 cex_str__convert__to_u64s(str_s s, u64* num)
 {
-    uassert(num != NULL);
+    if (unlikely(!num)) { return Error.argument; }
     u64 res = 0;
     Exc r = cex_str__to_unsigned_num(s.buf, s.len, &res, UINT64_MAX);
     *num = res;
 
     return r;
+}
+
+static Exception
+cex_str__convert__to_bool(char* s, bool* num)
+{
+    return cex_str__convert__to_bools(str.sstr(s), num);
 }
 
 static Exception
@@ -1290,9 +1314,9 @@ static arr$(char*) cex_str_split_lines(char* s, IAllocator allc)
     }
     if (line_start <= cur) {
         str_s line = { .buf = (char*)line_start, .len = cur - line_start };
-        if (line.len > 0){
-        char* tok = cex_str__slice__clone(line, allc);
-        arr$push(result, tok);
+        if (line.len > 0) {
+            char* tok = cex_str__slice__clone(line, allc);
+            arr$push(result, tok);
         }
     }
     return result;
@@ -1602,6 +1626,8 @@ const struct __cex_namespace__str str = {
     .vsprintf = cex_str_vsprintf,
 
     .convert = {
+        .to_bool = cex_str__convert__to_bool,
+        .to_bools = cex_str__convert__to_bools,
         .to_f32 = cex_str__convert__to_f32,
         .to_f32s = cex_str__convert__to_f32s,
         .to_f64 = cex_str__convert__to_f64,

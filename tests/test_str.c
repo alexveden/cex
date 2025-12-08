@@ -975,6 +975,35 @@ test$case(str_to__signed_num)
     return EOK;
 }
 
+test$case(test_str_to_bool)
+{
+    bool num;
+    char* s;
+
+    num = 0;
+    s = "true";
+    tassert_er(EOK, str.convert.to_bool(s, &num));
+    tassert_er(Error.argument, str.convert.to_bool(s, NULL));
+    tassert_eq(num, true);
+
+    num = 1;
+    s = "false";
+    tassert_er(EOK, str.convert.to_bool(s, &num));
+    tassert_eq(num, false);
+
+
+    tassert_er(Error.argument, str.convert.to_bool("1", &num));
+    tassert_er(Error.argument, str.convert.to_bool("0", &num));
+    tassert_er(Error.argument, str.convert.to_bool("yes", &num));
+    tassert_er(Error.argument, str.convert.to_bool("no", &num));
+    tassert_er(Error.argument, str.convert.to_bool("TRUE", &num));
+    tassert_er(Error.argument, str.convert.to_bool("FALSE", &num));
+    tassert_er(Error.argument, str.convert.to_bool("", &num));
+    tassert_er(Error.argument, str.convert.to_bool(NULL, &num));
+
+    return EOK;
+}
+
 test$case(test_str_to_i8)
 {
     i8 num;
@@ -983,6 +1012,7 @@ test$case(test_str_to_i8)
     num = 0;
     s = "127";
     tassert_er(EOK, str.convert.to_i8(s, &num));
+    tassert_er(Error.argument, str.convert.to_i8(s, NULL));
     tassert_eq(num, 127);
 
     num = 0;
@@ -1019,6 +1049,7 @@ test$case(test_str_to_i16)
     num = 0;
     s = "-32768";
     tassert_er(EOK, str.convert.to_i16(s, &num));
+    tassert_er(Error.argument, str.convert.to_i16(s, NULL));
     tassert_eq(num, -32768);
 
     num = 0;
@@ -1047,6 +1078,7 @@ test$case(test_str_to_i32)
     num = 0;
     s = "-2147483648";
     tassert_er(EOK, str.convert.to_i32(s, &num));
+    tassert_er(Error.argument, str.convert.to_i32(s, NULL));
     tassert_eq(num, -2147483648);
 
     num = 0;
@@ -1076,6 +1108,7 @@ test$case(test_str_to_i64)
     num = 0;
     s = "-9223372036854775807";
     tassert_er(Error.ok, str.convert.to_i64(s, &num));
+    tassert_er(Error.argument, str.convert.to_i64(s, NULL));
     tassert_eq(num, -9223372036854775807);
 
     num = 0;
@@ -1271,6 +1304,7 @@ test$case(test_str_to_u8)
     num = 0;
     s = "255";
     tassert_er(EOK, str.convert.to_u8(s, &num));
+    tassert_er(Error.argument, str.convert.to_u8(s, NULL));
     tassert_eq(num, 255);
     tassert(num == UINT8_MAX);
 
@@ -1301,6 +1335,7 @@ test$case(test_str_to_u16)
     num = 0;
     s = "65535";
     tassert_er(EOK, str.convert.to_u16(s, &num));
+    tassert_er(Error.argument, str.convert.to_u16(s, NULL));
     tassert_eq(num, 65535);
     tassert(num == UINT16_MAX);
 
@@ -1327,6 +1362,7 @@ test$case(test_str_to_u32)
     num = 0;
     s = "4294967295";
     tassert_er(EOK, str.convert.to_u32(s, &num));
+    tassert_er(Error.argument, str.convert.to_u32(s, NULL));
     tassert_eq(num, 4294967295U);
     tassert(num == UINT32_MAX);
 
@@ -1352,6 +1388,7 @@ test$case(test_str_to_u64)
     num = 0;
     s = "18446744073709551615";
     tassert_er(EOK, str.convert.to_u64(s, &num));
+    tassert_er(Error.argument, str.convert.to_u64(s, NULL));
     tassert(num == UINT64_C(18446744073709551615));
     tassert(num == UINT64_MAX);
 
@@ -1570,6 +1607,7 @@ test$case(test_str_to_f32)
     num = 0;
     s = "1.4";
     tassert_er(EOK, str.convert.to_f32(s, &num));
+    tassert_er(Error.argument, str.convert.to_f32(s, NULL));
     tassert_eq(num, 1.4f);
 
 
@@ -1607,6 +1645,7 @@ test$case(test_str_to_f64)
     num = 0;
     s = "1.4";
     tassert_er(EOK, str.convert.to_f64(s, &num));
+    tassert_er(Error.argument, str.convert.to_f64(s, NULL));
     tassert_eq(num, 1.4);
 
 
