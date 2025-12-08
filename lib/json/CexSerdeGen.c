@@ -87,6 +87,19 @@ _CexSerdeGen__process_field_attr(
                             t.value
                         );
                     }
+                }else if (str$eq(kw, "optional")) {
+                    if (str$eq(t.value, "true")) {
+                        field->flags.is_optional = true;
+                    } else if (str$eq(t.value, "false")) {
+                        field->flags.is_optional = false;
+                    } else {
+                        return e$raise(
+                            Error.integrity,
+                            "Expected .optional = true|false in %S, got `%S`",
+                            attr_name,
+                            t.value
+                        );
+                    }
                 } else {
                     return e$raise(
                         Error.integrity,

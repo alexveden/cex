@@ -57,14 +57,13 @@ Exception serdegen__Stock__deserialize(jr_c* jr, Stock* out_item, IAllocator all
             fields_mask |= (1 << 0);
             jr$egoto(jr, str$convert(v, &out_item->id), fail);
         } else if (str$eq(k, "ticker")) {
-            fields_mask |= (1 << 1);
             if (unlikely(!v.buf)) {
                 out_item->ticker = NULL;
             } else {
                 out_item->ticker = str.slice.clone(v, allc);
             }
         } else if (str$eq(k, "exchange")) {
-            fields_mask |= (1 << 2);
+            fields_mask |= (1 << 1);
             if (unlikely(!v.buf)) {
                 out_item->exchange = NULL;
             } else {
@@ -72,7 +71,7 @@ Exception serdegen__Stock__deserialize(jr_c* jr, Stock* out_item, IAllocator all
             }
         }
     }
-    if (fields_mask != (1 << 3) -1) {
+    if (fields_mask != (1 << 2) -1) {
         jr->error = JsonError.missing_field;
         goto fail;
     }

@@ -528,6 +528,22 @@ expected = "{\n\
     e$ret(jr$new(&jr, expected, 0, .strict_mode = false));
     tassert_er(JsonError.missing_field, serdegen.Item.deserialize(&jr, &s2, mem$));
 
+    // NOTE: ticker field is optional in null set
+    expected = "{\n\
+    \"sbuf_field\": \"hello_sbuf\", \n\
+    \"str_s_field\": \"hello_str_s\", \n\
+    \"char_field\": \"hello_char\", \n\
+    \"stock_field\": {\n\
+        \"id\": 22, \n\
+        \"exchange\": \"FOO\"\n\
+    }\n\
+}";
+
+    e$ret(jr$new(&jr, expected, 0, .strict_mode = false));
+    e$ret(serdegen.Item.deserialize(&jr, &s2, mem$));
+    tassert_eq(s2.stock_field->ticker, NULL);
+
+    serdegen.Item.destroy(&s2, mem$);
     return EOK;
 }
 

@@ -7,7 +7,7 @@ serde$$struct();
 typedef struct Stock
 {
     u64 id;
-    serde$$field(.nullable = true);
+    serde$$field(.nullable = true, .optional = true);
     char* ticker;
     serde$$field(.nullable = true);
     char* exchange;
