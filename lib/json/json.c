@@ -4,6 +4,7 @@ const struct _CEX_JsonError_struct JsonError = {
     .parsing = "ParsingErrorJSON",
     .missing_field = "MissingFieldErrorJSON",
     .null_field = "NullFieldErrorJSON",
+    .unknown_field = "UnknownFieldErrorJSON",
 };
 
 /* TEMP MACROS - for private implementation*/

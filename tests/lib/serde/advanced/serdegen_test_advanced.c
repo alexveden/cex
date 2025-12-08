@@ -544,6 +544,19 @@ expected = "{\n\
     tassert_eq(s2.stock_field->ticker, NULL);
     tassert(s2.stock_field_skipped == NULL);
 
+    expected = "{\n\
+    \"this_is_unknown_field\": \"hello_sbuf\", \n\
+    \"str_s_field\": \"hello_str_s\", \n\
+    \"char_field\": \"hello_char\", \n\
+    \"stock_field\": {\n\
+        \"id\": 22, \n\
+        \"exchange\": \"FOO\"\n\
+    }\n\
+}";
+
+    e$ret(jr$new(&jr, expected, 0, .strict_mode = false));
+    tassert_er(JsonError.unknown_field, serdegen.Item.deserialize(&jr, &s2, mem$));
+
     serdegen.Item.destroy(&s2, mem$);
     return EOK;
 }

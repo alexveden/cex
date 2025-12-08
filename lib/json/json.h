@@ -12,6 +12,7 @@ extern const struct _CEX_JsonError_struct
 {
     Exc null_field;
     Exc missing_field;
+    Exc unknown_field;
     Exc parsing;
 } JsonError;
 

@@ -18,9 +18,11 @@ Exception serdegen__Stock__serialize(jw_c* jw, Stock* item) {
         jw$val(item->id);
 
         jw$key("ticker");
+        // field `ticker` is nullable serde$$field(.nullable = true)
         jw$val(item->ticker);
 
         jw$key("exchange");
+        // field `exchange` is nullable serde$$field(.nullable = true)
         jw$val(item->exchange);
 
     }
@@ -57,7 +59,9 @@ Exception serdegen__Stock__deserialize(jr_c* jr, Stock* out_item, IAllocator all
             fields_mask |= (1 << 0);
             jr$egoto(jr, str$convert(v, &out_item->id), fail);
         } else if (str$eq(k, "ticker")) {
+            // fields_mask check skipped, field is serde$$field(.optional = true)
             if (unlikely(!v.buf)) {
+                // field `ticker` is nullable serde$$field(.nullable = true)
                 out_item->ticker = NULL;
             } else {
                 out_item->ticker = str.slice.clone(v, allc);
@@ -65,10 +69,14 @@ Exception serdegen__Stock__deserialize(jr_c* jr, Stock* out_item, IAllocator all
         } else if (str$eq(k, "exchange")) {
             fields_mask |= (1 << 1);
             if (unlikely(!v.buf)) {
+                // field `exchange` is nullable serde$$field(.nullable = true)
                 out_item->exchange = NULL;
             } else {
                 out_item->exchange = str.slice.clone(v, allc);
             }
+        } else {
+            jr->error = JsonError.unknown_field;
+            goto fail;
         }
     }
     if (fields_mask != (1 << 2) -1) {
@@ -101,20 +109,25 @@ Exception serdegen__ItemNullable__serialize(jw_c* jw, ItemNullable* item) {
     }
     jw$scope(jw, JsonType__obj){
         jw$key("sbuf_field");
+        // field `sbuf_field` is nullable serde$$field(.nullable = true)
         jw$val(item->sbuf_field);
 
         jw$key("str_s_field");
+        // field `str_s_field` is nullable serde$$field(.nullable = true)
         jw$val(item->str_s_field);
 
         jw$key("char_field");
+        // field `char_field` is nullable serde$$field(.nullable = true)
         jw$val(item->char_field);
 
         jw$key("stock_field");
+        // field `stock_field` is nullable serde$$field(.nullable = true)
         e$except_silent (err, serdegen.Stock.serialize(jw, item->stock_field)) {
             jw->error = err;
         }
 
         jw$key("stock_val");
+        // field `stock_val` is nullable serde$$field(.nullable = true)
         e$except_silent (err, serdegen.Stock.serialize(jw, &item->stock_val)) {
             jw->error = err;
         }
@@ -152,6 +165,7 @@ Exception serdegen__ItemNullable__deserialize(jr_c* jr, ItemNullable* out_item, 
         } else if (str$eq(k, "sbuf_field")) {
             fields_mask |= (1 << 0);
             if (unlikely(!v.buf)) {
+                // field `sbuf_field` is nullable serde$$field(.nullable = true)
                 out_item->sbuf_field = NULL;
             } else {
                 out_item->sbuf_field = sbuf.create(v.len + sizeof(sbuf_head_s) + 1, allc);
@@ -165,6 +179,7 @@ Exception serdegen__ItemNullable__deserialize(jr_c* jr, ItemNullable* out_item, 
         } else if (str$eq(k, "str_s_field")) {
             fields_mask |= (1 << 1);
             if (unlikely(!v.buf)) {
+                // field `str_s_field` is nullable serde$$field(.nullable = true)
                 out_item->str_s_field = (str_s){0};
             } else {
                 out_item->str_s_field = str.sstr(str.slice.clone(v, allc));
@@ -172,6 +187,7 @@ Exception serdegen__ItemNullable__deserialize(jr_c* jr, ItemNullable* out_item, 
         } else if (str$eq(k, "char_field")) {
             fields_mask |= (1 << 2);
             if (unlikely(!v.buf)) {
+                // field `char_field` is nullable serde$$field(.nullable = true)
                 out_item->char_field = NULL;
             } else {
                 out_item->char_field = str.slice.clone(v, allc);
@@ -185,6 +201,7 @@ Exception serdegen__ItemNullable__deserialize(jr_c* jr, ItemNullable* out_item, 
                 }
                 jr$egoto(jr, serdegen.Stock.deserialize(jr, out_item->stock_field, allc), fail);
             } else {
+                // field `stock_field` is nullable serde$$field(.nullable = true)
                 out_item->stock_field = NULL;
             }
         } else if (str$eq(k, "stock_val")) {
@@ -194,6 +211,9 @@ Exception serdegen__ItemNullable__deserialize(jr_c* jr, ItemNullable* out_item, 
             } else {
                 jr$egoto(jr, JsonError.null_field, fail);
             }
+        } else {
+            jr->error = JsonError.unknown_field;
+            goto fail;
         }
     }
     if (fields_mask != (1 << 5) -1) {
@@ -255,6 +275,7 @@ Exception serdegen__Item__serialize(jw_c* jw, Item* item) {
             jw->error = err;
         }
 
+        // field `stock_field_skipped` is skipped serde$$field(.skip = true)
     }
     return jw->error;
 }
@@ -323,6 +344,11 @@ Exception serdegen__Item__deserialize(jr_c* jr, Item* out_item, IAllocator allc)
             } else {
                 jr$egoto(jr, JsonError.null_field, fail);
             }
+        }
+        // field `stock_field_skipped` is skipped serde$$field(.skip = true)
+        else {
+            jr->error = JsonError.unknown_field;
+            goto fail;
         }
     }
     if (fields_mask != (1 << 4) -1) {
@@ -420,6 +446,9 @@ Exception serdegen__Position__deserialize(jr_c* jr, Position* out_item, IAllocat
             } else {
                 jr$egoto(jr, JsonError.null_field, fail);
             }
+        } else {
+            jr->error = JsonError.unknown_field;
+            goto fail;
         }
     }
     if (fields_mask != (1 << 3) -1) {

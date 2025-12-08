@@ -192,6 +192,8 @@ _CexSerdeGen_codegen_serialize_field(CexSerdeGen_c* self, cex_codegen_s* cg$var,
         // Project Type
         if (!f->flags.is_nullable) {
             cg$if ("unlikely(!item->%s)", f->name) { cg$pf("jw->error = JsonError.null_field;"); }
+        } else {
+            cg$pf("// field `%s` is nullable serde$$field(.nullable = true)", f->name);
         }
         cg$scope ("e$except_silent (err, %s.%s.serialize(jw, %sitem->%s)) ",
                   self->namespace,
@@ -205,6 +207,8 @@ _CexSerdeGen_codegen_serialize_field(CexSerdeGen_c* self, cex_codegen_s* cg$var,
             cg$if ("unlikely(!item->%s%s)", f->name, (str$eq(f->type, "str_s") ? ".buf" : "")) {
                 cg$pf("jw->error = JsonError.null_field;");
             }
+        } else {
+            cg$pf("// field `%s` is nullable serde$$field(.nullable = true)", f->name);
         }
         cg$pf("jw$val(item->%s);", f->name);
     } else {
@@ -232,6 +236,8 @@ _CexSerdeGen_codegen_deserialize_field(
         if (!f->flags.is_optional) {
             cg$pf("fields_mask |= (1 << %d);", *out_field_idx);
             *out_field_idx += 1;
+        } else {
+            cg$pf("// fields_mask check skipped, field is serde$$field(.optional = true)");
         }
         serdegen_type_s* field_type = hm$get(self->types, f->type);
         if (field_type) {
@@ -265,6 +271,10 @@ _CexSerdeGen_codegen_deserialize_field(
                         if (!f->flags.is_nullable) {
                             cg$pf("jr$egoto(jr, JsonError.null_field, fail);");
                         } else {
+                            cg$pf(
+                                "// field `%s` is nullable serde$$field(.nullable = true)",
+                                f->name
+                            );
                             cg$pf("out_item->%s = NULL;", f->name);
                         }
                     }
@@ -279,6 +289,7 @@ _CexSerdeGen_codegen_deserialize_field(
                     if (!f->flags.is_nullable) {
                         cg$pf("jr$egoto(jr, JsonError.null_field, fail);");
                     } else {
+                        cg$pf("// field `%s` is nullable serde$$field(.nullable = true)", f->name);
                         cg$pf("out_item->%s = NULL;", f->name);
                     }
                 }
@@ -289,6 +300,7 @@ _CexSerdeGen_codegen_deserialize_field(
                     if (!f->flags.is_nullable) {
                         cg$pf("jr$egoto(jr, JsonError.null_field, fail);");
                     } else {
+                        cg$pf("// field `%s` is nullable serde$$field(.nullable = true)", f->name);
                         cg$pf("out_item->%s = NULL;", f->name);
                     }
                 }
@@ -308,6 +320,7 @@ _CexSerdeGen_codegen_deserialize_field(
                     if (!f->flags.is_nullable) {
                         cg$pf("jr$egoto(jr, JsonError.null_field, fail);");
                     } else {
+                        cg$pf("// field `%s` is nullable serde$$field(.nullable = true)", f->name);
                         cg$pf("out_item->%s = (str_s){0};", f->name);
                     }
                 }
@@ -382,6 +395,8 @@ _CexSerdeGen_generate_type(CexSerdeGen_c* self, cex_codegen_s* cg$var, serdegen_
             for$each (it, t->fields) {
                 if (!it->flags.is_skipped) {
                     e$ret(_CexSerdeGen_codegen_serialize_field(self, cg$var, it));
+                } else {
+                    cg$pf("// field `%s` is skipped serde$$field(.skip = true)", it->name);
                 }
             }
         }
@@ -436,7 +451,13 @@ _CexSerdeGen_generate_type(CexSerdeGen_c* self, cex_codegen_s* cg$var, serdegen_
             for$each (it, t->fields) {
                 if (!it->flags.is_skipped) {
                     e$ret(_CexSerdeGen_codegen_deserialize_field(self, cg$var, it, &nfields));
+                } else {
+                    cg$pf("// field `%s` is skipped serde$$field(.skip = true)\n       ", it->name);
                 }
+            }
+            cg$else () {
+                cg$pn("jr->error = JsonError.unknown_field;");
+                cg$pn("goto fail;");
             }
         }
         if (nfields >= 64) {
