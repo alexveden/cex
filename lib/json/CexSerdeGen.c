@@ -480,7 +480,9 @@ _CexSerdeGen_generate_type(CexSerdeGen_c* self, cex_codegen_s* cg$var, serdegen_
             cg$pn("goto fail;");
         }
 
-        cg$pn("return jr->error;");
+        cg$if("!jr->error") {
+            cg$pn("return EOK;");
+        }
 
         cg$dedent();
         cg$pn("fail: ");

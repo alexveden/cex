@@ -92,7 +92,9 @@ Exception serdegen__Stock__deserialize(jr_c* jr, Stock* out_item, IAllocator all
         jr->error = JsonError.missing_field;
         goto fail;
     }
-    return jr->error;
+    if (!jr->error) {
+        return EOK;
+    }
 fail: 
     serdegen.Stock.destroy(out_item, allc);
     return jr->error;
@@ -244,7 +246,9 @@ Exception serdegen__ItemNullable__deserialize(jr_c* jr, ItemNullable* out_item, 
         jr->error = JsonError.missing_field;
         goto fail;
     }
-    return jr->error;
+    if (!jr->error) {
+        return EOK;
+    }
 fail: 
     serdegen.ItemNullable.destroy(out_item, allc);
     return jr->error;
@@ -391,7 +395,9 @@ Exception serdegen__Item__deserialize(jr_c* jr, Item* out_item, IAllocator allc)
         jr->error = JsonError.missing_field;
         goto fail;
     }
-    return jr->error;
+    if (!jr->error) {
+        return EOK;
+    }
 fail: 
     serdegen.Item.destroy(out_item, allc);
     return jr->error;
@@ -534,7 +540,9 @@ Exception serdegen__Order__deserialize(jr_c* jr, Order* out_item, IAllocator all
         jr->error = JsonError.missing_field;
         goto fail;
     }
-    return jr->error;
+    if (!jr->error) {
+        return EOK;
+    }
 fail: 
     serdegen.Order.destroy(out_item, allc);
     return jr->error;
@@ -639,7 +647,9 @@ Exception serdegen__Position__deserialize(jr_c* jr, Position* out_item, IAllocat
         jr->error = JsonError.missing_field;
         goto fail;
     }
-    return jr->error;
+    if (!jr->error) {
+        return EOK;
+    }
 fail: 
     serdegen.Position.destroy(out_item, allc);
     return jr->error;

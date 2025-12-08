@@ -649,4 +649,252 @@ expected = "{\n\
     sbuf.destroy(&sb_item);
     return EOK;
 }
+
+
+test$case(test_Order_deserialize_valid)
+{
+
+char* expected = "{\n\
+    \"id\": 9988, \n\
+    \"price\": 123.334457, \n\
+    \"qty\": -10, \n\
+    \"is_active\": true, \n\
+    \"exchange\": \"NICE\", \n\
+    \"stock\": {\n\
+        \"id\": 22, \n\
+        \"ticker\": \"UBER\", \n\
+        \"exchange\": \"FOO\"\n\
+    }\n\
+}";
+    Order s2 = { 0 };
+    jr_c jr;
+
+    e$ret(jr$new(&jr, expected, 0, .strict_mode = false));
+    tassert(EOK == serdegen.Order.deserialize(&jr, &s2, mem$));
+    serdegen.Order.destroy(&s2, mem$);
+    return EOK;
+}
+
+
+/* Invalid JSON - missing closing brace */
+test$case(test_Order_deserialize_missing_closing_brace)
+{
+    char* expected = "{\n\
+    \"id\": 9988, \n\
+    \"price\": 123.334457, \n\
+    \"qty\": -10, \n\
+    \"is_active\": true, \n\
+    \"exchange\": \"NICE\", \n\
+    \"stock\": {\n\
+        \"id\": 22, \n\
+        \"ticker\": \"UBER\", \n\
+        \"exchange\": \"FOO\"\n\
+    }\n";
+    Order s2 = { 0 };
+    jr_c jr;
+
+    e$ret(jr$new(&jr, expected, 0, .strict_mode = false));
+    tassert_ne(EOK, serdegen.Order.deserialize(&jr, &s2, mem$));
+    return EOK;
+}
+
+/* Invalid JSON - unquoted key */
+test$case(test_Order_deserialize_unquoted_key)
+{
+    char* expected = "{\n\
+    id: 9988, \n\
+    \"price\": 123.334457, \n\
+    \"qty\": -10, \n\
+    \"is_active\": true, \n\
+    \"exchange\": \"NICE\", \n\
+    \"stock\": {\n\
+        \"id\": 22, \n\
+        \"ticker\": \"UBER\", \n\
+        \"exchange\": \"FOO\"\n\
+    }\n\
+}";
+    Order s2 = { 0 };
+    jr_c jr;
+
+    e$ret(jr$new(&jr, expected, 0, .strict_mode = true));
+    tassert_ne(EOK, serdegen.Order.deserialize(&jr, &s2, mem$));
+    return EOK;
+}
+
+
+/* Invalid JSON - trailing comma */
+test$case(test_Order_deserialize_trailing_comma)
+{
+    char* expected = "{\n\
+    \"id\": 9988, \n\
+    \"price\": 123.334457, \n\
+    \"qty\": -10, \n\
+    \"is_active\": true, \n\
+    \"exchange\": \"NICE\", \n\
+    \"stock\": {\n\
+        \"id\": 22, \n\
+        \"ticker\": \"UBER\", \n\
+        \"exchange\": \"FOO\",\n\
+    }\n\
+}";
+    Order s2 = { 0 };
+    jr_c jr;
+
+    e$ret(jr$new(&jr, expected, 0, .strict_mode = true));
+    tassert_ne(EOK, serdegen.Order.deserialize(&jr, &s2, mem$));
+
+    return EOK;
+}
+
+/* Invalid JSON - wrong type (string for number) */
+test$case(test_Order_deserialize_wrong_type)
+{
+    char* expected = "{\n\
+    \"id\": \"not_a_number\", \n\
+    \"price\": 123.334457, \n\
+    \"qty\": -10, \n\
+    \"is_active\": true, \n\
+    \"exchange\": \"NICE\", \n\
+    \"stock\": {\n\
+        \"id\": 22, \n\
+        \"ticker\": \"UBER\", \n\
+        \"exchange\": \"FOO\"\n\
+    }\n\
+}";
+    Order s2 = { 0 };
+    jr_c jr;
+
+    e$ret(jr$new(&jr, expected, 0, .strict_mode = false));
+    tassert_ne(EOK, serdegen.Order.deserialize(&jr, &s2, mem$));
+    return EOK;
+}
+
+/* Valid JSON with null value */
+test$case(test_Order_deserialize_with_null)
+{
+    char* expected = "{\n\
+    \"id\": 9988, \n\
+    \"price\": null, \n\
+    \"qty\": -10, \n\
+    \"is_active\": true, \n\
+    \"exchange\": \"NICE\", \n\
+    \"stock\": {\n\
+        \"id\": 22, \n\
+        \"ticker\": \"UBER\", \n\
+        \"exchange\": \"FOO\"\n\
+    }\n\
+}";
+    Order s2 = { 0 };
+    jr_c jr;
+
+    e$ret(jr$new(&jr, expected, 0, .strict_mode = false));
+    tassert_ne(EOK, serdegen.Order.deserialize(&jr, &s2, mem$));
+    return EOK;
+}
+
+
+/* Valid JSON with nested array */
+test$case(test_Order_deserialize_with_array)
+{
+    char* expected = "{\n\
+    \"id\": 9988, \n\
+    \"price\": 123.334457, \n\
+    \"qty\": -10, \n\
+    \"tags\": [\"urgent\", \"bulk\"], \n\
+    \"is_active\": true, \n\
+    \"exchange\": \"NICE\", \n\
+    \"stock\": {\n\
+        \"id\": 22, \n\
+        \"ticker\": \"UBER\", \n\
+        \"exchange\": \"FOO\"\n\
+    }\n\
+}";
+    Order s2 = { 0 };
+    jr_c jr;
+
+    e$ret(jr$new(&jr, expected, 0, .strict_mode = false));
+    tassert_ne(EOK, serdegen.Order.deserialize(&jr, &s2, mem$));
+    return EOK;
+}
+
+/* FIX: Valid JSON with scientific notation 
+test$case(test_Order_deserialize_scientific_notation)
+{
+    char* expected = "{\n\
+    \"id\": 9988, \n\
+    \"price\": 1.23334457e2, \n\
+    \"qty\": -10, \n\
+    \"is_active\": true, \n\
+    \"exchange\": \"NICE\", \n\
+    \"stock\": {\n\
+        \"id\": 22, \n\
+        \"ticker\": \"UBER\", \n\
+        \"exchange\": \"FOO\"\n\
+    }\n\
+}";
+    Order s2 = { 0 };
+    jr_c jr;
+
+    e$ret(jr$new(&jr, expected, 0, .strict_mode = true));
+    tassert_ne(EOK, serdegen.Order.deserialize(&jr, &s2, mem$));
+
+    return EOK;
+}
+*/
+
+/* Invalid JSON - duplicate key */
+test$case(test_Order_deserialize_duplicate_key)
+{
+    char* expected = "{\n\
+    \"id\": 9988, \n\
+    \"id\": 9999, \n\
+    \"price\": 123.334457, \n\
+    \"qty\": -10, \n\
+    \"is_active\": true, \n\
+    \"exchange\": \"NICE\", \n\
+    \"stock\": {\n\
+        \"id\": 22, \n\
+        \"ticker\": \"UBER\", \n\
+        \"exchange\": \"FOO\"\n\
+    }\n\
+}";
+    Order s2 = { 0 };
+    jr_c jr;
+
+    e$ret(jr$new(&jr, expected, 0, .strict_mode = false));
+    tassert_eq(EOK, serdegen.Order.deserialize(&jr, &s2, mem$));
+    tassert_eq(s2.id, 9999);
+    serdegen.Order.destroy(&s2, mem$);
+    return EOK;
+}
+
+/* FIX: Valid JSON with escaped characters 
+test$case(test_Order_deserialize_escaped_chars)
+{
+    char* expected = "{\n\
+    \"id\": 9988, \n\
+    \"price\": 123.334457, \n\
+    \"qty\": -10, \n\
+    \"is_active\": true, \n\
+    \"exchange\": \"NI\\\"CE\", \n\
+    \"stock\": {\n\
+        \"id\": 22, \n\
+        \"ticker\": \"UB\\nER\", \n\
+        \"exchange\": \"FOO\"\n\
+    }\n\
+}";
+    Order s2 = { 0 };
+    jr_c jr;
+
+    io.printf("%s\n", expected);
+    e$ret(jr$new(&jr, expected, 0, .strict_mode = false));
+    tassert_eq(EOK, serdegen.Order.deserialize(&jr, &s2, mem$));
+    tassert_eq(s2.exchange, "NI\"CE");
+    serdegen.Order.destroy(&s2, mem$);
+
+    return EOK;
+}
+*/
+
 test$main();
+
