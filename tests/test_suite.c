@@ -883,4 +883,19 @@ test$case(test_tassert_eq_string_long_non_multiline_start)
 
     return EOK;
 }
+
+test$case(test_tassert_eq_string_not_equal_end_new_line)
+{
+    char* s =  "1234567890foobarbaz12345\n";
+    char* s2 = "1234567890foobarbaz12345";
+    Exc e = _check_eq_str(s, s2, 99, _cex_test_eq_op__eq);
+
+    io.printf("Error: %s\n", e);
+    tassert(str.find(e, "strings are not equal"));
+    tassert(str.find(e, "^"));
+
+    return EOK;
+}
+
+
 test$main();

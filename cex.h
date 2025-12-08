@@ -4595,6 +4595,13 @@ _check_eq_str(char* a, char* b, int line, enum _cex_test_eq_op_e op)
                         n_errors++;
                     }
                 }
+                if (n_errors == 0) {
+                    // Weird case when the only difference is new line, str.split_lines() skip that
+                    sbuf.appendf(&errors, "\tA at line: `%S`\n", str.slice.sub(str.sstr(a), -10, 0));
+                    sbuf.appendf(&errors, "\tB at line: `%S`\n", str.slice.sub(str.sstr(b), -10, 0));
+                    sbuf.appendf(&errors, "^ New line diff (only last part displayed)\n");
+
+                }
                 str.sprintf(
                     _cex_test__mainfn_state.str_buf,
                     CEX_TEST_AMSG_MAX_LEN - 1,
