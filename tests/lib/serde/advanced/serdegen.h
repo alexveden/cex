@@ -26,6 +26,13 @@ struct __cex_namespace__serdegen {
     } Item;
 
     struct {
+        Exception       (*deserialize)(jr_c* jr, Order* out_item, IAllocator allc);
+        void            (*destroy)(Order* item, IAllocator allc);
+        Exc             (*print)(Order* item, jw_kw* json_writer_kwargs);
+        Exception       (*serialize)(jw_c* jw, Order* item);
+    } Order;
+
+    struct {
         Exception       (*deserialize)(jr_c* jr, Position* out_item, IAllocator allc);
         void            (*destroy)(Position* item, IAllocator allc);
         Exc             (*print)(Position* item, jw_kw* json_writer_kwargs);

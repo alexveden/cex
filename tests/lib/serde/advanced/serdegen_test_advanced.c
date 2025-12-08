@@ -561,4 +561,92 @@ expected = "{\n\
     return EOK;
 }
 
+
+test$case(test_Order_type_matching_validation)
+{
+    sbuf_c sb_item = sbuf.create(1024, mem$);
+    Stock stk = { .exchange = "FOO", .id = 22, .ticker = "UBER" };
+    Order ord = {.id = 9988, .price = 123.334455, .qty = -10, .exchange = "NICE", .stock = &stk, .is_active = true};
+
+    sbuf.clear(&sb_item);
+    tassert_er(
+        Error.ok,
+        serdegen.Order.print(&ord, &(jw_kw){ .buf = &sb_item, .simplified = false, .indent = 4 })
+    );
+
+    io.printf("JSON\n:%s\n", sb_item);
+    print_json_expected(sb_item);
+
+char* expected = "{\n\
+    \"id\": 9988, \n\
+    \"price\": 123.334457, \n\
+    \"qty\": -10, \n\
+    \"is_active\": true, \n\
+    \"exchange\": \"NICE\", \n\
+    \"stock\": {\n\
+        \"id\": 22, \n\
+        \"ticker\": \"UBER\", \n\
+        \"exchange\": \"FOO\"\n\
+    }\n\
+}";
+    tassert_eq(sb_item, expected);
+
+    Order s2 = { 0 };
+    jr_c jr;
+
+    // This should be valid
+    e$ret(jr$new(&jr, expected, 0, .strict_mode = false));
+    e$ret(serdegen.Order.deserialize(&jr, &s2, mem$));
+    serdegen.Order.destroy(&s2, mem$);
+
+    io.printf("---------------------------------\n");
+expected = "{\n\
+    \"id\": 9988, \n\
+    \"price\": 123.334457, \n\
+    \"qty\": -10, \n\
+    \"is_active\": true, \n\
+    \"exchange\": 1, \n\
+    \"stock\": {\n\
+        \"id\": 22, \n\
+        \"ticker\": \"UBER\", \n\
+        \"exchange\": \"FOO\"\n\
+    }\n\
+}";
+    e$ret(jr$new(&jr, expected, 0));
+    tassert_er(JsonError.wrong_type, serdegen.Order.deserialize(&jr, &s2, mem$));
+    io.printf("---------------------------------\n");
+
+    io.printf("---------------------------------\n");
+expected = "{\n\
+    \"id\": 9988, \n\
+    \"price\": 123.334457, \n\
+    \"qty\": -10, \n\
+    \"is_active\": true, \n\
+    \"exchange\": \"1\", \n\
+    \"stock\":  123\n\
+}";
+    e$ret(jr$new(&jr, expected, 0));
+    tassert_er(JsonError.wrong_type, serdegen.Order.deserialize(&jr, &s2, mem$));
+    io.printf("---------------------------------\n");
+
+    io.printf("---------------------------------\n");
+
+expected = "{\n\
+    \"id\": 9988, \n\
+    \"price\": 123.334457, \n\
+    \"qty\": -10, \n\
+    \"is_active\": 1, \n\
+    \"exchange\": \"NICE\", \n\
+    \"stock\": {\n\
+        \"id\": 22, \n\
+        \"ticker\": \"UBER\", \n\
+        \"exchange\": \"FOO\"\n\
+    }\n\
+}";
+    e$ret(jr$new(&jr, expected, 0));
+    tassert_er(JsonError.wrong_type, serdegen.Order.deserialize(&jr, &s2, mem$));
+    io.printf("---------------------------------\n");
+    sbuf.destroy(&sb_item);
+    return EOK;
+}
 test$main();

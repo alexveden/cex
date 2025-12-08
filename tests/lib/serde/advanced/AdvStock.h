@@ -40,3 +40,14 @@ typedef struct Item
     serde$$field(.skip = true);
     Stock* stock_field_skipped;
 } Item;
+
+serde$$struct();
+typedef struct Order
+{
+    u64 id;
+    f32 price;
+    i32 qty;
+    bool is_active;
+    char* exchange;
+    Stock* stock;
+} Order;

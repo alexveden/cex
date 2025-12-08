@@ -57,9 +57,15 @@ Exception serdegen__Stock__deserialize(jr_c* jr, Stock* out_item, IAllocator all
             goto fail;
         } else if (str$eq(k, "id")) {
             fields_mask |= (1 << 0);
+            if (!jr$is_type_compatible(jr, &out_item->id)) {
+                jr$egoto(jr, JsonError.wrong_type, fail);
+            }
             jr$egoto(jr, str$convert(v, &out_item->id), fail);
         } else if (str$eq(k, "ticker")) {
             // fields_mask check skipped, field is serde$$field(.optional = true)
+            if (jr->type != JsonType__str && jr->type != JsonType__null) {
+                jr$egoto(jr, JsonError.wrong_type, fail);
+            }
             if (unlikely(!v.buf)) {
                 // field `ticker` is nullable serde$$field(.nullable = true)
                 out_item->ticker = NULL;
@@ -68,6 +74,9 @@ Exception serdegen__Stock__deserialize(jr_c* jr, Stock* out_item, IAllocator all
             }
         } else if (str$eq(k, "exchange")) {
             fields_mask |= (1 << 1);
+            if (jr->type != JsonType__str && jr->type != JsonType__null) {
+                jr$egoto(jr, JsonError.wrong_type, fail);
+            }
             if (unlikely(!v.buf)) {
                 // field `exchange` is nullable serde$$field(.nullable = true)
                 out_item->exchange = NULL;
@@ -164,6 +173,9 @@ Exception serdegen__ItemNullable__deserialize(jr_c* jr, ItemNullable* out_item, 
             goto fail;
         } else if (str$eq(k, "sbuf_field")) {
             fields_mask |= (1 << 0);
+            if (jr->type != JsonType__str && jr->type != JsonType__null) {
+                jr$egoto(jr, JsonError.wrong_type, fail);
+            }
             if (unlikely(!v.buf)) {
                 // field `sbuf_field` is nullable serde$$field(.nullable = true)
                 out_item->sbuf_field = NULL;
@@ -178,6 +190,9 @@ Exception serdegen__ItemNullable__deserialize(jr_c* jr, ItemNullable* out_item, 
             }
         } else if (str$eq(k, "str_s_field")) {
             fields_mask |= (1 << 1);
+            if (jr->type != JsonType__str && jr->type != JsonType__null) {
+                jr$egoto(jr, JsonError.wrong_type, fail);
+            }
             if (unlikely(!v.buf)) {
                 // field `str_s_field` is nullable serde$$field(.nullable = true)
                 out_item->str_s_field = (str_s){0};
@@ -186,6 +201,9 @@ Exception serdegen__ItemNullable__deserialize(jr_c* jr, ItemNullable* out_item, 
             }
         } else if (str$eq(k, "char_field")) {
             fields_mask |= (1 << 2);
+            if (jr->type != JsonType__str && jr->type != JsonType__null) {
+                jr$egoto(jr, JsonError.wrong_type, fail);
+            }
             if (unlikely(!v.buf)) {
                 // field `char_field` is nullable serde$$field(.nullable = true)
                 out_item->char_field = NULL;
@@ -195,6 +213,9 @@ Exception serdegen__ItemNullable__deserialize(jr_c* jr, ItemNullable* out_item, 
         } else if (str$eq(k, "stock_field")) {
             fields_mask |= (1 << 3);
             if (jr->type != JsonType__null) {
+                if (jr->type != JsonType__obj) {
+                    jr$egoto(jr, JsonError.wrong_type, fail);
+                }
                 out_item->stock_field = mem$new(allc, Stock);
                 if (!out_item->stock_field) {
                     return Error.memory;
@@ -207,6 +228,9 @@ Exception serdegen__ItemNullable__deserialize(jr_c* jr, ItemNullable* out_item, 
         } else if (str$eq(k, "stock_val")) {
             fields_mask |= (1 << 4);
             if (jr->type != JsonType__null) {
+                if (jr->type != JsonType__obj) {
+                    jr$egoto(jr, JsonError.wrong_type, fail);
+                }
                 jr$egoto(jr, serdegen.Stock.deserialize(jr, &out_item->stock_val, allc), fail);
             } else {
                 jr$egoto(jr, JsonError.null_field, fail);
@@ -308,6 +332,9 @@ Exception serdegen__Item__deserialize(jr_c* jr, Item* out_item, IAllocator allc)
             goto fail;
         } else if (str$eq(k, "sbuf_field")) {
             fields_mask |= (1 << 0);
+            if (jr->type != JsonType__str && jr->type != JsonType__null) {
+                jr$egoto(jr, JsonError.wrong_type, fail);
+            }
             if (unlikely(!v.buf)) {
                 jr$egoto(jr, JsonError.null_field, fail);
             } else {
@@ -321,6 +348,9 @@ Exception serdegen__Item__deserialize(jr_c* jr, Item* out_item, IAllocator allc)
             }
         } else if (str$eq(k, "str_s_field")) {
             fields_mask |= (1 << 1);
+            if (jr->type != JsonType__str && jr->type != JsonType__null) {
+                jr$egoto(jr, JsonError.wrong_type, fail);
+            }
             if (unlikely(!v.buf)) {
                 jr$egoto(jr, JsonError.null_field, fail);
             } else {
@@ -328,6 +358,9 @@ Exception serdegen__Item__deserialize(jr_c* jr, Item* out_item, IAllocator allc)
             }
         } else if (str$eq(k, "char_field")) {
             fields_mask |= (1 << 2);
+            if (jr->type != JsonType__str && jr->type != JsonType__null) {
+                jr$egoto(jr, JsonError.wrong_type, fail);
+            }
             if (unlikely(!v.buf)) {
                 jr$egoto(jr, JsonError.null_field, fail);
             } else {
@@ -336,6 +369,9 @@ Exception serdegen__Item__deserialize(jr_c* jr, Item* out_item, IAllocator allc)
         } else if (str$eq(k, "stock_field")) {
             fields_mask |= (1 << 3);
             if (jr->type != JsonType__null) {
+                if (jr->type != JsonType__obj) {
+                    jr$egoto(jr, JsonError.wrong_type, fail);
+                }
                 out_item->stock_field = mem$new(allc, Stock);
                 if (!out_item->stock_field) {
                     return Error.memory;
@@ -370,6 +406,145 @@ void serdegen__Item__destroy(Item* item, IAllocator allc) {
         mem$free(allc, item->stock_field);
         serdegen.Stock.destroy(item->stock_field_skipped, allc);
         mem$free(allc, item->stock_field_skipped);
+        memset(item, 0, sizeof(*item));
+    }
+}
+
+//
+// Autogenerated serde for Order type
+//
+Exception serdegen__Order__serialize(jw_c* jw, Order* item) {
+    if (!item) {
+        jw$scope(jw, JsonType__null){
+            jw$val(NULL);
+        }
+        return EOK;
+    }
+    jw$scope(jw, JsonType__obj){
+        jw$key("id");
+        jw$val(item->id);
+
+        jw$key("price");
+        jw$val(item->price);
+
+        jw$key("qty");
+        jw$val(item->qty);
+
+        jw$key("is_active");
+        jw$val(item->is_active);
+
+        jw$key("exchange");
+        if (unlikely(!item->exchange)) {
+            jw->error = JsonError.null_field;
+        }
+        jw$val(item->exchange);
+
+        jw$key("stock");
+        if (unlikely(!item->stock)) {
+            jw->error = JsonError.null_field;
+        }
+        e$except_silent (err, serdegen.Stock.serialize(jw, item->stock)) {
+            jw->error = err;
+        }
+
+    }
+    return jw->error;
+}
+Exc serdegen__Order__print(Order* item, jw_kw* json_writer_kwargs) {
+    jw_c jw;
+    jw_kw kwargs = {.stream = stdout, .indent = 0, .simplified = true};
+    if (json_writer_kwargs) {
+        kwargs = *json_writer_kwargs;
+        if (!kwargs.stream && !kwargs.buf) {
+            kwargs.stream = stdout;
+        }
+    }
+    e$ret(_cex_json__writer__create(&jw, &kwargs));
+    if (kwargs.simplified) {
+        _cex_json__writer__print_item(&jw, "Order(");
+        Exc err = serdegen.Order.serialize(&jw, item);
+        _cex_json__writer__print_item(&jw, "%s%s%s)\n", (err) ? " [error: ": "", (err) ? err : "", (err) ? "]": "" );
+        return err;
+    } else {
+        return serdegen.Order.serialize(&jw, item);
+    }
+}
+Exception serdegen__Order__deserialize(jr_c* jr, Order* out_item, IAllocator allc) {
+    uassert(jr != NULL);
+    uassert(out_item != NULL);
+    u64 fields_mask = 0;
+    jr$foreach(k, v, jr) {
+        if (!k.buf) {
+            jr->error = JsonError.parsing;
+            goto fail;
+        } else if (str$eq(k, "id")) {
+            fields_mask |= (1 << 0);
+            if (!jr$is_type_compatible(jr, &out_item->id)) {
+                jr$egoto(jr, JsonError.wrong_type, fail);
+            }
+            jr$egoto(jr, str$convert(v, &out_item->id), fail);
+        } else if (str$eq(k, "price")) {
+            fields_mask |= (1 << 1);
+            if (!jr$is_type_compatible(jr, &out_item->price)) {
+                jr$egoto(jr, JsonError.wrong_type, fail);
+            }
+            jr$egoto(jr, str$convert(v, &out_item->price), fail);
+        } else if (str$eq(k, "qty")) {
+            fields_mask |= (1 << 2);
+            if (!jr$is_type_compatible(jr, &out_item->qty)) {
+                jr$egoto(jr, JsonError.wrong_type, fail);
+            }
+            jr$egoto(jr, str$convert(v, &out_item->qty), fail);
+        } else if (str$eq(k, "is_active")) {
+            fields_mask |= (1 << 3);
+            if (!jr$is_type_compatible(jr, &out_item->is_active)) {
+                jr$egoto(jr, JsonError.wrong_type, fail);
+            }
+            jr$egoto(jr, str$convert(v, &out_item->is_active), fail);
+        } else if (str$eq(k, "exchange")) {
+            fields_mask |= (1 << 4);
+            if (jr->type != JsonType__str && jr->type != JsonType__null) {
+                jr$egoto(jr, JsonError.wrong_type, fail);
+            }
+            if (unlikely(!v.buf)) {
+                jr$egoto(jr, JsonError.null_field, fail);
+            } else {
+                out_item->exchange = str.slice.clone(v, allc);
+            }
+        } else if (str$eq(k, "stock")) {
+            fields_mask |= (1 << 5);
+            if (jr->type != JsonType__null) {
+                if (jr->type != JsonType__obj) {
+                    jr$egoto(jr, JsonError.wrong_type, fail);
+                }
+                out_item->stock = mem$new(allc, Stock);
+                if (!out_item->stock) {
+                    return Error.memory;
+                }
+                jr$egoto(jr, serdegen.Stock.deserialize(jr, out_item->stock, allc), fail);
+            } else {
+                jr$egoto(jr, JsonError.null_field, fail);
+            }
+        } else {
+            jr->error = JsonError.unknown_field;
+            goto fail;
+        }
+    }
+    if (fields_mask != (1 << 6) -1) {
+        jr->error = JsonError.missing_field;
+        goto fail;
+    }
+    return jr->error;
+fail: 
+    serdegen.Order.destroy(out_item, allc);
+    return jr->error;
+}
+void serdegen__Order__destroy(Order* item, IAllocator allc) {
+    uassert(allc != NULL);
+    if (item) {
+        mem$free(allc, item->exchange);
+        serdegen.Stock.destroy(item->stock, allc);
+        mem$free(allc, item->stock);
         memset(item, 0, sizeof(*item));
     }
 }
@@ -431,13 +606,22 @@ Exception serdegen__Position__deserialize(jr_c* jr, Position* out_item, IAllocat
             goto fail;
         } else if (str$eq(k, "qty")) {
             fields_mask |= (1 << 0);
+            if (!jr$is_type_compatible(jr, &out_item->qty)) {
+                jr$egoto(jr, JsonError.wrong_type, fail);
+            }
             jr$egoto(jr, str$convert(v, &out_item->qty), fail);
         } else if (str$eq(k, "fill_price")) {
             fields_mask |= (1 << 1);
+            if (!jr$is_type_compatible(jr, &out_item->fill_price)) {
+                jr$egoto(jr, JsonError.wrong_type, fail);
+            }
             jr$egoto(jr, str$convert(v, &out_item->fill_price), fail);
         } else if (str$eq(k, "stock")) {
             fields_mask |= (1 << 2);
             if (jr->type != JsonType__null) {
+                if (jr->type != JsonType__obj) {
+                    jr$egoto(jr, JsonError.wrong_type, fail);
+                }
                 out_item->stock = mem$new(allc, Stock);
                 if (!out_item->stock) {
                     return Error.memory;
@@ -486,6 +670,13 @@ const struct __cex_namespace__serdegen serdegen = {
         .destroy = serdegen__Item__destroy,
         .print = serdegen__Item__print,
         .serialize = serdegen__Item__serialize,
+    },
+
+    .Order = {
+        .deserialize = serdegen__Order__deserialize,
+        .destroy = serdegen__Order__destroy,
+        .print = serdegen__Order__print,
+        .serialize = serdegen__Order__serialize,
     },
 
     .Position = {
