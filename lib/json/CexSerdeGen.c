@@ -475,14 +475,12 @@ _CexSerdeGen_generate_type(CexSerdeGen_c* self, cex_codegen_s* cg$var, serdegen_
                 t->name
             );
         }
-        cg$if ("fields_mask != (1 << %d) -1", nfields) {
+        cg$if ("fields_mask != ((1 << %d) - 1)", nfields) {
             cg$pn("jr->error = JsonError.missing_field;");
             cg$pn("goto fail;");
         }
 
-        cg$if("!jr->error") {
-            cg$pn("return EOK;");
-        }
+        cg$if ("!jr->error") { cg$pn("return EOK;"); }
 
         cg$dedent();
         cg$pn("fail: ");
