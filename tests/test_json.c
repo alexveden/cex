@@ -445,7 +445,7 @@ test$case(json_writer_macro_proto_indent4)
         jw_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         (void)buf;
-        tassert_er(EOK, jw$new(&jb, .buf = buf, .indent = 4));
+        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4));
         // tassert_er(EOK, jw$new(&jb, stdout, .indent = 0));
 
         jw$scope(&jb, JsonType__obj)
@@ -525,7 +525,7 @@ test$case(json_writer_macro_proto_no_indent)
         jw_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         (void)buf;
-        tassert_er(EOK, jw$new(&jb, .buf = buf, .indent = 0));
+        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 0));
 
         jw$scope(&jb, JsonType__obj)
         {
@@ -580,7 +580,7 @@ test$case(json_writer_macro_only_fmt)
         jw_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         (void)buf;
-        tassert_er(EOK, jw$new(&jb, .buf = buf, .indent = 4));
+        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4));
 
         jw$scope(&jb, JsonType__obj)
         {
@@ -634,7 +634,7 @@ test$case(json_writer_multi_func_serde_concept)
     {
         jw_c jb;
         sbuf_c buf = sbuf.create(1024, _);
-        e$ret(jw$new(&jb, .buf = buf, .indent = 4));
+        e$ret(jw$new(&jb, .buf = &buf, .indent = 4));
 
         e$ret(print_order(&jb, &ord));
 
@@ -705,7 +705,7 @@ test$case(json_writer_val_types)
         jw_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         (void)buf;
-        tassert_er(EOK, jw$new(&jb, .buf = buf, .indent = 4));
+        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4));
 
         jw$scope(&jb, JsonType__arr)
         {
@@ -821,7 +821,7 @@ test$case(json_writer_null_scope)
         jw_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         (void)buf;
-        tassert_er(EOK, jw$new(&jb, .buf = buf, .indent = 4));
+        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4));
         // tassert_er(EOK, jw$new(&jb, stdout, .indent = 0));
 
         jw$scope(&jb, JsonType__obj)
@@ -873,7 +873,7 @@ test$case(json_writer_null_object)
         jw_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         (void)buf;
-        tassert_er(EOK, jw$new(&jb, .buf = buf, .indent = 4));
+        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4));
         // tassert_er(EOK, jw$new(&jb, stdout, .indent = 0));
 
         jw$scope(&jb, JsonType__null)
@@ -927,7 +927,7 @@ test$case(json_writer_null_object_value)
         jw_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         (void)buf;
-        tassert_er(EOK, jw$new(&jb, .buf = buf, .indent = 4));
+        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4));
         // tassert_er(EOK, jw$new(&jb, stdout, .indent = 0));
 
         jw$scope(&jb, JsonType__obj)
@@ -966,7 +966,7 @@ test$case(json_writer_simplified)
         jw_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         (void)buf;
-        tassert_er(EOK, jw$new(&jb, .buf = buf, .indent = 4, .simplified = true));
+        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4, .simplified = true));
 
         jw$scope(&jb, JsonType__obj)
         {

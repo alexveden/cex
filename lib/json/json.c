@@ -15,7 +15,7 @@
 #define $print(format, ...) /* temp macro */                                                       \
     ({                                                                                             \
         if (jw->buf) {                                                                             \
-            Exc err = sbuf.appendf(&jw->buf, format, ##__VA_ARGS__);                               \
+            Exc err = sbuf.appendf(jw->buf, format, ##__VA_ARGS__);                               \
             if (unlikely(err != EOK && jw->error == EOK)) { jw->error = err; }                     \
         } else if (jw->stream) {                                                                   \
             io.fprintf(jw->stream, format, ##__VA_ARGS__);                                         \
@@ -26,7 +26,7 @@
     va_list va;                                                                                    \
     va_start(va, format);                                                                          \
     if (jw->buf) {                                                                                 \
-        Exc err = sbuf.appendfva(&jw->buf, format, va);                                            \
+        Exc err = sbuf.appendfva(jw->buf, format, va);                                            \
         if (unlikely(err != EOK && jw->error != EOK)) { jw->error = err; }                         \
     } else if (jw->stream) {                                                                       \
         int result = cexsp__vfprintf(jw->stream, format, va);                                      \

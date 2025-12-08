@@ -119,7 +119,7 @@ typedef struct jr_c
 typedef struct jw_kw
 {
     FILE* stream;
-    sbuf_c buf;
+    sbuf_c* buf;
     u32 indent;
     bool simplified; // used in debug print: keys without "", serde.*.print() prepends type  
 } jw_kw;
@@ -128,7 +128,7 @@ typedef struct jw_kw
 typedef struct jw_c
 {
     FILE* stream;
-    sbuf_c buf;
+    sbuf_c* buf;
     Exc error;
     u32 indent;
     u32 indent_width;
