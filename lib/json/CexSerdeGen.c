@@ -403,7 +403,7 @@ _CexSerdeGen_generate_type(CexSerdeGen_c* self, cex_codegen_s* cg$var, serdegen_
                 e$ret(_CexSerdeGen_codegen_deserialize_field(self, cg$var, it));
             }
         }
-        cg$pn("return EOK;");
+        cg$pn("return jr->error;");
 
         cg$dedent();
         cg$pn("fail: ");

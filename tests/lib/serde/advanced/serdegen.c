@@ -68,7 +68,7 @@ Exception serdegen__Stock__deserialize(jr_c* jr, Stock* out_item, IAllocator all
             }
         }
     }
-    return EOK;
+    return jr->error;
 fail: 
     serdegen.Stock.destroy(out_item, allc);
     return jr->error;
@@ -183,7 +183,7 @@ Exception serdegen__ItemNullable__deserialize(jr_c* jr, ItemNullable* out_item, 
             }
         }
     }
-    return EOK;
+    return jr->error;
 fail: 
     serdegen.ItemNullable.destroy(out_item, allc);
     return jr->error;
@@ -303,7 +303,7 @@ Exception serdegen__Item__deserialize(jr_c* jr, Item* out_item, IAllocator allc)
             }
         }
     }
-    return EOK;
+    return jr->error;
 fail: 
     serdegen.Item.destroy(out_item, allc);
     return jr->error;
@@ -390,7 +390,7 @@ Exception serdegen__Position__deserialize(jr_c* jr, Position* out_item, IAllocat
             }
         }
     }
-    return EOK;
+    return jr->error;
 fail: 
     serdegen.Position.destroy(out_item, allc);
     return jr->error;
