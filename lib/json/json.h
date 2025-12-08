@@ -175,7 +175,7 @@ typedef struct jw_c
             u64: "%lu",                                                                            \
             f32: "%f",                                                                             \
             f64: "%f",                                                                             \
-            _Bool: "%d",                                                                           \
+            _Bool: "%B",                                                                           \
             str_s: "\"%S\"",                                                                      \
             const char*: "\"%s\"",                                                                \
             char*: "\"%s\"",                                                                      \

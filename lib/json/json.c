@@ -22,7 +22,7 @@ const struct _CEX_JsonError_struct JsonError = {
 #define $print(format, ...) /* temp macro */                                                       \
     ({                                                                                             \
         if (jw->buf) {                                                                             \
-            Exc err = sbuf.appendf(jw->buf, format, ##__VA_ARGS__);                               \
+            Exc err = sbuf.appendf(jw->buf, format, ##__VA_ARGS__);                                \
             if (unlikely(err != EOK && jw->error == EOK)) { jw->error = err; }                     \
         } else if (jw->stream) {                                                                   \
             io.fprintf(jw->stream, format, ##__VA_ARGS__);                                         \
@@ -33,7 +33,7 @@ const struct _CEX_JsonError_struct JsonError = {
     va_list va;                                                                                    \
     va_start(va, format);                                                                          \
     if (jw->buf) {                                                                                 \
-        Exc err = sbuf.appendfva(jw->buf, format, va);                                            \
+        Exc err = sbuf.appendfva(jw->buf, format, va);                                             \
         if (unlikely(err != EOK && jw->error != EOK)) { jw->error = err; }                         \
     } else if (jw->stream) {                                                                       \
         int result = cexsp__vfprintf(jw->stream, format, va);                                      \
@@ -533,6 +533,18 @@ _cex_json__writer__print_item(jw_c* jw, char* format, ...)
         } else {
             unreachable();
         }
+    } else if (format[1] == 'B') {
+        va_list va;
+        va_start(va, format);
+        bool v = va_arg(va, int);
+
+        if (v) {
+            $print("true");
+        } else {
+            $print("false");
+        }
+
+        va_end(va);
     } else {
         $printva();
     }

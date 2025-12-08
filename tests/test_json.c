@@ -746,6 +746,8 @@ test$case(json_writer_val_types)
             jw$val(v15);
             bool v16 = true;
             jw$val(v16);
+            bool v17 = false;
+            jw$val(v17);
 
             const char* s1 = "const";
             jw$val(s1);
@@ -783,7 +785,8 @@ test$case(json_writer_val_types)
     inf, \n\
     -inf, \n\
     nan, \n\
-    1, \n\
+    true, \n\
+    false, \n\
     \"const\", \n\
     \"str\", \n\
     \"str_s\", \n\
