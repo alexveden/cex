@@ -117,7 +117,7 @@ Error.integrity = "IntegrityError";   // data integrity error
 Error.exists = "ExistsError";         // entity or key already exists
 Error.not_found = "NotFoundError";    // entity or key already exists
 Error.skip = "ShouldBeSkipped";       // NOT an error, function result must be skipped
-Error.empty = "EmptyError";           // resource is empty
+Error.null_or_empty = "NullOrEmptyError";           // value is null or resource is empty
 Error.eof = "EOF";                    // end of file reached
 Error.argsparse = "ProgramArgsError"; // program arguments empty or incorrect
 Error.runtime = "RuntimeError";       // generic runtime error
@@ -217,7 +217,7 @@ extern const struct _CEX_Error_struct
     Exc exists;
     Exc not_found;
     Exc skip;
-    Exc empty;
+    Exc null_or_empty;
     Exc eof;
     Exc argsparse;
     Exc runtime;

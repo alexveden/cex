@@ -2967,7 +2967,7 @@ cexy__utils__make_compile_flags(
             }
         }
         if (cc_flags_or_null != NULL) { arr$pusha(args, cc_flags_or_null); }
-        if (arr$len(args) == 0) { return e$raise(Error.empty, "Compiler flags are empty"); }
+        if (arr$len(args) == 0) { return e$raise(Error.null_or_empty, "Compiler flags are empty"); }
 
         FILE* fh;
         e$ret(io.fopen(&fh, flags_file, "w"));

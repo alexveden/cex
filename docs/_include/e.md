@@ -13,24 +13,24 @@ CEX Error handling cheat sheet:
 Generic errors:
 
 ```c
-Error.ok = EOK;                       // Success
-Error.memory = "MemoryError";         // memory allocation error
-Error.io = "IOError";                 // IO error
-Error.overflow = "OverflowError";     // buffer overflow
-Error.argument = "ArgumentError";     // function argument error
-Error.integrity = "IntegrityError";   // data integrity error
-Error.exists = "ExistsError";         // entity or key already exists
-Error.not_found = "NotFoundError";    // entity or key already exists
-Error.skip = "ShouldBeSkipped";       // NOT an error, function result must be skipped
-Error.empty = "EmptyError";           // resource is empty
-Error.eof = "EOF";                    // end of file reached
-Error.argsparse = "ProgramArgsError"; // program arguments empty or incorrect
-Error.runtime = "RuntimeError";       // generic runtime error
-Error.assert = "AssertError";         // generic runtime check
-Error.os = "OSError";                 // generic OS check
-Error.timeout = "TimeoutError";       // await interval timeout
-Error.permission = "PermissionError"; // Permission denied
-Error.try_again = "TryAgainError";    // EAGAIN / EWOULDBLOCK errno analog for async operations
+Error.ok = EOK;                            // Success
+Error.memory = "MemoryError";              // memory allocation error
+Error.io = "IOError";                      // IO error
+Error.overflow = "OverflowError";          // buffer overflow
+Error.argument = "ArgumentError";          // function argument error
+Error.integrity = "IntegrityError";        // data integrity error
+Error.exists = "ExistsError";              // entity or key already exists
+Error.not_found = "NotFoundError";         // entity or key already exists
+Error.skip = "ShouldBeSkipped";            // NOT an error, function result must be skipped
+Error.null_or_empty = "NullOrEmptyError";  // value is null or resource is empty
+Error.eof = "EOF";                         // end of file reached
+Error.argsparse = "ProgramArgsError";      // program arguments empty or incorrect
+Error.runtime = "RuntimeError";            // generic runtime error
+Error.assert = "AssertError";              // generic runtime check
+Error.os = "OSError";                      // generic OS check
+Error.timeout = "TimeoutError";            // await interval timeout
+Error.permission = "PermissionError";      // Permission denied
+Error.try_again = "TryAgainError";         // EAGAIN / EWOULDBLOCK errno analog for async operations
 ```
 
 ```c
