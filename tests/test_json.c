@@ -70,14 +70,21 @@ deserialize_stock(jr_c* jr, Stock* stk, IAllocator allc)
     uassert(stk);
     uassert(jr);
     uassert(allc);
+    u64 fields_set = 0;
+    u64 fields_expected = (1 << 2) - 1;
 
     jr$foreach(k, v, jr)
     {
         if (str$eq(k, "ticker")) {
+            fields_set |= (1 << 0);
             stk->ticker = str.slice.clone(v, allc);
         } else if (str$eq(k, "id")) {
+            fields_set |= (1 << 1);
             jr$egoto(jr, str$convert(v, &stk->id), err);
         }
+    }
+    if (fields_set != fields_expected) {
+        return Error.not_found;
     }
     return EOK;
 err:
@@ -994,6 +1001,29 @@ test$case(json_writer_simplified)
 
         tassert_eq(buf, expected);
     }
+    return EOK;
+}
+
+test$case(json_writer_multi_func_serde__missing_fields)
+{
+    mem$scope(tmem$, _)
+    {
+        char* expected = "{\n\
+    \"price\": 100.330002, \n\
+    \"qty\": 33, \n\
+    \"stock\": {\n\
+        \"ticker\": \"UBER\", \n\
+    }\n\
+}";
+
+        jr_c jr;
+        e$ret(jr$new(&jr, expected, 0, .strict_mode = true));
+
+        Order ord2 = { 0 };
+        tassert_eq(Error.not_found, deserialize_order(&jr, &ord2, _));
+
+    }
+
     return EOK;
 }
 test$main();

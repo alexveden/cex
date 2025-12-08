@@ -54,7 +54,7 @@ test$case(test_Stock_serialize)
 
     sbuf_c sb = sbuf.create(1024, mem$);
     jw_c jw;
-    e$ret(jw$new(&jw, .indent = 4, .buf = sb));
+    e$ret(jw$new(&jw, .indent = 4, .buf = &sb));
     e$ret(serdegen.Stock.serialize(&jw, &s));
 
     io.printf("\nJSON OUTPUT\n%s\n", sb);
@@ -96,7 +96,7 @@ test$case(test_Position_serialize)
     serdegen.Position.print(&p, NULL);
     sbuf_c sb = sbuf.create(1024, mem$);
     jw_c jw;
-    e$ret(jw$new(&jw, .indent = 4, .buf = sb));
+    e$ret(jw$new(&jw, .indent = 4, .buf = &sb));
     e$ret(serdegen.Position.serialize(&jw, &p));
 
 

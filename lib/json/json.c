@@ -1,5 +1,11 @@
 #include "json.h"
 
+const struct _CEX_JsonError_struct JsonError = {
+    .parsing = "ParsingErrorJSON",
+    .missing_field = "MissingFieldErrorJSON",
+    .null_field = "NullFieldErrorJSON",
+};
+
 /* TEMP MACROS - for private implementation*/
 #define $scope_obj (1 << 1)
 #define $scope_arr (1 << 2)

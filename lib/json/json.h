@@ -8,6 +8,13 @@
 #    define CEX_MAX_JSON_DEPTH 128
 #endif
 
+extern const struct _CEX_JsonError_struct
+{
+    Exc null_field;
+    Exc missing_field;
+    Exc parsing;
+} JsonError;
+
 /// JSON Reader Namespace
 #define __jr$
 

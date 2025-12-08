@@ -20,14 +20,12 @@ Exception serdegen__Stock__serialize(jw_c* jw, Stock* item) {
         jw$key("ticker");
         if (unlikely(!item->ticker)) {
             jw->error = Error.null_or_empty;
-            return jw->error;
         }
         jw$val(item->ticker);
 
         jw$key("exchange");
         if (unlikely(!item->exchange)) {
             jw->error = Error.null_or_empty;
-            return jw->error;
         }
         jw$val(item->exchange);
 
@@ -36,7 +34,7 @@ Exception serdegen__Stock__serialize(jw_c* jw, Stock* item) {
 }
 Exc serdegen__Stock__print(Stock* item, jw_kw* json_writer_kwargs) {
     jw_c jw;
-    jw_kw kwargs = {.stream = stdout, .indent = 0};
+    jw_kw kwargs = {.stream = stdout, .indent = 0, .simplified = true};
     if (json_writer_kwargs) {
         kwargs = *json_writer_kwargs;
         if (!kwargs.stream && !kwargs.buf) {
@@ -44,7 +42,14 @@ Exc serdegen__Stock__print(Stock* item, jw_kw* json_writer_kwargs) {
         }
     }
     e$ret(_cex_json__writer__create(&jw, &kwargs));
-    return serdegen.Stock.serialize(&jw, item);
+    if (kwargs.simplified) {
+        _cex_json__writer__print_item(&jw, "Stock(");
+        Exc err = serdegen.Stock.serialize(&jw, item);
+        _cex_json__writer__print_item(&jw, "%s%s%s)\n", (err) ? " [error: ": "", (err) ? err : "", (err) ? "]": "" );
+        return err;
+    } else {
+        return serdegen.Stock.serialize(&jw, item);
+    }
 }
 Exception serdegen__Stock__deserialize(jr_c* jr, Stock* out_item, IAllocator allc) {
     uassert(jr != NULL);
@@ -57,19 +62,19 @@ Exception serdegen__Stock__deserialize(jr_c* jr, Stock* out_item, IAllocator all
             jr$egoto(jr, str$convert(v, &out_item->id), fail);
         } else if (str$eq(k, "ticker")) {
             if (unlikely(!v.buf)) {
-                out_item->ticker = NULL;
+                jr$egoto(jr, Error.null_or_empty, fail);
             } else {
                 out_item->ticker = str.slice.clone(v, allc);
             }
         } else if (str$eq(k, "exchange")) {
             if (unlikely(!v.buf)) {
-                out_item->exchange = NULL;
+                jr$egoto(jr, Error.null_or_empty, fail);
             } else {
                 out_item->exchange = str.slice.clone(v, allc);
             }
         }
     }
-    return EOK;
+    return jr->error;
 fail: 
     serdegen.Stock.destroy(out_item, allc);
     return jr->error;
@@ -101,6 +106,9 @@ Exception serdegen__Position__serialize(jw_c* jw, Position* item) {
         jw$val(item->fill_price);
 
         jw$key("stock");
+        if (unlikely(!item->stock)) {
+            jw->error = Error.null_or_empty;
+        }
         e$except_silent (err, serdegen.Stock.serialize(jw, item->stock)) {
             jw->error = err;
         }
@@ -110,7 +118,7 @@ Exception serdegen__Position__serialize(jw_c* jw, Position* item) {
 }
 Exc serdegen__Position__print(Position* item, jw_kw* json_writer_kwargs) {
     jw_c jw;
-    jw_kw kwargs = {.stream = stdout, .indent = 0};
+    jw_kw kwargs = {.stream = stdout, .indent = 0, .simplified = true};
     if (json_writer_kwargs) {
         kwargs = *json_writer_kwargs;
         if (!kwargs.stream && !kwargs.buf) {
@@ -118,7 +126,14 @@ Exc serdegen__Position__print(Position* item, jw_kw* json_writer_kwargs) {
         }
     }
     e$ret(_cex_json__writer__create(&jw, &kwargs));
-    return serdegen.Position.serialize(&jw, item);
+    if (kwargs.simplified) {
+        _cex_json__writer__print_item(&jw, "Position(");
+        Exc err = serdegen.Position.serialize(&jw, item);
+        _cex_json__writer__print_item(&jw, "%s%s%s)\n", (err) ? " [error: ": "", (err) ? err : "", (err) ? "]": "" );
+        return err;
+    } else {
+        return serdegen.Position.serialize(&jw, item);
+    }
 }
 Exception serdegen__Position__deserialize(jr_c* jr, Position* out_item, IAllocator allc) {
     uassert(jr != NULL);
@@ -139,11 +154,11 @@ Exception serdegen__Position__deserialize(jr_c* jr, Position* out_item, IAllocat
                 }
                 jr$egoto(jr, serdegen.Stock.deserialize(jr, out_item->stock, allc), fail);
             } else {
-                out_item->stock = NULL;
+                jr$egoto(jr, Error.null_or_empty, fail);
             }
         }
     }
-    return EOK;
+    return jr->error;
 fail: 
     serdegen.Position.destroy(out_item, allc);
     return jr->error;

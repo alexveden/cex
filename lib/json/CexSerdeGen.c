@@ -165,9 +165,7 @@ _CexSerdeGen_codegen_serialize_field(CexSerdeGen_c* self, cex_codegen_s* cg$var,
     if (field_type) {
         // Project Type
         if (!f->flags.is_nullable) {
-            cg$if ("unlikely(!item->%s)", f->name) {
-                cg$pf("jw->error = Error.null_or_empty;");
-            }
+            cg$if ("unlikely(!item->%s)", f->name) { cg$pf("jw->error = JsonError.null_field;"); }
         }
         cg$scope ("e$except_silent (err, %s.%s.serialize(jw, %sitem->%s)) ",
                   self->namespace,
@@ -179,7 +177,7 @@ _CexSerdeGen_codegen_serialize_field(CexSerdeGen_c* self, cex_codegen_s* cg$var,
     } else if (f->flags.is_string) {
         if (!f->flags.is_nullable) {
             cg$if ("unlikely(!item->%s%s)", f->name, (str$eq(f->type, "str_s") ? ".buf" : "")) {
-                cg$pf("jw->error = Error.null_or_empty;");
+                cg$pf("jw->error = JsonError.null_field;");
             }
         }
         cg$pf("jw$val(item->%s);", f->name);
@@ -196,7 +194,8 @@ Exception
 _CexSerdeGen_codegen_deserialize_field(
     CexSerdeGen_c* self,
     cex_codegen_s* cg$var,
-    serdegen_field_s* f
+    serdegen_field_s* f,
+    u32* out_field_idx
 )
 {
     (void)self;
@@ -204,6 +203,10 @@ _CexSerdeGen_codegen_deserialize_field(
     e$assert(f->type.buf && f->type.len != 0);
 
     cg$elseif ("str$eq(k, \"%s\")", f->name) {
+        if (!f->flags.is_optional && !f->flags.is_skipped) {
+            cg$pf("fields_mask |= (1 << %d);", *out_field_idx);
+            *out_field_idx += 1;
+        }
         serdegen_type_s* field_type = hm$get(self->types, f->type);
         if (field_type) {
             // Project registered type
@@ -231,16 +234,16 @@ _CexSerdeGen_codegen_deserialize_field(
             cg$else () {
                 if (f->flags.is_ptr) {
                     if (!f->flags.is_nullable) {
-                        cg$pf("jr$egoto(jr, Error.null_or_empty, fail);");
+                        cg$pf("jr$egoto(jr, JsonError.null_field, fail);");
                     } else {
                         if (!f->flags.is_nullable) {
-                            cg$pf("jr$egoto(jr, Error.null_or_empty, fail);");
+                            cg$pf("jr$egoto(jr, JsonError.null_field, fail);");
                         } else {
                             cg$pf("out_item->%s = NULL;", f->name);
                         }
                     }
                 } else {
-                    cg$pf("jr$egoto(jr, Error.null_or_empty, fail);");
+                    cg$pf("jr$egoto(jr, JsonError.null_field, fail);");
                 }
             }
         } else if (f->flags.is_string) {
@@ -248,7 +251,7 @@ _CexSerdeGen_codegen_deserialize_field(
                 uassert(f->flags.is_ptr);
                 cg$if ("unlikely(!v.buf)") {
                     if (!f->flags.is_nullable) {
-                        cg$pf("jr$egoto(jr, Error.null_or_empty, fail);");
+                        cg$pf("jr$egoto(jr, JsonError.null_field, fail);");
                     } else {
                         cg$pf("out_item->%s = NULL;", f->name);
                     }
@@ -258,7 +261,7 @@ _CexSerdeGen_codegen_deserialize_field(
             } else if (str$eq(f->type, "sbuf_c")) {
                 cg$if ("unlikely(!v.buf)") {
                     if (!f->flags.is_nullable) {
-                        cg$pf("jr$egoto(jr, Error.null_or_empty, fail);");
+                        cg$pf("jr$egoto(jr, JsonError.null_field, fail);");
                     } else {
                         cg$pf("out_item->%s = NULL;", f->name);
                     }
@@ -277,7 +280,7 @@ _CexSerdeGen_codegen_deserialize_field(
             } else if (str$eq(f->type, "str_s")) {
                 cg$if ("unlikely(!v.buf)") {
                     if (!f->flags.is_nullable) {
-                        cg$pf("jr$egoto(jr, Error.null_or_empty, fail);");
+                        cg$pf("jr$egoto(jr, JsonError.null_field, fail);");
                     } else {
                         cg$pf("out_item->%s = (str_s){0};", f->name);
                     }
@@ -394,15 +397,30 @@ _CexSerdeGen_generate_type(CexSerdeGen_c* self, cex_codegen_s* cg$var, serdegen_
         cg$pn("uassert(jr != NULL);");
         cg$pn("uassert(out_item != NULL);");
 
+        cg$pn("u64 fields_mask = 0;");
+        u32 nfields = 0;
+
         cg$scope ("jr$foreach(k, v, jr) ") {
             cg$if ("!k.buf") {
-                cg$pn("jr->error = Error.integrity;");
+                cg$pn("jr->error = JsonError.parsing;");
                 cg$pn("goto fail;");
             }
             for$each (it, t->fields) {
-                e$ret(_CexSerdeGen_codegen_deserialize_field(self, cg$var, it));
+                e$ret(_CexSerdeGen_codegen_deserialize_field(self, cg$var, it, &nfields));
             }
         }
+        if (nfields >= 64) {
+            return e$raise(
+                Error.overflow,
+                "Struct [%s] has more than 64 fields, try to split it into sub-types",
+                t->name
+            );
+        }
+        cg$if("fields_mask != (1 << %d) -1", nfields) {
+            cg$pn("jr->error = JsonError.missing_field;");
+            cg$pn("goto fail;");
+        }
+
         cg$pn("return jr->error;");
 
         cg$dedent();
