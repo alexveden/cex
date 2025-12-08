@@ -39,7 +39,7 @@ Exc serdegen__Stock__print(Stock* item, jw_kw* json_writer_kwargs) {
     if (kwargs.simplified) {
         _cex_json__writer__print_item(&jw, "Stock(");
         Exc err = serdegen.Stock.serialize(&jw, item);
-        _cex_json__writer__print_item(&jw, ")%s%s%s\n", (err) ? " [error: ": "", (err) ? err : "", (err) ? "]": "" );
+        _cex_json__writer__print_item(&jw, "%s%s%s)\n", (err) ? " [error: ": "", (err) ? err : "", (err) ? "]": "" );
         return err;
     } else {
         return serdegen.Stock.serialize(&jw, item);
@@ -128,7 +128,7 @@ Exc serdegen__ItemNullable__print(ItemNullable* item, jw_kw* json_writer_kwargs)
     if (kwargs.simplified) {
         _cex_json__writer__print_item(&jw, "ItemNullable(");
         Exc err = serdegen.ItemNullable.serialize(&jw, item);
-        _cex_json__writer__print_item(&jw, ")%s%s%s\n", (err) ? " [error: ": "", (err) ? err : "", (err) ? "]": "" );
+        _cex_json__writer__print_item(&jw, "%s%s%s)\n", (err) ? " [error: ": "", (err) ? err : "", (err) ? "]": "" );
         return err;
     } else {
         return serdegen.ItemNullable.serialize(&jw, item);
@@ -179,7 +179,7 @@ Exception serdegen__ItemNullable__deserialize(jr_c* jr, ItemNullable* out_item, 
             if (jr->type != JsonType__null) {
                 jr$egoto(jr, serdegen.Stock.deserialize(jr, &out_item->stock_val, allc), fail);
             } else {
-                jr$egoto(jr, Error.empty, fail);
+                jr$egoto(jr, Error.null_or_empty, fail);
             }
         }
     }
@@ -214,23 +214,26 @@ Exception serdegen__Item__serialize(jw_c* jw, Item* item) {
     jw$scope(jw, JsonType__obj){
         jw$key("sbuf_field");
         if (unlikely(!item->sbuf_field)) {
-            jw->error = Error.empty;
+            jw->error = Error.null_or_empty;
         }
         jw$val(item->sbuf_field);
 
         jw$key("str_s_field");
         if (unlikely(!item->str_s_field.buf)) {
-            jw->error = Error.empty;
+            jw->error = Error.null_or_empty;
         }
         jw$val(item->str_s_field);
 
         jw$key("char_field");
         if (unlikely(!item->char_field)) {
-            jw->error = Error.empty;
+            jw->error = Error.null_or_empty;
         }
         jw$val(item->char_field);
 
         jw$key("stock_field");
+        if (unlikely(!item->stock_field)) {
+            jw->error = Error.null_or_empty;
+        }
         e$except_silent (err, serdegen.Stock.serialize(jw, item->stock_field)) {
             jw->error = err;
         }
@@ -251,7 +254,7 @@ Exc serdegen__Item__print(Item* item, jw_kw* json_writer_kwargs) {
     if (kwargs.simplified) {
         _cex_json__writer__print_item(&jw, "Item(");
         Exc err = serdegen.Item.serialize(&jw, item);
-        _cex_json__writer__print_item(&jw, ")%s%s%s\n", (err) ? " [error: ": "", (err) ? err : "", (err) ? "]": "" );
+        _cex_json__writer__print_item(&jw, "%s%s%s)\n", (err) ? " [error: ": "", (err) ? err : "", (err) ? "]": "" );
         return err;
     } else {
         return serdegen.Item.serialize(&jw, item);
@@ -266,7 +269,7 @@ Exception serdegen__Item__deserialize(jr_c* jr, Item* out_item, IAllocator allc)
             goto fail;
         } else if (str$eq(k, "sbuf_field")) {
             if (unlikely(!v.buf)) {
-                out_item->sbuf_field = NULL;
+                jr$egoto(jr, Error.null_or_empty, fail);
             } else {
                 out_item->sbuf_field = sbuf.create(v.len + sizeof(sbuf_head_s) + 1, allc);
                 if (unlikely(!out_item->sbuf_field)) {
@@ -278,13 +281,13 @@ Exception serdegen__Item__deserialize(jr_c* jr, Item* out_item, IAllocator allc)
             }
         } else if (str$eq(k, "str_s_field")) {
             if (unlikely(!v.buf)) {
-                out_item->str_s_field = (str_s){0};
+                jr$egoto(jr, Error.null_or_empty, fail);
             } else {
                 out_item->str_s_field = str.sstr(str.slice.clone(v, allc));
             }
         } else if (str$eq(k, "char_field")) {
             if (unlikely(!v.buf)) {
-                out_item->char_field = NULL;
+                jr$egoto(jr, Error.null_or_empty, fail);
             } else {
                 out_item->char_field = str.slice.clone(v, allc);
             }
@@ -296,7 +299,7 @@ Exception serdegen__Item__deserialize(jr_c* jr, Item* out_item, IAllocator allc)
                 }
                 jr$egoto(jr, serdegen.Stock.deserialize(jr, out_item->stock_field, allc), fail);
             } else {
-                out_item->stock_field = NULL;
+                jr$egoto(jr, Error.null_or_empty, fail);
             }
         }
     }
@@ -335,6 +338,9 @@ Exception serdegen__Position__serialize(jw_c* jw, Position* item) {
         jw$val(item->fill_price);
 
         jw$key("stock");
+        if (unlikely(!item->stock)) {
+            jw->error = Error.null_or_empty;
+        }
         e$except_silent (err, serdegen.Stock.serialize(jw, item->stock)) {
             jw->error = err;
         }
@@ -355,7 +361,7 @@ Exc serdegen__Position__print(Position* item, jw_kw* json_writer_kwargs) {
     if (kwargs.simplified) {
         _cex_json__writer__print_item(&jw, "Position(");
         Exc err = serdegen.Position.serialize(&jw, item);
-        _cex_json__writer__print_item(&jw, ")%s%s%s\n", (err) ? " [error: ": "", (err) ? err : "", (err) ? "]": "" );
+        _cex_json__writer__print_item(&jw, "%s%s%s)\n", (err) ? " [error: ": "", (err) ? err : "", (err) ? "]": "" );
         return err;
     } else {
         return serdegen.Position.serialize(&jw, item);
@@ -380,7 +386,7 @@ Exception serdegen__Position__deserialize(jr_c* jr, Position* out_item, IAllocat
                 }
                 jr$egoto(jr, serdegen.Stock.deserialize(jr, out_item->stock, allc), fail);
             } else {
-                out_item->stock = NULL;
+                jr$egoto(jr, Error.null_or_empty, fail);
             }
         }
     }

@@ -72,7 +72,7 @@ _cex_json__reader__create(jr_c* it, char* content, usize content_len, jr_kw* kwa
             .lexer = CexParser.create(content, content_len, false),
         },
     };
-    if (it->_impl.lexer.content == it->_impl.lexer.content_end) { return Error.empty; }
+    if (it->_impl.lexer.content == it->_impl.lexer.content_end) { return Error.null_or_empty; }
     _cex_json__reader__next(it);
     return EOK;
 }

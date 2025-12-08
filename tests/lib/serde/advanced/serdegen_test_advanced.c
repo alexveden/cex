@@ -237,50 +237,143 @@ test$case(test_NullableItems_initialized)
     return EOK;
 }
 
-test$case(test_Items_initialized_serialize_not_allowed)
+test$case(test_Items_initialized_serialize_null_not_allowed)
 {
     sbuf_c sb_item = sbuf.create(1024, mem$);
+    Stock stk = { .exchange = "FOO", .id = 22, .ticker = "UBER" };
+
 
     Item s = {
         .char_field = "hello_char",
+        .sbuf_field = "hello_sbuf",
+        .str_s_field = str$s("hello_str_s"),
+        .stock_field = &stk,
+    };
+    sbuf.clear(&sb_item);
+    tassert_er(
+        Error.ok,
+        serdegen.Item.print(&s, &(jw_kw){ .buf = &sb_item, .simplified = true, .indent = 4 })
+    );
+    io.printf("`%s`\n", sb_item);
+    print_json_expected(sb_item);
+    char* expected = "Item({\n\
+    sbuf_field: \"hello_sbuf\", \n\
+    str_s_field: \"hello_str_s\", \n\
+    char_field: \"hello_char\", \n\
+    stock_field: {\n\
+        id: 22, \n\
+        ticker: \"UBER\", \n\
+        exchange: \"FOO\"\n\
+    }\n\
+})\n\
+";
+    tassert_eq(expected, sb_item);
+
+
+    sbuf.clear(&sb_item);
+    s = (Item){
+        .char_field = NULL,
+        .sbuf_field = "hello_sbuf",
+        .str_s_field = str$s("hello_str_s"),
+        .stock_field = &stk,
+    };
+    tassert_er(
+        Error.null_or_empty,
+        serdegen.Item.print(&s, &(jw_kw){ .buf = &sb_item, .simplified = true, .indent = 4 })
+    );
+    io.printf("`%s`\n", sb_item);
+    print_json_expected(sb_item);
+    expected = "Item({\n\
+    sbuf_field: \"hello_sbuf\", \n\
+    str_s_field: \"hello_str_s\", \n\
+    char_field: null, \n\
+    stock_field: {\n\
+        id: 22, \n\
+        ticker: \"UBER\", \n\
+        exchange: \"FOO\"\n\
+    }\n\
+} [error: NullOrEmptyError])\n\
+";
+    tassert_eq(expected, sb_item);
+
+    sbuf.clear(&sb_item);
+    s = (Item){
+        .char_field = "hello_char",
         .sbuf_field = NULL,
         .str_s_field = str$s("hello_str_s"),
+        .stock_field = &stk,
     };
-    serdegen.Item.print(&s, &(jw_kw){ .buf = &sb_item, .simplified = true });
+    tassert_er(
+        Error.null_or_empty,
+        serdegen.Item.print(&s, &(jw_kw){ .buf = &sb_item, .simplified = true, .indent = 4 })
+    );
+    io.printf("`%s`\n", sb_item);
+    print_json_expected(sb_item);
+    expected = "Item({\n\
+    sbuf_field: null, \n\
+    str_s_field: \"hello_str_s\", \n\
+    char_field: \"hello_char\", \n\
+    stock_field: {\n\
+        id: 22, \n\
+        ticker: \"UBER\", \n\
+        exchange: \"FOO\"\n\
+    }\n\
+} [error: NullOrEmptyError])\n\
+";
+    tassert_eq(expected, sb_item);
 
-    //     sbuf_c sb = sbuf.create(1024, mem$);
-    //     jw_c jw;
-    //     e$ret(jw$new(&jw, .indent = 4, .buf = sb));
-    //     e$ret(serdegen.ItemNullable.serialize(&jw, &s));
-    //
-    //     io.printf("\nJSON OUTPUT\n%s\n", sb);
-    //     print_json_expected(sb);
-    //
-    //     tassert_eq(sb, expected);
-    //
-    //     jr_c jr;
-    //     e$ret(jr$new(&jr, sb, 0, .strict_mode = true));
-    //
-    //     ItemNullable s2 = { 0 };
-    //     e$ret(serdegen.ItemNullable.deserialize(&jr, &s2, mem$));
-    //
-    //     tassert_eq(s2.char_field, "hello_char");
-    //     tassert_eq(s2.sbuf_field, "hello_sbuf");
-    //     tassert_eq(s2.str_s_field, str$s("hello_str_s"));
-    //     tassert(s2.stock_field == NULL);
-    //
-    //     // Make sure new strings are allocated separately
-    //     tassert(s2.char_field != s.char_field);
-    //     tassert(s2.sbuf_field != s.sbuf_field);
-    //     tassert(s2.str_s_field.buf != s.str_s_field.buf);
-    //     tassert_eq(s2.stock_val.exchange, "EXCH");
-    //     tassert_eq(s2.stock_val.ticker, "SPY");
-    //     tassert_eq(s2.stock_val.id, 9988);
-    //
-    //     sbuf.destroy(&sb);
-    //     sbuf.destroy(&sb_item);
-    //     serdegen.ItemNullable.destroy(&s2, mem$);
 
+    sbuf.clear(&sb_item);
+    s = (Item){
+        .char_field = "hello_char",
+        .sbuf_field = "hello_sbuf",
+        .str_s_field = {0},
+        .stock_field = &stk,
+    };
+    tassert_er(
+        Error.null_or_empty,
+        serdegen.Item.print(&s, &(jw_kw){ .buf = &sb_item, .simplified = true, .indent = 4 })
+    );
+    io.printf("`%s`\n", sb_item);
+    print_json_expected(sb_item);
+    expected = "Item({\n\
+    sbuf_field: \"hello_sbuf\", \n\
+    str_s_field: null, \n\
+    char_field: \"hello_char\", \n\
+    stock_field: {\n\
+        id: 22, \n\
+        ticker: \"UBER\", \n\
+        exchange: \"FOO\"\n\
+    }\n\
+} [error: NullOrEmptyError])\n\
+";
+    tassert_eq(expected, sb_item);
+
+
+    sbuf.clear(&sb_item);
+    s = (Item){
+        .char_field = "hello_char",
+        .sbuf_field = "hello_sbuf",
+        .str_s_field = str$s("hello_str_s"),
+        .stock_field = NULL,
+    };
+    tassert_er(
+        Error.null_or_empty,
+        serdegen.Item.print(&s, &(jw_kw){ .buf = &sb_item, .simplified = true, .indent = 4 })
+    );
+    io.printf("`%s`\n", sb_item);
+    print_json_expected(sb_item);
+ expected = "Item({\n\
+    sbuf_field: \"hello_sbuf\", \n\
+    str_s_field: \"hello_str_s\", \n\
+    char_field: \"hello_char\", \n\
+    stock_field: null\n\
+} [error: NullOrEmptyError])\n\
+";
+    tassert_eq(expected, sb_item);
+
+
+    sbuf.destroy(&sb_item);
     return EOK;
 }
 

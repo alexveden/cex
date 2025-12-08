@@ -83,12 +83,17 @@ _CexSerdeGen__process_field_attr(
                         return e$raise(
                             Error.integrity,
                             "Expected .nulllable = true|false in %S, got `%S`",
-                            attr_name, 
+                            attr_name,
                             t.value
                         );
                     }
                 } else {
-                    return e$raise(Error.integrity, "Unknown param_field: .%S in `.%S`", kw, attr_name);
+                    return e$raise(
+                        Error.integrity,
+                        "Unknown param_field: .%S in `.%S`",
+                        kw,
+                        attr_name
+                    );
                 }
             } else if (t.type == CexTkn__rparen) {
                 t = CexParser.next_token(lx);
@@ -159,6 +164,11 @@ _CexSerdeGen_codegen_serialize_field(CexSerdeGen_c* self, cex_codegen_s* cg$var,
     serdegen_type_s* field_type = hm$get(self->types, f->type);
     if (field_type) {
         // Project Type
+        if (!f->flags.is_nullable) {
+            cg$if ("unlikely(!item->%s)", f->name) {
+                cg$pf("jw->error = Error.null_or_empty;");
+            }
+        }
         cg$scope ("e$except_silent (err, %s.%s.serialize(jw, %sitem->%s)) ",
                   self->namespace,
                   field_type->name,
@@ -169,7 +179,7 @@ _CexSerdeGen_codegen_serialize_field(CexSerdeGen_c* self, cex_codegen_s* cg$var,
     } else if (f->flags.is_string) {
         if (!f->flags.is_nullable) {
             cg$if ("unlikely(!item->%s%s)", f->name, (str$eq(f->type, "str_s") ? ".buf" : "")) {
-                cg$pf("jw->error = Error.empty;");
+                cg$pf("jw->error = Error.null_or_empty;");
             }
         }
         cg$pf("jw$val(item->%s);", f->name);
@@ -220,19 +230,39 @@ _CexSerdeGen_codegen_deserialize_field(
             }
             cg$else () {
                 if (f->flags.is_ptr) {
-                    cg$pf("out_item->%s = NULL;", f->name);
+                    if (!f->flags.is_nullable) {
+                        cg$pf("jr$egoto(jr, Error.null_or_empty, fail);");
+                    } else {
+                        if (!f->flags.is_nullable) {
+                            cg$pf("jr$egoto(jr, Error.null_or_empty, fail);");
+                        } else {
+                            cg$pf("out_item->%s = NULL;", f->name);
+                        }
+                    }
                 } else {
-                    cg$pf("jr$egoto(jr, Error.empty, fail);");
+                    cg$pf("jr$egoto(jr, Error.null_or_empty, fail);");
                 }
             }
         } else if (f->flags.is_string) {
             if (str$eq(f->type, "char")) {
                 uassert(f->flags.is_ptr);
-                cg$if ("unlikely(!v.buf)") { cg$pf("out_item->%s = NULL;", f->name); }
+                cg$if ("unlikely(!v.buf)") {
+                    if (!f->flags.is_nullable) {
+                        cg$pf("jr$egoto(jr, Error.null_or_empty, fail);");
+                    } else {
+                        cg$pf("out_item->%s = NULL;", f->name);
+                    }
+                }
                 cg$else () { cg$pf("out_item->%s = str.slice.clone(v, allc);", f->name); }
 
             } else if (str$eq(f->type, "sbuf_c")) {
-                cg$if ("unlikely(!v.buf)") { cg$pf("out_item->%s = NULL;", f->name); }
+                cg$if ("unlikely(!v.buf)") {
+                    if (!f->flags.is_nullable) {
+                        cg$pf("jr$egoto(jr, Error.null_or_empty, fail);");
+                    } else {
+                        cg$pf("out_item->%s = NULL;", f->name);
+                    }
+                }
                 cg$else () {
                     cg$pf(
                         "out_item->%s = sbuf.create(v.len + sizeof(sbuf_head_s) + 1, allc);",
@@ -245,7 +275,13 @@ _CexSerdeGen_codegen_deserialize_field(
                 }
 
             } else if (str$eq(f->type, "str_s")) {
-                cg$if ("unlikely(!v.buf)") { cg$pf("out_item->%s = (str_s){0};", f->name); }
+                cg$if ("unlikely(!v.buf)") {
+                    if (!f->flags.is_nullable) {
+                        cg$pf("jr$egoto(jr, Error.null_or_empty, fail);");
+                    } else {
+                        cg$pf("out_item->%s = (str_s){0};", f->name);
+                    }
+                }
                 cg$else () { cg$pf("out_item->%s = str.sstr(str.slice.clone(v, allc));", f->name); }
 
             } else {
@@ -336,14 +372,16 @@ _CexSerdeGen_generate_type(CexSerdeGen_c* self, cex_codegen_s* cg$var, serdegen_
             cg$if ("!kwargs.stream && !kwargs.buf") { cg$pn("kwargs.stream = stdout;"); }
         }
         cg$pn("e$ret(_cex_json__writer__create(&jw, &kwargs));");
-        cg$if("kwargs.simplified") {
+        cg$if ("kwargs.simplified") {
             cg$pf("_cex_json__writer__print_item(&jw, \"%s(\");", t->name);
             cg$pf("Exc err = %s.%s.serialize(&jw, item);", self->namespace, t->name);
-            cg$pf("_cex_json__writer__print_item(&jw, \")%%s%%s%%s\\n\", (err) ? \" [error: \": \"\", (err) ? err : \"\", (err) ? \"]\": \"\" );", t->name);
+            cg$pf(
+                "_cex_json__writer__print_item(&jw, \"%%s%%s%%s)\\n\", (err) ? \" [error: \": \"\", (err) ? err : \"\", (err) ? \"]\": \"\" );",
+                t->name
+            );
             cg$pn("return err;");
-        } cg$else() {
-            cg$pf("return %s.%s.serialize(&jw, item);", self->namespace, t->name);
         }
+        cg$else () { cg$pf("return %s.%s.serialize(&jw, item);", self->namespace, t->name); }
     }
 
     //

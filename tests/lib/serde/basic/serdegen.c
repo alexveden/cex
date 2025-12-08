@@ -19,14 +19,14 @@ Exception serdegen__Stock__serialize(jw_c* jw, Stock* item) {
 
         jw$key("ticker");
         if (unlikely(!item->ticker)) {
-            jw->error = Error.empty;
+            jw->error = Error.null_or_empty;
             return jw->error;
         }
         jw$val(item->ticker);
 
         jw$key("exchange");
         if (unlikely(!item->exchange)) {
-            jw->error = Error.empty;
+            jw->error = Error.null_or_empty;
             return jw->error;
         }
         jw$val(item->exchange);
