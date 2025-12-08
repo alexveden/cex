@@ -542,6 +542,7 @@ expected = "{\n\
     e$ret(jr$new(&jr, expected, 0, .strict_mode = false));
     e$ret(serdegen.Item.deserialize(&jr, &s2, mem$));
     tassert_eq(s2.stock_field->ticker, NULL);
+    tassert(s2.stock_field_skipped == NULL);
 
     serdegen.Item.destroy(&s2, mem$);
     return EOK;

@@ -87,7 +87,7 @@ _CexSerdeGen__process_field_attr(
                             t.value
                         );
                     }
-                }else if (str$eq(kw, "optional")) {
+                } else if (str$eq(kw, "optional")) {
                     if (str$eq(t.value, "true")) {
                         field->flags.is_optional = true;
                     } else if (str$eq(t.value, "false")) {
@@ -96,6 +96,19 @@ _CexSerdeGen__process_field_attr(
                         return e$raise(
                             Error.integrity,
                             "Expected .optional = true|false in %S, got `%S`",
+                            attr_name,
+                            t.value
+                        );
+                    }
+                } else if (str$eq(kw, "skip")) {
+                    if (str$eq(t.value, "true")) {
+                        field->flags.is_skipped = true;
+                    } else if (str$eq(t.value, "false")) {
+                        field->flags.is_skipped = false;
+                    } else {
+                        return e$raise(
+                            Error.integrity,
+                            "Expected .skip = true|false in %S, got `%S`",
                             attr_name,
                             t.value
                         );
@@ -216,7 +229,7 @@ _CexSerdeGen_codegen_deserialize_field(
     e$assert(f->type.buf && f->type.len != 0);
 
     cg$elseif ("str$eq(k, \"%s\")", f->name) {
-        if (!f->flags.is_optional && !f->flags.is_skipped) {
+        if (!f->flags.is_optional) {
             cg$pf("fields_mask |= (1 << %d);", *out_field_idx);
             *out_field_idx += 1;
         }
@@ -367,7 +380,9 @@ _CexSerdeGen_generate_type(CexSerdeGen_c* self, cex_codegen_s* cg$var, serdegen_
 
         cg$scope ("jw$scope(jw, JsonType__obj)") {
             for$each (it, t->fields) {
-                e$ret(_CexSerdeGen_codegen_serialize_field(self, cg$var, it));
+                if (!it->flags.is_skipped) {
+                    e$ret(_CexSerdeGen_codegen_serialize_field(self, cg$var, it));
+                }
             }
         }
 
@@ -419,7 +434,9 @@ _CexSerdeGen_generate_type(CexSerdeGen_c* self, cex_codegen_s* cg$var, serdegen_
                 cg$pn("goto fail;");
             }
             for$each (it, t->fields) {
-                e$ret(_CexSerdeGen_codegen_deserialize_field(self, cg$var, it, &nfields));
+                if (!it->flags.is_skipped) {
+                    e$ret(_CexSerdeGen_codegen_deserialize_field(self, cg$var, it, &nfields));
+                }
             }
         }
         if (nfields >= 64) {
@@ -429,7 +446,7 @@ _CexSerdeGen_generate_type(CexSerdeGen_c* self, cex_codegen_s* cg$var, serdegen_
                 t->name
             );
         }
-        cg$if("fields_mask != (1 << %d) -1", nfields) {
+        cg$if ("fields_mask != (1 << %d) -1", nfields) {
             cg$pn("jr->error = JsonError.missing_field;");
             cg$pn("goto fail;");
         }

@@ -342,6 +342,8 @@ void serdegen__Item__destroy(Item* item, IAllocator allc) {
         mem$free(allc, item->char_field);
         serdegen.Stock.destroy(item->stock_field, allc);
         mem$free(allc, item->stock_field);
+        serdegen.Stock.destroy(item->stock_field_skipped, allc);
+        mem$free(allc, item->stock_field_skipped);
         memset(item, 0, sizeof(*item));
     }
 }

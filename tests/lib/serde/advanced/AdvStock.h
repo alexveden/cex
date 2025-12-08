@@ -36,4 +36,7 @@ typedef struct Item
     str_s str_s_field;
     char* char_field;
     Stock* stock_field;
+
+    serde$$field(.skip = true);
+    Stock* stock_field_skipped;
 } Item;
