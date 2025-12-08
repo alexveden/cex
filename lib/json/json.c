@@ -5,6 +5,7 @@ const struct _CEX_JsonError_struct JsonError = {
     .missing_field = "MissingFieldErrorJSON",
     .null_field = "NullFieldErrorJSON",
     .unknown_field = "UnknownFieldErrorJSON",
+    .wrong_type = "WrongTypeErrorJSON",
 };
 
 /* TEMP MACROS - for private implementation*/

@@ -14,6 +14,7 @@ extern const struct _CEX_JsonError_struct
     Exc missing_field;
     Exc unknown_field;
     Exc parsing;
+    Exc wrong_type;
 } JsonError;
 
 /// JSON Reader Namespace
@@ -26,6 +27,26 @@ extern const struct _CEX_JsonError_struct
 
 /// Gets last json reader error
 #define jr$err(json_reader) (json_reader)->error
+
+#define jr$is_type_compatible(json_reader, c_out_ptr_type)                                         \
+    ((json_reader)->type == _Generic(                                                              \
+                                (c_out_ptr_type),                                                  \
+         u8*: JsonType__num,                                                                        \
+         i8*: JsonType__num,                                                                        \
+         i16*: JsonType__num,                                                                       \
+         u16*: JsonType__num,                                                                       \
+         i32*: JsonType__num,                                                                       \
+         u32*: JsonType__num,                                                                       \
+         i64*: JsonType__num,                                                                       \
+         u64*: JsonType__num,                                                                       \
+         f32*: JsonType__num,                                                                       \
+         f64*: JsonType__num,                                                                       \
+         _Bool*: JsonType__bool,                                                                    \
+         str_s*: JsonType__str,                                                                     \
+         const char**: JsonType__str,                                                               \
+         char**: JsonType__str,                                                                     \
+         void*: JsonType__null                                                                     \
+                            ))
 
 /*clang-format off*/
 
@@ -123,13 +144,13 @@ typedef struct jr_c
 
 } jr_c;
 
-/// JSON Writer jw$new() keyword arguments 
+/// JSON Writer jw$new() keyword arguments
 typedef struct jw_kw
 {
     FILE* stream;
     sbuf_c* buf;
     u32 indent;
-    bool simplified; // used in debug print: keys without "", serde.*.print() prepends type  
+    bool simplified; // used in debug print: keys without "", serde.*.print() prepends type
 } jw_kw;
 
 /// JSON Writer container type
@@ -150,8 +171,7 @@ typedef struct jw_c
 
 /// Creates new instance of json writer, non allocating serializer, with support of exporting to
 /// FILE* or backing by string buffer sbuf_c
-#define jw$new(json_writer, kwargs...)                                                             \
-    _cex_json__writer__create((json_writer), &(jw_kw){ kwargs })
+#define jw$new(json_writer, kwargs...) _cex_json__writer__create((json_writer), &(jw_kw){ kwargs })
 
 /// Checks if json writer has no errors
 #define jw$validate(json_writer) _cex_json__writer__validate((json_writer))
@@ -176,9 +196,9 @@ typedef struct jw_c
             f32: "%f",                                                                             \
             f64: "%f",                                                                             \
             _Bool: "%B",                                                                           \
-            str_s: "\"%S\"",                                                                      \
-            const char*: "\"%s\"",                                                                \
-            char*: "\"%s\"",                                                                      \
+            str_s: "\"%S\"",                                                                       \
+            const char*: "\"%s\"",                                                                 \
+            char*: "\"%s\"",                                                                       \
             void*: "null"                                                                          \
         );                                                                                         \
         _cex_json__writer__print_item(_jw$scope_var, format, (json_compatible_val));               \
@@ -188,11 +208,10 @@ typedef struct jw_c
 
 /// Opens JSON scope, jsontype_arr_or_obj expects JsonType__obj or JsonType__arr
 #define jw$scope(json_writer_ptr, jsontype_arr_or_obj)                                             \
-    for (jw_c * _jw$scope_var                                                              \
-             __attribute__((__cleanup__(_cex_json__writer__print_scope_exit))) =                   \
+    for (jw_c * _jw$scope_var __attribute__((__cleanup__(_cex_json__writer__print_scope_exit))) =  \
              _cex_json__writer__print_scope_enter((json_writer_ptr), jsontype_arr_or_obj, true),   \
-             *cex$tmpname(jsonbuf_sentinel) = _jw$scope_var;                                        \
-         cex$tmpname(jsonbuf_sentinel) && _jw$scope_var != NULL;                                    \
+                              *cex$tmpname(jsonbuf_sentinel) = _jw$scope_var;                      \
+         cex$tmpname(jsonbuf_sentinel) && _jw$scope_var != NULL;                                   \
          cex$tmpname(jsonbuf_sentinel) = NULL)
 
 

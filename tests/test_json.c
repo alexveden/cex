@@ -1029,4 +1029,65 @@ test$case(json_writer_multi_func_serde__missing_fields)
 
     return EOK;
 }
+
+test$case(json_reader_is_type_compatible)
+{
+    mem$scope(tmem$, _)
+    {
+        jw_c jb;
+        sbuf_c buf = sbuf.create(1024, _);
+        (void)buf;
+        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4));
+        jr_c jr;
+
+        jr = (jr_c){.type = JsonType__num};
+        u8 v1 = UINT8_MAX;
+        tassert(jr$is_type_compatible(&jr, &v1));
+        i8 v2 = INT8_MIN;
+        tassert(jr$is_type_compatible(&jr, &v2));
+        i16 v3 = INT16_MIN;
+        tassert(jr$is_type_compatible(&jr, &v3));
+        u16 v4 = UINT16_MAX;
+        tassert(jr$is_type_compatible(&jr, &v4));
+        i32 v5 = INT32_MIN;
+        tassert(jr$is_type_compatible(&jr, &v5));
+        u32 v6 = UINT32_MAX;
+        tassert(jr$is_type_compatible(&jr, &v6));
+        i64 v7 = INT64_MIN;
+        tassert(jr$is_type_compatible(&jr, &v7));
+        u64 v8 = UINT64_MAX;
+        tassert(jr$is_type_compatible(&jr, &v8));
+        f32 v10 = HUGE_VAL;
+        tassert(jr$is_type_compatible(&jr, &v10));
+        f64 v13 = HUGE_VAL;
+        tassert(jr$is_type_compatible(&jr, &v13));
+
+        bool v16 = true;
+        tassert(!jr$is_type_compatible(&jr, &v16));
+
+        jr = (jr_c){.type = JsonType__null};
+        tassert(!jr$is_type_compatible(&jr, &v16));
+        jr = (jr_c){.type = JsonType__bool};
+        tassert(jr$is_type_compatible(&jr, &v16));
+
+        jr = (jr_c){.type = JsonType__str};
+        const char* s1 = "const";
+        tassert(jr$is_type_compatible(&jr, &s1));
+        char* s2 = "str";
+        tassert(jr$is_type_compatible(&jr, &s2));
+        str_s s3 = str$s("str_s");
+        tassert(jr$is_type_compatible(&jr, &s3));
+        char* s4 = NULL;
+        tassert(jr$is_type_compatible(&jr, &s4));
+        str_s s5 = { 0 };
+        tassert(jr$is_type_compatible(&jr, &s5));
+
+        jr = (jr_c){.type = JsonType__null};
+        tassert(!jr$is_type_compatible(&jr, &s5));
+
+        jr = (jr_c){.type = JsonType__null};
+        tassert(jr$is_type_compatible(&jr, NULL));
+    }
+    return EOK;
+}
 test$main();
