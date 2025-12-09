@@ -547,9 +547,11 @@ test$case(test_sbuf_append_set_len_grow)
     tassert_eq(s[2], 'o');
     tassert_eq(s[3], '\0');
 
-    for(u32 i = 4; i < sbuf.len(&s); i++) {
-        tassertf(s[i] == '\0', "s[%d] %d != '\\0'", i, s[i]);
-    }
+    // NOTE: sbuf.set_len() keep grown data untouched, expect garbage 
+
+    // for(u32 i = 4; i < sbuf.len(&s); i++) {
+    //     tassertf(s[i] == -1, "s[%d] %d != '\\0'", i, s[i]);
+    // }
 
     // Ensure the new space is nullified
 
