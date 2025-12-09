@@ -11432,7 +11432,7 @@ cex_sbuf_create_static(char* buf, usize buf_size)
 
 
 /// Sets the length of a string to any value, if new_length greater than capacity, re-allocates more
-/// space, always null-terminating.
+/// space, always null-terminating. Newly allocated space is not ZII'ed, you must fill it yourself.
 static Exc
 cex_sbuf_set_len(sbuf_c* self, usize new_length)
 {
@@ -11441,18 +11441,11 @@ cex_sbuf_set_len(sbuf_c* self, usize new_length)
     if (unlikely(!head)) { return Error.runtime; }
     if (unlikely(head->err)) { return head->err; }
     
-    usize old_length = head->length;
-
     if (unlikely(new_length > head->capacity  - 1)) {
         e$except_silent (err, _sbuf__grow_buffer(self, new_length)) { return err; }
         // re-fetch head in case of realloc
         head = (sbuf_head_s*)(*self - sizeof(sbuf_head_s));
     } 
-
-    if (unlikely(new_length > old_length)) {
-        // If we grow sbuf, let's keep allocated length zero
-        memset(*self + old_length, 0, new_length - old_length);
-    }
 
     head->length = new_length;
     (*self)[head->length] = '\0';
