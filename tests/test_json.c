@@ -1246,4 +1246,32 @@ test$case(json_writer_unicode_comprehensive)
     return EOK;
 }
 
+test$case(json_writer_unicode_surrogate_pair)
+{
+    mem$scope(tmem$, _)
+    {
+        jw_c jb;
+        sbuf_c buf = sbuf.create(1024, _);
+        (void)buf;
+        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4, .simplified = true));
+
+        jw$scope(&jb, JsonType__obj)
+        {
+            jw$key("1");
+            jw$val("😀");      // Grinning face (U+1F600)
+        }
+        tassert_er(EOK, jb.error);
+
+        io.printf("\nJSON (buf): \n%s\n", buf);
+        print_json_expected(buf);
+
+char* expected = "{\n\
+    1: \"\\uD83D\\uDE00\"\n\
+}";
+
+        tassert_eq(buf, expected);
+    }
+    return EOK;
+}
+
 test$main();

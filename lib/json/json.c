@@ -6,6 +6,7 @@ const struct _CEX_JsonError_struct JsonError = {
     .null_field = "NullFieldErrorJSON",
     .unknown_field = "UnknownFieldErrorJSON",
     .wrong_type = "WrongTypeErrorJSON",
+    .encoding = "EncodingErrorJSON",
 };
 
 /* TEMP MACROS - for private implementation*/
@@ -509,13 +510,13 @@ _cex_json__writer__print_string(jw_c* jw, char* s, usize slen)
     (void)hex_digits;
 
 // TODO: consider big-endianess
-#define $tohex(_byte32)                                                                   \
-    buf[cnt++] = '\\';                                                                    \
-    buf[cnt++] = 'u';                                                                     \
-    buf[cnt++] = hex_digits[((_byte32) >> 12) & 0x0F];  /* 4th hex digit */               \
-    buf[cnt++] = hex_digits[((_byte32) >> 8) & 0x0F];   /* 3rd hex digit */               \
-    buf[cnt++] = hex_digits[((_byte32) >> 4) & 0x0F];   /* 2nd hex digit */               \
-    buf[cnt++] = hex_digits[(_byte32) & 0x0F];          /* 1st hex digit */
+#define $tohex(_byte32)                                                                            \
+    buf[cnt++] = '\\';                                                                             \
+    buf[cnt++] = 'u';                                                                              \
+    buf[cnt++] = hex_digits[((_byte32) >> 12) & 0x0F]; /* 4th hex digit */                         \
+    buf[cnt++] = hex_digits[((_byte32) >> 8) & 0x0F];  /* 3rd hex digit */                         \
+    buf[cnt++] = hex_digits[((_byte32) >> 4) & 0x0F];  /* 2nd hex digit */                         \
+    buf[cnt++] = hex_digits[(_byte32) & 0x0F];         /* 1st hex digit */
 
     for (usize i = 0; i < slen; i++) {
         u32 c = s[i];
@@ -582,37 +583,43 @@ _cex_json__writer__print_string(jw_c* jw, char* s, usize slen)
                         if (seq_len > 0) {
                             // Extract codepoint from UTF-8
                             codepoint = c & (0xFF >> (seq_len + 1));
-                            // TODO: check boundaries!!!!!
-                            for (u32 k = 1; k < seq_len && s[i + k]; k++) {
-                                unsigned char next = s[i + k];
-                                if ((next & 0xC0) != 0x80) {
-                                    break; // Invalid
+                            if (i+seq_len <= slen) {
+                                for (u32 k = 1; k < seq_len && s[i + k]; k++) {
+                                    u8 next = s[i + k];
+                                    if ((next & 0xC0) != 0x80) {
+                                        break; // Invalid
+                                    }
+                                    codepoint = (codepoint << 6) | (next & 0x3F);
                                 }
-                                codepoint = (codepoint << 6) | (next & 0x3F);
-                            }
 
-                            // Write \uXXXX or \uXXXX\uXXXX for > 0xFFFF
-                            if (codepoint <= 0xFFFF) {
-                                $tohex(codepoint);
-                                i += seq_len - 1; // Skip continuation bytes
+                                // Write \uXXXX or \uXXXX\uXXXX for > 0xFFFF
+                                if (codepoint <= 0xFFFF) {
+                                    $tohex(codepoint);
+                                    i += seq_len - 1; // Skip continuation bytes
+                                } else {
+                                    // UTF-16 surrogate pair for > 0xFFFF
+                                    codepoint -= 0x10000;
+                                    u32 high = 0xD800 | (codepoint >> 10);
+                                    u32 low = 0xDC00 | (codepoint & 0x3FF);
+                                    $tohex(high);
+                                    $tohex(low);
+                                    i += seq_len - 1;
+                                }
                             } else {
-                                // UTF-16 surrogate pair for > 0xFFFF
-                                codepoint -= 0x10000;
-                                unsigned int high = 0xD800 | (codepoint >> 10);
-                                unsigned int low = 0xDC00 | (codepoint & 0x3FF);
-                                $tohex(high);
-                                $tohex(low);
-                                i += seq_len - 1;
+                                if (!jw->error) { jw->error = JsonError.encoding; }
                             }
                         } else {
                             // Invalid UTF-8, escape as raw byte
+                            if (!jw->error) { jw->error = JsonError.encoding; }
                             $tohex(c);
                         }
                     } else if ((c & 0xC0) == 0x80) {
                         // UTF-8 continuation byte without start - invalid
+                        if (!jw->error) { jw->error = JsonError.encoding; }
                         $tohex(c);
                     } else {
                         // Single byte > 0x7F but < 0xC0 (shouldn't happen in valid UTF-8)
+                        if (!jw->error) { jw->error = JsonError.encoding; }
                         buf[cnt++] = c;
                     }
                 } else {

@@ -15,6 +15,7 @@ extern const struct _CEX_JsonError_struct
     Exc unknown_field;
     Exc parsing;
     Exc wrong_type;
+    Exc encoding;
 } JsonError;
 
 /// JSON Reader Namespace
