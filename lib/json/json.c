@@ -497,15 +497,20 @@ _cex_json__writer__print(jw_c* jw, char* format, ...)
 }
 
 static void
-_cex_json__writer__print_string(jw_c* jw, char* s, usize slen)
+_cex_json__writer__print_string(jw_c* jw, char* s, usize slen, bool add_quotes)
 {
     (void)jw;
     (void)s;
     (void)slen;
 
     char buf[256];
-    buf[0] = '"';
-    usize cnt = 1;
+    usize cnt = 0;
+
+    if (add_quotes) {
+        buf[0] = '"';
+        cnt++;
+    }
+
     const char hex_digits[] = "0123456789ABCDEF";
     (void)hex_digits;
 
@@ -521,7 +526,15 @@ _cex_json__writer__print_string(jw_c* jw, char* s, usize slen)
     for (usize i = 0; i < slen; i++) {
         u32 c = s[i];
         if (unlikely(cnt > sizeof(buf) - 20)) {
-            // TODO: flush
+            buf[cnt++] = '\0';
+            if (jw->buf) {
+                Exc err = sbuf.append(jw->buf, buf);
+                if (unlikely(err != EOK && jw->error == EOK)) { jw->error = err; }
+            } else if (jw->stream) {
+                if (unlikely(fputs(buf, jw->stream) <= 0 && jw->error == EOK)) { jw->error = Error.io; }
+            }
+            buf[0] = '\0';
+            cnt = 0;
         }
 
         switch (c) {
@@ -630,14 +643,17 @@ _cex_json__writer__print_string(jw_c* jw, char* s, usize slen)
         }
     }
 
-    buf[cnt++] = '"';
+    if (add_quotes) {
+        buf[cnt++] = '"';
+    }
+
     buf[cnt++] = '\0';
 
     if (jw->buf) {
         Exc err = sbuf.append(jw->buf, buf);
         if (unlikely(err != EOK && jw->error == EOK)) { jw->error = err; }
     } else if (jw->stream) {
-        if (unlikely(fputs(buf, jw->stream) >= 0 && jw->error == EOK)) { jw->error = Error.io; }
+        if (unlikely(fputs(buf, jw->stream) <= 0 && jw->error == EOK)) { jw->error = Error.io; }
     }
 
 #undef $tohex
@@ -667,8 +683,7 @@ _cex_json__writer__print_item(jw_c* jw, char* format, ...)
             if (s == NULL) {
                 $print("null");
             } else {
-                _cex_json__writer__print_string(jw, s, str.len(s));
-                // $print("\"%s\"", s);
+                _cex_json__writer__print_string(jw, s, str.len(s), true);
             }
             va_end(va);
         } else if (format[2] == 'S') {
@@ -678,8 +693,7 @@ _cex_json__writer__print_item(jw_c* jw, char* format, ...)
             if (s.buf == NULL) {
                 $print("null");
             } else {
-                _cex_json__writer__print_string(jw, s.buf, s.len);
-                // $print("\"%S\"", s);
+                _cex_json__writer__print_string(jw, s.buf, s.len, true);
             }
             va_end(va);
         } else {
@@ -708,22 +722,21 @@ _cex_json__writer__print_item(jw_c* jw, char* format, ...)
 }
 
 void
-_cex_json__writer__print_key(jw_c* jw, char* format, ...)
+_cex_json__writer__print_key(jw_c* jw, char* key)
 {
     uassertf(
         jw->scope_depth > 0 && jw->scope_stack[jw->scope_depth - 1] & $scope_obj,
         "Expected to be in json object scope"
     );
     _cex_json_writer_indent(jw, false);
-    if (!jw->simplified) { $print("\""); }
-
-    $printva();
-
-    if (!jw->simplified) {
-        $print("\": ");
+    if (unlikely(key == NULL)){
+        $print("null");
+        if (!jw->error) { jw->error = JsonError.null_field; }
     } else {
-        $print(": ");
+        _cex_json__writer__print_string(jw, key, strlen(key), !jw->simplified);
     }
+
+    $print(": ");
     if (jw->scope_depth && jw->scope_stack[jw->scope_depth - 1]) {
         jw->scope_stack[jw->scope_depth - 1] |= $scope_has_items;
         jw->scope_stack[jw->scope_depth - 1] |= $scope_has_key;

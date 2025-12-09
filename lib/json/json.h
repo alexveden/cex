@@ -178,7 +178,7 @@ typedef struct jw_c
 #define jw$validate(json_writer) _cex_json__writer__validate((json_writer))
 
 /// Writes a new key (must be in jw$scope(jw, JsonType__obj))
-#define jw$key(format, ...) _cex_json__writer__print_key(_jw$scope_var, format, ##__VA_ARGS__)
+#define jw$key(key_name_string) _cex_json__writer__print_key(_jw$scope_var, key_name_string)
 
 /// Writes a new value to the json scope (object or array), expects json compatible primitive
 /// arguments. Use `jr$fmt` for customizable output.
@@ -228,7 +228,7 @@ str_s _cex_json__reader__get_scope(jr_c* it, JsonType_e scope_type);
 
 void _cex_json__writer__print(jw_c* jw, char* format, ...);
 void _cex_json__writer__print_item(jw_c* jw, char* format, ...);
-void _cex_json__writer__print_key(jw_c* jw, char* format, ...);
+void _cex_json__writer__print_key(jw_c* jw, char* key);
 void _cex_json__writer__print_scope_exit(jw_c** jwptr);
 jw_c* _cex_json__writer__print_scope_enter(jw_c* jw, JsonType_e scope_type, bool should_indent);
 Exception _cex_json__writer__create(jw_c* jw, jw_kw* kwargs);

@@ -1258,14 +1258,14 @@ test$case(json_writer_unicode_surrogate_pair)
         jw$scope(&jb, JsonType__obj)
         {
             jw$key("1");
-            jw$val("😀");      // Grinning face (U+1F600)
+            jw$val("😀"); // Grinning face (U+1F600)
         }
         tassert_er(EOK, jb.error);
 
         io.printf("\nJSON (buf): \n%s\n", buf);
         print_json_expected(buf);
 
-char* expected = "{\n\
+        char* expected = "{\n\
     1: \"\\uD83D\\uDE00\"\n\
 }";
 
@@ -1274,4 +1274,340 @@ char* expected = "{\n\
     return EOK;
 }
 
+test$case(json_writer_wide_ascii)
+{
+    mem$scope(tmem$, _)
+    {
+        jw_c jb;
+        sbuf_c buf = sbuf.create(1024, _);
+        sbuf_c val = sbuf.create(1024, _);
+        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4, .simplified = true));
+
+        for (u32 i = 0; i < 100; i++) { e$ret(sbuf.append(&val, "1234567890")); }
+        tassert_eq(sbuf.len(&val), 1000);
+
+        jw$scope(&jb, JsonType__obj)
+        {
+            jw$key("1");
+            jw$val(val);
+        }
+        tassert_er(EOK, jb.error);
+
+        io.printf("\nJSON (buf): \n%s\n", buf);
+        print_json_expected(buf);
+
+        char* expected = str.fmt(
+            _,
+            "{\n\
+    1: \"%s\"\n\
+}",
+            val
+        );
+
+        tassert_eq(buf, expected);
+    }
+    return EOK;
+}
+
+test$case(json_writer_wide_ascii_unicode)
+{
+    mem$scope(tmem$, _)
+    {
+        jw_c jb;
+        sbuf_c buf = sbuf.create(1024, _);
+        sbuf_c val = sbuf.create(1024, _);
+        sbuf_c escaped_val = sbuf.create(8196, _);
+        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4, .simplified = true));
+
+        tassert_eq(str.len("😀"), 4); // Grinning face (U+1F600)
+        for (u32 i = 0; i < 100; i++) {
+            e$ret(sbuf.append(&val, "😀"));
+            e$ret(sbuf.append(&escaped_val, "\\uD83D\\uDE00"));
+        }
+        tassert_eq(sbuf.len(&val), 400);
+
+        jw$scope(&jb, JsonType__obj)
+        {
+            jw$key("1");
+            jw$val(val);
+        }
+        tassert_er(EOK, jb.error);
+
+        io.printf("\nJSON (buf): \n%s\n", buf);
+        print_json_expected(buf);
+
+        char* expected = str.fmt(
+            _,
+            "{\n\
+    1: \"%s\"\n\
+}",
+            escaped_val
+        );
+
+        tassert_eq(buf, expected);
+    }
+    return EOK;
+}
+
+test$case(json_writer_wide_ascii_unicode_print)
+{
+    mem$scope(tmem$, _)
+    {
+        jw_c jb;
+        sbuf_c val = sbuf.create(1024, _);
+        tassert_er(EOK, jw$new(&jb, .stream = stdout, .indent = 4, .simplified = true));
+
+        tassert_eq(str.len("😀"), 4); // Grinning face (U+1F600)
+        for (u32 i = 0; i < 100; i++) { e$ret(sbuf.append(&val, "😀")); }
+        tassert_eq(sbuf.len(&val), 400);
+
+        jw$scope(&jb, JsonType__obj)
+        {
+            jw$key("1");
+            jw$val(val);
+        }
+        tassert_er(EOK, jb.error);
+    }
+    return EOK;
+}
+
+test$case(json_writer_wide_ascii_unicode_print_short)
+{
+    mem$scope(tmem$, _)
+    {
+        jw_c jb;
+        sbuf_c val = sbuf.create(1024, _);
+        tassert_er(EOK, jw$new(&jb, .stream = stdout, .indent = 4, .simplified = true));
+
+        tassert_eq(str.len("😀"), 4); // Grinning face (U+1F600)
+        e$ret(sbuf.append(&val, "😀"));
+
+        jw$scope(&jb, JsonType__obj)
+        {
+            jw$key("1");
+            jw$val(val);
+        }
+        tassert_er(EOK, jb.error);
+    }
+
+    return EOK;
+}
+
+test$case(json_writer_unicode_bmp_only)
+{
+    mem$scope(tmem$, _)
+    {
+        jw_c jb;
+        sbuf_c buf = sbuf.create(1024, _);
+
+        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 0, .simplified = true));
+
+        // Test all possible Unicode code points in Basic Multilingual Plane
+        jw$scope(&jb, JsonType__arr)
+        {
+            // Test boundaries
+            jw$val("\u00FF"); // Last Latin-1
+            jw$val("\u0100"); // Latin Extended-A start
+            jw$val("\u07FF"); // End of some blocks
+            jw$val("\u0800"); // Start of other blocks
+            jw$val("\uFFFF"); // Last BMP character (non-character)
+        }
+
+        tassert_er(EOK, jb.error);
+
+        // Expected output would be an array with escaped Unicode
+        // The exact output depends on your JSON writer implementation
+
+        io.printf("\nBMP boundary test:\n%s\n", buf);
+        print_json_expected(buf);
+        char* expected = "[\"\\u00FF\", \"\\u0100\", \"\\u07FF\", \"\\u0800\", \"\\uFFFF\"]";
+        tassert_eq(expected, buf);
+    }
+    return EOK;
+}
+
+test$case(json_writer_unicode_surrogate_pairs)
+{
+    mem$scope(tmem$, _)
+    {
+        jw_c jb;
+        sbuf_c buf = sbuf.create(2048, _);
+
+        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 2, .simplified = false));
+
+        jw$scope(&jb, JsonType__obj)
+        {
+            // Supplementary Multilingual Plane (SMP) characters
+            // These require UTF-16 surrogate pairs in JSON
+            jw$key("supplementary_plane");
+            jw$scope(&jb, JsonType__arr)
+            {
+                // CJK Unified Ideographs Extension B
+                jw$val("\U00020000"); // U+20000 (requires two UTF-16 surrogates)
+
+                // Last valid Unicode code point (as of Unicode 13.0)
+                jw$val("\U0010FFFF"); // U+10FFFF
+            }
+            // // Test invalid surrogate handling
+            // jw$key("invalid_surrogates");
+            // jw$scope(&jb, JsonType__arr)
+            // {
+            // }
+        }
+
+        tassert_er(EOK, jb.error);
+
+        io.printf("\nSupplementary Plane test:\n%s\n", buf);
+        print_json_expected(buf);
+        char* expected = "{\n\
+  \"supplementary_plane\": [\n\
+    \"\\uD840\\uDC00\", \n\
+    \"\\uDBFF\\uDFFF\"\n\
+  ]\n\
+}";
+        tassert_eq(buf, expected);
+    }
+    return EOK;
+}
+
+test$case(json_writer_unicode_surrogate_invalid_high)
+{
+    mem$scope(tmem$, _)
+    {
+        jw_c jb;
+        sbuf_c buf = sbuf.create(2048, _);
+
+        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 2, .simplified = false));
+
+        jw$scope(&jb, JsonType__obj)
+        {
+            // Supplementary Multilingual Plane (SMP) characters
+            // These require UTF-16 surrogate pairs in JSON
+            jw$key("supplementary_plane");
+            jw$scope(&jb, JsonType__arr)
+            {
+                // Lone high surrogate (invalid)
+                jw$val("\xD8\x00");
+            }
+        }
+
+        tassert_er(JsonError.encoding, jb.error);
+    }
+    return EOK;
+}
+
+test$case(json_writer_unicode_surrogate_invalid_low)
+{
+    mem$scope(tmem$, _)
+    {
+        jw_c jb;
+        sbuf_c buf = sbuf.create(2048, _);
+
+        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 2, .simplified = false));
+
+        jw$scope(&jb, JsonType__obj)
+        {
+            // Supplementary Multilingual Plane (SMP) characters
+            // These require UTF-16 surrogate pairs in JSON
+            jw$key("supplementary_plane");
+            jw$scope(&jb, JsonType__arr)
+            {
+                // Lone low surrogate (invalid)
+                jw$val("\xDC\x00");
+            }
+        }
+
+        tassert_er(JsonError.encoding, jb.error);
+    }
+    return EOK;
+}
+
+test$case(json_writer_unicode_surrogate_invalid_reversed)
+{
+    mem$scope(tmem$, _)
+    {
+        jw_c jb;
+        sbuf_c buf = sbuf.create(2048, _);
+
+        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 2, .simplified = false));
+
+        jw$scope(&jb, JsonType__obj)
+        {
+            // Supplementary Multilingual Plane (SMP) characters
+            // These require UTF-16 surrogate pairs in JSON
+            jw$key("supplementary_plane");
+            jw$scope(&jb, JsonType__arr)
+            {
+                // Reversed surrogate pair (invalid)
+                jw$val("\xDC\x00\xD8\x00");
+            }
+        }
+
+        tassert_er(JsonError.encoding, jb.error);
+    }
+    return EOK;
+}
+
+test$case(json_writer_unicode_surrogate_valid_maxval)
+{
+    mem$scope(tmem$, _)
+    {
+        jw_c jb;
+        sbuf_c buf = sbuf.create(2048, _);
+
+        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 2, .simplified = false));
+
+        jw$scope(&jb, JsonType__obj)
+        {
+            // Supplementary Multilingual Plane (SMP) characters
+            // These require UTF-16 surrogate pairs in JSON
+            jw$key("supplementary_plane");
+            jw$scope(&jb, JsonType__arr)
+            {
+                // Valid surrogate pair for non-character
+                jw$val("\uFFFF\uFFFF");
+            }
+        }
+
+        tassert_er(EOK, jb.error);
+        io.printf("\nSupplementary Plane test:\n%s\n", buf);
+        print_json_expected(buf);
+
+char* expected = "{\n\
+  \"supplementary_plane\": [\n\
+    \"\\uFFFF\\uFFFF\"\n\
+  ]\n\
+}";
+        tassert_eq(buf, expected);
+    }
+    return EOK;
+}
+
+test$case(json_writer_unicode_key_escaping)
+{
+    mem$scope(tmem$, _)
+    {
+        jw_c jb;
+        sbuf_c buf = sbuf.create(1024, _);
+        (void)buf;
+        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4, .simplified = false));
+
+        jw$scope(&jb, JsonType__obj)
+        {
+            jw$key("😀");
+            jw$val("😀"); // Grinning face (U+1F600)
+        }
+        tassert_er(EOK, jb.error);
+
+        io.printf("\nJSON (buf): \n%s\n", buf);
+        print_json_expected(buf);
+
+        char* expected = "{\n\
+    \"\\uD83D\\uDE00\": \"\\uD83D\\uDE00\"\n\
+}";
+
+        tassert_eq(buf, expected);
+    }
+    return EOK;
+}
 test$main();
