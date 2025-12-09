@@ -75,12 +75,13 @@ extern const struct _CEX_JsonError_struct
         }                                                                                          \
     }
 
-/// Gets next `json_type` scope as a string slice (str_s), you may use another json_reade instance
-/// to parse result of this function. Sets json_reader.error + returns (str_s){0} on failure.
 #define jr$decode_str(in_value, out_str_s_ptr, allocator)                                                 \
     _cex_json__reader__decode(in_value, out_str_s_ptr, allocator)
 
-/// Gets next `json_type` scope as a string slice (str_s), you may use another json_reade instance
+#define jr$decode_str_inplace(in_value, out_buf, in_out_buf_size)                                                 \
+    _cex_json__reader__decode_inplace(in_value, out_buf, in_out_buf_size)
+
+/// Gets next `json_type` scope as a string slice (str_s), you may use another json_reader instance
 /// to parse result of this function. Sets json_reader.error + returns (str_s){0} on failure.
 #define jr$get_scope_str_s(json_reader, json_type)                                                 \
     _cex_json__reader__get_scope((json_reader), json_type)
@@ -230,6 +231,7 @@ Exception _cex_json__reader__step_in(jr_c* it, JsonType_e expected_type);
 bool _cex_json__reader__next(jr_c* it);
 str_s _cex_json__reader__get_scope(jr_c* it, JsonType_e scope_type);
 Exception _cex_json__reader__decode(str_s value_str, str_s* out_val, IAllocator allc);
+Exception _cex_json__reader__decode_inplace(str_s value_str, char* out_buf, usize* in_out_size);
 
 
 void _cex_json__writer__print(jw_c* jw, char* format, ...);

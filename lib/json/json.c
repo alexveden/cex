@@ -155,14 +155,18 @@ error:
 //     return it->error;
 // }
 
-Exception
-_cex_json__reader__decode(str_s value_str, str_s* out_val, IAllocator allc)
-{
-    if (unlikely(!out_val)) { return Error.argument; }
-    if (unlikely(!value_str.buf)) { return Error.null_or_empty; }
 
-    char* output = mem$malloc(allc, value_str.len + 1);
-    if (unlikely(!output)) { return Error.memory; }
+Exception
+_cex_json__reader__decode_inplace(str_s value_str, char* out_buf, usize* in_out_size)
+{
+    uassert(out_buf);
+    uassert(in_out_size);
+
+    if (unlikely(!value_str.buf)) { return Error.null_or_empty; }
+    if (unlikely(*in_out_size <= value_str.len)) {
+        uassert(*in_out_size >= value_str.len + 1);
+        return Error.assert;
+    }
 
     u8* input = (u8*)value_str.buf;
     usize len = value_str.len;
@@ -179,48 +183,48 @@ _cex_json__reader__decode(str_s value_str, str_s* out_val, IAllocator allc)
     while (i < len) {
         if (input[i] != '\\') {
             // Normal character
-            output[j++] = input[i++];
+            out_buf[j++] = input[i++];
         } else {
             // backslash (\) char
             i++; // Skip backslash
 
             if (i >= len) {
-                output[j++] = '\\';
+                out_buf[j++] = '\\';
                 break;
             }
 
             // Handle standard JSON escapes
             switch (input[i]) {
                 case '"':
-                    output[j++] = '"';
+                    out_buf[j++] = '"';
                     i++;
                     break;
                 case '\\':
-                    output[j++] = '\\';
+                    out_buf[j++] = '\\';
                     i++;
                     break;
                 case '/':
-                    output[j++] = '/';
+                    out_buf[j++] = '/';
                     i++;
                     break;
                 case 'b':
-                    output[j++] = '\b';
+                    out_buf[j++] = '\b';
                     i++;
                     break;
                 case 'f':
-                    output[j++] = '\f';
+                    out_buf[j++] = '\f';
                     i++;
                     break;
                 case 'n':
-                    output[j++] = '\n';
+                    out_buf[j++] = '\n';
                     i++;
                     break;
                 case 'r':
-                    output[j++] = '\r';
+                    out_buf[j++] = '\r';
                     i++;
                     break;
                 case 't':
-                    output[j++] = '\t';
+                    out_buf[j++] = '\t';
                     i++;
                     break;
 
@@ -242,11 +246,11 @@ _cex_json__reader__decode(str_s value_str, str_s* out_val, IAllocator allc)
                     // Handle UTF-8 encoding
                     if (codepoint <= 0x7F) {
                         // 1 byte UTF-8
-                        output[j++] = (char)codepoint;
+                        out_buf[j++] = (char)codepoint;
                     } else if (codepoint <= 0x7FF) {
                         // 2 bytes UTF-8
-                        output[j++] = 0xC0 | (codepoint >> 6);
-                        output[j++] = 0x80 | (codepoint & 0x3F);
+                        out_buf[j++] = 0xC0 | (codepoint >> 6);
+                        out_buf[j++] = 0x80 | (codepoint & 0x3F);
                     } else if (codepoint >= 0xD800 && codepoint <= 0xDBFF) {
                         // high is a first unicode value \uXXXX
                         // low is a second part value unicode \uYYYY
@@ -265,37 +269,55 @@ _cex_json__reader__decode(str_s value_str, str_s* out_val, IAllocator allc)
                         if (unlikely(!(low >= 0xDC00 && low <= 0xDFFF))) { goto fail; }
 
                         codepoint = 0x10000 + ((high - 0xD800) << 10) + (low - 0xDC00);
-                        output[j++] = (u8)(0xF0 | (codepoint >> 18));
-                        output[j++] = (u8)(0x80 | ((codepoint >> 12) & 0x3F));
-                        output[j++] = (u8)(0x80 | ((codepoint >> 6) & 0x3F));
-                        output[j++] = (u8)(0x80 | (codepoint & 0x3F));
+                        out_buf[j++] = (u8)(0xF0 | (codepoint >> 18));
+                        out_buf[j++] = (u8)(0x80 | ((codepoint >> 12) & 0x3F));
+                        out_buf[j++] = (u8)(0x80 | ((codepoint >> 6) & 0x3F));
+                        out_buf[j++] = (u8)(0x80 | (codepoint & 0x3F));
                     } else {
                         // 3 bytes UTF-8 (most common for \uXXXX)
-                        output[j++] = 0xE0 | (codepoint >> 12);
-                        output[j++] = 0x80 | ((codepoint >> 6) & 0x3F);
-                        output[j++] = 0x80 | (codepoint & 0x3F);
+                        out_buf[j++] = 0xE0 | (codepoint >> 12);
+                        out_buf[j++] = 0x80 | ((codepoint >> 6) & 0x3F);
+                        out_buf[j++] = 0x80 | (codepoint & 0x3F);
                     }
                     break;
                 }
 
                 default:
                     // Unknown escape, copy both characters
-                    output[j++] = '\\';
-                    output[j++] = input[i++];
+                    out_buf[j++] = '\\';
+                    out_buf[j++] = input[i++];
                     break;
             }
         }
     }
 
-    output[j] = '\0';
+    out_buf[j] = '\0';
+    *in_out_size = j;
 
-    *out_val = (str_s){ .buf = output, .len = j };
-    return EOK; 
+    return EOK;
 
 fail:
-    if (output) { mem$free(allc, output); }
-    *out_val = (str_s){ 0 };
+    out_buf[j] = '\0';
+    *in_out_size = 0;
     return JsonError.encoding;
+}
+
+Exception
+_cex_json__reader__decode(str_s value_str, str_s* out_val, IAllocator allc)
+{
+
+    if (unlikely(!out_val)) { return Error.argument; }
+    char* output = mem$malloc(allc, value_str.len + 1);
+    if (unlikely(!output)) { return Error.memory; }
+
+    usize output_size = value_str.len + 1;
+    e$except_silent (err, _cex_json__reader__decode_inplace(value_str, output, &output_size)) {
+        mem$free(allc, output);
+        return err;
+    }
+    *out_val = (str_s){ .buf = output, .len = output_size };
+
+    return EOK;
 }
 
 static Exc
