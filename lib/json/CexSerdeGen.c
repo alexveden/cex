@@ -299,7 +299,11 @@ _CexSerdeGen_codegen_deserialize_field(
                         cg$pf("out_item->%s = NULL;", f->name);
                     }
                 }
-                cg$else () { cg$pf("out_item->%s = str.slice.clone(v, allc);", f->name); }
+                cg$else () {
+                    cg$pn("str_s out_s;");
+                    cg$pn("jr$egoto(jr, jr$decode_str(v, &out_s, allc), fail);");
+                    cg$pf("out_item->%s = out_s.buf;", f->name);
+                }
 
             } else if (str$eq(f->type, "sbuf_c")) {
                 cg$if ("unlikely(!v.buf)") {
@@ -316,9 +320,9 @@ _CexSerdeGen_codegen_deserialize_field(
                         f->name
                     );
                     cg$if ("unlikely(!out_item->%s)", f->name) { cg$pn("return Error.memory;"); }
-                    cg$if ("unlikely(sbuf.appendf(&out_item->%s, \"%%S\", v))", f->name) {
-                        cg$pn("return Error.memory;");
-                    }
+                    cg$pf("usize out_buf_len = v.len + 1;", f->name);
+                    cg$pf("jr$egoto(jr, jr$decode_str_inplace(v, out_item->%s, &out_buf_len), fail);", f->name);
+                    cg$pf("jr$egoto(jr, sbuf.set_len(&out_item->%s, out_buf_len), fail);", f->name);
                 }
 
             } else if (str$eq(f->type, "str_s")) {
@@ -330,11 +334,14 @@ _CexSerdeGen_codegen_deserialize_field(
                         cg$pf("out_item->%s = (str_s){0};", f->name);
                     }
                 }
-                cg$else () { cg$pf("out_item->%s = str.sstr(str.slice.clone(v, allc));", f->name); }
+                cg$else () {
+                    cg$pf("jr$egoto(jr, jr$decode_str(v, &out_item->%s, allc), fail);", f->name);
+                }
 
             } else {
                 uassertf(false, "field type, not implemented yet: type=%S\n", f->type);
             }
+
 
         } else {
             // Primitive type
@@ -476,7 +483,9 @@ _CexSerdeGen_generate_type(CexSerdeGen_c* self, cex_codegen_s* cg$var, serdegen_
             );
         }
         cg$if ("fields_mask != ((1 << %d) - 1)", nfields) {
-            cg$pn("jr->error = JsonError.missing_field;");
+            cg$if("!jr->error"){
+                cg$pn("jr->error = JsonError.missing_field;");
+            }
             cg$pn("goto fail;");
         }
 

@@ -868,7 +868,6 @@ test$case(test_Order_deserialize_duplicate_key)
     return EOK;
 }
 
-/* FIX: Valid JSON with escaped characters 
 test$case(test_Order_deserialize_escaped_chars)
 {
     char* expected = "{\n\
@@ -890,11 +889,38 @@ test$case(test_Order_deserialize_escaped_chars)
     e$ret(jr$new(&jr, expected, 0, .strict_mode = false));
     tassert_eq(EOK, serdegen.Order.deserialize(&jr, &s2, mem$));
     tassert_eq(s2.exchange, "NI\"CE");
+    tassert_eq(s2.stock->ticker, "UB\nER");
     serdegen.Order.destroy(&s2, mem$);
 
     return EOK;
 }
-*/
 
+
+test$case(test_Items_deserialize_unicode)
+{
+    char* expected = "{\n\
+    \"sbuf_field\": \"\\uD83D\\uDE00\", \n\
+    \"str_s_field\": \"\\uD83D\\uDE00\", \n\
+    \"char_field\": \"\\uD83D\\uDE00\", \n\
+    \"stock_field\": {\n\
+        \"id\": 22, \n\
+        \"ticker\": \"UBER\", \n\
+        \"exchange\": \"FOO\"\n\
+    }\n\
+}";
+
+    Item s2 = { 0 };
+    jr_c jr;
+
+    e$ret(jr$new(&jr, expected, 0, .strict_mode = false));
+    e$ret(serdegen.Item.deserialize(&jr, &s2, mem$));
+
+    tassert_eq(s2.sbuf_field, "😀");
+    tassert_eq(s2.str_s_field, str$s("😀"));
+    tassert_eq(s2.char_field, "😀");
+
+    serdegen.Item.destroy(&s2, mem$);
+    return EOK;
+}
 test$main();
 

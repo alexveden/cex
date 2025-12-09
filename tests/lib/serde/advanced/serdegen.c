@@ -70,7 +70,9 @@ Exception serdegen__Stock__deserialize(jr_c* jr, Stock* out_item, IAllocator all
                 // field `ticker` is nullable serde$$field(.nullable = true)
                 out_item->ticker = NULL;
             } else {
-                out_item->ticker = str.slice.clone(v, allc);
+                str_s out_s;
+                jr$egoto(jr, jr$decode_str(v, &out_s, allc), fail);
+                out_item->ticker = out_s.buf;
             }
         } else if (str$eq(k, "exchange")) {
             fields_mask |= (1 << 1);
@@ -81,15 +83,19 @@ Exception serdegen__Stock__deserialize(jr_c* jr, Stock* out_item, IAllocator all
                 // field `exchange` is nullable serde$$field(.nullable = true)
                 out_item->exchange = NULL;
             } else {
-                out_item->exchange = str.slice.clone(v, allc);
+                str_s out_s;
+                jr$egoto(jr, jr$decode_str(v, &out_s, allc), fail);
+                out_item->exchange = out_s.buf;
             }
         } else {
             jr->error = JsonError.unknown_field;
             goto fail;
         }
     }
-    if (fields_mask != (1 << 2) -1) {
-        jr->error = JsonError.missing_field;
+    if (fields_mask != ((1 << 2) - 1)) {
+        if (!jr->error) {
+            jr->error = JsonError.missing_field;
+        }
         goto fail;
     }
     if (!jr->error) {
@@ -186,9 +192,9 @@ Exception serdegen__ItemNullable__deserialize(jr_c* jr, ItemNullable* out_item, 
                 if (unlikely(!out_item->sbuf_field)) {
                     return Error.memory;
                 }
-                if (unlikely(sbuf.appendf(&out_item->sbuf_field, "%S", v))) {
-                    return Error.memory;
-                }
+                usize out_buf_len = v.len + 1;
+                jr$egoto(jr, jr$decode_str_inplace(v, out_item->sbuf_field, &out_buf_len), fail);
+                jr$egoto(jr, sbuf.set_len(&out_item->sbuf_field, out_buf_len), fail);
             }
         } else if (str$eq(k, "str_s_field")) {
             fields_mask |= (1 << 1);
@@ -199,7 +205,7 @@ Exception serdegen__ItemNullable__deserialize(jr_c* jr, ItemNullable* out_item, 
                 // field `str_s_field` is nullable serde$$field(.nullable = true)
                 out_item->str_s_field = (str_s){0};
             } else {
-                out_item->str_s_field = str.sstr(str.slice.clone(v, allc));
+                jr$egoto(jr, jr$decode_str(v, &out_item->str_s_field, allc), fail);
             }
         } else if (str$eq(k, "char_field")) {
             fields_mask |= (1 << 2);
@@ -210,7 +216,9 @@ Exception serdegen__ItemNullable__deserialize(jr_c* jr, ItemNullable* out_item, 
                 // field `char_field` is nullable serde$$field(.nullable = true)
                 out_item->char_field = NULL;
             } else {
-                out_item->char_field = str.slice.clone(v, allc);
+                str_s out_s;
+                jr$egoto(jr, jr$decode_str(v, &out_s, allc), fail);
+                out_item->char_field = out_s.buf;
             }
         } else if (str$eq(k, "stock_field")) {
             fields_mask |= (1 << 3);
@@ -242,8 +250,10 @@ Exception serdegen__ItemNullable__deserialize(jr_c* jr, ItemNullable* out_item, 
             goto fail;
         }
     }
-    if (fields_mask != (1 << 5) -1) {
-        jr->error = JsonError.missing_field;
+    if (fields_mask != ((1 << 5) - 1)) {
+        if (!jr->error) {
+            jr->error = JsonError.missing_field;
+        }
         goto fail;
     }
     if (!jr->error) {
@@ -346,9 +356,9 @@ Exception serdegen__Item__deserialize(jr_c* jr, Item* out_item, IAllocator allc)
                 if (unlikely(!out_item->sbuf_field)) {
                     return Error.memory;
                 }
-                if (unlikely(sbuf.appendf(&out_item->sbuf_field, "%S", v))) {
-                    return Error.memory;
-                }
+                usize out_buf_len = v.len + 1;
+                jr$egoto(jr, jr$decode_str_inplace(v, out_item->sbuf_field, &out_buf_len), fail);
+                jr$egoto(jr, sbuf.set_len(&out_item->sbuf_field, out_buf_len), fail);
             }
         } else if (str$eq(k, "str_s_field")) {
             fields_mask |= (1 << 1);
@@ -358,7 +368,7 @@ Exception serdegen__Item__deserialize(jr_c* jr, Item* out_item, IAllocator allc)
             if (unlikely(!v.buf)) {
                 jr$egoto(jr, JsonError.null_field, fail);
             } else {
-                out_item->str_s_field = str.sstr(str.slice.clone(v, allc));
+                jr$egoto(jr, jr$decode_str(v, &out_item->str_s_field, allc), fail);
             }
         } else if (str$eq(k, "char_field")) {
             fields_mask |= (1 << 2);
@@ -368,7 +378,9 @@ Exception serdegen__Item__deserialize(jr_c* jr, Item* out_item, IAllocator allc)
             if (unlikely(!v.buf)) {
                 jr$egoto(jr, JsonError.null_field, fail);
             } else {
-                out_item->char_field = str.slice.clone(v, allc);
+                str_s out_s;
+                jr$egoto(jr, jr$decode_str(v, &out_s, allc), fail);
+                out_item->char_field = out_s.buf;
             }
         } else if (str$eq(k, "stock_field")) {
             fields_mask |= (1 << 3);
@@ -391,8 +403,10 @@ Exception serdegen__Item__deserialize(jr_c* jr, Item* out_item, IAllocator allc)
             goto fail;
         }
     }
-    if (fields_mask != (1 << 4) -1) {
-        jr->error = JsonError.missing_field;
+    if (fields_mask != ((1 << 4) - 1)) {
+        if (!jr->error) {
+            jr->error = JsonError.missing_field;
+        }
         goto fail;
     }
     if (!jr->error) {
@@ -515,7 +529,9 @@ Exception serdegen__Order__deserialize(jr_c* jr, Order* out_item, IAllocator all
             if (unlikely(!v.buf)) {
                 jr$egoto(jr, JsonError.null_field, fail);
             } else {
-                out_item->exchange = str.slice.clone(v, allc);
+                str_s out_s;
+                jr$egoto(jr, jr$decode_str(v, &out_s, allc), fail);
+                out_item->exchange = out_s.buf;
             }
         } else if (str$eq(k, "stock")) {
             fields_mask |= (1 << 5);
@@ -536,8 +552,10 @@ Exception serdegen__Order__deserialize(jr_c* jr, Order* out_item, IAllocator all
             goto fail;
         }
     }
-    if (fields_mask != (1 << 6) -1) {
-        jr->error = JsonError.missing_field;
+    if (fields_mask != ((1 << 6) - 1)) {
+        if (!jr->error) {
+            jr->error = JsonError.missing_field;
+        }
         goto fail;
     }
     if (!jr->error) {
@@ -643,8 +661,10 @@ Exception serdegen__Position__deserialize(jr_c* jr, Position* out_item, IAllocat
             goto fail;
         }
     }
-    if (fields_mask != (1 << 3) -1) {
-        jr->error = JsonError.missing_field;
+    if (fields_mask != ((1 << 3) - 1)) {
+        if (!jr->error) {
+            jr->error = JsonError.missing_field;
+        }
         goto fail;
     }
     if (!jr->error) {
