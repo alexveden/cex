@@ -18,6 +18,9 @@ print_json_expected(sbuf_c s)
     io.printf("char* expected = \"");
     for$each (c, s, sbuf.len(&s)) {
         switch (c) {
+            case '\\':
+                io.printf("\\");
+                break;
             case '\n':
                 io.printf("\\n\\");
                 break;
@@ -83,9 +86,7 @@ deserialize_stock(jr_c* jr, Stock* stk, IAllocator allc)
             jr$egoto(jr, str$convert(v, &stk->id), err);
         }
     }
-    if (fields_set != fields_expected) {
-        return Error.not_found;
-    }
+    if (fields_set != fields_expected) { return Error.not_found; }
     return EOK;
 err:
     destroy_stock(stk, allc);
@@ -1024,7 +1025,6 @@ test$case(json_writer_multi_func_serde__missing_fields)
 
         Order ord2 = { 0 };
         tassert_eq(Error.not_found, deserialize_order(&jr, &ord2, _));
-
     }
 
     return EOK;
@@ -1040,7 +1040,7 @@ test$case(json_reader_is_type_compatible)
         tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4));
         jr_c jr;
 
-        jr = (jr_c){.type = JsonType__num};
+        jr = (jr_c){ .type = JsonType__num };
         u8 v1 = UINT8_MAX;
         tassert(jr$is_type_compatible(&jr, &v1));
         i8 v2 = INT8_MIN;
@@ -1065,12 +1065,12 @@ test$case(json_reader_is_type_compatible)
         bool v16 = true;
         tassert(!jr$is_type_compatible(&jr, &v16));
 
-        jr = (jr_c){.type = JsonType__null};
+        jr = (jr_c){ .type = JsonType__null };
         tassert(!jr$is_type_compatible(&jr, &v16));
-        jr = (jr_c){.type = JsonType__bool};
+        jr = (jr_c){ .type = JsonType__bool };
         tassert(jr$is_type_compatible(&jr, &v16));
 
-        jr = (jr_c){.type = JsonType__str};
+        jr = (jr_c){ .type = JsonType__str };
         const char* s1 = "const";
         tassert(jr$is_type_compatible(&jr, &s1));
         char* s2 = "str";
@@ -1082,12 +1082,168 @@ test$case(json_reader_is_type_compatible)
         str_s s5 = { 0 };
         tassert(jr$is_type_compatible(&jr, &s5));
 
-        jr = (jr_c){.type = JsonType__null};
+        jr = (jr_c){ .type = JsonType__null };
         tassert(!jr$is_type_compatible(&jr, &s5));
 
-        jr = (jr_c){.type = JsonType__null};
+        jr = (jr_c){ .type = JsonType__null };
         tassert(jr$is_type_compatible(&jr, NULL));
     }
     return EOK;
 }
+
+test$case(json_writer_unicode_proto)
+{
+    mem$scope(tmem$, _)
+    {
+        jw_c jb;
+        sbuf_c buf = sbuf.create(1024, _);
+        (void)buf;
+        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4, .simplified = true));
+
+        jw$scope(&jb, JsonType__obj)
+        {
+            jw$key("1");
+            jw$val("\"");
+            jw$key("2");
+            jw$val("\\");
+            jw$key("3");
+            jw$val("\f");
+            jw$key("4");
+            jw$val("\n");
+            jw$key("5");
+            jw$val("\r");
+            jw$key("6");
+            jw$val("\t");
+            jw$key("7");
+            jw$val("/");
+        }
+
+        tassert_er(EOK, jb.error);
+
+        io.printf("\nJSON (buf): \n%s\n", buf);
+        print_json_expected(buf);
+
+        char* expected = "{\n\
+    1: \"\\\"\", \n\
+    2: \"\\\\\", \n\
+    3: \"\\f\", \n\
+    4: \"\\n\", \n\
+    5: \"\\r\", \n\
+    6: \"\\t\", \n\
+    7: \"\\/\"\n\
+}";
+
+        tassert_eq(buf, expected);
+    }
+    return EOK;
+}
+
+test$case(json_writer_unicode_ascii_control)
+{
+    mem$scope(tmem$, _)
+    {
+        jw_c jb;
+        sbuf_c buf = sbuf.create(1024, _);
+        (void)buf;
+        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4, .simplified = true));
+
+        jw$scope(&jb, JsonType__obj)
+        {
+            jw$key("1");
+            jw$val("\x1B");
+        }
+        tassert_er(EOK, jb.error);
+
+        io.printf("\nJSON (buf): \n%s\n", buf);
+        print_json_expected(buf);
+
+        char* expected = "{\n\
+    1: \"\\u001B\"\n\
+}";
+
+        // TODO: this may be forbidden by default without setting flags
+        tassert_eq(buf, expected);
+    }
+    return EOK;
+}
+
+test$case(json_writer_unicode_comprehensive)
+{
+    mem$scope(tmem$, _)
+    {
+        jw_c jb;
+        sbuf_c buf = sbuf.create(4096, _);
+        (void)buf;
+
+        // Test with various Unicode scenarios
+        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4, .simplified = true));
+
+        jw$scope(&jb, JsonType__obj)
+        {
+            // 2. ASCII printable characters
+            jw$key("ascii_printable");
+            jw$val("Hello World!@#$%^&*()");
+
+            // 3. Latin-1 Supplement (U+0080 to U+00FF)
+            jw$key("latin1_supplement");
+            jw$val("©®±µ¼½¾¿ÀÁÂÃÄÅÆÇ");
+
+            // 4. Common symbols and punctuation
+            jw$key("symbols");
+            jw$val("€£¥¢§¶†‡•…—–");
+
+            // 5. Common scripts
+            jw$key("latin_extended");
+            jw$val("ŠšŽžÀàÁáÂâÃãÄä");
+
+            jw$key("greek");
+            jw$val("ΑαΒβΓγΔδΕεΖζΗηΘθ");
+
+            jw$key("cyrillic");
+            jw$val("АаБбВвГгДдЕеЁёЖж");
+
+            jw$key("arabic");
+            jw$val("اب ت ث ج ح خ د ذ ر ز");
+
+            // 6. Asian scripts
+            jw$key("chinese");
+            jw$val("你好世界"); // Hello World
+
+            jw$key("japanese");
+            jw$val("こんにちは世界"); // Hello World
+
+            jw$key("korean");
+            jw$val("안녕하세요 세계"); // Hello World
+
+            // 7. Mathematical symbols
+            jw$key("math_symbols");
+            jw$val("∑∏√∞∫≈≠≤≥∈∉∧∨¬⇒⇔");
+        }
+
+        tassert_er(EOK, jb.error);
+
+        // Print the generated JSON
+        io.printf("\nGenerated JSON:\n%s\n", buf);
+
+        // Verify expected output
+        char* expected = "{\n\
+    ascii_printable: \"Hello World!@#$%^&*()\", \n\
+    latin1_supplement: \"\\u00A9\\u00AE\\u00B1\\u00B5\\u00BC\\u00BD\\u00BE\\u00BF\\u00C0\\u00C1\\u00C2\\u00C3\\u00C4\\u00C5\\u00C6\\u00C7\", \n\
+    symbols: \"\\u20AC\\u00A3\\u00A5\\u00A2\\u00A7\\u00B6\\u2020\\u2021\\u2022\\u2026\\u2014\\u2013\", \n\
+    latin_extended: \"\\u0160\\u0161\\u017D\\u017E\\u00C0\\u00E0\\u00C1\\u00E1\\u00C2\\u00E2\\u00C3\\u00E3\\u00C4\\u00E4\", \n\
+    greek: \"\\u0391\\u03B1\\u0392\\u03B2\\u0393\\u03B3\\u0394\\u03B4\\u0395\\u03B5\\u0396\\u03B6\\u0397\\u03B7\\u0398\\u03B8\", \n\
+    cyrillic: \"\\u0410\\u0430\\u0411\\u0431\\u0412\\u0432\\u0413\\u0433\\u0414\\u0434\\u0415\\u0435\\u0401\\u0451\\u0416\\u0436\", \n\
+    arabic: \"\\u0627\\u0628 \\u062A \\u062B \\u062C \\u062D \\u062E \\u062F \\u0630 \\u0631 \\u0632\", \n\
+    chinese: \"\\u4F60\\u597D\\u4E16\\u754C\", \n\
+    japanese: \"\\u3053\\u3093\\u306B\\u3061\\u306F\\u4E16\\u754C\", \n\
+    korean: \"\\uC548\\uB155\\uD558\\uC138\\uC694 \\uC138\\uACC4\", \n\
+    math_symbols: \"\\u2211\\u220F\\u221A\\u221E\\u222B\\u2248\\u2260\\u2264\\u2265\\u2208\\u2209\\u2227\\u2228\\u00AC\\u21D2\\u21D4\"\n\
+}";
+
+        print_json_expected(buf);
+        tassert_eq(buf, expected);
+    }
+    return EOK;
+}
+
 test$main();

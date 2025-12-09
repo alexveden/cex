@@ -26,7 +26,8 @@ const struct _CEX_JsonError_struct JsonError = {
             Exc err = sbuf.appendf(jw->buf, format, ##__VA_ARGS__);                                \
             if (unlikely(err != EOK && jw->error == EOK)) { jw->error = err; }                     \
         } else if (jw->stream) {                                                                   \
-            io.fprintf(jw->stream, format, ##__VA_ARGS__);                                         \
+            Exc err = io.fprintf(jw->stream, format, ##__VA_ARGS__);                               \
+            if (unlikely(err != EOK && jw->error == EOK)) { jw->error = err; }                     \
         }                                                                                          \
     })
 
@@ -494,6 +495,147 @@ _cex_json__writer__print(jw_c* jw, char* format, ...)
     }
 }
 
+static void
+_cex_json__writer__print_string(jw_c* jw, char* s, usize slen)
+{
+    (void)jw;
+    (void)s;
+    (void)slen;
+
+    char buf[256];
+    buf[0] = '"';
+    usize cnt = 1;
+    const char hex_digits[] = "0123456789ABCDEF";
+    (void)hex_digits;
+
+// TODO: consider big-endianess
+#define $tohex(_byte32)                                                                   \
+    buf[cnt++] = '\\';                                                                    \
+    buf[cnt++] = 'u';                                                                     \
+    buf[cnt++] = hex_digits[((_byte32) >> 12) & 0x0F];  /* 4th hex digit */               \
+    buf[cnt++] = hex_digits[((_byte32) >> 8) & 0x0F];   /* 3rd hex digit */               \
+    buf[cnt++] = hex_digits[((_byte32) >> 4) & 0x0F];   /* 2nd hex digit */               \
+    buf[cnt++] = hex_digits[(_byte32) & 0x0F];          /* 1st hex digit */
+
+    for (usize i = 0; i < slen; i++) {
+        u32 c = s[i];
+        if (unlikely(cnt > sizeof(buf) - 20)) {
+            // TODO: flush
+        }
+
+        switch (c) {
+            case '"':
+                buf[cnt++] = '\\';
+                buf[cnt++] = '"';
+                break;
+            case '\\':
+                buf[cnt++] = '\\';
+                buf[cnt++] = '\\';
+                break;
+            case '\b':
+                buf[cnt++] = '\\';
+                buf[cnt++] = 'b';
+                break;
+            case '\f':
+                buf[cnt++] = '\\';
+                buf[cnt++] = 'f';
+                break;
+            case '\n':
+                buf[cnt++] = '\\';
+                buf[cnt++] = 'n';
+                break;
+            case '\r':
+                buf[cnt++] = '\\';
+                buf[cnt++] = 'r';
+                break;
+            case '\t':
+                buf[cnt++] = '\\';
+                buf[cnt++] = 't';
+                break;
+            case '/':
+                // Forward slash escape is optional but safe
+                buf[cnt++] = '\\';
+                buf[cnt++] = '/';
+                break;
+
+            default:
+                if (unlikely(c < 0x20 || c == 0x7F)) {
+                    $tohex(c);
+                } else if (unlikely(c >= 0x80)) {
+                    // Non-ASCII: encode as UTF-8 or \uXXXX
+                    // For simplicity, we'll encode all non-ASCII as \uXXXX
+                    // This is inefficient but safe
+                    if ((c & 0xC0) == 0xC0) { // UTF-8 start byte
+                        // Try to extract full UTF-8 codepoint
+                        u32 codepoint = 0;
+                        u32 seq_len = 0;
+
+                        // Determine sequence length
+                        if ((c & 0xF8) == 0xF0) {
+                            seq_len = 4;
+                        } else if ((c & 0xF0) == 0xE0) {
+                            seq_len = 3;
+                        } else if ((c & 0xE0) == 0xC0) {
+                            seq_len = 2;
+                        }
+
+                        if (seq_len > 0) {
+                            // Extract codepoint from UTF-8
+                            codepoint = c & (0xFF >> (seq_len + 1));
+                            // TODO: check boundaries!!!!!
+                            for (u32 k = 1; k < seq_len && s[i + k]; k++) {
+                                unsigned char next = s[i + k];
+                                if ((next & 0xC0) != 0x80) {
+                                    break; // Invalid
+                                }
+                                codepoint = (codepoint << 6) | (next & 0x3F);
+                            }
+
+                            // Write \uXXXX or \uXXXX\uXXXX for > 0xFFFF
+                            if (codepoint <= 0xFFFF) {
+                                $tohex(codepoint);
+                                i += seq_len - 1; // Skip continuation bytes
+                            } else {
+                                // UTF-16 surrogate pair for > 0xFFFF
+                                codepoint -= 0x10000;
+                                unsigned int high = 0xD800 | (codepoint >> 10);
+                                unsigned int low = 0xDC00 | (codepoint & 0x3FF);
+                                $tohex(high);
+                                $tohex(low);
+                                i += seq_len - 1;
+                            }
+                        } else {
+                            // Invalid UTF-8, escape as raw byte
+                            $tohex(c);
+                        }
+                    } else if ((c & 0xC0) == 0x80) {
+                        // UTF-8 continuation byte without start - invalid
+                        $tohex(c);
+                    } else {
+                        // Single byte > 0x7F but < 0xC0 (shouldn't happen in valid UTF-8)
+                        buf[cnt++] = c;
+                    }
+                } else {
+                    // Regular ASCII printable character
+                    buf[cnt++] = c;
+                }
+                break;
+        }
+    }
+
+    buf[cnt++] = '"';
+    buf[cnt++] = '\0';
+
+    if (jw->buf) {
+        Exc err = sbuf.append(jw->buf, buf);
+        if (unlikely(err != EOK && jw->error == EOK)) { jw->error = err; }
+    } else if (jw->stream) {
+        if (unlikely(fputs(buf, jw->stream) >= 0 && jw->error == EOK)) { jw->error = Error.io; }
+    }
+
+#undef $tohex
+}
+
 void
 _cex_json__writer__print_item(jw_c* jw, char* format, ...)
 {
@@ -518,7 +660,8 @@ _cex_json__writer__print_item(jw_c* jw, char* format, ...)
             if (s == NULL) {
                 $print("null");
             } else {
-                $print("\"%s\"", s);
+                _cex_json__writer__print_string(jw, s, str.len(s));
+                // $print("\"%s\"", s);
             }
             va_end(va);
         } else if (format[2] == 'S') {
@@ -528,7 +671,8 @@ _cex_json__writer__print_item(jw_c* jw, char* format, ...)
             if (s.buf == NULL) {
                 $print("null");
             } else {
-                $print("\"%S\"", s);
+                _cex_json__writer__print_string(jw, s.buf, s.len);
+                // $print("\"%S\"", s);
             }
             va_end(va);
         } else {
