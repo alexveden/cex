@@ -155,6 +155,140 @@ error:
 //     return it->error;
 // }
 
+str_s
+_cex_json__reader__unescape(str_s val, IAllocator allc)
+{
+    if (!val.buf) { return (str_s){ 0 }; }
+
+    char* output = mem$malloc(allc, val.len + 1);
+    if (!output) { goto fail; }
+
+    size_t i = 0, j = 0;
+    u8* input = (u8*)val.buf;
+    usize len = val.len;
+
+    // clang-format off
+    static const u8 hex_lut[256] = {
+        ['0'] = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+        ['A'] = 10, 11, 12, 13, 14, 15,
+        ['a'] = 10, 11, 12, 13, 14, 15,
+        0xFF,
+    };
+    // clang-format on
+    (void)hex_lut;
+
+    while (i < len) {
+        if (input[i] != '\\') {
+            // Normal character
+            output[j++] = input[i++];
+        } else {
+            // backslash (\) char
+            i++; // Skip backslash
+
+            if (i >= len) {
+                output[j++] = '\\';
+                break;
+            }
+
+            // Handle standard JSON escapes
+            switch (input[i]) {
+                case '"':
+                    output[j++] = '"';
+                    i++;
+                    break;
+                case '\\':
+                    output[j++] = '\\';
+                    i++;
+                    break;
+                case '/':
+                    output[j++] = '/';
+                    i++;
+                    break;
+                case 'b':
+                    output[j++] = '\b';
+                    i++;
+                    break;
+                case 'f':
+                    output[j++] = '\f';
+                    i++;
+                    break;
+                case 'n':
+                    output[j++] = '\n';
+                    i++;
+                    break;
+                case 'r':
+                    output[j++] = '\r';
+                    i++;
+                    break;
+                case 't':
+                    output[j++] = '\t';
+                    i++;
+                    break;
+
+                case 'u': {
+                    // Unicode escape: \uXXXX
+                    i++; // Skip 'u'
+
+                    // Parse 4 hex digits
+                    if (unlikely(i + 3 >= len)) { goto fail; }
+
+                    char hex[5] = { 0 };
+                    hex[0] = input[i++];
+                    hex[1] = input[i++];
+                    hex[2] = input[i++];
+                    hex[3] = input[i++];
+
+                    // Convert hex to Unicode code point
+                    unsigned int codepoint;
+                    if (sscanf(hex, "%4x", &codepoint) != 1) { goto fail; }
+
+                    // Handle UTF-8 encoding
+                    if (codepoint <= 0x7F) {
+                        // 1 byte UTF-8
+                        output[j++] = (char)codepoint;
+                    } else if (codepoint <= 0x7FF) {
+                        // 2 bytes UTF-8
+                        output[j++] = 0xC0 | (codepoint >> 6);
+                        output[j++] = 0x80 | (codepoint & 0x3F);
+                    } else if (codepoint >= 0xD800 && codepoint <= 0xDBFF) {
+                        u32 high = codepoint;
+
+                        // FIX: stub!
+                        u32 low = 0xde00; // TODO: get another \uYYYY
+                        i += 6;
+
+                        codepoint = 0x10000 + ((high - 0xD800) << 10) + (low - 0xDC00);
+                        output[j++] = (u8)(0xF0 | (codepoint >> 18));
+                        output[j++] = (u8)(0x80 | ((codepoint >> 12) & 0x3F));
+                        output[j++] = (u8)(0x80 | ((codepoint >> 6) & 0x3F));
+                        output[j++] = (u8)(0x80 | (codepoint & 0x3F));
+                    } else {
+                        // 3 bytes UTF-8 (most common for \uXXXX)
+                        output[j++] = 0xE0 | (codepoint >> 12);
+                        output[j++] = 0x80 | ((codepoint >> 6) & 0x3F);
+                        output[j++] = 0x80 | (codepoint & 0x3F);
+                    }
+                    break;
+                }
+
+                default:
+                    // Unknown escape, copy both characters
+                    output[j++] = '\\';
+                    output[j++] = input[i++];
+                    break;
+            }
+        }
+    }
+
+    output[j] = '\0';
+
+    return (str_s){ .buf = output, .len = j };
+
+fail:
+    if (output) { mem$free(allc, output); }
+    return (str_s){ 0 };
+}
+
 static Exc
 _cex_json__reader__skip(jr_c* it)
 {
@@ -512,7 +646,7 @@ _cex_json__writer__print_string(jw_c* jw, char* s, usize slen, bool add_quotes)
     }
 
     const char hex_digits[] = "0123456789ABCDEF";
-    (void)hex_digits;
+    bool has_escape = false;
 
 // TODO: consider big-endianess
 #define $tohex(_byte32)                                                                            \
@@ -531,7 +665,9 @@ _cex_json__writer__print_string(jw_c* jw, char* s, usize slen, bool add_quotes)
                 Exc err = sbuf.append(jw->buf, buf);
                 if (unlikely(err != EOK && jw->error == EOK)) { jw->error = err; }
             } else if (jw->stream) {
-                if (unlikely(fputs(buf, jw->stream) <= 0 && jw->error == EOK)) { jw->error = Error.io; }
+                if (unlikely(fputs(buf, jw->stream) <= 0 && jw->error == EOK)) {
+                    jw->error = Error.io;
+                }
             }
             buf[0] = '\0';
             cnt = 0;
@@ -541,41 +677,51 @@ _cex_json__writer__print_string(jw_c* jw, char* s, usize slen, bool add_quotes)
             case '"':
                 buf[cnt++] = '\\';
                 buf[cnt++] = '"';
+                has_escape = true;
                 break;
             case '\\':
                 buf[cnt++] = '\\';
                 buf[cnt++] = '\\';
+                has_escape = true;
                 break;
             case '\b':
                 buf[cnt++] = '\\';
                 buf[cnt++] = 'b';
+                has_escape = true;
                 break;
             case '\f':
                 buf[cnt++] = '\\';
                 buf[cnt++] = 'f';
+                has_escape = true;
                 break;
             case '\n':
                 buf[cnt++] = '\\';
                 buf[cnt++] = 'n';
+                has_escape = true;
                 break;
             case '\r':
                 buf[cnt++] = '\\';
                 buf[cnt++] = 'r';
+                has_escape = true;
                 break;
             case '\t':
                 buf[cnt++] = '\\';
                 buf[cnt++] = 't';
+                has_escape = true;
                 break;
             case '/':
                 // Forward slash escape is optional but safe
                 buf[cnt++] = '\\';
                 buf[cnt++] = '/';
+                has_escape = true;
                 break;
 
             default:
                 if (unlikely(c < 0x20 || c == 0x7F)) {
+                    has_escape = true;
                     $tohex(c);
                 } else if (unlikely(c >= 0x80)) {
+                    has_escape = true;
                     // Non-ASCII: encode as UTF-8 or \uXXXX
                     // For simplicity, we'll encode all non-ASCII as \uXXXX
                     // This is inefficient but safe
@@ -596,7 +742,7 @@ _cex_json__writer__print_string(jw_c* jw, char* s, usize slen, bool add_quotes)
                         if (seq_len > 0) {
                             // Extract codepoint from UTF-8
                             codepoint = c & (0xFF >> (seq_len + 1));
-                            if (i+seq_len <= slen) {
+                            if (i + seq_len <= slen) {
                                 for (u32 k = 1; k < seq_len && s[i + k]; k++) {
                                     u8 next = s[i + k];
                                     if ((next & 0xC0) != 0x80) {
@@ -645,6 +791,8 @@ _cex_json__writer__print_string(jw_c* jw, char* s, usize slen, bool add_quotes)
 
     if (add_quotes) {
         buf[cnt++] = '"';
+    } else {
+        if (has_escape && !jw->error) { jw->error = JsonError.encoding; }
     }
 
     buf[cnt++] = '\0';
@@ -729,7 +877,7 @@ _cex_json__writer__print_key(jw_c* jw, char* key)
         "Expected to be in json object scope"
     );
     _cex_json_writer_indent(jw, false);
-    if (unlikely(key == NULL)){
+    if (unlikely(key == NULL)) {
         $print("null");
         if (!jw->error) { jw->error = JsonError.null_field; }
     } else {

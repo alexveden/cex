@@ -1610,4 +1610,169 @@ test$case(json_writer_unicode_key_escaping)
     }
     return EOK;
 }
+
+test$case(json_writer_unicode_key_escaping_simplified_keys_error)
+{
+    mem$scope(tmem$, _)
+    {
+        jw_c jb;
+        sbuf_c buf = sbuf.create(1024, _);
+        (void)buf;
+        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4, .simplified = true));
+
+        jw$scope(&jb, JsonType__obj)
+        {
+            jw$key("😀");
+            jw$val("😀"); // Grinning face (U+1F600)
+        }
+        // NOTE: in simplified=true, escaped chars in keys are not allowed
+        tassert_er(JsonError.encoding, jb.error);
+
+        io.printf("\nJSON (buf): \n%s\n", buf);
+        print_json_expected(buf);
+
+        char* expected = "{\n\
+    \\uD83D\\uDE00: \"\\uD83D\\uDE00\"\n\
+}";
+
+        tassert_eq(buf, expected);
+    }
+    return EOK;
+}
+
+test$case(json_writer_unicode_unescape_simple)
+{
+    mem$scope(tmem$, _)
+    {
+        jw_c jb;
+        sbuf_c buf = sbuf.create(1024, _);
+        (void)buf;
+        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4, .simplified = true));
+
+        tassert(str.eq("прив", "прив"));
+
+        jw$scope(&jb, JsonType__obj)
+        {
+            jw$key("foo");
+            jw$val("прив"); // Grinning face (U+1F600)
+        }
+        tassert_er(EOK, jb.error);
+
+        io.printf("\nJSON (buf): \n%s\n", buf);
+        print_json_expected(buf);
+
+char* expected = "{\n\
+    foo: \"\\u043F\\u0440\\u0438\\u0432\"\n\
+}";
+
+        tassert_eq(buf, expected);
+
+        jr_c jr;
+        e$ret(jr$new(&jr, expected, 0));
+
+        jr$foreach(k, v, &jr) {
+            (void)v;
+            if(str$eq(k, "foo")) {
+                str_s unesc = _cex_json__reader__unescape(v, _); 
+                io.printf("\nunesc: `%S` len: %d\n", unesc, unesc.len);
+                tassert_eq("прив", unesc.buf);
+            } else {
+                // unreachable();
+            }
+        }
+        tassert_eq(jr.error, EOK);
+
+    }
+    return EOK;
+}
+
+test$case(json_writer_unicode_unescape_surrogate)
+{
+    mem$scope(tmem$, _)
+    {
+        jw_c jb;
+        sbuf_c buf = sbuf.create(1024, _);
+        (void)buf;
+        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4, .simplified = true));
+
+        tassert(str.eq("😀", "😀"));
+        tassert_eq(str.len("😀"), 4);
+
+        jw$scope(&jb, JsonType__obj)
+        {
+            jw$key("foo");
+            jw$val("😀"); // Grinning face (U+1F600)
+        }
+        tassert_er(EOK, jb.error);
+
+        io.printf("\nJSON (buf): \n%s\n", buf);
+        print_json_expected(buf);
+
+char* expected = "{\n\
+    foo: \"\\uD83D\\uDE00\"\n\
+}";
+
+        tassert_eq(buf, expected);
+
+        jr_c jr;
+        e$ret(jr$new(&jr, expected, 0));
+
+        jr$foreach(k, v, &jr) {
+            (void)v;
+            if(str$eq(k, "foo")) {
+                str_s unesc = _cex_json__reader__unescape(v, _); 
+                io.printf("\nunesc: `%S` len: %d\n", unesc, unesc.len);
+                tassert_eq(unesc.len, 4);
+                tassert_eq("😀", unesc.buf);
+            } else {
+                unreachable();
+            }
+        }
+        tassert_eq(jr.error, EOK);
+
+    }
+    return EOK;
+}
+
+test$case(json_writer_unicode_unescape_2byte)
+{
+    mem$scope(tmem$, _)
+    {
+        str_s unesc = _cex_json__reader__unescape(str$s("\u00a9"), _); 
+        tassert_eq(str$s("©").len, 2);
+
+        io.printf("\nunesc: `%S` len: %d\n", unesc, unesc.len);
+        tassert_eq(unesc.len, 2);
+        tassert_eq(unesc, str$s("©"));
+    }
+
+    return EOK;
+}
+
+test$case(json_writer_unicode_unescape_simple_ascii)
+{
+    mem$scope(tmem$, _)
+    {
+        str_s unesc = _cex_json__reader__unescape(str$s("foo"), _); 
+        io.printf("\nunesc: `%S` len: %d\n", unesc, unesc.len);
+        tassert_eq(unesc.len, 3);
+        tassert_eq(unesc, str$s("foo"));
+    }
+
+    return EOK;
+}
+test$case(json_writer_unicode_unescape_3byte)
+{
+    mem$scope(tmem$, _)
+    {
+        str_s unesc = _cex_json__reader__unescape(str$s("\u20aC"), _); 
+        tassert_eq(str$s("€").len, 3);
+
+        io.printf("\nunesc: `%S` len: %d\n", unesc, unesc.len);
+        tassert_eq(unesc.len, 3);
+        tassert_eq(unesc, str$s("€"));
+    }
+
+    return EOK;
+}
 test$main();
