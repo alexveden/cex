@@ -155,27 +155,26 @@ error:
 //     return it->error;
 // }
 
-str_s
-_cex_json__reader__unescape(str_s val, IAllocator allc)
+Exception
+_cex_json__reader__decode(str_s value_str, str_s* out_val, IAllocator allc)
 {
-    if (!val.buf) { return (str_s){ 0 }; }
+    if (unlikely(!out_val)) { return Error.argument; }
+    if (unlikely(!value_str.buf)) { return Error.null_or_empty; }
 
-    char* output = mem$malloc(allc, val.len + 1);
-    if (!output) { goto fail; }
+    char* output = mem$malloc(allc, value_str.len + 1);
+    if (unlikely(!output)) { return Error.memory; }
 
-    size_t i = 0, j = 0;
-    u8* input = (u8*)val.buf;
-    usize len = val.len;
+    u8* input = (u8*)value_str.buf;
+    usize len = value_str.len;
+    usize i = 0, j = 0;
 
     // clang-format off
     static const u8 hex_lut[256] = {
-        ['0'] = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
-        ['A'] = 10, 11, 12, 13, 14, 15,
-        ['a'] = 10, 11, 12, 13, 14, 15,
-        0xFF,
+        ['0'] = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+        ['A'] = 11, 12, 13, 14, 15, 16,
+        ['a'] = 11, 12, 13, 14, 15, 16,
     };
     // clang-format on
-    (void)hex_lut;
 
     while (i < len) {
         if (input[i] != '\\') {
@@ -232,15 +231,13 @@ _cex_json__reader__unescape(str_s val, IAllocator allc)
                     // Parse 4 hex digits
                     if (unlikely(i + 3 >= len)) { goto fail; }
 
-                    char hex[5] = { 0 };
-                    hex[0] = input[i++];
-                    hex[1] = input[i++];
-                    hex[2] = input[i++];
-                    hex[3] = input[i++];
-
                     // Convert hex to Unicode code point
-                    unsigned int codepoint;
-                    if (sscanf(hex, "%4x", &codepoint) != 1) { goto fail; }
+                    u32 codepoint = 0;
+                    for (int _i = 0; _i < 4; _i++) {
+                        uint8_t nibble = hex_lut[(u8)input[i++]];
+                        if (unlikely(nibble == 0x0)) { goto fail; }
+                        codepoint = (codepoint << 4) | (nibble - 1);
+                    }
 
                     // Handle UTF-8 encoding
                     if (codepoint <= 0x7F) {
@@ -251,11 +248,21 @@ _cex_json__reader__unescape(str_s val, IAllocator allc)
                         output[j++] = 0xC0 | (codepoint >> 6);
                         output[j++] = 0x80 | (codepoint & 0x3F);
                     } else if (codepoint >= 0xD800 && codepoint <= 0xDBFF) {
+                        // high is a first unicode value \uXXXX
+                        // low is a second part value unicode \uYYYY
                         u32 high = codepoint;
-
-                        // FIX: stub!
-                        u32 low = 0xde00; // TODO: get another \uYYYY
-                        i += 6;
+                        u32 low = 0;
+                        if (unlikely(i + 5 >= len)) { goto fail; }
+                        if (unlikely(input[i] != '\\')) { goto fail; }
+                        i++;
+                        if (unlikely(input[i] != 'u')) { goto fail; }
+                        i++;
+                        for (int _i = 0; _i < 4; _i++) {
+                            uint8_t nibble = hex_lut[(u8)input[i++]];
+                            if (unlikely(nibble == 0x00)) { goto fail; }
+                            low = (low << 4) | (nibble - 1);
+                        }
+                        if (unlikely(!(low >= 0xDC00 && low <= 0xDFFF))) { goto fail; }
 
                         codepoint = 0x10000 + ((high - 0xD800) << 10) + (low - 0xDC00);
                         output[j++] = (u8)(0xF0 | (codepoint >> 18));
@@ -282,11 +289,13 @@ _cex_json__reader__unescape(str_s val, IAllocator allc)
 
     output[j] = '\0';
 
-    return (str_s){ .buf = output, .len = j };
+    *out_val = (str_s){ .buf = output, .len = j };
+    return EOK; 
 
 fail:
     if (output) { mem$free(allc, output); }
-    return (str_s){ 0 };
+    *out_val = (str_s){ 0 };
+    return JsonError.encoding;
 }
 
 static Exc

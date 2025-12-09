@@ -1673,7 +1673,8 @@ char* expected = "{\n\
         jr$foreach(k, v, &jr) {
             (void)v;
             if(str$eq(k, "foo")) {
-                str_s unesc = _cex_json__reader__unescape(v, _); 
+                str_s unesc;
+                e$ret(jr$decode_str(v, &unesc, _)); 
                 io.printf("\nunesc: `%S` len: %d\n", unesc, unesc.len);
                 tassert_eq("прив", unesc.buf);
             } else {
@@ -1720,7 +1721,8 @@ char* expected = "{\n\
         jr$foreach(k, v, &jr) {
             (void)v;
             if(str$eq(k, "foo")) {
-                str_s unesc = _cex_json__reader__unescape(v, _); 
+                str_s unesc;
+                e$ret(jr$decode_str(v, &unesc, _)); 
                 io.printf("\nunesc: `%S` len: %d\n", unesc, unesc.len);
                 tassert_eq(unesc.len, 4);
                 tassert_eq("😀", unesc.buf);
@@ -1738,7 +1740,8 @@ test$case(json_writer_unicode_unescape_2byte)
 {
     mem$scope(tmem$, _)
     {
-        str_s unesc = _cex_json__reader__unescape(str$s("\u00a9"), _); 
+        str_s unesc;
+        e$ret(jr$decode_str(str$s("\u00a9"), &unesc, _)); 
         tassert_eq(str$s("©").len, 2);
 
         io.printf("\nunesc: `%S` len: %d\n", unesc, unesc.len);
@@ -1753,7 +1756,8 @@ test$case(json_writer_unicode_unescape_simple_ascii)
 {
     mem$scope(tmem$, _)
     {
-        str_s unesc = _cex_json__reader__unescape(str$s("foo"), _); 
+        str_s unesc;
+        e$ret(jr$decode_str(str$s("foo"), &unesc, _)); 
         io.printf("\nunesc: `%S` len: %d\n", unesc, unesc.len);
         tassert_eq(unesc.len, 3);
         tassert_eq(unesc, str$s("foo"));
@@ -1765,12 +1769,44 @@ test$case(json_writer_unicode_unescape_3byte)
 {
     mem$scope(tmem$, _)
     {
-        str_s unesc = _cex_json__reader__unescape(str$s("\u20aC"), _); 
+        str_s unesc;
+        e$ret(jr$decode_str(str$s("\u20aC"), &unesc, _)); 
         tassert_eq(str$s("€").len, 3);
 
         io.printf("\nunesc: `%S` len: %d\n", unesc, unesc.len);
         tassert_eq(unesc.len, 3);
         tassert_eq(unesc, str$s("€"));
+    }
+
+    return EOK;
+}
+
+test$case(json_writer_unicode_unescape_bad_hex)
+{
+    str_s unesc;
+
+    tassert_er(jr$decode_str(str$s("\\u00AH"),&unesc, mem$), JsonError.encoding); 
+    tassert_er(jr$decode_str(str$s("\\u00AZ"),&unesc, mem$), JsonError.encoding); 
+    tassert_er(jr$decode_str(str$s("\\u00A"),&unesc, mem$), JsonError.encoding); 
+    tassert_er(jr$decode_str(str$s("\\uD83D\\uDE0"),&unesc, mem$), JsonError.encoding); 
+    tassert_er(jr$decode_str(str$s("\\uD83D\\uDE0H"),&unesc, mem$), JsonError.encoding); 
+    tassert_er(jr$decode_str(str$s("\\uD83D\\uDE0!"),&unesc, mem$), JsonError.encoding); 
+    tassert_er(jr$decode_str(str$s("\\uD83D\\uDE0Z"),&unesc, mem$), JsonError.encoding); 
+    tassert_er(jr$decode_str(str$s("\\uD83D\\DE00"),&unesc, mem$), JsonError.encoding); 
+    tassert_er(jr$decode_str(str$s("\\uD83DuDE00"),&unesc, mem$), JsonError.encoding); 
+    tassert_er(jr$decode_str(str$s("\\uD83D\\uDBFF"),&unesc, mem$), JsonError.encoding); 
+    tassert_er(jr$decode_str(str$s("\\uD83D\\uE000"),&unesc, mem$), JsonError.encoding); 
+
+    return EOK;
+}
+
+test$case(json_writer_unicode_unescape_valid_hex_short)
+{
+    mem$scope(tmem$, _)
+    {
+        str_s unesc;
+        tassert_er(jr$decode_str(str$s("\\u00AA"),&unesc, _), EOK);
+        tassert_er(jr$decode_str(str$s("\\uD800\\uDFFF"),&unesc, _),EOK);
     }
 
     return EOK;
