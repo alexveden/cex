@@ -147,19 +147,27 @@ cex_sbuf_create_static(char* buf, usize buf_size)
 }
 
 
-
-/// Shrinks string length to new_length (fails when new_length > existing length)
+/// Sets the length of a string to any value, if new_length greater than capacity, re-allocates more
+/// space, always null-terminating.
 static Exc
-cex_sbuf_shrink(sbuf_c* self, usize new_length)
+cex_sbuf_set_len(sbuf_c* self, usize new_length)
 {
     uassert(self != NULL);
     sbuf_head_s* head = _sbuf__head(*self);
     if (unlikely(!head)) { return Error.runtime; }
     if (unlikely(head->err)) { return head->err; }
+    
+    usize old_length = head->length;
 
-    if (unlikely(new_length > head->length)) {
-        _sbuf__set_error(head, Error.argument);
-        return Error.argument;
+    if (unlikely(new_length > head->capacity  - 1)) {
+        e$except_silent (err, _sbuf__grow_buffer(self, new_length)) { return err; }
+        // re-fetch head in case of realloc
+        head = (sbuf_head_s*)(*self - sizeof(sbuf_head_s));
+    } 
+
+    if (unlikely(new_length > old_length)) {
+        // If we grow sbuf, let's keep allocated length zero
+        memset(*self + old_length, 0, new_length - old_length);
     }
 
     head->length = new_length;
@@ -171,7 +179,7 @@ cex_sbuf_shrink(sbuf_c* self, usize new_length)
 static void
 cex_sbuf_clear(sbuf_c* self)
 {
-    cex_sbuf_shrink(self, 0);
+    cex_sbuf_set_len(self, 0);
 }
 
 /// Returns string length from its metadata
@@ -351,7 +359,7 @@ cex_sbuf_append(sbuf_c* self, char* s)
     return Error.ok;
 }
 
-/// Validate dynamic string state, with detailed Exception 
+/// Validate dynamic string state, with detailed Exception
 static Exception
 cex_sbuf_validate(sbuf_c* self)
 {
@@ -395,7 +403,7 @@ const struct __cex_namespace__sbuf sbuf = {
     .destroy = cex_sbuf_destroy,
     .isvalid = cex_sbuf_isvalid,
     .len = cex_sbuf_len,
-    .shrink = cex_sbuf_shrink,
+    .set_len = cex_sbuf_set_len,
     .validate = cex_sbuf_validate,
 
     // clang-format on

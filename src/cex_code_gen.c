@@ -28,7 +28,7 @@ _cex__codegen_print(cex_codegen_s* cg, bool rep_new_line, char* format, ...)
     if (unlikely(cg->error != EOK)) { return; }
     if (rep_new_line) {
         usize slen = sbuf.len(cg->buf);
-        if (slen && cg->buf[0][slen - 1] == '\n') { sbuf.shrink(cg->buf, slen - 1); }
+        if (slen && cg->buf[0][slen - 1] == '\n') { sbuf.set_len(cg->buf, slen - 1); }
     }
     cg$printva(cg);
 }

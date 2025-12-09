@@ -106,8 +106,9 @@ struct __cex_namespace__sbuf {
     bool            (*isvalid)(sbuf_c* self);
     /// Returns string length from its metadata
     u32             (*len)(sbuf_c* self);
-    /// Shrinks string length to new_length
-    Exc             (*shrink)(sbuf_c* self, usize new_length);
+    /// Sets the length of a string to any value, if new_length greater than capacity, re-allocates more
+    /// space, always null-terminating.
+    Exc             (*set_len)(sbuf_c* self, usize new_length);
     /// Validate dynamic string state, with detailed Exception
     Exception       (*validate)(sbuf_c* self);
 

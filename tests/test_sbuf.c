@@ -465,7 +465,7 @@ test$case(test_sbuf_appendf_error_resilience)
     tassert_eq(false, sbuf.isvalid(&s));
 
     tassert_eq(Error.overflow, sbuf.validate(&s));
-    tassert_er(Error.overflow, sbuf.shrink(&s, 31921)); // NOTE: uses hear->err
+    tassert_er(Error.overflow, sbuf.set_len(&s, 31921)); // NOTE: uses hear->err
 
     tassert_eq(0, strlen(s));
 
@@ -479,9 +479,9 @@ test$case(test_sbuf_appendf_error_resilience)
     sbuf.append(&s, "456");
     tassert_eq(0, sbuf.len(&s));
     tassert_eq(0, sbuf.capacity(&s));
-    tassert_er(Error.runtime, sbuf.shrink(&s, 31921));
+    tassert_er(Error.runtime, sbuf.set_len(&s, 31921));
     sbuf.clear(&s);
-    sbuf.shrink(&s, 0);
+    sbuf.set_len(&s, 0);
 
     tassert_eq(false, sbuf.isvalid(&s));
     tassert_eq("Memory error or already free'd", sbuf.validate(&s));
@@ -490,7 +490,7 @@ test$case(test_sbuf_appendf_error_resilience)
     return EOK;
 }
 
-test$case(test_sbuf_shrink_test)
+test$case(test_sbuf_set_len_test)
 {
     char buf[64];
     sbuf_c s = sbuf.create_static(buf, arr$len(buf));
@@ -506,18 +506,55 @@ test$case(test_sbuf_shrink_test)
     tassert_eq("123", s);
     tassert_eq(sbuf.len(&s), 3);
 
-    sbuf.shrink(&s, 2);
+    sbuf.set_len(&s, 2);
     tassert_eq(sbuf.len(&s), 2);
     tassert_eq(s[2], '\0');
     tassert_er(EOK, sbuf.validate(&s));
 
 
-    tassert_eq(Error.argument, sbuf.shrink(&s, 3));
-    tassert_eq(sbuf.len(&s), 0);
-    tassert_er(Error.argument, sbuf.validate(&s));
+    tassert_eq(Error.ok, sbuf.set_len(&s, 3));
+    tassert_eq(sbuf.len(&s), 3);
+    tassert_er(Error.ok, sbuf.validate(&s));
 
+
+    // Static buffer overflow
+    tassert_eq(Error.overflow, sbuf.set_len(&s, sbuf.capacity(&s)));
+    tassert_er(Error.overflow, sbuf.validate(&s));
 
     sbuf.destroy(&s);
+    return EOK;
+}
+
+test$case(test_sbuf_append_set_len_grow)
+{
+    sbuf_c s = sbuf.create(5, mem$);
+
+    tassert_eq(sbuf.capacity(&s), 64 - sizeof(sbuf_head_s) - 1);
+
+    // wipe all nullterm
+    memset(s, 0xff, sbuf.capacity(&s));
+    sbuf.append(&s, "foo");
+
+    tassert_eq(sbuf.len(&s), 3);
+    tassert_eq(sbuf.capacity(&s), 64 - sizeof(sbuf_head_s) - 1);
+
+    tassert_eq(sbuf.set_len(&s, 65), EOK);
+    tassert_eq(sbuf.len(&s), 65);
+    tassert_eq(s[65], '\0');
+
+    tassert_eq(s[0], 'f');
+    tassert_eq(s[1], 'o');
+    tassert_eq(s[2], 'o');
+    tassert_eq(s[3], '\0');
+
+    for(u32 i = 4; i < sbuf.len(&s); i++) {
+        tassertf(s[i] == '\0', "s[%d] %d != '\\0'", i, s[i]);
+    }
+
+    // Ensure the new space is nullified
+
+    s = sbuf.destroy(&s);
+    tassert(s == NULL);
     return EOK;
 }
 
