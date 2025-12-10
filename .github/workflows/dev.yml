@@ -313,5 +313,5 @@ jobs:
 
       - name: clang-tidy std serdegen
         run: |
-          clang-tidy tests/cexstd/serde/advanced/serdegen.c
-          clang-tidy tests/cexstd/serde/basic/serdegen.c
+          clang-tidy tests/cexstd/json/advanced/serdegen.c
+          clang-tidy tests/cexstd/json/basic/serdegen.c
