@@ -303,6 +303,15 @@ jobs:
           echo "CEX config"
           ./cex config
 
-      - name: clang-tidy checks
+      - name: clang-tidy core checks
         run: |
           clang-tidy $(find ./src -name "*.c" -o -name "*.h")
+
+      - name: clang-tidy std checks
+        run: |
+          clang-tidy $(find ./cexstd -name "*.c" -o -name "*.h")
+
+      - name: clang-tidy std serdegen
+        run: |
+          clang-tidy tests/cexstd/serde/advanced/serdegen.c
+          clang-tidy tests/cexstd/serde/basic/serdegen.c
