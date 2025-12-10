@@ -68,7 +68,7 @@ destroy_stock(Stock* stk, IAllocator allc)
 }
 
 Exception
-deserialize_stock(jr_c* jr, Stock* stk, IAllocator allc)
+deserialize_stock(json_rd_c* jr, Stock* stk, IAllocator allc)
 {
     uassert(stk);
     uassert(jr);
@@ -76,14 +76,14 @@ deserialize_stock(jr_c* jr, Stock* stk, IAllocator allc)
     u64 fields_set = 0;
     u64 fields_expected = (1 << 2) - 1;
 
-    jr$foreach(k, v, jr)
+    json$rd_foreach(k, v, jr)
     {
         if (str$eq(k, "ticker")) {
             fields_set |= (1 << 0);
             stk->ticker = str.slice.clone(v, allc);
         } else if (str$eq(k, "id")) {
             fields_set |= (1 << 1);
-            jr$egoto(jr, str$convert(v, &stk->id), err);
+            json$rd_egoto(jr, str$convert(v, &stk->id), err);
         }
     }
     if (fields_set != fields_expected) { return Error.not_found; }
@@ -105,22 +105,22 @@ destroy_order(Order* item, IAllocator allc)
 }
 
 Exception
-deserialize_order(jr_c* jr, Order* item, IAllocator allc)
+deserialize_order(json_rd_c* jr, Order* item, IAllocator allc)
 {
     uassert(item);
     uassert(jr);
     uassert(allc);
 
-    jr$foreach(k, v, jr)
+    json$rd_foreach(k, v, jr)
     {
         if (str$eq(k, "stock")) {
             item->stock = mem$new(allc, Stock);
-            if (item->stock == NULL) { jr$egoto(jr, Error.memory, err); }
-            jr$egoto(jr, deserialize_stock(jr, item->stock, allc), err);
+            if (item->stock == NULL) { json$rd_egoto(jr, Error.memory, err); }
+            json$rd_egoto(jr, deserialize_stock(jr, item->stock, allc), err);
         } else if (str$eq(k, "qty")) {
-            jr$egoto(jr, str$convert(v, &item->qty), err);
+            json$rd_egoto(jr, str$convert(v, &item->qty), err);
         } else if (str$eq(k, "price")) {
-            jr$egoto(jr, str$convert(v, &item->price), err);
+            json$rd_egoto(jr, str$convert(v, &item->price), err);
         }
     }
     return EOK;
@@ -130,43 +130,43 @@ err:
 }
 
 Exception
-print_stock(jw_c* jw, Stock* stk)
+print_stock(json_wr_c* jw, Stock* stk)
 {
-    jw_c _jw;
+    json_wr_c _jw;
     if (!jw) {
-        e$ret(jw$new(&_jw, stdout, .indent = 4));
+        e$ret(json$wr_new(&_jw, stdout, .indent = 4));
         jw = &_jw;
     }
 
-    jw$scope(jw, JsonType__obj)
+    json$wr_scope(jw, JsonType__obj)
     {
-        jw$key("ticker");
-        jw$val(stk->ticker);
+        json$wr_key("ticker");
+        json$wr_val(stk->ticker);
 
-        jw$key("id");
-        jw$val(stk->id);
+        json$wr_key("id");
+        json$wr_val(stk->id);
     }
 
     return EOK;
 }
 
 Exception
-print_order(jw_c* jw, Order* ord)
+print_order(json_wr_c* jw, Order* ord)
 {
-    jw_c _jw;
+    json_wr_c _jw;
     if (!jw) {
-        e$ret(jw$new(&_jw, stdout, .indent = 4));
+        e$ret(json$wr_new(&_jw, stdout, .indent = 4));
         jw = &_jw;
     }
-    jw$scope(jw, JsonType__obj)
+    json$wr_scope(jw, JsonType__obj)
     {
-        jw$key("price");
-        jw$val(ord->price);
+        json$wr_key("price");
+        json$wr_val(ord->price);
 
-        jw$key("qty");
-        jw$val(ord->qty);
+        json$wr_key("qty");
+        json$wr_val(ord->qty);
 
-        jw$key("stock");
+        json$wr_key("stock");
         e$ret(print_stock(jw, ord->stock));
     }
 
@@ -181,15 +181,15 @@ test$case(json_reader_macro_proto)
         "{ \"foo\" : {\"baz\": 3, \"fuzz\": 8, \"oops\": 0}, \"next\": [1, 2, 3], \"baz\": 17 }"
     );
 
-    jr_c js;
-    e$ret(jr$new(&js, content.buf, content.len, .strict_mode = true));
+    json_rd_c js;
+    e$ret(json$rd_new(&js, content.buf, content.len, .strict_mode = true));
     tassert_eq(js.type, JsonType__obj);
 
-    jr$foreach(k, v, &js)
+    json$rd_foreach(k, v, &js)
     {
         io.printf("key=%S value=%S\n", k, v);
         if (str$eq(k, "foo")) {
-            jr$foreach(k, v, &js)
+            json$rd_foreach(k, v, &js)
             {
                 io.printf("\tkey=%S value=%S\n", k, v);
                 if (str$eq(k, "fuzz")) {
@@ -200,7 +200,7 @@ test$case(json_reader_macro_proto)
             }
         } else if (str$eq(k, "next")) {
             u32 sum = 0;
-            jr$foreach(v, &js)
+            json$rd_foreach(v, &js)
             {
                 u32 _value = 0;
                 e$ret(str$convert(v, &_value));
@@ -230,22 +230,22 @@ test$case(json_reader_macro_get_scope)
         "{\"arr\": [1, 2, 3], \"args\" : {\"baz\": 3, \"fuzz\": 8}, \"req_type\": 17 }"
     );
 
-    jr_c js;
-    e$ret(jr$new(&js, content.buf, content.len, .strict_mode = true));
+    json_rd_c js;
+    e$ret(json$rd_new(&js, content.buf, content.len, .strict_mode = true));
     tassert_eq(js.type, JsonType__obj);
 
     str_s arr_scope = { 0 };
     str_s obj_scope = { 0 };
     u32 req_type = 0;
-    jr$foreach(k, v, &js)
+    json$rd_foreach(k, v, &js)
     {
         (void)k;
         (void)v;
         if (str$eq(k, "arr")) {
-            arr_scope = jr$get_scope_str_s(&js, JsonType__arr);
+            arr_scope = json$rd_get_scope_str_s(&js, JsonType__arr);
             tassert_eq(arr_scope, str$s("[1, 2, 3]"));
         } else if (str$eq(k, "args")) {
-            obj_scope = jr$get_scope_str_s(&js, JsonType__obj);
+            obj_scope = json$rd_get_scope_str_s(&js, JsonType__obj);
             tassert_eq(obj_scope, str$s("{\"baz\": 3, \"fuzz\": 8}"));
         } else if (str$eq(k, "req_type")) {
             e$ret(str$convert(v, &req_type));
@@ -255,9 +255,9 @@ test$case(json_reader_macro_get_scope)
     tassert_eq(req_type, 17);
 
     u32 arr_sum = 0;
-    e$ret(jr$new(&js, arr_scope.buf, arr_scope.len, .strict_mode = true));
+    e$ret(json$rd_new(&js, arr_scope.buf, arr_scope.len, .strict_mode = true));
     tassert_eq(js.type, JsonType__arr);
-    jr$foreach(v, &js)
+    json$rd_foreach(v, &js)
     {
         u32 res = 0;
         e$ret(str$convert(v, &res));
@@ -267,11 +267,11 @@ test$case(json_reader_macro_get_scope)
     tassert_er(js.error, EOK);
     tassert_eq(arr_sum, 1 + 2 + 3);
 
-    e$ret(jr$new(&js, obj_scope.buf, obj_scope.len, .strict_mode = true));
+    e$ret(json$rd_new(&js, obj_scope.buf, obj_scope.len, .strict_mode = true));
     tassert_eq(js.type, JsonType__obj);
     bool has_baz = false;
     bool has_fuzz = false;
-    jr$foreach(k, v, &js)
+    json$rd_foreach(k, v, &js)
     {
         (void)v;
         if (str$eq(k, "baz")) {
@@ -302,17 +302,17 @@ test$case(json_reader_array_of_objects)
 
     str_s content = str$s("{ items : [{qty: 1, price: 123}, {qty: -100, price: 999}]  }");
 
-    jr_c js;
-    e$ret(jr$new(&js, content.buf, content.len, .strict_mode = false));
-    jr$foreach(k, v, &js)
+    json_rd_c js;
+    e$ret(json$rd_new(&js, content.buf, content.len, .strict_mode = false));
+    json$rd_foreach(k, v, &js)
     {
         (void)v;
         if (str$eq(k, "items")) {
-            jr$foreach(it, &js)
+            json$rd_foreach(it, &js)
             {
                 (void)it;
                 struct Item i = { 0 };
-                jr$foreach(k, v, &js)
+                json$rd_foreach(k, v, &js)
                 {
                     io.printf("k=%S, v=%S\n", k, v);
                     if (str$eq(k, "qty")) {
@@ -346,12 +346,12 @@ test$case(json_reader_strict_mode_keys)
 
     str_s content = str$s("{ \"items\" : 1, \"foo\": 2  }");
 
-    jr_c js;
-    e$ret(jr$new(&js, content.buf, content.len, .strict_mode = true));
+    json_rd_c js;
+    e$ret(json$rd_new(&js, content.buf, content.len, .strict_mode = true));
 
     bool has_items = false;
     bool has_foo = false;
-    jr$foreach(k, v, &js)
+    json$rd_foreach(k, v, &js)
     {
         (void)v;
         if (str$eq(k, "items")) {
@@ -372,12 +372,12 @@ test$case(json_reader_strict_mode_keys_bad_start)
 
     str_s content = str$s("{ items : 1, \"foo\": 2  }");
 
-    jr_c js;
-    e$ret(jr$new(&js, content.buf, content.len, .strict_mode = true));
+    json_rd_c js;
+    e$ret(json$rd_new(&js, content.buf, content.len, .strict_mode = true));
 
     bool has_items = false;
     bool has_foo = false;
-    jr$foreach(k, v, &js)
+    json$rd_foreach(k, v, &js)
     {
         (void)v;
         if (str$eq(k, "items")) {
@@ -398,12 +398,12 @@ test$case(json_reader_strict_mode_keys_bad_following)
 
     str_s content = str$s("{ \"items\" : 1, foo: 2  }");
 
-    jr_c js;
-    e$ret(jr$new(&js, content.buf, content.len, .strict_mode = true));
+    json_rd_c js;
+    e$ret(json$rd_new(&js, content.buf, content.len, .strict_mode = true));
 
     bool has_items = false;
     bool has_foo = false;
-    jr$foreach(k, v, &js)
+    json$rd_foreach(k, v, &js)
     {
         (void)v;
         if (str$eq(k, "items")) {
@@ -424,12 +424,12 @@ test$case(json_reader_json5_single_quote_keys)
 
     str_s content = str$s("{ 'items' : 1, 'foo': 2  }");
 
-    jr_c js;
-    e$ret(jr$new(&js, content.buf, content.len, .strict_mode = false));
+    json_rd_c js;
+    e$ret(json$rd_new(&js, content.buf, content.len, .strict_mode = false));
 
     bool has_items = false;
     bool has_foo = false;
-    jr$foreach(k, v, &js)
+    json$rd_foreach(k, v, &js)
     {
         (void)v;
         if (str$eq(k, "items")) {
@@ -450,44 +450,44 @@ test$case(json_writer_macro_proto_indent4)
 {
     mem$scope(tmem$, _)
     {
-        jw_c jb;
+        json_wr_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         (void)buf;
-        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4));
-        // tassert_er(EOK, jw$new(&jb, stdout, .indent = 0));
+        tassert_er(EOK, json$wr_new(&jb, .buf = &buf, .indent = 4));
+        // tassert_er(EOK, json$wr_new(&jb, stdout, .indent = 0));
 
-        jw$scope(&jb, JsonType__obj)
+        json$wr_scope(&jb, JsonType__obj)
         {
-            jw$key("foo2");
-            jw$val("1");
+            json$wr_key("foo2");
+            json$wr_val("1");
 
-            jw$key("foo3");
-            jw$fmt("%d", 4);
+            json$wr_key("foo3");
+            json$wr_fmt("%d", 4);
 
-            jw$key("bar");
-            jw$scope(&jb, JsonType__arr)
+            json$wr_key("bar");
+            json$wr_scope(&jb, JsonType__arr)
             {
-                jw$val("foo");
-                jw$fmt("%d", 39);
+                json$wr_val("foo");
+                json$wr_fmt("%d", 39);
 
-                jw$scope(&jb, JsonType__arr)
+                json$wr_scope(&jb, JsonType__arr)
                 {
-                    for (u32 i = 0; i < 10; i++) { jw$val(i); }
+                    for (u32 i = 0; i < 10; i++) { json$wr_val(i); }
                 }
-                jw$scope(&jb, JsonType__obj) {}
-                jw$scope(&jb, JsonType__arr) {}
+                json$wr_scope(&jb, JsonType__obj) {}
+                json$wr_scope(&jb, JsonType__arr) {}
             }
-            jw$key("far");
-            jw$scope(&jb, JsonType__obj)
+            json$wr_key("far");
+            json$wr_scope(&jb, JsonType__obj)
             {
-                jw$key("zoo");
-                jw$val(1);
+                json$wr_key("zoo");
+                json$wr_val(1);
             }
-            jw$key("arr_empty");
-            jw$scope(&jb, JsonType__arr) {}
+            json$wr_key("arr_empty");
+            json$wr_scope(&jb, JsonType__arr) {}
 
-            jw$key("obj_empty");
-            jw$scope(&jb, JsonType__obj) {}
+            json$wr_key("obj_empty");
+            json$wr_scope(&jb, JsonType__obj) {}
         }
 
         tassert_er(EOK, jb.error);
@@ -530,43 +530,43 @@ test$case(json_writer_macro_proto_no_indent)
 {
     mem$scope(tmem$, _)
     {
-        jw_c jb;
+        json_wr_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         (void)buf;
-        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 0));
+        tassert_er(EOK, json$wr_new(&jb, .buf = &buf, .indent = 0));
 
-        jw$scope(&jb, JsonType__obj)
+        json$wr_scope(&jb, JsonType__obj)
         {
-            jw$key("foo2");
-            jw$val("1");
+            json$wr_key("foo2");
+            json$wr_val("1");
 
-            jw$key("foo3");
-            jw$fmt("%d", 4);
+            json$wr_key("foo3");
+            json$wr_fmt("%d", 4);
 
-            jw$key("bar");
-            jw$scope(&jb, JsonType__arr)
+            json$wr_key("bar");
+            json$wr_scope(&jb, JsonType__arr)
             {
-                jw$val("foo");
-                jw$fmt("%d", 39);
+                json$wr_val("foo");
+                json$wr_fmt("%d", 39);
 
-                jw$scope(&jb, JsonType__arr)
+                json$wr_scope(&jb, JsonType__arr)
                 {
-                    for (u32 i = 0; i < 10; i++) { jw$val(i); }
+                    for (u32 i = 0; i < 10; i++) { json$wr_val(i); }
                 }
-                jw$scope(&jb, JsonType__obj) {}
-                jw$scope(&jb, JsonType__arr) {}
+                json$wr_scope(&jb, JsonType__obj) {}
+                json$wr_scope(&jb, JsonType__arr) {}
             }
-            jw$key("far");
-            jw$scope(&jb, JsonType__obj)
+            json$wr_key("far");
+            json$wr_scope(&jb, JsonType__obj)
             {
-                jw$key("zoo");
-                jw$val(1);
+                json$wr_key("zoo");
+                json$wr_val(1);
             }
-            jw$key("arr_empty");
-            jw$scope(&jb, JsonType__arr) {}
+            json$wr_key("arr_empty");
+            json$wr_scope(&jb, JsonType__arr) {}
 
-            jw$key("obj_empty");
-            jw$scope(&jb, JsonType__obj) {}
+            json$wr_key("obj_empty");
+            json$wr_scope(&jb, JsonType__obj) {}
         }
 
         tassert_er(EOK, jb.error);
@@ -585,19 +585,19 @@ test$case(json_writer_macro_only_fmt)
 {
     mem$scope(tmem$, _)
     {
-        jw_c jb;
+        json_wr_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         (void)buf;
-        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4));
+        tassert_er(EOK, json$wr_new(&jb, .buf = &buf, .indent = 4));
 
-        jw$scope(&jb, JsonType__obj)
+        json$wr_scope(&jb, JsonType__obj)
         {
-            jw$fmt("\"cool\": %d", 4);
+            json$wr_fmt("\"cool\": %d", 4);
 
-            jw$key("arr");
-            jw$scope(&jb, JsonType__arr)
+            json$wr_key("arr");
+            json$wr_scope(&jb, JsonType__arr)
             {
-                for (u32 i = 0; i < 10; i++) { jw$val(i); }
+                for (u32 i = 0; i < 10; i++) { json$wr_val(i); }
             }
         }
 
@@ -640,14 +640,14 @@ test$case(json_writer_multi_func_serde_concept)
 
     mem$scope(tmem$, _)
     {
-        jw_c jb;
+        json_wr_c jb;
         sbuf_c buf = sbuf.create(1024, _);
-        e$ret(jw$new(&jb, .buf = &buf, .indent = 4));
+        e$ret(json$wr_new(&jb, .buf = &buf, .indent = 4));
 
         e$ret(print_order(&jb, &ord));
 
         tassert_er(EOK, jb.error);
-        e$ret(jw$validate(&jb));
+        e$ret(json$wr_validate(&jb));
 
         io.printf("\nJSON (buf): \n%s\n", buf);
         print_json_expected(buf);
@@ -662,8 +662,8 @@ test$case(json_writer_multi_func_serde_concept)
 }";
         tassert_eq(buf, expected);
 
-        jr_c jr;
-        e$ret(jr$new(&jr, expected, 0, .strict_mode = true));
+        json_rd_c jr;
+        e$ret(json$rd_new(&jr, expected, 0, .strict_mode = true));
 
         Order ord2 = { 0 };
         e$ret(deserialize_order(&jr, &ord2, _));
@@ -691,12 +691,12 @@ test$case(json_writer_multi_func_deser_order_err)
         \"id\": null\n\
     }\n\
 }";
-        jr_c jr;
-        e$ret(jr$new(&jr, expected, 0, .strict_mode = true));
+        json_rd_c jr;
+        e$ret(json$rd_new(&jr, expected, 0, .strict_mode = true));
 
         Order ord2 = { 0 };
         if (deserialize_order(&jr, &ord2, _)) {
-            io.printf(jr$err_fmt(&jr));
+            io.printf(json$rd_err_fmt(&jr));
             tassert_eq(jr.error, Error.argument);
             tassert_eq(jr._impl.lexer.line + 1, 6);
             return EOK;
@@ -710,61 +710,61 @@ test$case(json_writer_val_types)
 {
     mem$scope(tmem$, _)
     {
-        jw_c jb;
+        json_wr_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         (void)buf;
-        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4));
+        tassert_er(EOK, json$wr_new(&jb, .buf = &buf, .indent = 4));
 
-        jw$scope(&jb, JsonType__arr)
+        json$wr_scope(&jb, JsonType__arr)
         {
             u8 v1 = UINT8_MAX;
-            jw$val(v1);
+            json$wr_val(v1);
             i8 v2 = INT8_MIN;
-            jw$val(v2);
+            json$wr_val(v2);
             i16 v3 = INT16_MIN;
-            jw$val(v3);
+            json$wr_val(v3);
             u16 v4 = UINT16_MAX;
-            jw$val(v4);
+            json$wr_val(v4);
             i32 v5 = INT32_MIN;
-            jw$val(v5);
+            json$wr_val(v5);
             u32 v6 = UINT32_MAX;
-            jw$val(v6);
+            json$wr_val(v6);
             i64 v7 = INT64_MIN;
-            jw$val(v7);
+            json$wr_val(v7);
             u64 v8 = UINT64_MAX;
-            jw$val(v8);
+            json$wr_val(v8);
             f32 v10 = HUGE_VAL;
-            jw$val(v10);
+            json$wr_val(v10);
             f32 v11 = -HUGE_VAL;
-            jw$val(v11);
+            json$wr_val(v11);
             f32 v12 = NAN;
-            jw$val(v12);
+            json$wr_val(v12);
             f64 v13 = HUGE_VAL;
-            jw$val(v13);
+            json$wr_val(v13);
             f64 v14 = -HUGE_VAL;
-            jw$val(v14);
+            json$wr_val(v14);
             f64 v15 = NAN;
-            jw$val(v15);
+            json$wr_val(v15);
             bool v16 = true;
-            jw$val(v16);
+            json$wr_val(v16);
             bool v17 = false;
-            jw$val(v17);
+            json$wr_val(v17);
 
             const char* s1 = "const";
-            jw$val(s1);
+            json$wr_val(s1);
             char* s2 = "str";
-            jw$val(s2);
+            json$wr_val(s2);
             str_s s3 = str$s("str_s");
-            jw$val(s3);
+            json$wr_val(s3);
             char* s4 = NULL;
-            jw$val(s4);
+            json$wr_val(s4);
             str_s s5 = { 0 };
-            jw$val(s5);
+            json$wr_val(s5);
 
             // usize v17 = SIZE_MAX;
-            // jw$val(v17);
+            // json$wr_val(v17);
             // isize v18 = PTRDIFF_MIN;
-            // jw$val(v18);
+            // json$wr_val(v18);
         }
 
         tassert_er(EOK, jb.error);
@@ -803,22 +803,22 @@ test$case(json_reader_error_handling)
 {
     str_s content = str$s("{\n \"foo\": \n}");
 
-    jr_c js;
-    e$ret(jr$new(&js, content.buf, content.len, .strict_mode = true));
+    json_rd_c js;
+    e$ret(json$rd_new(&js, content.buf, content.len, .strict_mode = true));
     tassert_eq(js.type, JsonType__obj);
 
     u32 val = 0;
-    jr$foreach(k, v, &js)
+    json$rd_foreach(k, v, &js)
     {
         if (str$eq(k, "foo")) { e$ret(str$convert(v, &val)); }
     }
-    tassert_er(jr$err(&js), "Unexpected token");
+    tassert_er(json$rd_err(&js), "Unexpected token");
     tassert_eq(val, 0);
 
-    // NOTE: jr$err_fmt can work with any printf function
-    io.printf(jr$err_fmt(&js));
-    fprintf(stdout, jr$err_fmt(&js));
-    char* s = str.fmt(mem$, jr$err_fmt(&js));
+    // NOTE: json$rd_err_fmt can work with any printf function
+    io.printf(json$rd_err_fmt(&js));
+    fprintf(stdout, json$rd_err_fmt(&js));
+    char* s = str.fmt(mem$, json$rd_err_fmt(&js));
     io.printf(s);
     mem$free(mem$, s);
 
@@ -829,31 +829,31 @@ test$case(json_writer_null_scope)
 {
     mem$scope(tmem$, _)
     {
-        jw_c jb;
+        json_wr_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         (void)buf;
-        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4));
-        // tassert_er(EOK, jw$new(&jb, stdout, .indent = 0));
+        tassert_er(EOK, json$wr_new(&jb, .buf = &buf, .indent = 4));
+        // tassert_er(EOK, json$wr_new(&jb, stdout, .indent = 0));
 
-        jw$scope(&jb, JsonType__obj)
+        json$wr_scope(&jb, JsonType__obj)
         {
-            jw$key("bar");
-            jw$val(NULL);
+            json$wr_key("bar");
+            json$wr_val(NULL);
 
-            jw$key("far");
-            jw$scope(&jb, JsonType__obj)
+            json$wr_key("far");
+            json$wr_scope(&jb, JsonType__obj)
             {
-                jw$key("zoo");
-                jw$val(NULL);
+                json$wr_key("zoo");
+                json$wr_val(NULL);
 
-                jw$key("zoo");
-                jw$val(NULL);
+                json$wr_key("zoo");
+                json$wr_val(NULL);
             }
-            jw$key("arr_empty");
-            jw$scope(&jb, JsonType__arr)
+            json$wr_key("arr_empty");
+            json$wr_scope(&jb, JsonType__arr)
             {
-                jw$val(NULL);
-                jw$val(NULL);
+                json$wr_val(NULL);
+                json$wr_val(NULL);
             }
         }
 
@@ -881,15 +881,15 @@ test$case(json_writer_null_object)
 {
     mem$scope(tmem$, _)
     {
-        jw_c jb;
+        json_wr_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         (void)buf;
-        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4));
-        // tassert_er(EOK, jw$new(&jb, stdout, .indent = 0));
+        tassert_er(EOK, json$wr_new(&jb, .buf = &buf, .indent = 4));
+        // tassert_er(EOK, json$wr_new(&jb, stdout, .indent = 0));
 
-        jw$scope(&jb, JsonType__null)
+        json$wr_scope(&jb, JsonType__null)
         {
-            jw$val(NULL);
+            json$wr_val(NULL);
         }
 
         tassert_er(EOK, jb.error);
@@ -909,11 +909,11 @@ test$case(json_reader_null_field)
         ", \"baz\": \"null\" }"
     );
 
-    jr_c js;
-    e$ret(jr$new(&js, content.buf, content.len, .strict_mode = true));
+    json_rd_c js;
+    e$ret(json$rd_new(&js, content.buf, content.len, .strict_mode = true));
     tassert_eq(js.type, JsonType__obj);
 
-    jr$foreach(k, v, &js)
+    json$rd_foreach(k, v, &js)
     {
         io.printf("key=%S value=%S\n", k, v);
         if (str$eq(k, "foo")) {
@@ -935,24 +935,24 @@ test$case(json_writer_null_object_value)
 {
     mem$scope(tmem$, _)
     {
-        jw_c jb;
+        json_wr_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         (void)buf;
-        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4));
-        // tassert_er(EOK, jw$new(&jb, stdout, .indent = 0));
+        tassert_er(EOK, json$wr_new(&jb, .buf = &buf, .indent = 4));
+        // tassert_er(EOK, json$wr_new(&jb, stdout, .indent = 0));
 
-        jw$scope(&jb, JsonType__obj)
+        json$wr_scope(&jb, JsonType__obj)
         {
-            jw$key("foo");
-            jw$scope(&jb, JsonType__null)
+            json$wr_key("foo");
+            json$wr_scope(&jb, JsonType__null)
             {
-                jw$val(NULL);
+                json$wr_val(NULL);
             }
 
-            jw$key("bar");
-            jw$scope(&jb, JsonType__null)
+            json$wr_key("bar");
+            json$wr_scope(&jb, JsonType__null)
             {
-                jw$val(NULL);
+                json$wr_val(NULL);
             }
         }
 
@@ -974,23 +974,23 @@ test$case(json_writer_simplified)
 {
     mem$scope(tmem$, _)
     {
-        jw_c jb;
+        json_wr_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         (void)buf;
-        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4, .simplified = true));
+        tassert_er(EOK, json$wr_new(&jb, .buf = &buf, .indent = 4, .simplified = true));
 
-        jw$scope(&jb, JsonType__obj)
+        json$wr_scope(&jb, JsonType__obj)
         {
-            jw$key("foo");
-            jw$scope(&jb, JsonType__null)
+            json$wr_key("foo");
+            json$wr_scope(&jb, JsonType__null)
             {
-                jw$val(NULL);
+                json$wr_val(NULL);
             }
 
-            jw$key("bar");
-            jw$scope(&jb, JsonType__null)
+            json$wr_key("bar");
+            json$wr_scope(&jb, JsonType__null)
             {
-                jw$val(NULL);
+                json$wr_val(NULL);
             }
         }
 
@@ -1020,8 +1020,8 @@ test$case(json_writer_multi_func_serde__missing_fields)
     }\n\
 }";
 
-        jr_c jr;
-        e$ret(jr$new(&jr, expected, 0, .strict_mode = true));
+        json_rd_c jr;
+        e$ret(json$rd_new(&jr, expected, 0, .strict_mode = true));
 
         Order ord2 = { 0 };
         tassert_eq(Error.not_found, deserialize_order(&jr, &ord2, _));
@@ -1034,59 +1034,59 @@ test$case(json_reader_is_type_compatible)
 {
     mem$scope(tmem$, _)
     {
-        jw_c jb;
+        json_wr_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         (void)buf;
-        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4));
-        jr_c jr;
+        tassert_er(EOK, json$wr_new(&jb, .buf = &buf, .indent = 4));
+        json_rd_c jr;
 
-        jr = (jr_c){ .type = JsonType__num };
+        jr = (json_rd_c){ .type = JsonType__num };
         u8 v1 = UINT8_MAX;
-        tassert(jr$is_type_compatible(&jr, &v1));
+        tassert(json$rd_is_type_compatible(&jr, &v1));
         i8 v2 = INT8_MIN;
-        tassert(jr$is_type_compatible(&jr, &v2));
+        tassert(json$rd_is_type_compatible(&jr, &v2));
         i16 v3 = INT16_MIN;
-        tassert(jr$is_type_compatible(&jr, &v3));
+        tassert(json$rd_is_type_compatible(&jr, &v3));
         u16 v4 = UINT16_MAX;
-        tassert(jr$is_type_compatible(&jr, &v4));
+        tassert(json$rd_is_type_compatible(&jr, &v4));
         i32 v5 = INT32_MIN;
-        tassert(jr$is_type_compatible(&jr, &v5));
+        tassert(json$rd_is_type_compatible(&jr, &v5));
         u32 v6 = UINT32_MAX;
-        tassert(jr$is_type_compatible(&jr, &v6));
+        tassert(json$rd_is_type_compatible(&jr, &v6));
         i64 v7 = INT64_MIN;
-        tassert(jr$is_type_compatible(&jr, &v7));
+        tassert(json$rd_is_type_compatible(&jr, &v7));
         u64 v8 = UINT64_MAX;
-        tassert(jr$is_type_compatible(&jr, &v8));
+        tassert(json$rd_is_type_compatible(&jr, &v8));
         f32 v10 = HUGE_VAL;
-        tassert(jr$is_type_compatible(&jr, &v10));
+        tassert(json$rd_is_type_compatible(&jr, &v10));
         f64 v13 = HUGE_VAL;
-        tassert(jr$is_type_compatible(&jr, &v13));
+        tassert(json$rd_is_type_compatible(&jr, &v13));
 
         bool v16 = true;
-        tassert(!jr$is_type_compatible(&jr, &v16));
+        tassert(!json$rd_is_type_compatible(&jr, &v16));
 
-        jr = (jr_c){ .type = JsonType__null };
-        tassert(!jr$is_type_compatible(&jr, &v16));
-        jr = (jr_c){ .type = JsonType__bool };
-        tassert(jr$is_type_compatible(&jr, &v16));
+        jr = (json_rd_c){ .type = JsonType__null };
+        tassert(!json$rd_is_type_compatible(&jr, &v16));
+        jr = (json_rd_c){ .type = JsonType__bool };
+        tassert(json$rd_is_type_compatible(&jr, &v16));
 
-        jr = (jr_c){ .type = JsonType__str };
+        jr = (json_rd_c){ .type = JsonType__str };
         const char* s1 = "const";
-        tassert(jr$is_type_compatible(&jr, &s1));
+        tassert(json$rd_is_type_compatible(&jr, &s1));
         char* s2 = "str";
-        tassert(jr$is_type_compatible(&jr, &s2));
+        tassert(json$rd_is_type_compatible(&jr, &s2));
         str_s s3 = str$s("str_s");
-        tassert(jr$is_type_compatible(&jr, &s3));
+        tassert(json$rd_is_type_compatible(&jr, &s3));
         char* s4 = NULL;
-        tassert(jr$is_type_compatible(&jr, &s4));
+        tassert(json$rd_is_type_compatible(&jr, &s4));
         str_s s5 = { 0 };
-        tassert(jr$is_type_compatible(&jr, &s5));
+        tassert(json$rd_is_type_compatible(&jr, &s5));
 
-        jr = (jr_c){ .type = JsonType__null };
-        tassert(!jr$is_type_compatible(&jr, &s5));
+        jr = (json_rd_c){ .type = JsonType__null };
+        tassert(!json$rd_is_type_compatible(&jr, &s5));
 
-        jr = (jr_c){ .type = JsonType__null };
-        tassert(jr$is_type_compatible(&jr, NULL));
+        jr = (json_rd_c){ .type = JsonType__null };
+        tassert(json$rd_is_type_compatible(&jr, NULL));
     }
     return EOK;
 }
@@ -1095,27 +1095,27 @@ test$case(json_writer_unicode_proto)
 {
     mem$scope(tmem$, _)
     {
-        jw_c jb;
+        json_wr_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         (void)buf;
-        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4, .simplified = true));
+        tassert_er(EOK, json$wr_new(&jb, .buf = &buf, .indent = 4, .simplified = true));
 
-        jw$scope(&jb, JsonType__obj)
+        json$wr_scope(&jb, JsonType__obj)
         {
-            jw$key("1");
-            jw$val("\"");
-            jw$key("2");
-            jw$val("\\");
-            jw$key("3");
-            jw$val("\f");
-            jw$key("4");
-            jw$val("\n");
-            jw$key("5");
-            jw$val("\r");
-            jw$key("6");
-            jw$val("\t");
-            jw$key("7");
-            jw$val("/");
+            json$wr_key("1");
+            json$wr_val("\"");
+            json$wr_key("2");
+            json$wr_val("\\");
+            json$wr_key("3");
+            json$wr_val("\f");
+            json$wr_key("4");
+            json$wr_val("\n");
+            json$wr_key("5");
+            json$wr_val("\r");
+            json$wr_key("6");
+            json$wr_val("\t");
+            json$wr_key("7");
+            json$wr_val("/");
         }
 
         tassert_er(EOK, jb.error);
@@ -1142,15 +1142,15 @@ test$case(json_writer_unicode_ascii_control)
 {
     mem$scope(tmem$, _)
     {
-        jw_c jb;
+        json_wr_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         (void)buf;
-        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4, .simplified = true));
+        tassert_er(EOK, json$wr_new(&jb, .buf = &buf, .indent = 4, .simplified = true));
 
-        jw$scope(&jb, JsonType__obj)
+        json$wr_scope(&jb, JsonType__obj)
         {
-            jw$key("1");
-            jw$val("\x1B");
+            json$wr_key("1");
+            json$wr_val("\x1B");
         }
         tassert_er(EOK, jb.error);
 
@@ -1171,53 +1171,53 @@ test$case(json_writer_unicode_comprehensive)
 {
     mem$scope(tmem$, _)
     {
-        jw_c jb;
+        json_wr_c jb;
         sbuf_c buf = sbuf.create(4096, _);
         (void)buf;
 
         // Test with various Unicode scenarios
-        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4, .simplified = true));
+        tassert_er(EOK, json$wr_new(&jb, .buf = &buf, .indent = 4, .simplified = true));
 
-        jw$scope(&jb, JsonType__obj)
+        json$wr_scope(&jb, JsonType__obj)
         {
             // 2. ASCII printable characters
-            jw$key("ascii_printable");
-            jw$val("Hello World!@#$%^&*()");
+            json$wr_key("ascii_printable");
+            json$wr_val("Hello World!@#$%^&*()");
 
             // 3. Latin-1 Supplement (U+0080 to U+00FF)
-            jw$key("latin1_supplement");
-            jw$val("©®±µ¼½¾¿ÀÁÂÃÄÅÆÇ");
+            json$wr_key("latin1_supplement");
+            json$wr_val("©®±µ¼½¾¿ÀÁÂÃÄÅÆÇ");
 
             // 4. Common symbols and punctuation
-            jw$key("symbols");
-            jw$val("€£¥¢§¶†‡•…—–");
+            json$wr_key("symbols");
+            json$wr_val("€£¥¢§¶†‡•…—–");
 
             // 5. Common scripts
-            jw$key("latin_extended");
-            jw$val("ŠšŽžÀàÁáÂâÃãÄä");
+            json$wr_key("latin_extended");
+            json$wr_val("ŠšŽžÀàÁáÂâÃãÄä");
 
-            jw$key("greek");
-            jw$val("ΑαΒβΓγΔδΕεΖζΗηΘθ");
+            json$wr_key("greek");
+            json$wr_val("ΑαΒβΓγΔδΕεΖζΗηΘθ");
 
-            jw$key("cyrillic");
-            jw$val("АаБбВвГгДдЕеЁёЖж");
+            json$wr_key("cyrillic");
+            json$wr_val("АаБбВвГгДдЕеЁёЖж");
 
-            jw$key("arabic");
-            jw$val("اب ت ث ج ح خ د ذ ر ز");
+            json$wr_key("arabic");
+            json$wr_val("اب ت ث ج ح خ د ذ ر ز");
 
             // 6. Asian scripts
-            jw$key("chinese");
-            jw$val("你好世界"); // Hello World
+            json$wr_key("chinese");
+            json$wr_val("你好世界"); // Hello World
 
-            jw$key("japanese");
-            jw$val("こんにちは世界"); // Hello World
+            json$wr_key("japanese");
+            json$wr_val("こんにちは世界"); // Hello World
 
-            jw$key("korean");
-            jw$val("안녕하세요 세계"); // Hello World
+            json$wr_key("korean");
+            json$wr_val("안녕하세요 세계"); // Hello World
 
             // 7. Mathematical symbols
-            jw$key("math_symbols");
-            jw$val("∑∏√∞∫≈≠≤≥∈∉∧∨¬⇒⇔");
+            json$wr_key("math_symbols");
+            json$wr_val("∑∏√∞∫≈≠≤≥∈∉∧∨¬⇒⇔");
         }
 
         tassert_er(EOK, jb.error);
@@ -1250,15 +1250,15 @@ test$case(json_writer_unicode_surrogate_pair)
 {
     mem$scope(tmem$, _)
     {
-        jw_c jb;
+        json_wr_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         (void)buf;
-        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4, .simplified = true));
+        tassert_er(EOK, json$wr_new(&jb, .buf = &buf, .indent = 4, .simplified = true));
 
-        jw$scope(&jb, JsonType__obj)
+        json$wr_scope(&jb, JsonType__obj)
         {
-            jw$key("1");
-            jw$val("😀"); // Grinning face (U+1F600)
+            json$wr_key("1");
+            json$wr_val("😀"); // Grinning face (U+1F600)
         }
         tassert_er(EOK, jb.error);
 
@@ -1278,18 +1278,18 @@ test$case(json_writer_wide_ascii)
 {
     mem$scope(tmem$, _)
     {
-        jw_c jb;
+        json_wr_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         sbuf_c val = sbuf.create(1024, _);
-        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4, .simplified = true));
+        tassert_er(EOK, json$wr_new(&jb, .buf = &buf, .indent = 4, .simplified = true));
 
         for (u32 i = 0; i < 100; i++) { e$ret(sbuf.append(&val, "1234567890")); }
         tassert_eq(sbuf.len(&val), 1000);
 
-        jw$scope(&jb, JsonType__obj)
+        json$wr_scope(&jb, JsonType__obj)
         {
-            jw$key("1");
-            jw$val(val);
+            json$wr_key("1");
+            json$wr_val(val);
         }
         tassert_er(EOK, jb.error);
 
@@ -1313,11 +1313,11 @@ test$case(json_writer_wide_ascii_unicode)
 {
     mem$scope(tmem$, _)
     {
-        jw_c jb;
+        json_wr_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         sbuf_c val = sbuf.create(1024, _);
         sbuf_c escaped_val = sbuf.create(8196, _);
-        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4, .simplified = true));
+        tassert_er(EOK, json$wr_new(&jb, .buf = &buf, .indent = 4, .simplified = true));
 
         tassert_eq(str.len("😀"), 4); // Grinning face (U+1F600)
         for (u32 i = 0; i < 100; i++) {
@@ -1326,10 +1326,10 @@ test$case(json_writer_wide_ascii_unicode)
         }
         tassert_eq(sbuf.len(&val), 400);
 
-        jw$scope(&jb, JsonType__obj)
+        json$wr_scope(&jb, JsonType__obj)
         {
-            jw$key("1");
-            jw$val(val);
+            json$wr_key("1");
+            json$wr_val(val);
         }
         tassert_er(EOK, jb.error);
 
@@ -1353,18 +1353,18 @@ test$case(json_writer_wide_ascii_unicode_print)
 {
     mem$scope(tmem$, _)
     {
-        jw_c jb;
+        json_wr_c jb;
         sbuf_c val = sbuf.create(1024, _);
-        tassert_er(EOK, jw$new(&jb, .stream = stdout, .indent = 4, .simplified = true));
+        tassert_er(EOK, json$wr_new(&jb, .stream = stdout, .indent = 4, .simplified = true));
 
         tassert_eq(str.len("😀"), 4); // Grinning face (U+1F600)
         for (u32 i = 0; i < 100; i++) { e$ret(sbuf.append(&val, "😀")); }
         tassert_eq(sbuf.len(&val), 400);
 
-        jw$scope(&jb, JsonType__obj)
+        json$wr_scope(&jb, JsonType__obj)
         {
-            jw$key("1");
-            jw$val(val);
+            json$wr_key("1");
+            json$wr_val(val);
         }
         tassert_er(EOK, jb.error);
     }
@@ -1375,17 +1375,17 @@ test$case(json_writer_wide_ascii_unicode_print_short)
 {
     mem$scope(tmem$, _)
     {
-        jw_c jb;
+        json_wr_c jb;
         sbuf_c val = sbuf.create(1024, _);
-        tassert_er(EOK, jw$new(&jb, .stream = stdout, .indent = 4, .simplified = true));
+        tassert_er(EOK, json$wr_new(&jb, .stream = stdout, .indent = 4, .simplified = true));
 
         tassert_eq(str.len("😀"), 4); // Grinning face (U+1F600)
         e$ret(sbuf.append(&val, "😀"));
 
-        jw$scope(&jb, JsonType__obj)
+        json$wr_scope(&jb, JsonType__obj)
         {
-            jw$key("1");
-            jw$val(val);
+            json$wr_key("1");
+            json$wr_val(val);
         }
         tassert_er(EOK, jb.error);
     }
@@ -1397,20 +1397,20 @@ test$case(json_writer_unicode_bmp_only)
 {
     mem$scope(tmem$, _)
     {
-        jw_c jb;
+        json_wr_c jb;
         sbuf_c buf = sbuf.create(1024, _);
 
-        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 0, .simplified = true));
+        tassert_er(EOK, json$wr_new(&jb, .buf = &buf, .indent = 0, .simplified = true));
 
         // Test all possible Unicode code points in Basic Multilingual Plane
-        jw$scope(&jb, JsonType__arr)
+        json$wr_scope(&jb, JsonType__arr)
         {
             // Test boundaries
-            jw$val("\u00FF"); // Last Latin-1
-            jw$val("\u0100"); // Latin Extended-A start
-            jw$val("\u07FF"); // End of some blocks
-            jw$val("\u0800"); // Start of other blocks
-            jw$val("\uFFFF"); // Last BMP character (non-character)
+            json$wr_val("\u00FF"); // Last Latin-1
+            json$wr_val("\u0100"); // Latin Extended-A start
+            json$wr_val("\u07FF"); // End of some blocks
+            json$wr_val("\u0800"); // Start of other blocks
+            json$wr_val("\uFFFF"); // Last BMP character (non-character)
         }
 
         tassert_er(EOK, jb.error);
@@ -1430,27 +1430,27 @@ test$case(json_writer_unicode_surrogate_pairs)
 {
     mem$scope(tmem$, _)
     {
-        jw_c jb;
+        json_wr_c jb;
         sbuf_c buf = sbuf.create(2048, _);
 
-        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 2, .simplified = false));
+        tassert_er(EOK, json$wr_new(&jb, .buf = &buf, .indent = 2, .simplified = false));
 
-        jw$scope(&jb, JsonType__obj)
+        json$wr_scope(&jb, JsonType__obj)
         {
             // Supplementary Multilingual Plane (SMP) characters
             // These require UTF-16 surrogate pairs in JSON
-            jw$key("supplementary_plane");
-            jw$scope(&jb, JsonType__arr)
+            json$wr_key("supplementary_plane");
+            json$wr_scope(&jb, JsonType__arr)
             {
                 // CJK Unified Ideographs Extension B
-                jw$val("\U00020000"); // U+20000 (requires two UTF-16 surrogates)
+                json$wr_val("\U00020000"); // U+20000 (requires two UTF-16 surrogates)
 
                 // Last valid Unicode code point (as of Unicode 13.0)
-                jw$val("\U0010FFFF"); // U+10FFFF
+                json$wr_val("\U0010FFFF"); // U+10FFFF
             }
             // // Test invalid surrogate handling
-            // jw$key("invalid_surrogates");
-            // jw$scope(&jb, JsonType__arr)
+            // json$wr_key("invalid_surrogates");
+            // json$wr_scope(&jb, JsonType__arr)
             // {
             // }
         }
@@ -1474,20 +1474,20 @@ test$case(json_writer_unicode_surrogate_invalid_high)
 {
     mem$scope(tmem$, _)
     {
-        jw_c jb;
+        json_wr_c jb;
         sbuf_c buf = sbuf.create(2048, _);
 
-        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 2, .simplified = false));
+        tassert_er(EOK, json$wr_new(&jb, .buf = &buf, .indent = 2, .simplified = false));
 
-        jw$scope(&jb, JsonType__obj)
+        json$wr_scope(&jb, JsonType__obj)
         {
             // Supplementary Multilingual Plane (SMP) characters
             // These require UTF-16 surrogate pairs in JSON
-            jw$key("supplementary_plane");
-            jw$scope(&jb, JsonType__arr)
+            json$wr_key("supplementary_plane");
+            json$wr_scope(&jb, JsonType__arr)
             {
                 // Lone high surrogate (invalid)
-                jw$val("\xD8\x00");
+                json$wr_val("\xD8\x00");
             }
         }
 
@@ -1500,20 +1500,20 @@ test$case(json_writer_unicode_surrogate_invalid_low)
 {
     mem$scope(tmem$, _)
     {
-        jw_c jb;
+        json_wr_c jb;
         sbuf_c buf = sbuf.create(2048, _);
 
-        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 2, .simplified = false));
+        tassert_er(EOK, json$wr_new(&jb, .buf = &buf, .indent = 2, .simplified = false));
 
-        jw$scope(&jb, JsonType__obj)
+        json$wr_scope(&jb, JsonType__obj)
         {
             // Supplementary Multilingual Plane (SMP) characters
             // These require UTF-16 surrogate pairs in JSON
-            jw$key("supplementary_plane");
-            jw$scope(&jb, JsonType__arr)
+            json$wr_key("supplementary_plane");
+            json$wr_scope(&jb, JsonType__arr)
             {
                 // Lone low surrogate (invalid)
-                jw$val("\xDC\x00");
+                json$wr_val("\xDC\x00");
             }
         }
 
@@ -1526,20 +1526,20 @@ test$case(json_writer_unicode_surrogate_invalid_reversed)
 {
     mem$scope(tmem$, _)
     {
-        jw_c jb;
+        json_wr_c jb;
         sbuf_c buf = sbuf.create(2048, _);
 
-        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 2, .simplified = false));
+        tassert_er(EOK, json$wr_new(&jb, .buf = &buf, .indent = 2, .simplified = false));
 
-        jw$scope(&jb, JsonType__obj)
+        json$wr_scope(&jb, JsonType__obj)
         {
             // Supplementary Multilingual Plane (SMP) characters
             // These require UTF-16 surrogate pairs in JSON
-            jw$key("supplementary_plane");
-            jw$scope(&jb, JsonType__arr)
+            json$wr_key("supplementary_plane");
+            json$wr_scope(&jb, JsonType__arr)
             {
                 // Reversed surrogate pair (invalid)
-                jw$val("\xDC\x00\xD8\x00");
+                json$wr_val("\xDC\x00\xD8\x00");
             }
         }
 
@@ -1552,20 +1552,20 @@ test$case(json_writer_unicode_surrogate_valid_maxval)
 {
     mem$scope(tmem$, _)
     {
-        jw_c jb;
+        json_wr_c jb;
         sbuf_c buf = sbuf.create(2048, _);
 
-        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 2, .simplified = false));
+        tassert_er(EOK, json$wr_new(&jb, .buf = &buf, .indent = 2, .simplified = false));
 
-        jw$scope(&jb, JsonType__obj)
+        json$wr_scope(&jb, JsonType__obj)
         {
             // Supplementary Multilingual Plane (SMP) characters
             // These require UTF-16 surrogate pairs in JSON
-            jw$key("supplementary_plane");
-            jw$scope(&jb, JsonType__arr)
+            json$wr_key("supplementary_plane");
+            json$wr_scope(&jb, JsonType__arr)
             {
                 // Valid surrogate pair for non-character
-                jw$val("\uFFFF\uFFFF");
+                json$wr_val("\uFFFF\uFFFF");
             }
         }
 
@@ -1587,15 +1587,15 @@ test$case(json_writer_unicode_key_escaping)
 {
     mem$scope(tmem$, _)
     {
-        jw_c jb;
+        json_wr_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         (void)buf;
-        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4, .simplified = false));
+        tassert_er(EOK, json$wr_new(&jb, .buf = &buf, .indent = 4, .simplified = false));
 
-        jw$scope(&jb, JsonType__obj)
+        json$wr_scope(&jb, JsonType__obj)
         {
-            jw$key("😀");
-            jw$val("😀"); // Grinning face (U+1F600)
+            json$wr_key("😀");
+            json$wr_val("😀"); // Grinning face (U+1F600)
         }
         tassert_er(EOK, jb.error);
 
@@ -1615,15 +1615,15 @@ test$case(json_writer_unicode_key_escaping_simplified_keys_error)
 {
     mem$scope(tmem$, _)
     {
-        jw_c jb;
+        json_wr_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         (void)buf;
-        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4, .simplified = true));
+        tassert_er(EOK, json$wr_new(&jb, .buf = &buf, .indent = 4, .simplified = true));
 
-        jw$scope(&jb, JsonType__obj)
+        json$wr_scope(&jb, JsonType__obj)
         {
-            jw$key("😀");
-            jw$val("😀"); // Grinning face (U+1F600)
+            json$wr_key("😀");
+            json$wr_val("😀"); // Grinning face (U+1F600)
         }
         // NOTE: in simplified=true, escaped chars in keys are not allowed
         tassert_er(JsonError.encoding, jb.error);
@@ -1644,17 +1644,17 @@ test$case(json_writer_unicode_unescape_simple)
 {
     mem$scope(tmem$, _)
     {
-        jw_c jb;
+        json_wr_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         (void)buf;
-        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4, .simplified = true));
+        tassert_er(EOK, json$wr_new(&jb, .buf = &buf, .indent = 4, .simplified = true));
 
         tassert(str.eq("прив", "прив"));
 
-        jw$scope(&jb, JsonType__obj)
+        json$wr_scope(&jb, JsonType__obj)
         {
-            jw$key("foo");
-            jw$val("прив"); // Grinning face (U+1F600)
+            json$wr_key("foo");
+            json$wr_val("прив"); // Grinning face (U+1F600)
         }
         tassert_er(EOK, jb.error);
 
@@ -1667,14 +1667,14 @@ char* expected = "{\n\
 
         tassert_eq(buf, expected);
 
-        jr_c jr;
-        e$ret(jr$new(&jr, expected, 0));
+        json_rd_c jr;
+        e$ret(json$rd_new(&jr, expected, 0));
 
-        jr$foreach(k, v, &jr) {
+        json$rd_foreach(k, v, &jr) {
             (void)v;
             if(str$eq(k, "foo")) {
                 str_s unesc;
-                e$ret(jr$decode_str(v, &unesc, _)); 
+                e$ret(json$rd_str_unescape(v, &unesc, _)); 
                 io.printf("\nunesc: `%S` len: %d\n", unesc, unesc.len);
                 tassert_eq("прив", unesc.buf);
             } else {
@@ -1691,18 +1691,18 @@ test$case(json_writer_unicode_unescape_surrogate)
 {
     mem$scope(tmem$, _)
     {
-        jw_c jb;
+        json_wr_c jb;
         sbuf_c buf = sbuf.create(1024, _);
         (void)buf;
-        tassert_er(EOK, jw$new(&jb, .buf = &buf, .indent = 4, .simplified = true));
+        tassert_er(EOK, json$wr_new(&jb, .buf = &buf, .indent = 4, .simplified = true));
 
         tassert(str.eq("😀", "😀"));
         tassert_eq(str.len("😀"), 4);
 
-        jw$scope(&jb, JsonType__obj)
+        json$wr_scope(&jb, JsonType__obj)
         {
-            jw$key("foo");
-            jw$val("😀"); // Grinning face (U+1F600)
+            json$wr_key("foo");
+            json$wr_val("😀"); // Grinning face (U+1F600)
         }
         tassert_er(EOK, jb.error);
 
@@ -1715,14 +1715,14 @@ char* expected = "{\n\
 
         tassert_eq(buf, expected);
 
-        jr_c jr;
-        e$ret(jr$new(&jr, expected, 0));
+        json_rd_c jr;
+        e$ret(json$rd_new(&jr, expected, 0));
 
-        jr$foreach(k, v, &jr) {
+        json$rd_foreach(k, v, &jr) {
             (void)v;
             if(str$eq(k, "foo")) {
                 str_s unesc;
-                e$ret(jr$decode_str(v, &unesc, _)); 
+                e$ret(json$rd_str_unescape(v, &unesc, _)); 
                 io.printf("\nunesc: `%S` len: %d\n", unesc, unesc.len);
                 tassert_eq(unesc.len, 4);
                 tassert_eq("😀", unesc.buf);
@@ -1741,7 +1741,7 @@ test$case(json_writer_unicode_unescape_2byte)
     mem$scope(tmem$, _)
     {
         str_s unesc;
-        e$ret(jr$decode_str(str$s("\u00a9"), &unesc, _)); 
+        e$ret(json$rd_str_unescape(str$s("\u00a9"), &unesc, _)); 
         tassert_eq(str$s("©").len, 2);
 
         io.printf("\nunesc: `%S` len: %d\n", unesc, unesc.len);
@@ -1757,7 +1757,7 @@ test$case(json_writer_unicode_unescape_simple_ascii)
     mem$scope(tmem$, _)
     {
         str_s unesc;
-        e$ret(jr$decode_str(str$s("foo"), &unesc, _)); 
+        e$ret(json$rd_str_unescape(str$s("foo"), &unesc, _)); 
         io.printf("\nunesc: `%S` len: %d\n", unesc, unesc.len);
         tassert_eq(unesc.len, 3);
         tassert_eq(unesc, str$s("foo"));
@@ -1770,7 +1770,7 @@ test$case(json_writer_unicode_unescape_3byte)
     mem$scope(tmem$, _)
     {
         str_s unesc;
-        e$ret(jr$decode_str(str$s("\u20aC"), &unesc, _)); 
+        e$ret(json$rd_str_unescape(str$s("\u20aC"), &unesc, _)); 
         tassert_eq(str$s("€").len, 3);
 
         io.printf("\nunesc: `%S` len: %d\n", unesc, unesc.len);
@@ -1785,17 +1785,17 @@ test$case(json_writer_unicode_unescape_bad_hex)
 {
     str_s unesc;
 
-    tassert_er(jr$decode_str(str$s("\\u00AH"),&unesc, mem$), JsonError.encoding); 
-    tassert_er(jr$decode_str(str$s("\\u00AZ"),&unesc, mem$), JsonError.encoding); 
-    tassert_er(jr$decode_str(str$s("\\u00A"),&unesc, mem$), JsonError.encoding); 
-    tassert_er(jr$decode_str(str$s("\\uD83D\\uDE0"),&unesc, mem$), JsonError.encoding); 
-    tassert_er(jr$decode_str(str$s("\\uD83D\\uDE0H"),&unesc, mem$), JsonError.encoding); 
-    tassert_er(jr$decode_str(str$s("\\uD83D\\uDE0!"),&unesc, mem$), JsonError.encoding); 
-    tassert_er(jr$decode_str(str$s("\\uD83D\\uDE0Z"),&unesc, mem$), JsonError.encoding); 
-    tassert_er(jr$decode_str(str$s("\\uD83D\\DE00"),&unesc, mem$), JsonError.encoding); 
-    tassert_er(jr$decode_str(str$s("\\uD83DuDE00"),&unesc, mem$), JsonError.encoding); 
-    tassert_er(jr$decode_str(str$s("\\uD83D\\uDBFF"),&unesc, mem$), JsonError.encoding); 
-    tassert_er(jr$decode_str(str$s("\\uD83D\\uE000"),&unesc, mem$), JsonError.encoding); 
+    tassert_er(json$rd_str_unescape(str$s("\\u00AH"),&unesc, mem$), JsonError.encoding); 
+    tassert_er(json$rd_str_unescape(str$s("\\u00AZ"),&unesc, mem$), JsonError.encoding); 
+    tassert_er(json$rd_str_unescape(str$s("\\u00A"),&unesc, mem$), JsonError.encoding); 
+    tassert_er(json$rd_str_unescape(str$s("\\uD83D\\uDE0"),&unesc, mem$), JsonError.encoding); 
+    tassert_er(json$rd_str_unescape(str$s("\\uD83D\\uDE0H"),&unesc, mem$), JsonError.encoding); 
+    tassert_er(json$rd_str_unescape(str$s("\\uD83D\\uDE0!"),&unesc, mem$), JsonError.encoding); 
+    tassert_er(json$rd_str_unescape(str$s("\\uD83D\\uDE0Z"),&unesc, mem$), JsonError.encoding); 
+    tassert_er(json$rd_str_unescape(str$s("\\uD83D\\DE00"),&unesc, mem$), JsonError.encoding); 
+    tassert_er(json$rd_str_unescape(str$s("\\uD83DuDE00"),&unesc, mem$), JsonError.encoding); 
+    tassert_er(json$rd_str_unescape(str$s("\\uD83D\\uDBFF"),&unesc, mem$), JsonError.encoding); 
+    tassert_er(json$rd_str_unescape(str$s("\\uD83D\\uE000"),&unesc, mem$), JsonError.encoding); 
 
     return EOK;
 }
@@ -1805,8 +1805,8 @@ test$case(json_writer_unicode_unescape_valid_hex_short)
     mem$scope(tmem$, _)
     {
         str_s unesc;
-        tassert_er(jr$decode_str(str$s("\\u00AA"),&unesc, _), EOK);
-        tassert_er(jr$decode_str(str$s("\\uD800\\uDFFF"),&unesc, _),EOK);
+        tassert_er(json$rd_str_unescape(str$s("\\u00AA"),&unesc, _), EOK);
+        tassert_er(json$rd_str_unescape(str$s("\\uD800\\uDFFF"),&unesc, _),EOK);
     }
 
     return EOK;
@@ -1823,7 +1823,7 @@ test$case(json_writer_unicode_unescape_self_ref)
         tassert_eq(slice.len, 6);
 
         usize cnt = slice.len + 1;
-        e$ret(jr$decode_str_inplace(slice, buf, &cnt));
+        e$ret(json$rd_str_unescape_inplace(slice, buf, &cnt));
 
         tassert_eq(cnt, 3);
         tassert_eq(buf, "€");

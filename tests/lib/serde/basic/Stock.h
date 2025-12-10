@@ -2,7 +2,7 @@
 #include "cex.h"
 #include "lib/json/json.h"
 
-serde$$struct();
+json$$struct();
 /// Hi this is my comment
 typedef struct Stock
 {

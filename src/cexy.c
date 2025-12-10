@@ -1663,8 +1663,17 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
     {
 
         arr$(char*) sources = os.fs.find(filter, true, arena);
-        if (os.fs.stat("./cex.h").is_symlink) { arr$push(sources, "./cex.h"); }
+
+        // Prioritize project files before cex.h
+        char* cex_file = "./cex.h";
+        for(u32 i = 0; i < arr$len(sources); i++) {
+            if (str.eq(sources[i], "./cex.h") || str.eq(sources[i], "cex.h")) {
+                arr$del(sources, i);
+                break;
+            }
+        }
         arr$sort(sources, str.qscmp);
+        arr$push(sources, cex_file);
 
         char* query_pattern = NULL;
         bool is_namespace_filter = false;
@@ -1684,6 +1693,7 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
         hm$set(cex_ns_map, "./cex.h", "cex");
 
         for$each (src_fn, sources) {
+            log$info("%s\n", src_fn);
             mem$scope(tmem$, _)
             {
                 char* abspath = os.path.abs(src_fn, _);

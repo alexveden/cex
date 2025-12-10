@@ -6,7 +6,7 @@ Low level JSON reader/writer namespace
 Making own JSON buffer:
 
 ```c
-jw_c jb;
+json_wr_c jb;
 e$ret(json.buf.create(&jb, 1024, 0, mem$));
 json$buf(&jb, JsonType__obj)
 {
@@ -34,7 +34,7 @@ Reading JSON buffer:
     str_s content = str$s(
         "{ \"foo\" : {\"baz\": 3, \"fuzz\": 8, \"oops\": 0}, \"next\": 7, \"baz\": 17 }"
     );
-    jr_c js;
+    json_rd_c js;
     e$ret(json.reader.create(&js, content.buf, 0, false));
     if (json.reader.next(&js)) { e$ret(json.reader.step_in(&js, JsonType__obj)); }
     while (json.reader.next(&js)) {
@@ -100,7 +100,7 @@ Reading JSON buffer:
 /// Append value item into array scope (json$buf)
 #define json$val(format, ...)
 
-typedef jw_c
+typedef json_wr_c
 
 typedef jr_c
 
@@ -113,24 +113,24 @@ json {
 
     struct {
         /// Create JSON buffer/builder container used with json$buf / json$fmt / json$kstr macros
-        Exception       (*create)(jw_c* jb, u32 capacity, u8 indent, IAllocator allc);
+        Exception       (*create)(json_wr_c* jb, u32 capacity, u8 indent, IAllocator allc);
         /// Destroy JSON buffer instance (not necessary to call if initialized on tmem$ allocator)
-        void            (*destroy)(jw_c* jb);
+        void            (*destroy)(json_wr_c* jb);
         /// Get JSON buffer contents (NULL if any error occurred)
-        char*           (*get)(jw_c* jb);
+        char*           (*get)(json_wr_c* jb);
         /// Check if there is any error in JSON buffer
-        Exception       (*validate)(jw_c* jb);
+        Exception       (*validate)(json_wr_c* jb);
     } buf;
 
     struct {
         /// Create new JSON reader (it doesn't allocate memory and uses content slicing)
-        Exception       (*create)(jr_c* it, char* content, usize content_len, bool strict_mode);
+        Exception       (*create)(json_rd_c* it, char* content, usize content_len, bool strict_mode);
         /// Get next JSON item for a scope
-        bool            (*next)(jr_c* it);
+        bool            (*next)(json_rd_c* it);
         /// Make step inside JSON object or array scope (json.reader.next() starts emitting this scope)
-        Exception       (*step_in)(jr_c* it, JsonType_e expected_type);
+        Exception       (*step_in)(json_rd_c* it, JsonType_e expected_type);
         /// Early step out from JSON scope (you must immediately break the loop/func after step out)
-        Exception       (*step_out)(jr_c* it);
+        Exception       (*step_out)(json_rd_c* it);
     } iter;
 
     // clang-format on

@@ -10,7 +10,7 @@ test$case(json_reader_simple)
 {
     // str_s content = str$s(str$m({ "foo" : "bar" }));
     str_s content = str$s("{ \"foo\" : \"bar\" }");
-    jr_c js;
+    json_rd_c js;
     tassert_eq(EOK, json.reader.create(&js, content.buf, 0, true));
 
     tassert_eq(json.reader.next(&js), true);
@@ -41,7 +41,7 @@ test$case(json_reader_simple_2elem)
 {
     // str_s content = str$s(str$m({ "foo" : "bar" }));
     str_s content = str$s("{ \"foo\" : \"bar\", \"baz\": 1, }");
-    jr_c js;
+    json_rd_c js;
     tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
 
     tassert_eq(json.reader.next(&js), true);
@@ -81,7 +81,7 @@ test$case(json_reader_simple_2elem)
 test$case(json_reader_simple_array)
 {
     str_s content = str$s("[ \"foo\", \"bar\", \"baz\", ]");
-    jr_c js;
+    json_rd_c js;
     tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
 
     tassert_eq(json.reader.next(&js), true);
@@ -122,7 +122,7 @@ test$case(json_reader_simple_array)
 test$case(json_reader_obj_no_step_in)
 {
     str_s content = str$s("{ \"foo\" : 1, \"baz\": 3 }");
-    jr_c js;
+    json_rd_c js;
     tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
 
     tassert_eq(json.reader.next(&js), true);
@@ -147,7 +147,7 @@ test$case(json_reader_obj_no_step_in)
 test$case(json_reader_nested_obj)
 {
     str_s content = str$s("{ \"foo\" : {\"baz\": 3 } }");
-    jr_c js;
+    json_rd_c js;
     tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
 
     tassert_eq(json.reader.next(&js), true);
@@ -190,7 +190,7 @@ test$case(json_reader_nested_obj)
 test$case(json_reader_nested_obj_skip)
 {
     str_s content = str$s("{ \"foo\" : {\"baz\": 3 }, \"zoo\": 8 }");
-    jr_c js;
+    json_rd_c js;
     tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
 
     tassert_eq(json.reader.next(&js), true);
@@ -229,7 +229,7 @@ test$case(json_reader_nested_obj_skip)
 test$case(json_reader_empty_obj)
 {
     str_s content = str$s("{}");
-    jr_c js;
+    json_rd_c js;
     tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
 
     tassert_eq(json.reader.next(&js), true);
@@ -261,7 +261,7 @@ test$case(json_reader_empty_obj)
 test$case(json_reader_nested_obj_step_out)
 {
     str_s content = str$s("{ \"foo\" : {\"baz\": 3, \"fuzz\": 8 }, \"next\": 7 }");
-    jr_c js;
+    json_rd_c js;
     tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
 
     tassert_eq(json.reader.next(&js), true);
@@ -306,7 +306,7 @@ test$case(json_reader_nested_obj_step_out)
 test$case(json_reader_nested_obj_step_out_2lev)
 {
     str_s content = str$s("{ \"foo\" : {\"baz\": 3, \"fuzz\": 8 }, \"next\": 7 }");
-    jr_c js;
+    json_rd_c js;
     tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
 
     tassert_eq(json.reader.next(&js), true);
@@ -364,7 +364,7 @@ test$case(json_reader_struct_fill)
     str_s content = str$s(
         "{ \"foo\" : {\"baz\": 3, \"fuzz\": 8, \"oops\": 0}, \"next\": 7, \"baz\": 17 }"
     );
-    jr_c js;
+    json_rd_c js;
 
     tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
     if (json.reader.next(&js)) { e$ret(json.reader.step_in(&js, JsonType__obj)); }
@@ -399,7 +399,7 @@ test$case(json_reader_struct_fill)
 test$case(json_reader_bool)
 {
     str_s content = str$s("{ \"foo\" : true, \"bar\": false }");
-    jr_c js;
+    json_rd_c js;
     tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
 
     tassert_eq(json.reader.next(&js), true);
@@ -428,7 +428,7 @@ test$case(json_reader_bool)
 test$case(json_reader_null)
 {
     str_s content = str$s("{ \"foo\" : null }");
-    jr_c js;
+    json_rd_c js;
     tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
 
     tassert_eq(json.reader.next(&js), true);
@@ -452,7 +452,7 @@ test$case(json_reader_null)
 test$case(json_reader_signed_nums)
 {
     str_s content = str$s("{ \"foo\" : -1, \"bar\": +2 }");
-    jr_c js;
+    json_rd_c js;
     tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
 
     tassert_eq(json.reader.next(&js), true);
@@ -481,7 +481,7 @@ test$case(json_reader_signed_nums)
 test$case(json_reader_signed_nums_bad)
 {
     str_s content = str$s("{ \"foo\" : - 1 }");
-    jr_c js;
+    json_rd_c js;
     tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
 
     tassert_eq(json.reader.next(&js), true);
@@ -506,7 +506,7 @@ test$case(json_reader_signed_nums_bad)
 test$case(json_reader_signed_nums_indent)
 {
     str_s content = str$s("{ \"foo\" : -false }");
-    jr_c js;
+    json_rd_c js;
     tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
 
     tassert_eq(json.reader.next(&js), true);
@@ -531,7 +531,7 @@ test$case(json_reader_signed_nums_indent)
 test$case(json_reader_signed_nums_inf)
 {
     str_s content = str$s("{ \"foo\" : -inf, \"bar\": +Inf }");
-    jr_c js;
+    json_rd_c js;
     tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
 
     tassert_eq(json.reader.next(&js), true);
@@ -560,7 +560,7 @@ test$case(json_reader_signed_nums_inf)
 test$case(json_reader_signed_nums_nan_inf)
 {
     str_s content = str$s("{ \"foo\" : iNf, \"bar\": NaN }");
-    jr_c js;
+    json_rd_c js;
     tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
 
     tassert_eq(json.reader.next(&js), true);
@@ -589,7 +589,7 @@ test$case(json_reader_signed_nums_nan_inf)
 test$case(jr_comments_single_line)
 {
     str_s content = str$s("{ // Hi comment \n \"foo\" : -inf, \"bar\": +Inf, }");
-    jr_c js;
+    json_rd_c js;
     tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
 
     tassert_eq(json.reader.next(&js), true);
@@ -628,7 +628,7 @@ test$case(jr_comments_multi_line)
     str_s content = str$s(
         "{ // Hi comment \n \"foo\" /* my key */ : /* my value */ -inf, \"bar\": +Inf }"
     );
-    jr_c js;
+    json_rd_c js;
     tassert_eq(EOK, json.reader.create(&js, content.buf, 0, false));
 
     tassert_eq(json.reader.next(&js), true);
@@ -665,7 +665,7 @@ test$case(jr_comments_multi_line)
 test$case(json_reader_simple_array_strict_no_commas)
 {
     str_s content = str$s("[ \"foo\", \"bar\", \"baz\", ]");
-    jr_c js;
+    json_rd_c js;
     tassert_eq(EOK, json.reader.create(&js, content.buf, 0, true));
 
     tassert_eq(json.reader.next(&js), true);
@@ -704,7 +704,7 @@ test$case(json_reader_simple_strict_no_commas)
 {
     // str_s content = str$s(str$m({ "foo" : "bar" }));
     str_s content = str$s("{ \"foo\" : \"bar\", }");
-    jr_c js;
+    json_rd_c js;
     tassert_eq(EOK, json.reader.create(&js, content.buf, 0, true));
 
     tassert_eq(json.reader.next(&js), true);
@@ -763,7 +763,7 @@ test$case(json_reader_bad_stuff_handling)
     };
 
     for$each (it, variants) {
-        jr_c ji;
+        json_rd_c ji;
         tassert_eq(EOK, json.reader.create(&ji, it, 0, true));
         while (json.reader.next(&ji)) {}
         tassertf(ji.type == JsonType__err, "source: '%s', error: %s", it, ji.error);
@@ -776,7 +776,7 @@ test$case(json_writer_proto)
 {
     mem$scope(tmem$, _)
     {
-        jw_c jb;
+        json_wr_c jb;
         tassert_er(EOK, json.buf.create(&jb, 1024, 4, _));
         json$buf(&jb, JsonType__obj)
         {
@@ -812,7 +812,7 @@ test$case(json_writer_simple_obj)
 {
     mem$scope(tmem$, _)
     {
-        jw_c jb;
+        json_wr_c jb;
         tassert_er(EOK, json.buf.create(&jb, 1024, 0, _));
         json$buf(&jb, JsonType__obj)
         {
@@ -829,7 +829,7 @@ test$case(json_writer_simple_nested_obj)
 {
     mem$scope(tmem$, _)
     {
-        jw_c jb;
+        json_wr_c jb;
         tassert_er(EOK, json.buf.create(&jb, 1024, 0, _));
         json$buf(&jb, JsonType__obj)
         {
@@ -857,7 +857,7 @@ test$case(json_writer_simple_root_array)
 {
     mem$scope(tmem$, _)
     {
-        jw_c jb;
+        json_wr_c jb;
         tassert_er(EOK, json.buf.create(&jb, 1024, 0, _));
         json$buf(&jb, JsonType__arr)
         {
@@ -879,7 +879,7 @@ test$case(json_writer_simple_fmt_arbitrary)
 {
     mem$scope(tmem$, _)
     {
-        jw_c jb;
+        json_wr_c jb;
         tassert_er(EOK, json.buf.create(&jb, 1024, 0, _));
         json$buf(&jb, JsonType__obj)
         {

@@ -59,16 +59,16 @@ const struct _CEX_JsonError_struct JsonError = {
 
 
 /**
- * @brief Create new JSON reader (it doesn't allocate memory and uses content slicing)
+ * @brief Create new JSON reader (it doesn't allocate memory and read-only content view)
  *
  * @param it self instance (typically allocated on stack)
  * @param content  JSON content
  * @param content_len JSON content length (if 0 length will be recalculated via strlen())
- * @param strict_mode true - stick to JSON spec, false - allowing comments, trailing commas, nan
+ * @param kwargs - optional kwargs, can be NULL
  * @return
  */
-Exception
-_cex_json__reader__create(jr_c* it, char* content, usize content_len, jr_kw* kwargs)
+static Exception
+cex_json__rd__create(json_rd_c* it, char* content, usize content_len, json_rd_kw* kwargs)
 {
     uassert(it != NULL);
     if (content == NULL) { return Error.argument; }
@@ -76,27 +76,27 @@ _cex_json__reader__create(jr_c* it, char* content, usize content_len, jr_kw* kwa
     bool strict_mode = false;
     if (kwargs != NULL) { strict_mode = kwargs->strict_mode; }
 
-    *it = (jr_c){
+    *it = (json_rd_c){
         ._impl = {
             .strict_mode = strict_mode,
             .lexer = CexParser.create(content, content_len, false),
         },
     };
     if (it->_impl.lexer.content == it->_impl.lexer.content_end) { return Error.null_or_empty; }
-    _cex_json__reader__next(it);
+    json.rd.next(it);
     return EOK;
 }
 
 /**
- * @brief Make step inside JSON object or array scope (_cex_json__reader__next() starts emitting
+ * @brief Make step inside JSON object or array scope (cex_json__rd__next() starts emitting
  * this scope)
  *
  * @param it
  * @param expected_type Expected scope type (for sanity checks)
  * @return
  */
-Exception
-_cex_json__reader__step_in(jr_c* it, JsonType_e expected_type)
+static Exception
+cex_json__rd__step_in(json_rd_c* it, JsonType_e expected_type)
 {
     if (unlikely(it->error != EOK)) { goto error; }
     if (unlikely(it->_impl.scope_depth >= sizeof(it->_impl.scope_stack) - 1)) {
@@ -117,11 +117,11 @@ _cex_json__reader__step_in(jr_c* it, JsonType_e expected_type)
         it->_impl.scope_stack[it->_impl.scope_depth] = $scope_arr;
         it->_impl.scope_depth++;
     } else {
-        // return _cex_json__reader__next(it);
+        // return cex_json__rd__next(it);
         it->error = "Stepping in is only for objects or arrays";
         goto error;
     }
-    // _cex_json__reader__next() is going to check if we step in or skipping whole block
+    // cex_json__rd__next() is going to check if we step in or skipping whole block
     it->_impl.prev_token = it->_impl.curr_token;
     it->_impl.curr_token = CexTkn__unk;
     it->_impl.has_items = false;
@@ -134,30 +134,40 @@ error:
     return it->error;
 }
 
-// /**
-//  * @brief Early step out from JSON scope (you must immediately break the loop/func after step out)
-//  *
-//  * After calling step out, next call of `_cex_json__reader__next()` will return outer scope item,
-//  * make sure that you also break the loop or exiting parsing function for current scope.
-//  *
-//  * @param it
-//  * @return
-//  */
-// Exception
-// cex_json__reader__step_out(jr_c* it)
-// {
-//     if (unlikely(it->_impl.scope_depth == 0)) {
-//         it->error = "Bad scope/level for step out";
-//         return it->error;
-//     }
-//     u32 scope_depth_initial = it->_impl.scope_depth - 1;
-//     while (it->_impl.scope_depth > scope_depth_initial && _cex_json__reader__next(it)) {}
-//     return it->error;
-// }
-
-
+/**
+ * @brief Early step out from JSON scope (you must immediately break the loop/func after step out)
+ *
+ * After calling step out, next call of `json.rd.next()` will return outer scope item,
+ * make sure that you also break the loop or exiting parsing function for current scope.
+ *
+ * @param it
+ * @return
+ */
 Exception
-_cex_json__reader__decode_inplace(str_s value_str, char* out_buf, usize* in_out_size)
+cex_json__rd__step_out(json_rd_c* it)
+{
+    if (unlikely(it->_impl.scope_depth == 0)) {
+        it->error = "Bad scope/level for step out";
+        return it->error;
+    }
+    u32 scope_depth_initial = it->_impl.scope_depth - 1;
+    while (it->_impl.scope_depth > scope_depth_initial && json.rd.next(it)) {}
+    return it->error;
+}
+
+
+/**
+ * @brief Replaces escaped JSON string values (e.g. \uXXXX or \n \t) with real byte representation
+ * supports unicode
+ *
+ * @param value_str input value (typically key of an object or string item ) (read-only)
+ * @param out_buf output buffer, replaces its content
+ * @param in_out_size (in) initial size of a buffer (must be at least value_str.len + 1 size), (out)
+ * size of bytes written in out_buf
+ * @return
+ */
+Exception
+cex_json__rd__str_unescape_inplace(str_s value_str, char* out_buf, usize* in_out_size)
 {
     uassert(out_buf);
     uassert(in_out_size);
@@ -302,8 +312,17 @@ fail:
     return JsonError.encoding;
 }
 
-Exception
-_cex_json__reader__decode(str_s value_str, str_s* out_val, IAllocator allc)
+/**
+ * @brief Replaces escaped JSON string values (e.g. \uXXXX or \n \t) with real byte representation
+ * supports unicode.
+ *
+ * @param value_str input value (typically key of an object or string item ) (read-only)
+ * @param out_val Allocated str_s, out_val.buf - is allocated, make sure mem$free(allc, out_val.buf)
+ * @param allc Allocator for the result
+ * @return
+ */
+static Exception
+cex_json__rd__str_unescape(str_s value_str, str_s* out_val, IAllocator allc)
 {
 
     if (unlikely(!out_val)) { return Error.argument; }
@@ -311,7 +330,7 @@ _cex_json__reader__decode(str_s value_str, str_s* out_val, IAllocator allc)
     if (unlikely(!output)) { return Error.memory; }
 
     usize output_size = value_str.len + 1;
-    e$except_silent (err, _cex_json__reader__decode_inplace(value_str, output, &output_size)) {
+    e$except_silent (err, cex_json__rd__str_unescape_inplace(value_str, output, &output_size)) {
         mem$free(allc, output);
         return err;
     }
@@ -320,19 +339,25 @@ _cex_json__reader__decode(str_s value_str, str_s* out_val, IAllocator allc)
     return EOK;
 }
 
+/**
+ * @brief Skips next scope of the json data
+ *
+ * @param it
+ * @return
+ */
 static Exc
-_cex_json__reader__skip(jr_c* it)
+cex_json__rd__skip(json_rd_c* it)
 {
     // Simulate full step-in/next sequence for all nested stuff (because it serves as syntax check)
     u32 scope_depth_initial = it->_impl.scope_depth;
-    if (_cex_json__reader__step_in(it, it->type)) { return it->error; }
+    if (json.rd.step_in(it, it->type)) { return it->error; }
 
     while (it->_impl.scope_depth > scope_depth_initial) {
-        if (!_cex_json__reader__next(it) && it->error) { break; }
+        if (!json.rd.next(it) && it->error) { break; }
         switch (it->type) {
             case JsonType__arr:
             case JsonType__obj:
-                if (_cex_json__reader__step_in(it, it->type)) { return it->error; }
+                if (cex_json__rd__step_in(it, it->type)) { return it->error; }
             default:
                 break;
         }
@@ -340,8 +365,30 @@ _cex_json__reader__skip(jr_c* it)
     return it->error;
 }
 
-str_s
-_cex_json__reader__get_scope(jr_c* it, JsonType_e scope_type)
+/**
+ * @brief Checks if json_rd_c object has any errors
+ *
+ * @param jr
+ * @return
+ */
+static Exception
+cex_json__rd__validate(json_rd_c* jr)
+{
+    if (jr == NULL) { return Error.argument; }
+    return jr->error;
+}
+
+/**
+ * @brief Get str_s of the next JSON scope, in case if you need to parse it later, depending on
+ future JSON data
+ *
+ * @param it
+ * @param scope_type Expected scope type
+ * @return slice of json scope including `[]` and `{}`, on error - (str_s){ 0 };
+
+ */
+static str_s
+cex_json__rd__get_scope(json_rd_c* it, JsonType_e scope_type)
 {
     uassert(scope_type == JsonType__arr || scope_type == JsonType__obj);
 
@@ -362,7 +409,7 @@ _cex_json__reader__get_scope(jr_c* it, JsonType_e scope_type)
     char* cur = it->_impl.lexer.cur - 1;
     uassert(cur >= it->_impl.lexer.content);
 
-    if (_cex_json__reader__skip(it) == EOK) {
+    if (cex_json__rd__skip(it) == EOK) {
         char* last_cur = it->_impl.lexer.cur;
         uassert(last_cur > cur);
         uassert(last_cur < it->_impl.lexer.content_end);
@@ -370,7 +417,7 @@ _cex_json__reader__get_scope(jr_c* it, JsonType_e scope_type)
         if (last_cur > cur) {
             // NOTE: we must have at least something in result,
             // valid .buf with .len=0, may lead to full text parse
-            // if the jr$new()
+            // if the json$rd_new()
             result = (str_s){ .buf = cur, .len = last_cur - cur };
         }
     }
@@ -378,8 +425,14 @@ _cex_json__reader__get_scope(jr_c* it, JsonType_e scope_type)
     return result;
 }
 
-bool
-_cex_json__reader__next(jr_c* it)
+/**
+ * @brief Get next item of current scope, set it.key, it.val, it.type fields
+ *
+ * @param it json reader object
+ * @return true if next item is available, false - on error, end of scope, or file
+ */
+static bool
+cex_json__rd__next(json_rd_c* it)
 {
     if (unlikely(it->error != EOK)) { goto error; }
     it->key = (str_s){ 0 };
@@ -388,7 +441,7 @@ _cex_json__reader__next(jr_c* it)
             it->_impl.curr_token == CexTkn__lbrace || it->_impl.curr_token == CexTkn__lbracket
         )) {
         // User didn't step into object/array, skipping it
-        if (_cex_json__reader__skip(it) != EOK) { goto error; }
+        if (cex_json__rd__skip(it) != EOK) { goto error; }
     }
 
     cex_token_s t = $next_tok();
@@ -600,7 +653,7 @@ error:
 }
 
 void
-_cex_json_writer_indent(jw_c* jw, bool last_item)
+_cex_json_writer_indent(json_wr_c* jw, bool last_item)
 {
     // if (unlikely(jw->error != EOK)) { return; }
     if (jw->scope_depth && jw->scope_stack[jw->scope_depth - 1] & $scope_has_items) {
@@ -617,17 +670,8 @@ _cex_json_writer_indent(jw_c* jw, bool last_item)
     for (u32 i = 0; i < jw->indent; i++) { $print(" ", ""); }
 }
 
-/**
- * @brief Create JSON buffer/builder container used with json$buf / json$fmt / json$kstr macros
- *
- * @param jw
- * @param capacity initial capacity of buffer (will be resized if not enough)
- * @param indent JSON indentation (0 - to produce minified version)
- * @param allc allocator for buffer
- * @return
- */
 Exception
-_cex_json__writer__create(jw_c* jw, jw_kw* kwargs)
+cex_json__wr__create(json_wr_c* jw, json_wr_kw* kwargs)
 {
     uassert(jw != NULL);
     uassert(kwargs != NULL);
@@ -637,7 +681,7 @@ _cex_json__writer__create(jw_c* jw, jw_kw* kwargs)
         return "buf and stream kwargs are mutually exclusive";
     }
 
-    *jw = (jw_c){
+    *jw = (json_wr_c){
         .indent_width = kwargs->indent,
         .buf = kwargs->buf,
         .stream = kwargs->stream,
@@ -647,8 +691,8 @@ _cex_json__writer__create(jw_c* jw, jw_kw* kwargs)
     return EOK;
 }
 
-void
-_cex_json__writer__print(jw_c* jw, char* format, ...)
+static void
+cex_json__wr__print(json_wr_c* jw, char* format, ...)
 {
     u8 last_scope = $last_scope(jw);
     if (!(last_scope & $scope_has_key)) { _cex_json_writer_indent(jw, false); }
@@ -661,8 +705,16 @@ _cex_json__writer__print(jw_c* jw, char* format, ...)
     }
 }
 
+/**
+ * @brief Writes JSON escaped string, supports unicode (\uXXXX) and binary escaping (\t\n\f, etc)
+ *
+ * @param jw
+ * @param s string
+ * @param slen length of `s` argument
+ * @param add_quotes add `"` around string content  `"`
+ */
 static void
-_cex_json__writer__print_string(jw_c* jw, char* s, usize slen, bool add_quotes)
+cex_json__wr__print_str_escaped(json_wr_c* jw, char* s, usize slen, bool add_quotes)
 {
     (void)jw;
     (void)s;
@@ -838,19 +890,30 @@ _cex_json__writer__print_string(jw_c* jw, char* s, usize slen, bool add_quotes)
 #undef $tohex
 }
 
-void
-_cex_json__writer__print_item(jw_c* jw, char* format, ...)
+/**
+ * @brief Prints formatted raw data into json. IMPORTANT: it can wreck your formatting, use with
+ * care, this call does not escape strings.
+ *
+ *
+ * @param jw
+ * @param format
+ */
+static void
+cex_json__wr__print_val(json_wr_c* jw, char* format, ...)
 {
     u8 last_scope = $last_scope(jw);
 
     uassertf(
         !(last_scope & $scope_null) || !(last_scope & $scope_has_items),
-        "Only one jw$val() is allowed in null scope"
+        "Only one json$wr_val() is allowed in null scope"
     );
     uassert(format);
 
     if (!(last_scope & $scope_has_key)) {
-        uassertf(!(last_scope & $scope_obj), "Writing jw$val() without setting jw$key() before");
+        uassertf(
+            !(last_scope & $scope_obj),
+            "Writing json$wr_val() without setting json$wr_key() before"
+        );
         _cex_json_writer_indent(jw, false);
     }
 
@@ -862,7 +925,7 @@ _cex_json__writer__print_item(jw_c* jw, char* format, ...)
             if (s == NULL) {
                 $print("null");
             } else {
-                _cex_json__writer__print_string(jw, s, str.len(s), true);
+                cex_json__wr__print_str_escaped(jw, s, str.len(s), true);
             }
             va_end(va);
         } else if (format[2] == 'S') {
@@ -872,7 +935,7 @@ _cex_json__writer__print_item(jw_c* jw, char* format, ...)
             if (s.buf == NULL) {
                 $print("null");
             } else {
-                _cex_json__writer__print_string(jw, s.buf, s.len, true);
+                cex_json__wr__print_str_escaped(jw, s.buf, s.len, true);
             }
             va_end(va);
         } else {
@@ -900,8 +963,15 @@ _cex_json__writer__print_item(jw_c* jw, char* format, ...)
     }
 }
 
-void
-_cex_json__writer__print_key(jw_c* jw, char* key)
+/**
+ * @brief Print json "key": part, expected to be used with json.wr.print_val() at the next step.
+ * Escapes unicode/binary content in a key.
+ *
+ * @param jw
+ * @param key
+ */
+static void
+cex_json__wr__print_key(json_wr_c* jw, char* key)
 {
     uassertf(
         jw->scope_depth > 0 && jw->scope_stack[jw->scope_depth - 1] & $scope_obj,
@@ -912,7 +982,7 @@ _cex_json__writer__print_key(jw_c* jw, char* key)
         $print("null");
         if (!jw->error) { jw->error = JsonError.null_field; }
     } else {
-        _cex_json__writer__print_string(jw, key, strlen(key), !jw->simplified);
+        cex_json__wr__print_str_escaped(jw, key, strlen(key), !jw->simplified);
     }
 
     $print(": ");
@@ -922,16 +992,23 @@ _cex_json__writer__print_key(jw_c* jw, char* key)
     }
 }
 
-jw_c*
-_cex_json__writer__print_scope_enter(jw_c* jw, JsonType_e scope_type, bool should_indent)
+/**
+ * @brief Low-level alternative for json$wr_scope(jw, scope_type) macro. Enters json scope_type of
+ * [] or {}, adds indent if necessary, pair with json.wr.print_scope_exit().
+ *
+ * @param jw
+ * @param scope_type JsonType__obj or JsonType__arr
+ * @return
+ */
+static json_wr_c*
+cex_json__wr__print_scope_enter(json_wr_c* jw, JsonType_e scope_type)
 {
-    (void)should_indent;
     u8 last_scope = $last_scope(jw);
 
     if (!(last_scope & $scope_has_key)) {
         uassertf(
             !(last_scope & $scope_obj),
-            "Entering jw$scope() value without setting jw$key() before"
+            "Entering json$wr_scope() value without setting json$wr_key() before"
         );
         if (last_scope & $scope_has_items) { _cex_json_writer_indent(jw, false); }
     }
@@ -966,11 +1043,17 @@ _cex_json__writer__print_scope_enter(jw_c* jw, JsonType_e scope_type, bool shoul
     return jw;
 }
 
+/**
+ * @brief Low-level alternative for json$wr_scope(jw, scope_type) macro. Exits json scope_type of
+ * [] or {}, de-dents if necessary, pair with json.wr.print_scope_enter().
+ *
+ * @param jwptr, typically result of json.wr.print_scope_enter()
+ */
 void
-_cex_json__writer__print_scope_exit(jw_c** jwptr)
+cex_json__wr__print_scope_exit(json_wr_c** jwptr)
 {
     uassert(*jwptr != NULL);
-    jw_c* jw = *jwptr;
+    json_wr_c* jw = *jwptr;
 
     if (jw->indent >= jw->indent_width) { jw->indent -= jw->indent_width; }
     if (jw->scope_depth > 0) {
@@ -986,12 +1069,765 @@ _cex_json__writer__print_scope_exit(jw_c** jwptr)
     }
 }
 
-Exception
-_cex_json__writer__validate(jw_c* jw)
+/**
+ * @brief Validates json writer state
+ *
+ * @param jw
+ * @return
+ */
+static Exception
+cex_json__wr__validate(json_wr_c* jw)
 {
     if (jw == NULL) { return Error.argument; }
     return jw->error;
 }
+
+/**
+ * @brief JSON Generator in can parse all json$$struct() inside source code and automatically
+ * generate serialization/deserialization/print code for making your structures compatible with
+ * JSON.
+ *
+ * @param self
+ * @param allc
+ * @param kwargs, optional arguments, can be NULL
+ * @return
+ */
+Exception
+cex_json__gen__create(json_gen_c* self, IAllocator allc, json_gen_kw* kwargs)
+{
+    uassert(self);
+    uassert(allc->meta.is_arena && "Expected arena allocator");
+    u32 def_initial_capacity = 100 * 1024;
+    char* def_namespace = "serde";
+    char* def_workdir = ".";
+    char* def_outdir = NULL;
+
+    if (kwargs) {
+        if (kwargs->out_namespace) { def_namespace = kwargs->out_namespace; }
+        if (kwargs->buf_initial_capacity) { def_initial_capacity = kwargs->buf_initial_capacity; }
+        if (kwargs->workdir) { def_workdir = kwargs->workdir; }
+        if (kwargs->out_dir) { def_outdir = kwargs->out_dir; }
+    }
+    if (!def_outdir) { def_outdir = def_workdir; }
+
+    auto fstats = os.fs.stat(def_workdir);
+    if (!fstats.is_valid) {
+        return e$raise(Error.not_found, "Working directory not exists: `%s`", def_workdir);
+    }
+    if (!fstats.is_directory) {
+        return e$raise(Error.argument, "Expected directory, got file? `%s`", def_workdir);
+    }
+
+    *self = (json_gen_c){
+        .allc = allc,
+        .types = hm$new(self->types, allc, .capacity = 256),
+        .includes = arr$new(self->includes, allc, .capacity = 16),
+        .namespace = def_namespace,
+        .c_file_content = sbuf.create(def_initial_capacity, allc),
+        .h_file_content = sbuf.create(def_initial_capacity, allc),
+        .target = os$path_join(allc, def_workdir, "*.h"),
+        .c_out_name = os$path_join(allc, def_outdir, str.fmt(allc, "%s.c", def_namespace)),
+        .h_out_name = os$path_join(allc, def_outdir, str.fmt(allc, "%s.h", def_namespace)),
+    };
+
+    return EOK;
+}
+
+
+Exception
+_cex_json__gen___process_field_attr(
+    json_gen_c* self,
+    CexParser_c* lx,
+    json_gen_field_s* field,
+    cex_token_s t
+)
+{
+    uassert(t.type == CexTkn__ident);
+
+    (void)lx;
+    (void)field;
+    (void)t;
+    if (str.slice.eq(t.value, str$s("json$$field"))) {
+        str_s attr_name = t.value;
+        log$info("Processing %S\n", t.value);
+        while ((t = CexParser.next_token(lx)).type) {
+            if (t.type == CexTkn__dot) {
+                t = CexParser.next_token(lx);
+                if (t.type != CexTkn__ident) {
+                    return e$raise(Error.integrity, "cex$$attr expected identifier after dot");
+                }
+                str_s kw = t.value;
+
+                t = CexParser.next_token(lx);
+                if (t.type != CexTkn__eq) {
+                    return e$raise(Error.integrity, "cex$$attr expected `=` after `.%S`", kw);
+                }
+
+                t = CexParser.next_token(lx);
+                if (str$eq(kw, "nullable")) {
+                    if (str$eq(t.value, "true")) {
+                        field->flags.is_nullable = true;
+                    } else if (str$eq(t.value, "false")) {
+                        field->flags.is_nullable = false;
+                    } else {
+                        return e$raise(
+                            Error.integrity,
+                            "Expected .nulllable = true|false in %S, got `%S`",
+                            attr_name,
+                            t.value
+                        );
+                    }
+                } else if (str$eq(kw, "optional")) {
+                    if (str$eq(t.value, "true")) {
+                        field->flags.is_optional = true;
+                    } else if (str$eq(t.value, "false")) {
+                        field->flags.is_optional = false;
+                    } else {
+                        return e$raise(
+                            Error.integrity,
+                            "Expected .optional = true|false in %S, got `%S`",
+                            attr_name,
+                            t.value
+                        );
+                    }
+                } else if (str$eq(kw, "skip")) {
+                    if (str$eq(t.value, "true")) {
+                        field->flags.is_skipped = true;
+                    } else if (str$eq(t.value, "false")) {
+                        field->flags.is_skipped = false;
+                    } else {
+                        return e$raise(
+                            Error.integrity,
+                            "Expected .skip = true|false in %S, got `%S`",
+                            attr_name,
+                            t.value
+                        );
+                    }
+                } else {
+                    return e$raise(
+                        Error.integrity,
+                        "Unknown param_field: .%S in `.%S`",
+                        kw,
+                        attr_name
+                    );
+                }
+            } else if (t.type == CexTkn__rparen) {
+                t = CexParser.next_token(lx);
+                e$assertf(t.type == CexTkn__eos, "Missing semicolon after cex$$attr field");
+                t = CexParser.next_token(lx);
+                e$assertf(t.type == CexTkn__ident, "Expected indent after cex$$attr field");
+                break;
+            } else if (t.type == CexTkn__comma || t.type == CexTkn__lparen) {
+                continue;
+            } else {
+                return e$raise(
+                    Error.integrity,
+                    "Unexpected token (%s) in %S",
+                    CexTkn_str[t.type],
+                    t.value
+                );
+            }
+        }
+    }
+
+
+    cex_token_s prev_t = t;
+    field->type = str.sstr(str.slice.clone(t.value, self->allc));
+    if (str$eq(field->type, "sbuf_c") || str$eq(field->type, "str_s")) {
+        field->flags.is_string = true;
+    }
+
+    while ((t = CexParser.next_token(lx)).type) {
+        if (t.type == CexTkn__error) { return Error.integrity; }
+
+        switch (t.type) {
+            case CexTkn__eos: {
+                e$assert(prev_t.type == CexTkn__ident);
+                e$except_null (field->name = str.slice.clone(prev_t.value, self->allc)) {
+                    return Error.memory;
+                }
+                goto end;
+            } break;
+            case CexTkn__star: {
+                field->flags.is_ptr = true;
+                if (str$eq(field->type, "char")) { field->flags.is_string = true; }
+            } break;
+            case CexTkn__ident:
+                break;
+            default: {
+                e$assertf(false, "Unsupported token: %s\n", CexTkn_str[t.type]);
+            }
+        }
+
+
+        prev_t = t;
+    }
+
+end:
+    log$info("New field: name=%s, type=%S\n", field->name, field->type);
+
+    return EOK;
+}
+
+Exception
+_cex_json__gen__codegen_serialize_field(json_gen_c* self, cex_codegen_s* cg$var, json_gen_field_s* f)
+{
+    (void)self;
+    (void)f;
+    e$assert(f->type.buf && f->type.len != 0);
+    cg$pf("json$wr_key(\"%s\");", f->name);
+
+    json_gen_type_s* field_type = hm$get(self->types, f->type);
+    if (field_type) {
+        // Project Type
+        if (!f->flags.is_nullable) {
+            cg$if ("unlikely(!item->%s)", f->name) { cg$pf("jw->error = JsonError.null_field;"); }
+        } else {
+            cg$pf("// field `%s` is nullable json$$field(.nullable = true)", f->name);
+        }
+        cg$scope ("e$except_silent (err, %s.%s.serialize(jw, %sitem->%s)) ",
+                  self->namespace,
+                  field_type->name,
+                  f->flags.is_ptr ? "" : "&",
+                  f->name) {
+            cg$pn("jw->error = err;");
+        }
+    } else if (f->flags.is_string) {
+        if (!f->flags.is_nullable) {
+            cg$if ("unlikely(!item->%s%s)", f->name, (str$eq(f->type, "str_s") ? ".buf" : "")) {
+                cg$pf("jw->error = JsonError.null_field;");
+            }
+        } else {
+            cg$pf("// field `%s` is nullable json$$field(.nullable = true)", f->name);
+        }
+        cg$pf("json$wr_val(item->%s);", f->name);
+    } else {
+        // Primitive type
+        cg$pf("json$wr_val(item->%s);", f->name);
+    }
+    cg$pn("");
+
+    return EOK;
+}
+
+Exception
+_cex_json__gen__codegen_deserialize_field(
+    json_gen_c* self,
+    cex_codegen_s* cg$var,
+    json_gen_field_s* f,
+    u32* out_field_idx
+)
+{
+    (void)self;
+    (void)f;
+    e$assert(f->type.buf && f->type.len != 0);
+
+    cg$elseif ("str$eq(k, \"%s\")", f->name) {
+        if (!f->flags.is_optional) {
+            cg$pf("fields_mask |= (1 << %d);", *out_field_idx);
+            *out_field_idx += 1;
+        } else {
+            cg$pf("// fields_mask check skipped, field is json$$field(.optional = true)");
+        }
+        json_gen_type_s* field_type = hm$get(self->types, f->type);
+        if (field_type) {
+            // Project registered type
+            // We need preallocate pointer to a new type!
+            cg$if ("jr->type != JsonType__null") {
+                cg$if ("jr->type != JsonType__obj") {
+                    cg$pn("json$rd_egoto(jr, JsonError.wrong_type, fail);");
+                }
+                if (f->flags.is_ptr) {
+                    cg$pf("out_item->%s = mem$new(allc, %S);", f->name, f->type);
+                    cg$if ("!out_item->%s", f->name) { cg$pn("return Error.memory;"); }
+                    cg$pf(
+                        "json$rd_egoto(jr, %s.%s.deserialize(jr, out_item->%s, allc), fail);",
+                        self->namespace,
+                        field_type->name,
+                        f->name
+                    );
+                } else {
+                    cg$pf(
+                        "json$rd_egoto(jr, %s.%s.deserialize(jr, &out_item->%s, allc), fail);",
+                        self->namespace,
+                        field_type->name,
+                        f->name
+                    );
+                }
+            }
+            cg$else () {
+                if (f->flags.is_ptr) {
+                    if (!f->flags.is_nullable) {
+                        cg$pf("json$rd_egoto(jr, JsonError.null_field, fail);");
+                    } else {
+                        if (!f->flags.is_nullable) {
+                            cg$pf("json$rd_egoto(jr, JsonError.null_field, fail);");
+                        } else {
+                            cg$pf(
+                                "// field `%s` is nullable json$$field(.nullable = true)",
+                                f->name
+                            );
+                            cg$pf("out_item->%s = NULL;", f->name);
+                        }
+                    }
+                } else {
+                    cg$pf("json$rd_egoto(jr, JsonError.null_field, fail);");
+                }
+            }
+        } else if (f->flags.is_string) {
+            cg$if ("jr->type != JsonType__str && jr->type != JsonType__null") {
+                cg$pn("json$rd_egoto(jr, JsonError.wrong_type, fail);");
+            }
+
+            if (str$eq(f->type, "char")) {
+                uassert(f->flags.is_ptr);
+                cg$if ("unlikely(!v.buf)") {
+                    if (!f->flags.is_nullable) {
+                        cg$pf("json$rd_egoto(jr, JsonError.null_field, fail);");
+                    } else {
+                        cg$pf("// field `%s` is nullable json$$field(.nullable = true)", f->name);
+                        cg$pf("out_item->%s = NULL;", f->name);
+                    }
+                }
+                cg$else () {
+                    cg$pn("str_s out_s;");
+                    cg$pn("json$rd_egoto(jr, json$rd_str_unescape(v, &out_s, allc), fail);");
+                    cg$pf("out_item->%s = out_s.buf;", f->name);
+                }
+
+            } else if (str$eq(f->type, "sbuf_c")) {
+                cg$if ("unlikely(!v.buf)") {
+                    if (!f->flags.is_nullable) {
+                        cg$pf("json$rd_egoto(jr, JsonError.null_field, fail);");
+                    } else {
+                        cg$pf("// field `%s` is nullable json$$field(.nullable = true)", f->name);
+                        cg$pf("out_item->%s = NULL;", f->name);
+                    }
+                }
+                cg$else () {
+                    cg$pf(
+                        "out_item->%s = sbuf.create(v.len + sizeof(sbuf_head_s) + 1, allc);",
+                        f->name
+                    );
+                    cg$if ("unlikely(!out_item->%s)", f->name) { cg$pn("return Error.memory;"); }
+                    cg$pf("usize out_buf_len = v.len + 1;", f->name);
+                    cg$pf(
+                        "json$rd_egoto(jr, json$rd_str_unescape_inplace(v, out_item->%s, &out_buf_len), fail);",
+                        f->name
+                    );
+                    cg$pf(
+                        "json$rd_egoto(jr, sbuf.set_len(&out_item->%s, out_buf_len), fail);",
+                        f->name
+                    );
+                }
+
+            } else if (str$eq(f->type, "str_s")) {
+                cg$if ("unlikely(!v.buf)") {
+                    if (!f->flags.is_nullable) {
+                        cg$pf("json$rd_egoto(jr, JsonError.null_field, fail);");
+                    } else {
+                        cg$pf("// field `%s` is nullable json$$field(.nullable = true)", f->name);
+                        cg$pf("out_item->%s = (str_s){0};", f->name);
+                    }
+                }
+                cg$else () {
+                    cg$pf(
+                        "json$rd_egoto(jr, json$rd_str_unescape(v, &out_item->%s, allc), fail);",
+                        f->name
+                    );
+                }
+
+            } else {
+                uassertf(false, "field type, not implemented yet: type=%S\n", f->type);
+            }
+
+
+        } else {
+            // Primitive type
+            cg$if ("!json$rd_is_type_compatible(jr, &out_item->%s)", f->name) {
+                cg$pn("json$rd_egoto(jr, JsonError.wrong_type, fail);");
+            }
+            cg$pf("json$rd_egoto(jr, str$convert(v, &out_item->%s), fail);", f->name);
+        }
+        // cg$pn("");
+    }
+
+    return cg$var->error;
+}
+
+Exception
+_cex_json__gen__codegen_destroy_field(json_gen_c* self, cex_codegen_s* cg$var, json_gen_field_s* f)
+{
+    (void)self;
+    (void)f;
+    e$assert(f->type.buf && f->type.len != 0);
+
+    json_gen_type_s* field_type = hm$get(self->types, f->type);
+    if (field_type) {
+        if (f->flags.is_ptr) {
+            cg$pf("%s.%s.destroy(item->%s, allc);", self->namespace, field_type->name, f->name);
+            cg$pf("mem$free(allc, item->%s);", f->name);
+        } else {
+            cg$pf("%s.%s.destroy(&item->%s, allc);", self->namespace, field_type->name, f->name);
+        }
+    } else if (f->flags.is_string) {
+        if (str$eq(f->type, "char")) {
+            cg$pf("mem$free(allc, item->%s);", f->name);
+        } else if (str$eq(f->type, "sbuf_c")) {
+            cg$pf("sbuf.destroy(&item->%s);", f->name);
+        } else if (str$eq(f->type, "str_s")) {
+            cg$pf("mem$free(allc, item->%s.buf);", f->name);
+        } else {
+            uassertf(false, "field type, not implemented yet: type=%S\n", f->type);
+        }
+    } else {
+        // Primitive type do nothing
+    }
+
+    return cg$var->error;
+}
+
+Exception
+_cex_json__gen__generate_type(json_gen_c* self, cex_codegen_s* cg$var, json_gen_type_s* t)
+{
+    cg$pn("");
+    cg$pn("//");
+    cg$pf("// Autogenerated serde for %s type", t->name);
+    cg$pn("//");
+
+
+    //
+    // serialize codegen
+    //
+    cg$func ("Exception %s__%s__serialize(json_wr_c* jw, %s* item) ",
+             self->namespace,
+             t->name,
+             t->name) {
+        cg$if ("!item") {
+            cg$scope ("json$wr_scope(jw, JsonType__null)") { cg$pn("json$wr_val(NULL);"); }
+            cg$pn("return EOK;");
+        }
+
+        cg$scope ("json$wr_scope(jw, JsonType__obj)") {
+            for$each (it, t->fields) {
+                if (!it->flags.is_skipped) {
+                    e$ret(_cex_json__gen__codegen_serialize_field(self, cg$var, it));
+                } else {
+                    cg$pf("// field `%s` is skipped json$$field(.skip = true)", it->name);
+                }
+            }
+        }
+
+        cg$pn("return jw->error;");
+    }
+
+    //
+    // print codegen
+    //
+    cg$func ("Exc %s__%s__print(%s* item, json_wr_kw* json_writer_kwargs) ",
+             self->namespace,
+             t->name,
+             t->name) {
+        cg$pn("json_wr_c jw;");
+        cg$pn("json_wr_kw kwargs = {.stream = stdout, .indent = 0, .simplified = true};");
+        cg$if ("json_writer_kwargs") {
+            cg$pn("kwargs = *json_writer_kwargs;");
+            cg$if ("!kwargs.stream && !kwargs.buf") { cg$pn("kwargs.stream = stdout;"); }
+        }
+        cg$pn("e$ret(json.wr.create(&jw, &kwargs));");
+        cg$if ("kwargs.simplified") {
+            cg$pf("json.wr.print_val(&jw, \"%s(\");", t->name);
+            cg$pf("Exc err = %s.%s.serialize(&jw, item);", self->namespace, t->name);
+            cg$pf(
+                "json.wr.print_val(&jw, \"%%s%%s%%s)\\n\", (err) ? \" [error: \": \"\", (err) ? err : \"\", (err) ? \"]\": \"\" );",
+                t->name
+            );
+            cg$pn("return err;");
+        }
+        cg$else () { cg$pf("return %s.%s.serialize(&jw, item);", self->namespace, t->name); }
+    }
+
+    //
+    // deserialize codegen
+    //
+    cg$func ("Exception %s__%s__deserialize(json_rd_c* jr, %s* out_item, IAllocator allc) ",
+             self->namespace,
+             t->name,
+             t->name) {
+        cg$pn("uassert(jr != NULL);");
+        cg$pn("uassert(out_item != NULL);");
+
+        cg$pn("u64 fields_mask = 0;");
+        u32 nfields = 0;
+
+        cg$scope ("json$rd_foreach(k, v, jr) ") {
+            cg$if ("!k.buf") {
+                cg$pn("jr->error = JsonError.parsing;");
+                cg$pn("goto fail;");
+            }
+            for$each (it, t->fields) {
+                if (!it->flags.is_skipped) {
+                    e$ret(_cex_json__gen__codegen_deserialize_field(self, cg$var, it, &nfields));
+                } else {
+                    cg$pf("// field `%s` is skipped json$$field(.skip = true)\n       ", it->name);
+                }
+            }
+            cg$else () {
+                cg$pn("jr->error = JsonError.unknown_field;");
+                cg$pn("goto fail;");
+            }
+        }
+        if (nfields >= 64) {
+            return e$raise(
+                Error.overflow,
+                "Struct [%s] has more than 64 fields, try to split it into sub-types",
+                t->name
+            );
+        }
+        cg$if ("fields_mask != ((1 << %d) - 1)", nfields) {
+            cg$if ("!jr->error") { cg$pn("jr->error = JsonError.missing_field;"); }
+            cg$pn("goto fail;");
+        }
+
+        cg$if ("!jr->error") { cg$pn("return EOK;"); }
+
+        cg$dedent();
+        cg$pn("fail: ");
+        cg$indent();
+        cg$pf("%s.%s.destroy(out_item, allc);", self->namespace, t->name);
+        cg$pn("return jr->error;");
+    }
+
+    //
+    // destroy codegen
+    //
+    cg$func ("void %s__%s__destroy(%s* item, IAllocator allc) ", self->namespace, t->name, t->name) {
+        cg$pn("uassert(allc != NULL);");
+        cg$if ("item") {
+            for$each (it, t->fields) {
+                e$ret(_cex_json__gen__codegen_destroy_field(self, cg$var, it));
+            }
+            cg$pn("memset(item, 0, sizeof(*item));");
+        }
+    }
+
+    return cg$var->error;
+}
+
+/**
+ * @brief (low-level) Generates a content of a json serde engine and stores it in `self` sbuf.
+ *
+ * @param self
+ * @return
+ */
+Exception
+cex_json__gen__generate_full(json_gen_c* self)
+{
+    cg$init_scope(&self->h_file_content)
+    {
+        cg$pf("// Autogenerated serde engine by CEX");
+        cg$pn("// DO NOT EDIT");
+        cg$pn("//");
+        cg$pn("#include \"cex.h\"");
+        cg$pn("#include \"lib/json/json.h\"");
+        for$each (it, self->includes) { cg$pf("#include \"%s\"", it); }
+        if (cg$var->error) { return cg$var->error; }
+    }
+
+    cg$init_scope(&self->c_file_content)
+    {
+        cg$pf("// Autogenerated serde engine by CEX");
+        cg$pn("// DO NOT EDIT");
+        cg$pn("//");
+        cg$pf("#include \"%s.h\"", str.fmt(self->allc, self->namespace));
+
+        for$each (it, self->types, arr$len(self->types)) {
+            log$info("Type: %s #%d fields\n", it.value->name, arr$len(it.value->fields));
+            e$ret(_cex_json__gen__generate_type(self, cg$var, it.value));
+        }
+        if (cg$var->error) { return cg$var->error; }
+    }
+
+
+    return EOK;
+}
+
+Exception
+_cex_json__gen__process_decl(json_gen_c* self, CexParser_c* lx, cex_decl_s* d, bool* has_serde)
+{
+    uassert(self);
+    uassert(lx);
+    uassert(d);
+    uassert(has_serde);
+
+    *has_serde = false;
+
+    if (d->type == CexTkn__typedef && d->attr_count > 0) {
+        for$each (attr, d->attr, d->attr_count) {
+            if (!str.slice.starts_with(attr, str$s("json$$struct"))) { continue; }
+            log$info("Got item: type=%s Name: %S Attr: %S\n", CexTkn_str[d->type], d->name, attr);
+
+            json_gen_type_s* stype = mem$new(self->allc, json_gen_type_s);
+            if (!stype) { return Error.memory; }
+
+            stype->fields = arr$new(stype->fields, self->allc);
+            if (!stype->fields) { return Error.memory; }
+
+            stype->name = str.slice.clone(d->name, self->allc);
+            if (!stype->name) { return Error.memory; }
+
+            // TODO: parse json$$struct here for params
+
+            CexParser_c sp = CexParser.create(d->body.buf, d->body.len, false);
+            cex_token_s t = CexParser.next_token(&sp);
+            e$assert(t.type == CexTkn__lbrace && "Expected { scope start");
+
+            log$info("Type breakdown\n");
+            while ((t = CexParser.next_token(&sp)).type) {
+                if (t.type == CexTkn__error) {
+                    log$error(CexParser$err_fmt(&sp, NULL));
+                    return Error.integrity;
+                }
+                // log$info("Tok: type=%s Name: %S\n", CexTkn_str[t.type], t.value);
+                if (t.type == CexTkn__ident) {
+                    json_gen_field_s* field = mem$new(self->allc, json_gen_field_s);
+                    if (!field) { return Error.memory; }
+                    e$goto(_cex_json__gen___process_field_attr(self, &sp, field, t), fail);
+                    arr$push(stype->fields, field);
+                } else if (t.type == CexTkn__comment_multi || t.type == CexTkn__comment_single) {
+                    continue;
+                } else if (t.type == CexTkn__rbrace) {
+                    t = CexParser.next_token(&sp);
+                    if (t.type != CexTkn__eof) { goto fail; }
+                    break;
+                }
+            }
+
+            if (hm$getp(self->types, str.sstr(stype->name))) {
+                return e$raise(Error.exists, "Duplicate json$$struct type name: %s", stype->name);
+            }
+
+            if (!hm$set(self->types, str.sstr(stype->name), stype)) { return Error.memory; }
+            // hm$set(self->types, stype->name, stype);
+
+            *has_serde = true;
+            break;
+        }
+    }
+    return EOK;
+
+fail:
+    log$error("Error processing json$$struct\n%s %S\n%S\n", d->ret_type, d->name, d->body);
+    return Error.integrity;
+}
+
+/**
+ * @brief (low-level) Parses the .h file and add all json$$struct() types into serialization pipeline
+ *
+ * @param self
+ * @param path
+ * @return
+ */
+Exception
+cex_json__gen__process_file(json_gen_c* self, char* path)
+{
+    uassert(self);
+    uassert(path);
+    mem$arena(256 * 1024, _)
+    {
+        char* code = io.file.load(path, _);
+        if (!code) { return e$raise(Error.io, "Error reading file: %s", path); }
+
+        arr$(cex_token_s) items = arr$new(items, _);
+        CexParser_c lx = CexParser.create(code, 0, true);
+        cex_token_s t;
+        bool has_serializable = false;
+        while ((t = CexParser.next_entity(&lx, &items)).type) {
+            if (t.type == CexTkn__error) {
+                log$error(CexParser$err_fmt(&lx, NULL));
+                return lx.error;
+            }
+
+            cex_decl_s* d = CexParser.decl_parse(&lx, t, items, NULL, _);
+            if (d == NULL) { continue; }
+            bool has_serde = false;
+            e$ret(_cex_json__gen__process_decl(self, &lx, d, &has_serde));
+            if (has_serde) { has_serializable = true; }
+        }
+
+        if (has_serializable) {
+            uassert(str.ends_with(path, ".h"));
+            arr$push(self->includes, path);
+        }
+    }
+
+    return EOK;
+}
+
+/**
+ * @brief Runs full JSON generation sequence: finds all header files in target directory, processes
+ * all types with `json$$struct()` attributes, saves result to the out dir and makes a namespace.
+ *
+ * @param self
+ * @return
+ */
+Exception
+cex_json__gen__run(json_gen_c* self)
+{
+    uassert(sbuf.len(&self->c_file_content) == 0 && "Already processed");
+
+    for$each (src_fn, os.fs.find(self->target, true, self->allc)) {
+        io.printf("file: %s\n", src_fn);
+        e$ret(json.gen.process_file(self, src_fn));
+    }
+
+    if (arr$len(self->types) == 0) {
+        log$info(
+            "CexSerdeGen: no json$$struct types found in workdir: `%s`, skipping...",
+            self->workdir
+        );
+        return EOK;
+    }
+
+    e$ret(json.gen.generate_full(self));
+
+    // Check if output file is exists and it's a really CexSerdeGen generated
+    mem$scope(tmem$, _)
+    {
+        if (os.path.exists(self->c_out_name)) {
+            char* content = io.file.load(self->c_out_name, _);
+            if (!str.starts_with(content, "// Autogenerated serde engine by CEX")) {
+                return e$raise(
+                    Error.integrity,
+                    "File `%s` was not generated by CexSerdeGen, exiting",
+                    self->c_out_name
+                );
+            }
+        }
+        if (os.path.exists(self->h_out_name)) {
+            char* content = io.file.load(self->h_out_name, _);
+            if (!str.starts_with(content, "// Autogenerated serde engine by CEX")) {
+                return e$raise(
+                    Error.integrity,
+                    "File `%s` was not generated by CexSerdeGen, exiting",
+                    self->h_out_name
+                );
+            }
+        }
+    }
+
+    e$ret(io.file.save(self->c_out_name, self->c_file_content));
+    e$ret(io.file.save(self->h_out_name, self->h_file_content));
+
+    // This is only available when json.gen. is called inside build system
+#if defined(CEX_BUILD)
+    char* argv[] = { "process", self->c_out_name };
+    e$ret(cexy.cmd.process(arr$len(argv), argv, NULL));
+#endif
+
+    return EOK;
+}
+
 
 #undef $next_tok /* TEMP MACRO */
 #undef $print
@@ -1001,3 +1837,41 @@ _cex_json__writer__validate(jw_c* jw)
 #undef $scope_has_items
 #undef $scope_has_key
 #undef $last_scope
+
+const struct __cex_namespace__json json = {
+    // Autogenerated by CEX
+    // clang-format off
+
+
+    .gen = {
+        .create = cex_json__gen__create,
+        .generate_full = cex_json__gen__generate_full,
+        .process_file = cex_json__gen__process_file,
+        .run = cex_json__gen__run,
+    },
+
+    .rd = {
+        .create = cex_json__rd__create,
+        .get_scope = cex_json__rd__get_scope,
+        .next = cex_json__rd__next,
+        .skip = cex_json__rd__skip,
+        .step_in = cex_json__rd__step_in,
+        .step_out = cex_json__rd__step_out,
+        .str_unescape = cex_json__rd__str_unescape,
+        .str_unescape_inplace = cex_json__rd__str_unescape_inplace,
+        .validate = cex_json__rd__validate,
+    },
+
+    .wr = {
+        .create = cex_json__wr__create,
+        .print = cex_json__wr__print,
+        .print_key = cex_json__wr__print_key,
+        .print_scope_enter = cex_json__wr__print_scope_enter,
+        .print_scope_exit = cex_json__wr__print_scope_exit,
+        .print_str_escaped = cex_json__wr__print_str_escaped,
+        .print_val = cex_json__wr__print_val,
+        .validate = cex_json__wr__validate,
+    },
+
+    // clang-format on
+};

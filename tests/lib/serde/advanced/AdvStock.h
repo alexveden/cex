@@ -3,33 +3,33 @@
 #include "lib/json/json.h"
 
 /// Hi this is my comment
-serde$$struct();
+json$$struct();
 typedef struct Stock
 {
     u64 id;
-    serde$$field(.nullable = true, .optional = true);
+    json$$field(.nullable = true, .optional = true);
     char* ticker;
-    serde$$field(.nullable = true);
+    json$$field(.nullable = true);
     char* exchange;
 } Stock;
 
 
-serde$$struct();
+json$$struct();
 typedef struct ItemNullable
 {
-    serde$$field(.nullable = true);
+    json$$field(.nullable = true);
     sbuf_c sbuf_field;
-    serde$$field(.nullable = true);
+    json$$field(.nullable = true);
     str_s str_s_field;
-    serde$$field(.nullable = true);
+    json$$field(.nullable = true);
     char* char_field;
-    serde$$field(.nullable = true);
+    json$$field(.nullable = true);
     Stock* stock_field;
-    serde$$field(.nullable = true);
+    json$$field(.nullable = true);
     Stock stock_val;
 } ItemNullable;
 
-serde$$struct();
+json$$struct();
 typedef struct Item
 {
     sbuf_c sbuf_field;
@@ -37,11 +37,11 @@ typedef struct Item
     char* char_field;
     Stock* stock_field;
 
-    serde$$field(.skip = true);
+    json$$field(.skip = true);
     Stock* stock_field_skipped;
 } Item;
 
-serde$$struct();
+json$$struct();
 typedef struct Order
 {
     u64 id;

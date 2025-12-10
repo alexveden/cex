@@ -6,7 +6,6 @@
 #include "AdvPosition.h"
 #include "AdvStock.h"
 #include "cex.h"
-#include "lib/json/json.c"
 #include "serdegen.c"
 
 void
@@ -53,8 +52,8 @@ test$case(test_Stock_serialize)
     serdegen.Stock.print(&s, NULL);
 
     sbuf_c sb = sbuf.create(1024, mem$);
-    jw_c jw;
-    e$ret(jw$new(&jw, .indent = 4, .buf = &sb));
+    json_wr_c jw;
+    e$ret(json$wr_new(&jw, .indent = 4, .buf = &sb));
     e$ret(serdegen.Stock.serialize(&jw, &s));
 
     io.printf("\nJSON OUTPUT\n%s\n", sb);
@@ -67,8 +66,8 @@ test$case(test_Stock_serialize)
 
     tassert_eq(sb, expected);
 
-    jr_c jr;
-    e$ret(jr$new(&jr, sb, 0, .strict_mode = true));
+    json_rd_c jr;
+    e$ret(json$rd_new(&jr, sb, 0, .strict_mode = true));
 
     Stock s2 = { 0 };
     e$ret(serdegen.Stock.deserialize(&jr, &s2, mem$));
@@ -95,8 +94,8 @@ test$case(test_Position_serialize)
 
     serdegen.Position.print(&p, NULL);
     sbuf_c sb = sbuf.create(1024, mem$);
-    jw_c jw;
-    e$ret(jw$new(&jw, .indent = 4, .buf = &sb));
+    json_wr_c jw;
+    e$ret(json$wr_new(&jw, .indent = 4, .buf = &sb));
     e$ret(serdegen.Position.serialize(&jw, &p));
 
 
@@ -112,8 +111,8 @@ test$case(test_Position_serialize)
     }\n\
 }";
     tassert_eq(sb, expected);
-    jr_c jr;
-    e$ret(jr$new(&jr, sb, 0, .strict_mode = true));
+    json_rd_c jr;
+    e$ret(json$rd_new(&jr, sb, 0, .strict_mode = true));
 
     Position p2 = { 0 };
     e$ret(serdegen.Position.deserialize(&jr, &p2, mem$));
@@ -137,8 +136,8 @@ test$case(test_NullableItems)
     serdegen.ItemNullable.print(&s, NULL);
 
     sbuf_c sb = sbuf.create(1024, mem$);
-    jw_c jw;
-    e$ret(jw$new(&jw, .indent = 4, .buf = &sb));
+    json_wr_c jw;
+    e$ret(json$wr_new(&jw, .indent = 4, .buf = &sb));
     e$ret(serdegen.ItemNullable.serialize(&jw, &s));
 
     io.printf("\nJSON OUTPUT\n%s\n", sb);
@@ -157,8 +156,8 @@ test$case(test_NullableItems)
 }";
     tassert_eq(sb, expected);
 
-    jr_c jr;
-    e$ret(jr$new(&jr, sb, 0, .strict_mode = true));
+    json_rd_c jr;
+    e$ret(json$rd_new(&jr, sb, 0, .strict_mode = true));
 
     ItemNullable s2 = { 0 };
     e$ret(serdegen.ItemNullable.deserialize(&jr, &s2, mem$));
@@ -191,8 +190,8 @@ test$case(test_NullableItems_initialized)
     serdegen.ItemNullable.print(&s, NULL);
 
     sbuf_c sb = sbuf.create(1024, mem$);
-    jw_c jw;
-    e$ret(jw$new(&jw, .indent = 4, .buf = &sb));
+    json_wr_c jw;
+    e$ret(json$wr_new(&jw, .indent = 4, .buf = &sb));
     e$ret(serdegen.ItemNullable.serialize(&jw, &s));
 
     io.printf("\nJSON OUTPUT\n%s\n", sb);
@@ -211,8 +210,8 @@ test$case(test_NullableItems_initialized)
 }";
     tassert_eq(sb, expected);
 
-    jr_c jr;
-    e$ret(jr$new(&jr, sb, 0, .strict_mode = true));
+    json_rd_c jr;
+    e$ret(json$rd_new(&jr, sb, 0, .strict_mode = true));
 
     ItemNullable s2 = { 0 };
     e$ret(serdegen.ItemNullable.deserialize(&jr, &s2, mem$));
@@ -252,7 +251,7 @@ test$case(test_Items_initialized_serialize_null_field)
     sbuf.clear(&sb_item);
     tassert_er(
         Error.ok,
-        serdegen.Item.print(&s, &(jw_kw){ .buf = &sb_item, .simplified = true, .indent = 4 })
+        serdegen.Item.print(&s, &(json_wr_kw){ .buf = &sb_item, .simplified = true, .indent = 4 })
     );
     io.printf("`%s`\n", sb_item);
     print_json_expected(sb_item);
@@ -279,7 +278,7 @@ test$case(test_Items_initialized_serialize_null_field)
     };
     tassert_er(
         JsonError.null_field,
-        serdegen.Item.print(&s, &(jw_kw){ .buf = &sb_item, .simplified = true, .indent = 4 })
+        serdegen.Item.print(&s, &(json_wr_kw){ .buf = &sb_item, .simplified = true, .indent = 4 })
     );
     io.printf("`%s`\n", sb_item);
     print_json_expected(sb_item);
@@ -305,7 +304,7 @@ test$case(test_Items_initialized_serialize_null_field)
     };
     tassert_er(
         JsonError.null_field,
-        serdegen.Item.print(&s, &(jw_kw){ .buf = &sb_item, .simplified = true, .indent = 4 })
+        serdegen.Item.print(&s, &(json_wr_kw){ .buf = &sb_item, .simplified = true, .indent = 4 })
     );
     io.printf("`%s`\n", sb_item);
     print_json_expected(sb_item);
@@ -332,7 +331,7 @@ test$case(test_Items_initialized_serialize_null_field)
     };
     tassert_er(
         JsonError.null_field,
-        serdegen.Item.print(&s, &(jw_kw){ .buf = &sb_item, .simplified = true, .indent = 4 })
+        serdegen.Item.print(&s, &(json_wr_kw){ .buf = &sb_item, .simplified = true, .indent = 4 })
     );
     io.printf("`%s`\n", sb_item);
     print_json_expected(sb_item);
@@ -359,7 +358,7 @@ test$case(test_Items_initialized_serialize_null_field)
     };
     tassert_er(
         JsonError.null_field,
-        serdegen.Item.print(&s, &(jw_kw){ .buf = &sb_item, .simplified = true, .indent = 4 })
+        serdegen.Item.print(&s, &(json_wr_kw){ .buf = &sb_item, .simplified = true, .indent = 4 })
     );
     io.printf("`%s`\n", sb_item);
     print_json_expected(sb_item);
@@ -392,7 +391,7 @@ test$case(test_Items_deserialize_non_nullable)
     sbuf.clear(&sb_item);
     tassert_er(
         Error.ok,
-        serdegen.Item.print(&s, &(jw_kw){ .buf = &sb_item, .simplified = false, .indent = 4 })
+        serdegen.Item.print(&s, &(json_wr_kw){ .buf = &sb_item, .simplified = false, .indent = 4 })
     );
     io.printf("`%s`\n", sb_item);
     print_json_expected(sb_item);
@@ -409,9 +408,9 @@ test$case(test_Items_deserialize_non_nullable)
     tassert_eq(expected, sb_item);
 
     Item s2 = { 0 };
-    jr_c jr;
+    json_rd_c jr;
 
-    e$ret(jr$new(&jr, expected, 0, .strict_mode = false));
+    e$ret(json$rd_new(&jr, expected, 0, .strict_mode = false));
     e$ret(serdegen.Item.deserialize(&jr, &s2, mem$));
     tassert_eq(s2.char_field, "hello_char");
     tassert_eq(s2.str_s_field, str$s("hello_str_s"));
@@ -433,7 +432,7 @@ test$case(test_Items_deserialize_non_nullable)
         \"exchange\": \"FOO\"\n\
     }\n\
 }";
-    e$ret(jr$new(&jr, expected, 0, .strict_mode = false));
+    e$ret(json$rd_new(&jr, expected, 0, .strict_mode = false));
     tassert_er(JsonError.null_field, serdegen.Item.deserialize(&jr, &s2, mem$));
     serdegen.Item.destroy(&s2, mem$);
 
@@ -448,7 +447,7 @@ test$case(test_Items_deserialize_non_nullable)
         \"exchange\": \"FOO\"\n\
     }\n\
 }";
-    e$ret(jr$new(&jr, expected, 0, .strict_mode = false));
+    e$ret(json$rd_new(&jr, expected, 0, .strict_mode = false));
     tassert_er(JsonError.null_field, serdegen.Item.deserialize(&jr, &s2, mem$));
     serdegen.Item.destroy(&s2, mem$);
 
@@ -463,7 +462,7 @@ test$case(test_Items_deserialize_non_nullable)
         \"exchange\": \"FOO\"\n\
     }\n\
 }";
-    e$ret(jr$new(&jr, expected, 0, .strict_mode = false));
+    e$ret(json$rd_new(&jr, expected, 0, .strict_mode = false));
     tassert_er(JsonError.null_field, serdegen.Item.deserialize(&jr, &s2, mem$));
     serdegen.Item.destroy(&s2, mem$);
 
@@ -475,7 +474,7 @@ test$case(test_Items_deserialize_non_nullable)
     \"stock_field\": null\n\
 }";
 
-    e$ret(jr$new(&jr, expected, 0, .strict_mode = false));
+    e$ret(json$rd_new(&jr, expected, 0, .strict_mode = false));
     tassert_er(JsonError.null_field, serdegen.Item.deserialize(&jr, &s2, mem$));
     serdegen.Item.destroy(&s2, mem$);
 
@@ -498,9 +497,9 @@ test$case(test_Items_deserialize_missing_fields)
 }";
 
     Item s2 = { 0 };
-    jr_c jr;
+    json_rd_c jr;
 
-    e$ret(jr$new(&jr, expected, 0, .strict_mode = false));
+    e$ret(json$rd_new(&jr, expected, 0, .strict_mode = false));
     e$ret(serdegen.Item.deserialize(&jr, &s2, mem$));
     serdegen.Item.destroy(&s2, mem$);
 
@@ -513,7 +512,7 @@ test$case(test_Items_deserialize_missing_fields)
         \"exchange\": \"FOO\"\n\
     }\n\
 }";
-    e$ret(jr$new(&jr, expected, 0, .strict_mode = false));
+    e$ret(json$rd_new(&jr, expected, 0, .strict_mode = false));
     tassert_er(JsonError.missing_field, serdegen.Item.deserialize(&jr, &s2, mem$));
 
 expected = "{\n\
@@ -525,7 +524,7 @@ expected = "{\n\
         \"ticker\": \"UBER\", \n\
     }\n\
 }";
-    e$ret(jr$new(&jr, expected, 0, .strict_mode = false));
+    e$ret(json$rd_new(&jr, expected, 0, .strict_mode = false));
     tassert_er(JsonError.missing_field, serdegen.Item.deserialize(&jr, &s2, mem$));
 
     // NOTE: ticker field is optional in null set
@@ -539,7 +538,7 @@ expected = "{\n\
     }\n\
 }";
 
-    e$ret(jr$new(&jr, expected, 0, .strict_mode = false));
+    e$ret(json$rd_new(&jr, expected, 0, .strict_mode = false));
     e$ret(serdegen.Item.deserialize(&jr, &s2, mem$));
     tassert_eq(s2.stock_field->ticker, NULL);
     tassert(s2.stock_field_skipped == NULL);
@@ -554,7 +553,7 @@ expected = "{\n\
     }\n\
 }";
 
-    e$ret(jr$new(&jr, expected, 0, .strict_mode = false));
+    e$ret(json$rd_new(&jr, expected, 0, .strict_mode = false));
     tassert_er(JsonError.unknown_field, serdegen.Item.deserialize(&jr, &s2, mem$));
 
     serdegen.Item.destroy(&s2, mem$);
@@ -571,7 +570,7 @@ test$case(test_Order_type_matching_validation)
     sbuf.clear(&sb_item);
     tassert_er(
         Error.ok,
-        serdegen.Order.print(&ord, &(jw_kw){ .buf = &sb_item, .simplified = false, .indent = 4 })
+        serdegen.Order.print(&ord, &(json_wr_kw){ .buf = &sb_item, .simplified = false, .indent = 4 })
     );
 
     io.printf("JSON\n:%s\n", sb_item);
@@ -592,10 +591,10 @@ char* expected = "{\n\
     tassert_eq(sb_item, expected);
 
     Order s2 = { 0 };
-    jr_c jr;
+    json_rd_c jr;
 
     // This should be valid
-    e$ret(jr$new(&jr, expected, 0, .strict_mode = false));
+    e$ret(json$rd_new(&jr, expected, 0, .strict_mode = false));
     e$ret(serdegen.Order.deserialize(&jr, &s2, mem$));
     serdegen.Order.destroy(&s2, mem$);
 
@@ -612,7 +611,7 @@ expected = "{\n\
         \"exchange\": \"FOO\"\n\
     }\n\
 }";
-    e$ret(jr$new(&jr, expected, 0));
+    e$ret(json$rd_new(&jr, expected, 0));
     tassert_er(JsonError.wrong_type, serdegen.Order.deserialize(&jr, &s2, mem$));
     io.printf("---------------------------------\n");
 
@@ -625,7 +624,7 @@ expected = "{\n\
     \"exchange\": \"1\", \n\
     \"stock\":  123\n\
 }";
-    e$ret(jr$new(&jr, expected, 0));
+    e$ret(json$rd_new(&jr, expected, 0));
     tassert_er(JsonError.wrong_type, serdegen.Order.deserialize(&jr, &s2, mem$));
     io.printf("---------------------------------\n");
 
@@ -643,7 +642,7 @@ expected = "{\n\
         \"exchange\": \"FOO\"\n\
     }\n\
 }";
-    e$ret(jr$new(&jr, expected, 0));
+    e$ret(json$rd_new(&jr, expected, 0));
     tassert_er(JsonError.wrong_type, serdegen.Order.deserialize(&jr, &s2, mem$));
     io.printf("---------------------------------\n");
     sbuf.destroy(&sb_item);
@@ -667,9 +666,9 @@ char* expected = "{\n\
     }\n\
 }";
     Order s2 = { 0 };
-    jr_c jr;
+    json_rd_c jr;
 
-    e$ret(jr$new(&jr, expected, 0, .strict_mode = false));
+    e$ret(json$rd_new(&jr, expected, 0, .strict_mode = false));
     tassert(EOK == serdegen.Order.deserialize(&jr, &s2, mem$));
     serdegen.Order.destroy(&s2, mem$);
     return EOK;
@@ -691,9 +690,9 @@ test$case(test_Order_deserialize_missing_closing_brace)
         \"exchange\": \"FOO\"\n\
     }\n";
     Order s2 = { 0 };
-    jr_c jr;
+    json_rd_c jr;
 
-    e$ret(jr$new(&jr, expected, 0, .strict_mode = false));
+    e$ret(json$rd_new(&jr, expected, 0, .strict_mode = false));
     tassert_ne(EOK, serdegen.Order.deserialize(&jr, &s2, mem$));
     return EOK;
 }
@@ -714,9 +713,9 @@ test$case(test_Order_deserialize_unquoted_key)
     }\n\
 }";
     Order s2 = { 0 };
-    jr_c jr;
+    json_rd_c jr;
 
-    e$ret(jr$new(&jr, expected, 0, .strict_mode = true));
+    e$ret(json$rd_new(&jr, expected, 0, .strict_mode = true));
     tassert_ne(EOK, serdegen.Order.deserialize(&jr, &s2, mem$));
     return EOK;
 }
@@ -738,9 +737,9 @@ test$case(test_Order_deserialize_trailing_comma)
     }\n\
 }";
     Order s2 = { 0 };
-    jr_c jr;
+    json_rd_c jr;
 
-    e$ret(jr$new(&jr, expected, 0, .strict_mode = true));
+    e$ret(json$rd_new(&jr, expected, 0, .strict_mode = true));
     tassert_ne(EOK, serdegen.Order.deserialize(&jr, &s2, mem$));
 
     return EOK;
@@ -762,9 +761,9 @@ test$case(test_Order_deserialize_wrong_type)
     }\n\
 }";
     Order s2 = { 0 };
-    jr_c jr;
+    json_rd_c jr;
 
-    e$ret(jr$new(&jr, expected, 0, .strict_mode = false));
+    e$ret(json$rd_new(&jr, expected, 0, .strict_mode = false));
     tassert_ne(EOK, serdegen.Order.deserialize(&jr, &s2, mem$));
     return EOK;
 }
@@ -785,9 +784,9 @@ test$case(test_Order_deserialize_with_null)
     }\n\
 }";
     Order s2 = { 0 };
-    jr_c jr;
+    json_rd_c jr;
 
-    e$ret(jr$new(&jr, expected, 0, .strict_mode = false));
+    e$ret(json$rd_new(&jr, expected, 0, .strict_mode = false));
     tassert_ne(EOK, serdegen.Order.deserialize(&jr, &s2, mem$));
     return EOK;
 }
@@ -810,9 +809,9 @@ test$case(test_Order_deserialize_with_array)
     }\n\
 }";
     Order s2 = { 0 };
-    jr_c jr;
+    json_rd_c jr;
 
-    e$ret(jr$new(&jr, expected, 0, .strict_mode = false));
+    e$ret(json$rd_new(&jr, expected, 0, .strict_mode = false));
     tassert_ne(EOK, serdegen.Order.deserialize(&jr, &s2, mem$));
     return EOK;
 }
@@ -833,9 +832,9 @@ test$case(test_Order_deserialize_scientific_notation)
     }\n\
 }";
     Order s2 = { 0 };
-    jr_c jr;
+    json_rd_c jr;
 
-    e$ret(jr$new(&jr, expected, 0, .strict_mode = true));
+    e$ret(json$rd_new(&jr, expected, 0, .strict_mode = true));
     tassert_ne(EOK, serdegen.Order.deserialize(&jr, &s2, mem$));
 
     return EOK;
@@ -859,9 +858,9 @@ test$case(test_Order_deserialize_duplicate_key)
     }\n\
 }";
     Order s2 = { 0 };
-    jr_c jr;
+    json_rd_c jr;
 
-    e$ret(jr$new(&jr, expected, 0, .strict_mode = false));
+    e$ret(json$rd_new(&jr, expected, 0, .strict_mode = false));
     tassert_eq(EOK, serdegen.Order.deserialize(&jr, &s2, mem$));
     tassert_eq(s2.id, 9999);
     serdegen.Order.destroy(&s2, mem$);
@@ -883,10 +882,10 @@ test$case(test_Order_deserialize_escaped_chars)
     }\n\
 }";
     Order s2 = { 0 };
-    jr_c jr;
+    json_rd_c jr;
 
     io.printf("%s\n", expected);
-    e$ret(jr$new(&jr, expected, 0, .strict_mode = false));
+    e$ret(json$rd_new(&jr, expected, 0, .strict_mode = false));
     tassert_eq(EOK, serdegen.Order.deserialize(&jr, &s2, mem$));
     tassert_eq(s2.exchange, "NI\"CE");
     tassert_eq(s2.stock->ticker, "UB\nER");
@@ -910,9 +909,9 @@ test$case(test_Items_deserialize_unicode)
 }";
 
     Item s2 = { 0 };
-    jr_c jr;
+    json_rd_c jr;
 
-    e$ret(jr$new(&jr, expected, 0, .strict_mode = false));
+    e$ret(json$rd_new(&jr, expected, 0, .strict_mode = false));
     e$ret(serdegen.Item.deserialize(&jr, &s2, mem$));
 
     tassert_eq(s2.sbuf_field, "😀");

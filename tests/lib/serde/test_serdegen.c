@@ -2,7 +2,7 @@
 #define CEX_BUILD
 #define CEX_TEST
 #include "cex.h"
-#include "lib/json/CexSerdeGen.c"
+#include "lib/json/json.c"
 
 
 #define TESTDIR "tests/lib/serde/"
@@ -26,20 +26,20 @@ test$case(serdegen_myserde_basic)
 
     mem$scope(tmem$, _)
     {
-        CexSerdeGen_c sg;
-        e$ret(CexSerdeGen.create(
+        json_gen_c sg;
+        e$ret(json.gen.create(
             &sg,
             _,
-            &(CexSerdeGen_kw){ .namespace = "serdegen",
+            &(json_gen_kw){ .out_namespace = "serdegen",
                                .buf_initial_capacity = 32 * 1024,
-                               .workdir = TESTDIR"/basic/" }
+                               .workdir = TESTDIR "/basic/" }
         ));
         tassert_eq(sg.namespace, "serdegen");
         tassert_eq(sbuf.capacity(&sg.c_file_content), 32 * 1024 - sizeof(sbuf_head_s) - 1);
 
         io.printf("\nParsing source code for serdegen\n");
         io.printf("-------------------------\n");
-        e$ret(CexSerdeGen.run(&sg));
+        e$ret(json.gen.run(&sg));
         io.printf("-------------------------\n");
 
         io.printf("\nCompiling and running serdegen program\n");
@@ -59,11 +59,19 @@ test$case(serdegen_myserde_basic)
                             "-o",
                             TESTDIR "a.out",
                             TESTDIR "basic/serdegen_test_basic.c",
+                            "lib/json/json.c",
                             NULL };
 #else
-        char* cc_args[] = { "cc",      "-I.",           "-Wall",
-                            "-Wextra", "-Werror",       "-g",
-                            "-o",      TESTDIR "a.out", TESTDIR "basic/serdegen_test_basic.c",
+        char* cc_args[] = { "cc",
+                            "-I.",
+                            "-Wall",
+                            "-Wextra",
+                            "-Werror",
+                            "-g",
+                            "-o",
+                            TESTDIR "a.out",
+                            TESTDIR "basic/serdegen_test_basic.c",
+                            "lib/json/json.c",
                             NULL };
 #endif
         _os$args_print("CMD: ", cc_args, arr$len(cc_args));
@@ -91,7 +99,7 @@ test$case(serdegen_myserde_basic)
             &(os_cmd_flags_s){ .combine_stdouterr = true, .no_window = true }
         ));
         output = os.cmd.read_all(&cmd, _);
-        e$except(err, os.cmd.join(&cmd, 10, NULL)) {
+        e$except (err, os.cmd.join(&cmd, 10, NULL)) {
             log$error("Test error: \n%s\n", output);
             return err;
         }
@@ -114,20 +122,20 @@ test$case(serdegen_myserde_advanced)
 
     mem$scope(tmem$, _)
     {
-        CexSerdeGen_c sg;
-        e$ret(CexSerdeGen.create(
+        json_gen_c sg;
+        e$ret(json.gen.create(
             &sg,
             _,
-            &(CexSerdeGen_kw){ .namespace = "serdegen",
+            &(json_gen_kw){ .out_namespace = "serdegen",
                                .buf_initial_capacity = 32 * 1024,
-                               .workdir = TESTDIR"/advanced/" }
+                               .workdir = TESTDIR "/advanced/" }
         ));
         tassert_eq(sg.namespace, "serdegen");
         tassert_eq(sbuf.capacity(&sg.c_file_content), 32 * 1024 - sizeof(sbuf_head_s) - 1);
 
         io.printf("\nParsing source code for serdegen\n");
         io.printf("-------------------------\n");
-        e$ret(CexSerdeGen.run(&sg));
+        e$ret(json.gen.run(&sg));
         io.printf("-------------------------\n");
 
         io.printf("\nCompiling and running serdegen program\n");
@@ -146,12 +154,20 @@ test$case(serdegen_myserde_advanced)
                             "-g",
                             "-o",
                             TESTDIR "a.out",
+                            "lib/json/json.c",
                             TESTDIR "advanced/serdegen_test_advanced.c",
                             NULL };
 #else
-        char* cc_args[] = { "cc",      "-I.",           "-Wall",
-                            "-Wextra", "-Werror",       "-g",
-                            "-o",      TESTDIR "a.out", TESTDIR "advanced/serdegen_test_advanced.c",
+        char* cc_args[] = { "cc",
+                            "-I.",
+                            "-Wall",
+                            "-Wextra",
+                            "-Werror",
+                            "-g",
+                            "-o",
+                            TESTDIR "a.out",
+                            TESTDIR "advanced/serdegen_test_advanced.c",
+                            "lib/json/json.c",
                             NULL };
 #endif
         _os$args_print("CMD: ", cc_args, arr$len(cc_args));
@@ -179,7 +195,7 @@ test$case(serdegen_myserde_advanced)
             &(os_cmd_flags_s){ .combine_stdouterr = true, .no_window = true }
         ));
         output = os.cmd.read_all(&cmd, _);
-        e$except(err, os.cmd.join(&cmd, 10, NULL)) {
+        e$except (err, os.cmd.join(&cmd, 10, NULL)) {
             log$error("Test error: \n%s\n", output);
             return err;
         }

@@ -647,3 +647,16 @@ int __cex_test_uassert_enabled = 1;
 // If __STDC_HOSTED__ is not defined, we're likely freestanding
 #    define cex$is_freestanding 1
 #endif
+
+
+#ifndef json$$struct
+/// JSON Generator attribute, put it before your `typedef struct` to enable JSON code generation
+/// Implemented in: cexstd/json/json.h
+#define json$$struct(...)
+#endif
+
+#ifndef json$$field
+/// JSON field metadata attribute, used for adjusting json.gen. behavior for specific field
+/// Implemented in: cexstd/json/json.h
+#define json$$field(...)
+#endif

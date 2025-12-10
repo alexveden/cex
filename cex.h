@@ -121,7 +121,7 @@ Use `cex -D config` to reset all project config flags to defaults
 #define cex$version_major 0
 #define cex$version_minor 18
 #define cex$version_patch 0
-#define cex$version_date "2025-12-09"
+#define cex$version_date "2025-12-10"
 
 
 
@@ -832,6 +832,19 @@ int __cex_test_uassert_enabled = 1;
 #else
 // If __STDC_HOSTED__ is not defined, we're likely freestanding
 #    define cex$is_freestanding 1
+#endif
+
+
+#ifndef json$$struct
+/// JSON Generator attribute, put it before your `typedef struct` to enable JSON code generation
+/// Implemented in: cexstd/json/json.h
+#define json$$struct(...)
+#endif
+
+#ifndef json$$field
+/// JSON field metadata attribute, used for adjusting json.gen. behavior for specific field
+/// Implemented in: cexstd/json/json.h
+#define json$$field(...)
 #endif
 
 
@@ -16829,8 +16842,17 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
     {
 
         arr$(char*) sources = os.fs.find(filter, true, arena);
-        if (os.fs.stat("./cex.h").is_symlink) { arr$push(sources, "./cex.h"); }
+
+        // Prioritize project files before cex.h
+        char* cex_file = "./cex.h";
+        for(u32 i = 0; i < arr$len(sources); i++) {
+            if (str.eq(sources[i], "./cex.h") || str.eq(sources[i], "cex.h")) {
+                arr$del(sources, i);
+                break;
+            }
+        }
         arr$sort(sources, str.qscmp);
+        arr$push(sources, cex_file);
 
         char* query_pattern = NULL;
         bool is_namespace_filter = false;
@@ -16850,6 +16872,7 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
         hm$set(cex_ns_map, "./cex.h", "cex");
 
         for$each (src_fn, sources) {
+            log$info("%s\n", src_fn);
             mem$scope(tmem$, _)
             {
                 char* abspath = os.path.abs(src_fn, _);
