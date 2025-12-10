@@ -921,7 +921,7 @@ cex_json__wr__print_val(json_wr_c* jw, char* format, ...)
         if (format[2] == 's') {
             va_list va = {0};
             va_start(va, format);
-            char* s = va_arg(va, char*);
+            char* s = va_arg(va, char*); // NOLINT
             if (s == NULL) {
                 $print("null");
             } else {
@@ -931,7 +931,7 @@ cex_json__wr__print_val(json_wr_c* jw, char* format, ...)
         } else if (format[2] == 'S') {
             va_list va = {0};
             va_start(va, format);
-            str_s s = va_arg(va, str_s);
+            str_s s = va_arg(va, str_s); // NOLINT
             if (s.buf == NULL) {
                 $print("null");
             } else {
@@ -944,7 +944,7 @@ cex_json__wr__print_val(json_wr_c* jw, char* format, ...)
     } else if (format[1] == 'B') {
         va_list va = {0};
         va_start(va, format);
-        bool v = va_arg(va, int);
+        bool v = va_arg(va, int); // NOLINT
 
         if (v) {
             $print("true");
