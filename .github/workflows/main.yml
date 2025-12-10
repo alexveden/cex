@@ -2,7 +2,7 @@ name: UnitTests
 
 on:
   push:
-    branches: [ master, ci_test]
+    branches: [ master, staging*]
   pull_request:
     branches: [ master ]
 

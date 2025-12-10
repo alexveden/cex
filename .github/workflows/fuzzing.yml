@@ -2,9 +2,9 @@ name: FuzzTests
 
 on:
   push:
-    branches: [ dev*, master ]
+    branches: [ dev*, master, staging* ]
   pull_request:
-    branches: [ dev* ]
+    branches: [dev*, master, staging* ]
 
 
 jobs:
