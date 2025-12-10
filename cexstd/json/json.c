@@ -748,7 +748,7 @@ cex_json__wr__print_str_escaped(json_wr_c* jw, char* s, usize slen, bool add_quo
                 Exc err = sbuf.append(jw->buf, buf);
                 if (unlikely(err != EOK && jw->error == EOK)) { jw->error = err; }
             } else if (jw->stream) {
-                if (unlikely(fputs(buf, jw->stream) <= 0 && jw->error == EOK)) {
+                if (unlikely(fputs(buf, jw->stream) < 0 && jw->error == EOK)) {
                     jw->error = Error.io;
                 }
             }
@@ -884,7 +884,7 @@ cex_json__wr__print_str_escaped(json_wr_c* jw, char* s, usize slen, bool add_quo
         Exc err = sbuf.append(jw->buf, buf);
         if (unlikely(err != EOK && jw->error == EOK)) { jw->error = err; }
     } else if (jw->stream) {
-        if (unlikely(fputs(buf, jw->stream) <= 0 && jw->error == EOK)) { jw->error = Error.io; }
+        if (unlikely(fputs(buf, jw->stream) < 0 && jw->error == EOK)) { jw->error = Error.io; }
     }
 
 #undef $tohex
