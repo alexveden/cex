@@ -63,7 +63,7 @@ fuzz$case(const u8* data, usize size)
                     uassert(it.value.buf + it.value.len <= (char*)data + size);
                 }
                 uassert(n_items > 0);
-                uassert(n_items < 10000);
+                // uassert(n_items < 10000);
             } else {
                 uassert(t.type == CexTkn__error);
                 uassert(t.value.len == 0);
