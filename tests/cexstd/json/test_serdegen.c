@@ -15,6 +15,7 @@ test$setup_case()
 // test$setup_suite() {return EOK;}
 // test$teardown_suite() {return EOK;}
 
+#if !defined(__EMSCRIPTEN__)
 test$case(serdegen_myserde_basic)
 {
     if (os.path.exists(TESTDIR "basic/serdegen.h")) {
@@ -205,4 +206,12 @@ test$case(serdegen_myserde_advanced)
 
     return EOK;
 }
+
+#else
+test$case(os_cmd_not_supported_by_platform)
+{
+    return EOK;
+}
+#endif  // #if !defined(__EMSCRIPTEN__)
+
 test$main();
