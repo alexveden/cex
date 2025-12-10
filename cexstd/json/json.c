@@ -919,7 +919,7 @@ cex_json__wr__print_val(json_wr_c* jw, char* format, ...)
 
     if (format[0] == '"') {
         if (format[2] == 's') {
-            va_list va;
+            va_list va = {0};
             va_start(va, format);
             char* s = va_arg(va, char*);
             if (s == NULL) {
@@ -929,7 +929,7 @@ cex_json__wr__print_val(json_wr_c* jw, char* format, ...)
             }
             va_end(va);
         } else if (format[2] == 'S') {
-            va_list va;
+            va_list va = {0};
             va_start(va, format);
             str_s s = va_arg(va, str_s);
             if (s.buf == NULL) {
@@ -942,7 +942,7 @@ cex_json__wr__print_val(json_wr_c* jw, char* format, ...)
             unreachable();
         }
     } else if (format[1] == 'B') {
-        va_list va;
+        va_list va = {0};
         va_start(va, format);
         bool v = va_arg(va, int);
 
