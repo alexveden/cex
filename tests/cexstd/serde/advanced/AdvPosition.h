@@ -1,7 +1,7 @@
 #pragma once
 #include "cex.h"
-#include "lib/json/json.h"
-#include "Stock.h"
+#include "cexstd/json/json.h"
+#include "AdvStock.h"
 
 json$$struct();
 typedef struct Position {

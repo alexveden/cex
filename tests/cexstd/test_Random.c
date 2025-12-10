@@ -1,5 +1,5 @@
 #include "src/all.c"
-#include <lib/random/Random.c>
+#include <cexstd/random/Random.c>
 
 struct foo
 {

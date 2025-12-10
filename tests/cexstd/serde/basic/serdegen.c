@@ -73,7 +73,7 @@ Exception serdegen__Stock__deserialize(json_rd_c* jr, Stock* out_item, IAllocato
             if (unlikely(!v.buf)) {
                 json$rd_egoto(jr, JsonError.null_field, fail);
             } else {
-                str_s out_s;
+                str_s out_s = {0};
                 json$rd_egoto(jr, json$rd_str_unescape(v, &out_s, allc), fail);
                 out_item->ticker = out_s.buf;
             }
@@ -85,7 +85,7 @@ Exception serdegen__Stock__deserialize(json_rd_c* jr, Stock* out_item, IAllocato
             if (unlikely(!v.buf)) {
                 json$rd_egoto(jr, JsonError.null_field, fail);
             } else {
-                str_s out_s;
+                str_s out_s = {0};
                 json$rd_egoto(jr, json$rd_str_unescape(v, &out_s, allc), fail);
                 out_item->exchange = out_s.buf;
             }

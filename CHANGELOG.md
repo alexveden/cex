@@ -41,7 +41,7 @@
 - example: added CEX pre-compilation example
 - refactor: (breaking) io.fread/io.fwrite - changed API for convenience
 - refactor: (breaking) C23 compatible unreachable() + C23 tests passed
-- refactor: (breaking) moved json namespace to lib/json/ - currently it's never used in CEX core
+- refactor: (breaking) moved json namespace to cexstd/json/ - currently it's never used in CEX core
 - refactor: _Static_asserts are renamed to static_asserts for C23 compatibility
 - refactor: (breaking) renamed `var` into `auto` for C23 compatibility
 - refactor: (breaking) retired arr$slice functionality

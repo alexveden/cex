@@ -1,7 +1,7 @@
 #define CEX_IMPLEMENTATION
 #define CEX_TEST
 #include "cex.h"
-#include "lib/json/json.c"
+#include "cexstd/json/json.c"
 #include <math.h>
 #include <stdint.h>
 

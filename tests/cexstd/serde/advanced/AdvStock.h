@@ -1,6 +1,6 @@
 #pragma once
 #include "cex.h"
-#include "lib/json/json.h"
+#include "cexstd/json/json.h"
 
 /// Hi this is my comment
 json$$struct();

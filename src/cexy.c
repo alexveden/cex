@@ -2050,9 +2050,9 @@ cexy__cmd__libfetch(int argc, char** argv, void* user_ctx)
     char* process_help = "Fetching 3rd party libraries via git (by default it uses cex git repo as source)";
     char* epilog_help = 
         "\nCommand examples: \n"
-        "cex libfetch lib/test/fff.h                            - fetch signle header lib from CEX repo\n"
+        "cex libfetch cexstd/testing/fff.h                      - fetch signle file from CEX repo\n"
         "cex libfetch -U cex.h                                  - update cex.h to most recent version\n"
-        "cex libfetch lib/random/                               - fetch whole directory recursively from CEX lib\n"
+        "cex libfetch cexstd/random/                            - fetch whole directory recursively from CEX lib\n"
         "cex libfetch --git-label=v2.0 file.h                   - fetch using specific label or commit\n"
         "cex libfetch -u https://github.com/m/lib.git file.h    - fetch from arbitrary repo\n"
         "cex help --example cexy.utils.git_lib_fetch            - you can call it from your cex.c (see example)\n"

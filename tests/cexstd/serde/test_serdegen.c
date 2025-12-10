@@ -2,10 +2,10 @@
 #define CEX_BUILD
 #define CEX_TEST
 #include "cex.h"
-#include "lib/json/json.c"
+#include "cexstd/json/json.c"
 
 
-#define TESTDIR "tests/lib/serde/"
+#define TESTDIR "tests/cexstd/serde/"
 
 test$setup_case()
 {
@@ -59,7 +59,7 @@ test$case(serdegen_myserde_basic)
                             "-o",
                             TESTDIR "a.out",
                             TESTDIR "basic/serdegen_test_basic.c",
-                            "lib/json/json.c",
+                            "cexstd/json/json.c",
                             NULL };
 #else
         char* cc_args[] = { "cc",
@@ -71,7 +71,7 @@ test$case(serdegen_myserde_basic)
                             "-o",
                             TESTDIR "a.out",
                             TESTDIR "basic/serdegen_test_basic.c",
-                            "lib/json/json.c",
+                            "cexstd/json/json.c",
                             NULL };
 #endif
         _os$args_print("CMD: ", cc_args, arr$len(cc_args));
@@ -154,7 +154,7 @@ test$case(serdegen_myserde_advanced)
                             "-g",
                             "-o",
                             TESTDIR "a.out",
-                            "lib/json/json.c",
+                            "cexstd/json/json.c",
                             TESTDIR "advanced/serdegen_test_advanced.c",
                             NULL };
 #else
@@ -167,7 +167,7 @@ test$case(serdegen_myserde_advanced)
                             "-o",
                             TESTDIR "a.out",
                             TESTDIR "advanced/serdegen_test_advanced.c",
-                            "lib/json/json.c",
+                            "cexstd/json/json.c",
                             NULL };
 #endif
         _os$args_print("CMD: ", cc_args, arr$len(cc_args));

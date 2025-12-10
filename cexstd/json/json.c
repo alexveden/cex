@@ -1390,7 +1390,7 @@ _cex_json__gen__codegen_deserialize_field(
                     }
                 }
                 cg$else () {
-                    cg$pn("str_s out_s;");
+                    cg$pn("str_s out_s = {0};");
                     cg$pn("json$rd_egoto(jr, json$rd_str_unescape(v, &out_s, allc), fail);");
                     cg$pf("out_item->%s = out_s.buf;", f->name);
                 }
@@ -1629,7 +1629,7 @@ cex_json__gen__generate_full(json_gen_c* self)
         cg$pn("// DO NOT EDIT");
         cg$pn("//");
         cg$pn("#include \"cex.h\"");
-        cg$pn("#include \"lib/json/json.h\"");
+        cg$pn("#include \"cexstd/json/json.h\"");
         for$each (it, self->includes) { cg$pf("#include \"%s\"", it); }
         if (cg$var->error) { return cg$var->error; }
     }

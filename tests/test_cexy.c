@@ -260,7 +260,7 @@ test$case(test_lib_fetch_check_args)
     mem$scope(tmem$, _)
     {
         (void)_;
-        char* paths[] = { "cex.h", "lib/random", "lib/test/fff.h" };
+        char* paths[] = { "cex.h", "cexstd/random", "cexstd/test/fff.h" };
         tassert_er(
             Error.argument,
             cexy.utils.git_lib_fetch("", "HEAD", TBUILDDIR, false, true, paths, arr$len(paths))
@@ -293,7 +293,7 @@ test$case(test_git_lib_fetch)
     mem$scope(tmem$, _)
     {
         (void)_;
-        char* paths[] = { "cex.h", "lib/random", "lib/test/fff.h" };
+        char* paths[] = { "cex.h", "cexstd/random", "cexstd/test/fff.h" };
         tassert(!os.path.exists(TBUILDDIR "/out/"));
         tassert_er(
             Error.ok,
@@ -310,9 +310,9 @@ test$case(test_git_lib_fetch)
 
         tassert(os.path.exists(TBUILDDIR "/out/"));
         tassert(os.path.exists(TBUILDDIR "/out/cex.h"));
-        tassert(os.path.exists(TBUILDDIR "/out/lib/test/fff.h"));
-        tassert(os.path.exists(TBUILDDIR "/out/lib/random/Random.c"));
-        tassert(os.path.exists(TBUILDDIR "/out/lib/random/Random.h"));
+        tassert(os.path.exists(TBUILDDIR "/out/cexstd/test/fff.h"));
+        tassert(os.path.exists(TBUILDDIR "/out/cexstd/random/Random.c"));
+        tassert(os.path.exists(TBUILDDIR "/out/cexstd/random/Random.h"));
 
         // cwd changed back
         tassert(os.path.exists("cex.h"));
@@ -327,7 +327,7 @@ test$case(test_git_lib_fetch_no_preserve_dirs)
     mem$scope(tmem$, _)
     {
         (void)_;
-        char* paths[] = { "cex.h", "lib/random", "lib/test/fff.h" };
+        char* paths[] = { "cex.h", "cexstd/random", "cexstd/test/fff.h" };
         tassert(!os.path.exists(TBUILDDIR "/out/"));
 
         tassert_er(
@@ -357,7 +357,7 @@ test$case(test_git_lib_fetch_no_rewrite)
     mem$scope(tmem$, _)
     {
         (void)_;
-        char* paths[] = { "cex.h", "lib/random", "lib/test/fff.h" };
+        char* paths[] = { "cex.h", "cexstd/random", "cexstd/test/fff.h" };
         tassert(!os.path.exists(TBUILDDIR "/out/"));
 
         tassert_er(
@@ -450,7 +450,7 @@ test$case(test_git_lib_fetch_update)
     mem$scope(tmem$, _)
     {
         (void)_;
-        char* paths[] = { "cex.h", "lib/random", "lib/test/fff.h" };
+        char* paths[] = { "cex.h", "cexstd/random", "cexstd/test/fff.h" };
         tassert(!os.path.exists(TBUILDDIR "/out/"));
 
         tassert_er(
