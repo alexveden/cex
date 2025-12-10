@@ -68,6 +68,7 @@ fuzz$case(const u8* data, usize size)
                 uassert(t.type == CexTkn__error);
                 uassert(t.value.len == 0);
                 uassert(arr$len(items) == 0);
+                break;
             }
             n++;
 
