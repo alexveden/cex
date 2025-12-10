@@ -5,7 +5,7 @@
 #include "cexstd/json/json.c"
 
 
-#define TESTDIR "tests/cexstd/serde/"
+#define TESTDIR "tests/cexstd/json/"
 
 test$setup_case()
 {
