@@ -457,3 +457,12 @@ jobs:
       - name: clang-tidy checks
         run: |
           clang-tidy $(find ./src -name "*.c" -o -name "*.h")
+
+      - name: clang-tidy std checks
+        run: |
+          clang-tidy $(find ./cexstd -name "*.c" -o -name "*.h")
+
+      - name: clang-tidy std serdegen
+        run: |
+          clang-tidy tests/cexstd/json/advanced/serdegen.c
+          clang-tidy tests/cexstd/json/basic/serdegen.c
