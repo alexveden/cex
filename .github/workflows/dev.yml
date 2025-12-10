@@ -174,10 +174,7 @@ jobs:
         arch:
           - x86_64
           - x86
-          #- armv7
-          #- armhf
-          #- riscv64
-          #- s390x
+          - s390x
     steps:
       - uses: actions/checkout@v2
 
@@ -315,53 +312,3 @@ jobs:
         run: |
           clang-tidy tests/cexstd/json/advanced/serdegen.c
           clang-tidy tests/cexstd/json/basic/serdegen.c
-
-  tests-linux-big-endian:
-    name: alpine-${{ matrix.arch }}-${{ matrix.cex_preset }}
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        cex_preset: 
-          - CEX_RELEASE
-        arch:
-          - s390x
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Setup latest Alpine Linux
-        uses: jirutka/setup-alpine@v1
-        with:
-          arch: ${{ matrix.arch }}
-
-      - name: Run script inside Alpine chroot as root
-        shell: alpine.sh --root {0}
-        run: |
-          cat /etc/alpine-release
-          apk add gcc
-          apk add musl-dev
-          apk add git
-          apk add file
-          apk add pkgconf
-          apk add zlib-dev
-
-      - name: Environment
-        shell: alpine.sh {0}
-        run: |
-          cc --version
-
-      - name: cex initial build
-        shell: alpine.sh {0}
-        run: |
-          ls -la  # as you would expect, you're in your workspace directory
-          echo "Priming cex tool"
-          cc -g ./cex.c -o ./cex 
-          echo "Compiled cex executable"
-          file ./cex
-          echo "CEX config"
-          ./cex -D${{ matrix.cex_preset }} config
-
-      - name: unit tests
-        shell: alpine.sh {0}
-        run: |
-          ./cex test run all
