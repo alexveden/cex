@@ -1420,13 +1420,17 @@ _cex_str_match(char* str, isize str_len, char* pattern)
                     bool matched = false;
                     while (*pattern != '\0') {
                         if (unlikely(*pattern == '\\')) {
+                            // Escaped symbol, can be anything
                             pattern++;
                             if (unlikely(*pattern == '\0')) {
                                 uassert(false && "Unterminated \\ sequence inside '()' group");
                                 return false;
                             }
+                            if (str_len > 0 && *pattern == *str) { matched = true; }
+                            goto next;
                         }
-                        if (str_len > 0 && *pattern == *str) {
+
+                        if (str_len > 0 && *pattern != '|' && *pattern != ')' && *pattern == *str) {
                             matched = true;
                         } else {
                             while (*pattern != '|' && *pattern != ')' && *pattern != '\0') {
@@ -1435,6 +1439,8 @@ _cex_str_match(char* str, isize str_len, char* pattern)
                             }
                             break;
                         }
+
+                    next:
                         pattern++;
                         str++;
                         str_len--;
