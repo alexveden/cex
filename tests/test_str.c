@@ -2342,11 +2342,17 @@ test$case(test_str_match)
 
 test$case(test_str_match_regressions) {
     tassert(str.match("foo)", "(bar|foo)*"));
+    tassert(str.match("foo|", "(bar|foo)*"));
+    tassert(!str.match("foo)", "(bar|foo)"));
+    tassert(!str.match("foo|", "(bar|foo)"));
+    tassert(str.match("foo)", "(bar|foo)\\)"));
     tassert(str.match("/*! value */", "(/**|/*!)*"));
     tassert(str.match("fo)o)", "(bar|fo\\)o)*"));
     tassert(str.match("fo)o)", "(fo\\)o|bar)*"));
     tassert(str.match("fo)o)", "(fo\\)o)*"));
-    // tassert(str.match("/*!) value */", "(/**|/*!)*"));
+    tassert(str.match("abc", "[abc+]"));
+    tassert(!str.match("abc]", "[abc+]"));
+
     return EOK;
 }
 
