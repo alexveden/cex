@@ -2207,12 +2207,16 @@ test$case(test_str_slice_eq)
     return EOK;
 }
 
+
+
 test$case(test_str_match)
 {
     uassert_disable();
     tassert(str.match("test", "*"));
     tassert(!str.match("", "*"));
     tassert(!str.match(NULL, "*"));
+    tassert(!str.match(".txto.tx", "*.txt"));
+    tassert(str.match(".txto.txt", "*.txt"));
     tassert(str.match(".txt", "*.txt"));
     tassert(!str.match("test.txt", ""));
     tassert(str.match("test.txt", "*txt"));
@@ -2257,15 +2261,19 @@ test$case(test_str_match)
     tassert(str.match("d", "[_a-cd]"));
     tassert(str.match("_", "[a-c_A-C1-9]"));
     tassert(str.match("-", "[a-z-]"));
-    tassert(str.match("*", "[a-c*]"));
+    tassert(str.match("*", "[a-c\\*]"));
     tassert(str.match("?", "[?]"));
     tassert(str.match("-", "[?-]"));
-    tassert(str.match("*", "[*-]"));
+    tassert(str.match("*", "[\\*-]"));
     tassert(str.match(")", "[)]"));
     tassert(str.match("(", "[(]"));
-    tassert(str.match("e$*", "*[*]"));
-    tassert(!str.match("d", "[a-c*]")); // * - is literal
-    tassert(str.match("*", "[*a-z]"));
+    // tassert(str.match("b*", "*\\*"));
+    tassert(str.match("a*", "*\\*"));
+    tassert(!str.match("ab", "*\\*"));
+    tassert(str.match("e$*", "*[\\*]"));
+    tassert(str.match("e$*e$*", "*[\\*]"));
+    tassert(!str.match("d", "[a-c\\*]")); // * - is literal
+    tassert(str.match("*", "[\\*a-z]"));
     tassert(str.match("*", "[a-z\\*]"));
     tassert(str.match("]", "[\\]]"));
     tassert(str.match("[", "[\\[]"));
@@ -2280,7 +2288,9 @@ test$case(test_str_match)
     tassert(str.match("abc@", "[a-c+]@"));
     tassert(str.match("abdef", "[a-c+][d-f+]"));
     tassert(!str.match("abcf", "[a-c+]"));
-    tassert(str.match("abc+", "[+a-c+]"));
+    tassert(str.match("abc+", "[\\+a-c+]"));
+    tassert(str.match("+++", "[\\++]"));
+    tassert(str.match("+", "[\\+]"));
     tassert(str.match("abcf", "[a-c+]?"));
     tassert(!str.match("", "[a-c+]"));
     tassert(str.match("abcd", "[!d-f+]?"));
@@ -3259,5 +3269,6 @@ test$case(test_str_sub_slice)
     }
     return EOK;
 }
+
 
 test$main();

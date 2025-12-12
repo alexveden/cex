@@ -121,7 +121,7 @@ Use `cex -D config` to reset all project config flags to defaults
 #define cex$version_major 0
 #define cex$version_minor 18
 #define cex$version_patch 0
-#define cex$version_date "2025-12-11"
+#define cex$version_date "2025-12-12"
 
 
 
@@ -10985,7 +10985,9 @@ static bool
 _cex_str_match(char* str, isize str_len, char* pattern)
 {
     if (unlikely(str == NULL || str_len <= 0)) { return false; }
+
     uassert(pattern && "null pattern");
+
 
     while (*pattern != '\0') {
         switch (*pattern) {
@@ -11009,6 +11011,7 @@ _cex_str_match(char* str, isize str_len, char* pattern)
 
                 while (str_len > 0) {
                     if (_cex_str_match(str, str_len, pattern)) { return true; }
+                    // TODO: this is a source of timeouts in fuzz tests
                     str++;
                     str_len--;
                 }
@@ -11027,7 +11030,7 @@ _cex_str_match(char* str, isize str_len, char* pattern)
                 char* strstart = str;
                 isize str_len_start = str_len;
                 if (unlikely(*(pattern + 1) == ')')) {
-                    uassert(false && "Empty '()' group");
+                    uassertf(false, "Empty '()' group");
                     return false;
                 }
                 if (unlikely(str_len_start) == 0) { return false; }
@@ -11042,7 +11045,7 @@ _cex_str_match(char* str, isize str_len, char* pattern)
                             // Escaped symbol, can be anything
                             pattern++;
                             if (unlikely(*pattern == '\0')) {
-                                uassert(false && "Unterminated \\ sequence inside '()' group");
+                                uassertf(false, "Unterminated \\ sequence inside '()' group");
                                 return false;
                             }
                             if (str_len > 0 && *pattern == *str) { matched = true; }
@@ -11071,7 +11074,7 @@ _cex_str_match(char* str, isize str_len, char* pattern)
                     }
 
                     if (unlikely(*pattern != ')')) {
-                        uassert(false && "Invalid pattern - no closing ')'");
+                        uassertf(false, "Invalid pattern - no closing ')'");
                         return false;
                     }
 
@@ -11094,7 +11097,7 @@ _cex_str_match(char* str, isize str_len, char* pattern)
                     pattern = pstart + 1;
 
                     if (unlikely(*pattern == '!')) {
-                        uassert(*(pattern + 1) != ']' && "expected some chars after [!..]");
+                        uassertf(*(pattern + 1) != ']', "expected some chars after [!..]");
                         negate = true;
                         pattern++;
                     }
@@ -11120,9 +11123,22 @@ _cex_str_match(char* str, isize str_len, char* pattern)
                                 pattern++;
                             }
                         } else {
-                            if (unlikely(*pattern == '+' && *(pattern + 1) == ']')) {
+                            if (unlikely(*pattern == '+')) {
                                 // repeating group [a-z+]@, match all cases until @
+                                if (unlikely(!(*(pattern + 1) == ']'))) {
+                                    uassertf(
+                                        false,
+                                        "Unescaped '+' literal, or '+' must be last before ]"
+                                    );
+                                    return false;
+                                }
                                 repeating = true;
+                            } else if (unlikely(*pattern == '*')) {
+                                uassertf(
+                                    false,
+                                    "Invalid pattern, unescaped *, use [...\\*...], or '+' for any modifier"
+                                );
+                                return false;
                             } else {
                                 if (*pattern == *str) { matched = true; }
                             }
@@ -11131,7 +11147,7 @@ _cex_str_match(char* str, isize str_len, char* pattern)
                     }
 
                     if (unlikely(*pattern != ']')) {
-                        uassert(false && "Invalid pattern - no closing ']'");
+                        uassertf(false, "Invalid pattern - no closing ']'");
                         return false;
                     } else {
                         pattern++;
