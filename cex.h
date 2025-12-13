@@ -11021,6 +11021,7 @@ main_loop_again:
                     //  this prevents recursive call explosion when we have * in the pattern later
                     if (unlikely(_cex_str_match(str, str_len, pattern, &n_matched))) {
                         if (n_matched > 0) {
+                            uassert(str_len >= n_matched);
                             str += n_matched;
                             str_len -= n_matched;
                             while (*pattern != '\0' && *pattern != '*') {
@@ -11190,8 +11191,9 @@ main_loop_again:
                     }
                 }
 
-                if (str_len == 0) {
+                if (str_len <= 0) {
                     // str end reached, pattern also must be at end (null-term)
+                    uassert(str_len == 0);
                     return *pattern == '\0';
                 }
                 break;
