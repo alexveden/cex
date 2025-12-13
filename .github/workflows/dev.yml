@@ -208,7 +208,7 @@ jobs:
           file ./cex
           echo "CEX config"
           # For emulated platforms use debug / no asan for faster build times 
-          ./cex -DCEX_DEBUG config
+          ./cex -DCEX_DEBUG -DCEX_TEST_NOASAN config
 
       - name: unit tests
         shell: alpine.sh {0}
