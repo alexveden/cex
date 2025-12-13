@@ -1371,7 +1371,7 @@ _cex_str_match(char* str, isize str_len, char* pattern, isize* matched_till_star
     isize start_str_len = str_len;
 
 main_loop_again:
-    while (*pattern != '\0') {
+    while (*pattern != '\0' && str_len > 0) {
         switch (*pattern) {
             case '*':
                 if (matched_till_star) {
@@ -1486,7 +1486,7 @@ main_loop_again:
                         return false;
                     } else {
                         // All good find next pattern
-                        break; // while (*str != '\0') {
+                        goto main_loop_again;
                     }
                 }
                 break;
@@ -1595,7 +1595,12 @@ main_loop_again:
         }
     }
 
-    return str_len == 0;
+    // Drain pattern if we have remaining * (zero-or-any)
+    while(*pattern == '*') {
+        pattern++;
+    }
+
+    return str_len == 0 && *pattern == '\0';
 }
 
 /// Slice pattern matching check (see ./cex help str$ for examples)

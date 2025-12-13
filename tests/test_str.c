@@ -2378,6 +2378,8 @@ test$case(test_str_slice_match)
     tassert(str.slice.match(src, "*"));
     tassert(str.slice.match(src, "*.txt"));
     tassert(str.slice.match(src, "*.txt*"));
+    tassert(str.slice.match(src, "*.txt****"));
+    tassert(!str.slice.match(src, "*.txt?"));
     tassert(str.slice.match(src, "my_test*.txt"));
     tassert(str.slice.match(src, "my_test* *.txt"));
     tassert(!str.slice.match(str.slice.sub(src, 1, 0), "my_test* *.txt"));
