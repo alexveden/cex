@@ -1,7 +1,7 @@
 #pragma once
 #if !defined(cex$enable_minimal) || defined(cex$enable_str)
-#include "_sprintf.h"
-#include "all.h"
+#    include "_sprintf.h"
+#    include "all.h"
 
 static inline int
 _cex_str__toupper(int c)

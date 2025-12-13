@@ -203,7 +203,10 @@ cex_bundle(void)
             e$except (err, io.fread_all(fh, &content, _)) { exit(1); }
             for$iter (str_s, it, str.slice.iter_split(content, "\n", &it.iterator)) {
                 if (str.slice.match(it.val, "#pragma once*")) { continue; }
-                if (str.slice.match(it.val, "#include \"*\"")) { continue; }
+                if (str.slice.match(it.val, "#include \"*\"") ||
+                    str.slice.match(it.val, "#[ +]include \"*\"")) {
+                    continue;
+                }
                 cg$pf("%S", it.val);
             }
         }
@@ -237,7 +240,10 @@ cex_bundle(void)
             e$except (err, io.fread_all(fh, &content, _)) { exit(1); }
             for$iter (str_s, it, str.slice.iter_split(content, "\n", &it.iterator)) {
                 if (str.slice.match(it.val, "#pragma once*")) { continue; }
-                if (str.slice.match(it.val, "#include \"*\"")) { continue; }
+                if (str.slice.match(it.val, "#include \"*\"") ||
+                    str.slice.match(it.val, "#[ +]include \"*\"")) {
+                    continue;
+                }
                 cg$pf("%S", it.val);
             }
         }

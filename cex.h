@@ -3535,7 +3535,7 @@ struct subprocess_s {
 
 #ifdef _WIN32
 #    define WIN32_LEAN_AND_MEAN
-#    include "windows.h"
+#    include <windows.h>
 #    include <direct.h>
 #else
 #    include <dirent.h>
@@ -13799,7 +13799,7 @@ int subprocess_alive(struct subprocess_s *const process) {
 // ============================================================
 
 #    define WIN32_LEAN_AND_MEAN
-#    include "windows.h"
+#    include <windows.h>
 
 struct dirent
 {
