@@ -8,7 +8,9 @@
 
 #ifndef json$$field
 /// JSON field metadata attribute, used for adjusting json.gen. behavior for specific field
-/// json$$field(.nullable = false, .optional = false, .skip = false )
+/// all field parameters are optional 
+/// json$$field(.name = "json_name", .nullable = false, .optional = false, .skip = false )
+/// .name = "json_name" = maps json specific name to C struct field
 /// .nullable = allows strings or objects to be `null` in json, assigns NULL on deserialization
 /// .optional = allows object keys absence in a JSON file
 /// .skip = totally skip json serialization/deserialization of that field (initialize manually)

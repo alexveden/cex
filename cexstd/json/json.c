@@ -919,7 +919,7 @@ cex_json__wr__print_val(json_wr_c* jw, char* format, ...)
 
     if (format[0] == '"') {
         if (format[2] == 's') {
-            va_list va = {0};
+            va_list va = { 0 };
             va_start(va, format);
             char* s = va_arg(va, char*); // NOLINT
             if (s == NULL) {
@@ -929,7 +929,7 @@ cex_json__wr__print_val(json_wr_c* jw, char* format, ...)
             }
             va_end(va);
         } else if (format[2] == 'S') {
-            va_list va = {0};
+            va_list va = { 0 };
             va_start(va, format);
             str_s s = va_arg(va, str_s); // NOLINT
             if (s.buf == NULL) {
@@ -942,7 +942,7 @@ cex_json__wr__print_val(json_wr_c* jw, char* format, ...)
             unreachable();
         }
     } else if (format[1] == 'B') {
-        va_list va = {0};
+        va_list va = { 0 };
         va_start(va, format);
         bool v = va_arg(va, int); // NOLINT
 
@@ -1203,6 +1203,19 @@ _cex_json__gen___process_field_attr(
                             t.value
                         );
                     }
+                } else if (str$eq(kw, "name")) {
+                    if (t.type == CexTkn__string && t.value.len > 0) {
+                        e$except_null (field->json_name = str.slice.clone(t.value, self->allc)) {
+                            return Error.memory;
+                        }
+                    } else {
+                        return e$raise(
+                            Error.integrity,
+                            "Expected .name = \"string_name\" in %S, got `%S`",
+                            attr_name,
+                            t.value
+                        );
+                    }
                 } else {
                     return e$raise(
                         Error.integrity,
@@ -1264,6 +1277,7 @@ _cex_json__gen___process_field_attr(
     }
 
 end:
+    if (!field->json_name) { field->json_name = field->name; }
     log$info("New field: name=%s, type=%S\n", field->name, field->type);
 
     return EOK;
@@ -1275,7 +1289,7 @@ _cex_json__gen__codegen_serialize_field(json_gen_c* self, cex_codegen_s* cg$var,
     (void)self;
     (void)f;
     e$assert(f->type.buf && f->type.len != 0);
-    cg$pf("json$wr_key(\"%s\");", f->name);
+    cg$pf("json$wr_key(\"%s\");", f->json_name);
 
     json_gen_type_s* field_type = hm$get(self->types, f->type);
     if (field_type) {
@@ -1322,7 +1336,7 @@ _cex_json__gen__codegen_deserialize_field(
     (void)f;
     e$assert(f->type.buf && f->type.len != 0);
 
-    cg$elseif ("str$eq(k, \"%s\")", f->name) {
+    cg$elseif ("str$eq(k, \"%s\")", f->json_name) {
         if (!f->flags.is_optional) {
             cg$pf("fields_mask |= (1 << %d);", *out_field_idx);
             *out_field_idx += 1;

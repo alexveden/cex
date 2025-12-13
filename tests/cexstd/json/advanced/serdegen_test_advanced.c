@@ -8,6 +8,9 @@
 #include "cex.h"
 #include "serdegen.c"
 
+#define serdegen$print(item, kwargs...)                                                            \
+    _Generic((item), Order2*: serdegen.Order2.print)(item, &(json_wr_kw){ kwargs })
+
 void
 print_json_expected(sbuf_c s)
 {
@@ -515,7 +518,7 @@ test$case(test_Items_deserialize_missing_fields)
     e$ret(json$rd_new(&jr, expected, 0, .strict_mode = false));
     tassert_er(JsonError.missing_field, serdegen.Item.deserialize(&jr, &s2, mem$));
 
-expected = "{\n\
+    expected = "{\n\
     \"sbuf_field\": \"hello_sbuf\", \n\
     \"str_s_field\": \"hello_str_s\", \n\
     \"char_field\": \"hello_char\", \n\
@@ -565,18 +568,24 @@ test$case(test_Order_type_matching_validation)
 {
     sbuf_c sb_item = sbuf.create(1024, mem$);
     Stock stk = { .exchange = "FOO", .id = 22, .ticker = "UBER" };
-    Order ord = {.id = 9988, .price = 123.334455, .qty = -10, .exchange = "NICE", .stock = &stk, .is_active = true};
+    Order ord = { .id = 9988,
+                  .price = 123.334455,
+                  .qty = -10,
+                  .exchange = "NICE",
+                  .stock = &stk,
+                  .is_active = true };
 
     sbuf.clear(&sb_item);
     tassert_er(
         Error.ok,
-        serdegen.Order.print(&ord, &(json_wr_kw){ .buf = &sb_item, .simplified = false, .indent = 4 })
+        serdegen.Order
+            .print(&ord, &(json_wr_kw){ .buf = &sb_item, .simplified = false, .indent = 4 })
     );
 
     io.printf("JSON\n:%s\n", sb_item);
     print_json_expected(sb_item);
 
-char* expected = "{\n\
+    char* expected = "{\n\
     \"id\": 9988, \n\
     \"price\": 123.334457, \n\
     \"qty\": -10, \n\
@@ -599,7 +608,7 @@ char* expected = "{\n\
     serdegen.Order.destroy(&s2, mem$);
 
     io.printf("---------------------------------\n");
-expected = "{\n\
+    expected = "{\n\
     \"id\": 9988, \n\
     \"price\": 123.334457, \n\
     \"qty\": -10, \n\
@@ -616,7 +625,7 @@ expected = "{\n\
     io.printf("---------------------------------\n");
 
     io.printf("---------------------------------\n");
-expected = "{\n\
+    expected = "{\n\
     \"id\": 9988, \n\
     \"price\": 123.334457, \n\
     \"qty\": -10, \n\
@@ -630,7 +639,7 @@ expected = "{\n\
 
     io.printf("---------------------------------\n");
 
-expected = "{\n\
+    expected = "{\n\
     \"id\": 9988, \n\
     \"price\": 123.334457, \n\
     \"qty\": -10, \n\
@@ -653,7 +662,7 @@ expected = "{\n\
 test$case(test_Order_deserialize_valid)
 {
 
-char* expected = "{\n\
+    char* expected = "{\n\
     \"id\": 9988, \n\
     \"price\": 123.334457, \n\
     \"qty\": -10, \n\
@@ -816,7 +825,7 @@ test$case(test_Order_deserialize_with_array)
     return EOK;
 }
 
-/* FIX: Valid JSON with scientific notation 
+/* FIX: Valid JSON with scientific notation
 test$case(test_Order_deserialize_scientific_notation)
 {
     char* expected = "{\n\
@@ -921,5 +930,40 @@ test$case(test_Items_deserialize_unicode)
     serdegen.Item.destroy(&s2, mem$);
     return EOK;
 }
-test$main();
 
+test$case(test_Order2_serialize_custom_json_field)
+{
+    Order2 s = { .id = 777 };
+    serdegen.Order2.print(&s, NULL);
+
+    sbuf_c sb = sbuf.create(1024, mem$);
+    json_wr_c jw;
+    e$ret(json$wr_new(&jw, .indent = 4, .buf = &sb));
+    e$ret(serdegen.Order2.serialize(&jw, &s));
+
+    io.printf("\nJSON OUTPUT\n%s\n", sb);
+    print_json_expected(sb);
+    char* expected = "{\n\
+    \"my_json_id\": 777\n\
+}";
+
+    serdegen$print(&s);
+    // tassert(false);
+
+    tassert_eq(sb, expected);
+
+    json_rd_c jr;
+    e$ret(json$rd_new(&jr, sb, 0, .strict_mode = true));
+
+    Order2 s2 = { 0 };
+    e$ret(serdegen.Order2.deserialize(&jr, &s2, mem$));
+
+    tassert_eq(s2.id, 777);
+
+
+    sbuf.destroy(&sb);
+    serdegen.Order2.destroy(&s2, mem$);
+
+    return EOK;
+}
+test$main();

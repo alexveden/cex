@@ -51,3 +51,10 @@ typedef struct Order
     char* exchange;
     Stock* stock;
 } Order;
+
+json$$struct();
+typedef struct Order2
+{
+    json$$field(.name = "my_json_id");
+    u64 id;
+} Order2;
