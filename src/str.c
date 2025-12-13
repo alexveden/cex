@@ -1363,16 +1363,22 @@ cex_str_join(char** str_arr, usize str_arr_len, char* join_by, IAllocator allc)
 
 
 static bool
-_cex_str_match(char* str, isize str_len, char* pattern)
+_cex_str_match(char* str, isize str_len, char* pattern, isize* matched_till_star)
 {
     if (unlikely(str == NULL || str_len <= 0)) { return false; }
 
     uassert(pattern && "null pattern");
+    isize start_str_len = str_len;
 
-
+main_loop_again:
     while (*pattern != '\0') {
         switch (*pattern) {
             case '*':
+                if (matched_till_star) {
+                    // NOTE: this case only for handling recursive calls (see below in this scope)
+                    *matched_till_star = start_str_len - str_len;
+                    return true;
+                }
                 while (*pattern == '*' || *pattern == '?') {
                     if (unlikely(str_len > 0 && *pattern == '?')) {
                         str++;
@@ -1391,8 +1397,23 @@ _cex_str_match(char* str, isize str_len, char* pattern)
                 }
 
                 while (str_len > 0) {
-                    if (_cex_str_match(str, str_len, pattern)) { return true; }
-                    // TODO: this is a source of timeouts in fuzz tests
+                    isize n_matched = 0;
+                    // NOTE: recursive calls when we need pattern match next
+                    //  this prevents recursive call explosion when we have * in the pattern later
+                    if (unlikely(_cex_str_match(str, str_len, pattern, &n_matched))) {
+                        if (n_matched > 0) {
+                            str += n_matched;
+                            str_len -= n_matched;
+                            while (*pattern != '\0' && *pattern != '*') {
+                                if (*pattern == '\\') {
+                                    if (pattern[1]) { pattern++; }
+                                }
+                                pattern++;
+                            }
+                            goto main_loop_again;
+                        }
+                        return true;
+                    }
                     str++;
                     str_len--;
                 }
@@ -1579,14 +1600,14 @@ _cex_str_match(char* str, isize str_len, char* pattern)
 static bool
 cex_str__slice__match(str_s s, char* pattern)
 {
-    return _cex_str_match(s.buf, s.len, pattern);
+    return _cex_str_match(s.buf, s.len, pattern, NULL);
 }
 
 /// String pattern matching check (see ./cex help str$ for examples)
 static bool
 cex_str_match(char* s, char* pattern)
 {
-    return _cex_str_match(s, str.len(s), pattern);
+    return _cex_str_match(s, str.len(s), pattern, NULL);
 }
 
 /// libc `qsort()` comparator functions, for arrays of `char*`, sorting alphabetical

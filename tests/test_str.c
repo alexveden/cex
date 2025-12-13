@@ -2215,6 +2215,12 @@ test$case(test_str_match)
     tassert(str.match("test", "*"));
     tassert(!str.match("", "*"));
     tassert(!str.match(NULL, "*"));
+    tassert(str.match("----fo1---bar---foo.txt", "*(foo|bar)*.txt"));
+    tassert(str.match("----foo---bar---foo.txt", "*(foo|bar)*.txt"));
+    tassert(!str.match("----foo---bar---foo.txt", "*(foo|bar)*.tx"));
+    tassert(str.match("----foo---bar---foo.txt", "*(foo|bar\\*)*.txt"));
+    tassert(str.match("----foo---bar---foo.txt", "*(foo|bar\\*)*(foo|gaa).txt"));
+    tassert(str.match("----foo---1*23---bar*.txt", "*(bar|foo)*[123\\*+]*(foo|bar\\*).txt"));
     tassert(!str.match(".txto.tx", "*.txt"));
     tassert(str.match(".txto.txt", "*.txt"));
     tassert(str.match(".txt", "*.txt"));
