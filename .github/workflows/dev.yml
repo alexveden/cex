@@ -169,8 +169,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        cex_preset: 
-          - CEX_RELEASE
         arch:
           - x86_64
           - x86
@@ -209,7 +207,8 @@ jobs:
           echo "Compiled cex executable"
           file ./cex
           echo "CEX config"
-          ./cex -D${{ matrix.cex_preset }} config
+          # For emulated platforms use debug / no asan for faster build times 
+          ./cex -DCEX_DEBUG -DCEXT_TEST_NOASAN  config
 
       - name: unit tests
         shell: alpine.sh {0}
