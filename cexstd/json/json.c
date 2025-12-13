@@ -1645,6 +1645,27 @@ cex_json__gen__generate_full(json_gen_c* self)
         cg$pn("#include \"cex.h\"");
         cg$pn("#include \"cexstd/json/json.h\"");
         for$each (it, self->includes) { cg$pf("#include \"%s\"", it); }
+
+        cg$pn("");
+        cg$pf("/// Generic `%s` type printer using json", self->namespace);
+        cg$pf("/// Example: ");
+        cg$pf("/// %s$print(any_supported_type_pointer, .indent = 0, .simplified = true ); ", self->namespace);
+        cg$pf("#define %s$print(item, kwargs...) \\", self->namespace);
+        cg$pf("    _Generic((item), \\");
+
+        for (u32 i = 0; i < arr$len(self->types); i++) {
+            if (i > 0) { cg$pa(", \\\n"); }
+            cg$pf(
+                "        %s*: %s.%s.print",
+                self->types[i].value->name,
+                self->namespace,
+                self->types[i].value->name
+            );
+        }
+        cg$pa("\\\n");
+        cg$pf("    )(item, &(json_wr_kw) { kwargs })");
+        cg$pn("");
+
         if (cg$var->error) { return cg$var->error; }
     }
 

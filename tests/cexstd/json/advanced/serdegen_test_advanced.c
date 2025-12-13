@@ -8,9 +8,6 @@
 #include "cex.h"
 #include "serdegen.c"
 
-#define serdegen$print(item, kwargs...)                                                            \
-    _Generic((item), Order2*: serdegen.Order2.print)(item, &(json_wr_kw){ kwargs })
-
 void
 print_json_expected(sbuf_c s)
 {
@@ -927,6 +924,8 @@ test$case(test_Items_deserialize_unicode)
     tassert_eq(s2.str_s_field, str$s("😀"));
     tassert_eq(s2.char_field, "😀");
 
+    serdegen$print(&s2);
+
     serdegen.Item.destroy(&s2, mem$);
     return EOK;
 }
@@ -948,7 +947,7 @@ test$case(test_Order2_serialize_custom_json_field)
 }";
 
     serdegen$print(&s);
-    // tassert(false);
+    serdegen$print(&s, .simplified = true, .indent = 4);
 
     tassert_eq(sb, expected);
 
