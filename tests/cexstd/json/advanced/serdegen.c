@@ -50,6 +50,7 @@ Exc serdegen__Stock__print(Stock_c* item, json_wr_kw* json_writer_kwargs) {
 Exception serdegen__Stock__deserialize(json_rd_c* jr, Stock_c* out_item, IAllocator allc) {
     uassert(jr != NULL);
     uassert(out_item != NULL);
+    memset(out_item, 0, sizeof(*out_item));
     u64 fields_mask = 0;
     json$rd_foreach(k, v, jr) {
         if (!k.buf) {
@@ -144,7 +145,6 @@ Exception serdegen__ItemNullable__serialize(json_wr_c* jw, ItemNullable_c* item)
         }
 
         json$wr_key("stock_val");
-        // field `stock_val` is nullable json$$field(.nullable = true)
         e$except_silent (err, serdegen.Stock.serialize(jw, &item->stock_val)) {
             jw->error = err;
         }
@@ -174,6 +174,7 @@ Exc serdegen__ItemNullable__print(ItemNullable_c* item, json_wr_kw* json_writer_
 Exception serdegen__ItemNullable__deserialize(json_rd_c* jr, ItemNullable_c* out_item, IAllocator allc) {
     uassert(jr != NULL);
     uassert(out_item != NULL);
+    memset(out_item, 0, sizeof(*out_item));
     u64 fields_mask = 0;
     json$rd_foreach(k, v, jr) {
         if (!k.buf) {
@@ -306,10 +307,7 @@ Exception serdegen__Item__serialize(json_wr_c* jw, Item* item) {
         json$wr_val(item->char_field);
 
         json$wr_key("stock_field");
-        if (unlikely(!item->stock_field)) {
-            jw->error = JsonError.null_field;
-        }
-        e$except_silent (err, serdegen.Stock.serialize(jw, item->stock_field)) {
+        e$except_silent (err, serdegen.Stock.serialize(jw, &item->stock_field)) {
             jw->error = err;
         }
 
@@ -339,6 +337,7 @@ Exc serdegen__Item__print(Item* item, json_wr_kw* json_writer_kwargs) {
 Exception serdegen__Item__deserialize(json_rd_c* jr, Item* out_item, IAllocator allc) {
     uassert(jr != NULL);
     uassert(out_item != NULL);
+    memset(out_item, 0, sizeof(*out_item));
     u64 fields_mask = 0;
     json$rd_foreach(k, v, jr) {
         if (!k.buf) {
@@ -388,11 +387,7 @@ Exception serdegen__Item__deserialize(json_rd_c* jr, Item* out_item, IAllocator 
                 if (jr->type != JsonType__obj) {
                     json$rd_egoto(jr, JsonError.wrong_type, fail);
                 }
-                out_item->stock_field = mem$new(allc, Stock_c);
-                if (!out_item->stock_field) {
-                    return Error.memory;
-                }
-                json$rd_egoto(jr, serdegen.Stock.deserialize(jr, out_item->stock_field, allc), fail);
+                json$rd_egoto(jr, serdegen.Stock.deserialize(jr, &out_item->stock_field, allc), fail);
             } else {
                 json$rd_egoto(jr, JsonError.null_field, fail);
             }
@@ -422,8 +417,7 @@ void serdegen__Item__destroy(Item* item, IAllocator allc) {
         sbuf.destroy(&item->sbuf_field);
         mem$free(allc, item->str_s_field.buf);
         mem$free(allc, item->char_field);
-        serdegen.Stock.destroy(item->stock_field, allc);
-        mem$free(allc, item->stock_field);
+        serdegen.Stock.destroy(&item->stock_field, allc);
         serdegen.Stock.destroy(item->stock_field_skipped, allc);
         mem$free(allc, item->stock_field_skipped);
         memset(item, 0, sizeof(*item));
@@ -492,6 +486,7 @@ Exc serdegen__Order__print(Order* item, json_wr_kw* json_writer_kwargs) {
 Exception serdegen__Order__deserialize(json_rd_c* jr, Order* out_item, IAllocator allc) {
     uassert(jr != NULL);
     uassert(out_item != NULL);
+    memset(out_item, 0, sizeof(*out_item));
     u64 fields_mask = 0;
     json$rd_foreach(k, v, jr) {
         if (!k.buf) {
@@ -614,6 +609,7 @@ Exc serdegen__Order2__print(Order2_c* item, json_wr_kw* json_writer_kwargs) {
 Exception serdegen__Order2__deserialize(json_rd_c* jr, Order2_c* out_item, IAllocator allc) {
     uassert(jr != NULL);
     uassert(out_item != NULL);
+    memset(out_item, 0, sizeof(*out_item));
     u64 fields_mask = 0;
     json$rd_foreach(k, v, jr) {
         if (!k.buf) {
@@ -700,6 +696,7 @@ Exc serdegen__Position__print(Position_c* item, json_wr_kw* json_writer_kwargs) 
 Exception serdegen__Position__deserialize(json_rd_c* jr, Position_c* out_item, IAllocator allc) {
     uassert(jr != NULL);
     uassert(out_item != NULL);
+    memset(out_item, 0, sizeof(*out_item));
     u64 fields_mask = 0;
     json$rd_foreach(k, v, jr) {
         if (!k.buf) {

@@ -246,7 +246,7 @@ test$case(test_Items_initialized_serialize_null_field)
         .char_field = "hello_char",
         .sbuf_field = "hello_sbuf",
         .str_s_field = str$s("hello_str_s"),
-        .stock_field = &stk,
+        .stock_field = stk,
     };
     sbuf.clear(&sb_item);
     tassert_er(
@@ -274,7 +274,7 @@ test$case(test_Items_initialized_serialize_null_field)
         .char_field = NULL,
         .sbuf_field = "hello_sbuf",
         .str_s_field = str$s("hello_str_s"),
-        .stock_field = &stk,
+        .stock_field = stk,
     };
     tassert_er(
         JsonError.null_field,
@@ -300,7 +300,7 @@ test$case(test_Items_initialized_serialize_null_field)
         .char_field = "hello_char",
         .sbuf_field = NULL,
         .str_s_field = str$s("hello_str_s"),
-        .stock_field = &stk,
+        .stock_field = stk,
     };
     tassert_er(
         JsonError.null_field,
@@ -327,7 +327,7 @@ test$case(test_Items_initialized_serialize_null_field)
         .char_field = "hello_char",
         .sbuf_field = "hello_sbuf",
         .str_s_field = { 0 },
-        .stock_field = &stk,
+        .stock_field = stk,
     };
     tassert_er(
         JsonError.null_field,
@@ -354,20 +354,25 @@ test$case(test_Items_initialized_serialize_null_field)
         .char_field = "hello_char",
         .sbuf_field = "hello_sbuf",
         .str_s_field = str$s("hello_str_s"),
-        .stock_field = NULL,
+        .stock_field = {0},
     };
     tassert_er(
-        JsonError.null_field,
+        EOK,
         serdegen.Item.print(&s, &(json_wr_kw){ .buf = &sb_item, .simplified = true, .indent = 4 })
     );
     io.printf("`%s`\n", sb_item);
     print_json_expected(sb_item);
+
     expected = "Item({\n\
     sbuf_field: \"hello_sbuf\", \n\
     str_s_field: \"hello_str_s\", \n\
     char_field: \"hello_char\", \n\
-    stock_field: null\n\
-} [error: NullFieldErrorJSON])\n\
+    stock_field: {\n\
+        id: 0, \n\
+        ticker: null, \n\
+        exchange: null\n\
+    }\n\
+})\n\
 ";
     tassert_eq(expected, sb_item);
 
@@ -386,7 +391,7 @@ test$case(test_Items_deserialize_non_nullable)
         .char_field = "hello_char",
         .sbuf_field = "hello_sbuf",
         .str_s_field = str$s("hello_str_s"),
-        .stock_field = &stk,
+        .stock_field = stk,
     };
     sbuf.clear(&sb_item);
     tassert_er(
@@ -415,10 +420,9 @@ test$case(test_Items_deserialize_non_nullable)
     tassert_eq(s2.char_field, "hello_char");
     tassert_eq(s2.str_s_field, str$s("hello_str_s"));
     tassert_eq(s2.sbuf_field, "hello_sbuf");
-    tassert(s2.stock_field != NULL);
-    tassert_eq(s2.stock_field->ticker, "UBER");
-    tassert_eq(s2.stock_field->exchange, "FOO");
-    tassert_eq(s2.stock_field->id, 22);
+    tassert_eq(s2.stock_field.ticker, "UBER");
+    tassert_eq(s2.stock_field.exchange, "FOO");
+    tassert_eq(s2.stock_field.id, 22);
     serdegen.Item.destroy(&s2, mem$);
 
 
@@ -540,7 +544,7 @@ test$case(test_Items_deserialize_missing_fields)
 
     e$ret(json$rd_new(&jr, expected, 0, .strict_mode = false));
     e$ret(serdegen.Item.deserialize(&jr, &s2, mem$));
-    tassert_eq(s2.stock_field->ticker, NULL);
+    tassert_eq(s2.stock_field.ticker, NULL);
     tassert(s2.stock_field_skipped == NULL);
 
     expected = "{\n\
@@ -552,11 +556,11 @@ test$case(test_Items_deserialize_missing_fields)
         \"exchange\": \"FOO\"\n\
     }\n\
 }";
+    serdegen.Item.destroy(&s2, mem$);
 
     e$ret(json$rd_new(&jr, expected, 0, .strict_mode = false));
     tassert_er(JsonError.unknown_field, serdegen.Item.deserialize(&jr, &s2, mem$));
 
-    serdegen.Item.destroy(&s2, mem$);
     return EOK;
 }
 

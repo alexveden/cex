@@ -54,6 +54,7 @@ Exc serdegen__Stock__print(Stock* item, json_wr_kw* json_writer_kwargs) {
 Exception serdegen__Stock__deserialize(json_rd_c* jr, Stock* out_item, IAllocator allc) {
     uassert(jr != NULL);
     uassert(out_item != NULL);
+    memset(out_item, 0, sizeof(*out_item));
     u64 fields_mask = 0;
     json$rd_foreach(k, v, jr) {
         if (!k.buf) {
@@ -166,6 +167,7 @@ Exc serdegen__Position__print(Position_c* item, json_wr_kw* json_writer_kwargs) 
 Exception serdegen__Position__deserialize(json_rd_c* jr, Position_c* out_item, IAllocator allc) {
     uassert(jr != NULL);
     uassert(out_item != NULL);
+    memset(out_item, 0, sizeof(*out_item));
     u64 fields_mask = 0;
     json$rd_foreach(k, v, jr) {
         if (!k.buf) {
@@ -263,6 +265,7 @@ Exc serdegen__foo__print(foo_c* item, json_wr_kw* json_writer_kwargs) {
 Exception serdegen__foo__deserialize(json_rd_c* jr, foo_c* out_item, IAllocator allc) {
     uassert(jr != NULL);
     uassert(out_item != NULL);
+    memset(out_item, 0, sizeof(*out_item));
     u64 fields_mask = 0;
     json$rd_foreach(k, v, jr) {
         if (!k.buf) {

@@ -1298,10 +1298,12 @@ _cex_json__gen__codegen_serialize_field(json_gen_c* self, cex_codegen_s* cg$var,
     json_gen_type_s* field_type = hm$get(self->types, f->type);
     if (field_type) {
         // Project Type
-        if (!f->flags.is_nullable) {
-            cg$if ("unlikely(!item->%s)", f->name) { cg$pf("jw->error = JsonError.null_field;"); }
-        } else {
-            cg$pf("// field `%s` is nullable json$$field(.nullable = true)", f->name);
+        if (f->flags.is_ptr) {
+            if (!f->flags.is_nullable) {
+                cg$if ("unlikely(!item->%s)", f->name) { cg$pf("jw->error = JsonError.null_field;"); }
+            } else {
+                cg$pf("// field `%s` is nullable json$$field(.nullable = true)", f->name);
+            }
         }
         cg$scope ("e$except_silent (err, %s.%s.serialize(jw, %sitem->%s)) ",
                   self->namespace,
@@ -1574,6 +1576,7 @@ _cex_json__gen__generate_type(json_gen_c* self, cex_codegen_s* cg$var, json_gen_
              t->name) {
         cg$pn("uassert(jr != NULL);");
         cg$pn("uassert(out_item != NULL);");
+        cg$pn("memset(out_item, 0, sizeof(*out_item));");
 
         cg$pn("u64 fields_mask = 0;");
         u32 nfields = 0;

@@ -35,7 +35,7 @@ typedef struct Item_c
     sbuf_c sbuf_field;
     str_s str_s_field;
     char* char_field;
-    Stock_c* stock_field;
+    Stock_c stock_field;
 
     json$$field(.skip = true);
     Stock_c* stock_field_skipped;
