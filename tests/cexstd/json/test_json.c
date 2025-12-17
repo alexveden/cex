@@ -1130,7 +1130,7 @@ test$case(json_writer_unicode_proto)
     4: \"\\n\", \n\
     5: \"\\r\", \n\
     6: \"\\t\", \n\
-    7: \"\\/\"\n\
+    7: \"/\"\n\
 }";
 
         tassert_eq(buf, expected);

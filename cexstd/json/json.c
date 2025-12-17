@@ -792,12 +792,6 @@ cex_json__wr__print_str_escaped(json_wr_c* jw, char* s, usize slen, bool add_quo
                 buf[cnt++] = 't';
                 has_escape = true;
                 break;
-            case '/':
-                // Forward slash escape is optional but safe
-                buf[cnt++] = '\\';
-                buf[cnt++] = '/';
-                has_escape = true;
-                break;
 
             default:
                 if (unlikely(c < 0x20 || c == 0x7F)) {
