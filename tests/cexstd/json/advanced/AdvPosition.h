@@ -4,8 +4,8 @@
 #include "AdvStock.h"
 
 json$$struct();
-typedef struct Position {
+typedef struct Position_c {
     i32 qty;
     f32 fill_price;
-    Stock* stock;
-} Position;
+    Stock_c* stock;
+} Position_c;

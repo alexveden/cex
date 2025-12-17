@@ -31,8 +31,8 @@ print_json_expected(sbuf_c s)
 
 test$case(serde_basic)
 {
-    Stock s = { .id = 9988, .exchange = "NYSE", .ticker = "UBER" };
-    Position p = {
+    Stock_c s = { .id = 9988, .exchange = "NYSE", .ticker = "UBER" };
+    Position_c p = {
         .qty = -10,
         .fill_price = 9.123456,
         .stock = &s,
@@ -48,7 +48,7 @@ test$case(serde_basic)
 
 test$case(test_Stock_serialize)
 {
-    Stock s = { .id = 9988, .exchange = "NYSE", .ticker = "UBER" };
+    Stock_c s = { .id = 9988, .exchange = "NYSE", .ticker = "UBER" };
     serdegen.Stock.print(&s, NULL);
 
     sbuf_c sb = sbuf.create(1024, mem$);
@@ -69,7 +69,7 @@ test$case(test_Stock_serialize)
     json_rd_c jr;
     e$ret(json$rd_new(&jr, sb, 0, .strict_mode = true));
 
-    Stock s2 = { 0 };
+    Stock_c s2 = { 0 };
     e$ret(serdegen.Stock.deserialize(&jr, &s2, mem$));
 
     tassert_eq(s2.exchange, "NYSE");
@@ -85,8 +85,8 @@ test$case(test_Stock_serialize)
 
 test$case(test_Position_serialize)
 {
-    Stock s = { .id = 9988, .exchange = "NYSE", .ticker = "UBER" };
-    Position p = {
+    Stock_c s = { .id = 9988, .exchange = "NYSE", .ticker = "UBER" };
+    Position_c p = {
         .qty = -10,
         .fill_price = 9.123456,
         .stock = &s,
@@ -114,7 +114,7 @@ test$case(test_Position_serialize)
     json_rd_c jr;
     e$ret(json$rd_new(&jr, sb, 0, .strict_mode = true));
 
-    Position p2 = { 0 };
+    Position_c p2 = { 0 };
     e$ret(serdegen.Position.deserialize(&jr, &p2, mem$));
 
     tassert_eq(p2.qty, -10);
@@ -132,7 +132,7 @@ test$case(test_Position_serialize)
 
 test$case(test_NullableItems)
 {
-    ItemNullable s = { 0 };
+    ItemNullable_c s = { 0 };
     serdegen.ItemNullable.print(&s, NULL);
 
     sbuf_c sb = sbuf.create(1024, mem$);
@@ -159,7 +159,7 @@ test$case(test_NullableItems)
     json_rd_c jr;
     e$ret(json$rd_new(&jr, sb, 0, .strict_mode = true));
 
-    ItemNullable s2 = { 0 };
+    ItemNullable_c s2 = { 0 };
     e$ret(serdegen.ItemNullable.deserialize(&jr, &s2, mem$));
 
     tassert_eq(s2.char_field, NULL);
@@ -179,7 +179,7 @@ test$case(test_NullableItems_initialized)
     sbuf_c sb_item = sbuf.create(1024, mem$);
     e$ret(sbuf.append(&sb_item, "hello_sbuf"));
 
-    ItemNullable s = { .char_field = "hello_char",
+    ItemNullable_c s = { .char_field = "hello_char",
                        .sbuf_field = sb_item,
                        .str_s_field = str$s("hello_str_s"),
                        .stock_val = {
@@ -213,7 +213,7 @@ test$case(test_NullableItems_initialized)
     json_rd_c jr;
     e$ret(json$rd_new(&jr, sb, 0, .strict_mode = true));
 
-    ItemNullable s2 = { 0 };
+    ItemNullable_c s2 = { 0 };
     e$ret(serdegen.ItemNullable.deserialize(&jr, &s2, mem$));
 
     tassert_eq(s2.char_field, "hello_char");
@@ -239,7 +239,7 @@ test$case(test_NullableItems_initialized)
 test$case(test_Items_initialized_serialize_null_field)
 {
     sbuf_c sb_item = sbuf.create(1024, mem$);
-    Stock stk = { .exchange = "FOO", .id = 22, .ticker = "UBER" };
+    Stock_c stk = { .exchange = "FOO", .id = 22, .ticker = "UBER" };
 
 
     Item s = {
@@ -379,7 +379,7 @@ test$case(test_Items_initialized_serialize_null_field)
 test$case(test_Items_deserialize_non_nullable)
 {
     sbuf_c sb_item = sbuf.create(1024, mem$);
-    Stock stk = { .exchange = "FOO", .id = 22, .ticker = "UBER" };
+    Stock_c stk = { .exchange = "FOO", .id = 22, .ticker = "UBER" };
 
 
     Item s = {
@@ -564,7 +564,7 @@ test$case(test_Items_deserialize_missing_fields)
 test$case(test_Order_type_matching_validation)
 {
     sbuf_c sb_item = sbuf.create(1024, mem$);
-    Stock stk = { .exchange = "FOO", .id = 22, .ticker = "UBER" };
+    Stock_c stk = { .exchange = "FOO", .id = 22, .ticker = "UBER" };
     Order ord = { .id = 9988,
                   .price = 123.334455,
                   .qty = -10,
@@ -932,7 +932,7 @@ test$case(test_Items_deserialize_unicode)
 
 test$case(test_Order2_serialize_custom_json_field)
 {
-    Order2 s = { .id = 777 };
+    Order2_c s = { .id = 777 };
     serdegen.Order2.print(&s, NULL);
 
     sbuf_c sb = sbuf.create(1024, mem$);
@@ -954,7 +954,7 @@ test$case(test_Order2_serialize_custom_json_field)
     json_rd_c jr;
     e$ret(json$rd_new(&jr, sb, 0, .strict_mode = true));
 
-    Order2 s2 = { 0 };
+    Order2_c s2 = { 0 };
     e$ret(serdegen.Order2.deserialize(&jr, &s2, mem$));
 
     tassert_eq(s2.id, 777);

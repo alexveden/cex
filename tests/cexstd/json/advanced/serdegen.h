@@ -11,12 +11,12 @@
 /// serdegen$print(any_supported_type_pointer, .indent = 0, .simplified = true ); 
 #define serdegen$print(item, kwargs...) \
     _Generic((item), \
-        Stock*: serdegen.Stock.print, \
-        ItemNullable*: serdegen.ItemNullable.print, \
+        Stock_c*: serdegen.Stock.print, \
+        ItemNullable_c*: serdegen.ItemNullable.print, \
         Item*: serdegen.Item.print, \
         Order*: serdegen.Order.print, \
-        Order2*: serdegen.Order2.print, \
-        Position*: serdegen.Position.print\
+        Order2_c*: serdegen.Order2.print, \
+        Position_c*: serdegen.Position.print\
     )(item, &(json_wr_kw) { kwargs })
 
 struct __cex_namespace__serdegen {
@@ -25,10 +25,10 @@ struct __cex_namespace__serdegen {
 
 
     struct {
-        Exception       (*deserialize)(json_rd_c* jr, ItemNullable* out_item, IAllocator allc);
-        void            (*destroy)(ItemNullable* item, IAllocator allc);
-        Exc             (*print)(ItemNullable* item, json_wr_kw* json_writer_kwargs);
-        Exception       (*serialize)(json_wr_c* jw, ItemNullable* item);
+        Exception       (*deserialize)(json_rd_c* jr, ItemNullable_c* out_item, IAllocator allc);
+        void            (*destroy)(ItemNullable_c* item, IAllocator allc);
+        Exc             (*print)(ItemNullable_c* item, json_wr_kw* json_writer_kwargs);
+        Exception       (*serialize)(json_wr_c* jw, ItemNullable_c* item);
     } ItemNullable;
 
     struct {
@@ -39,10 +39,10 @@ struct __cex_namespace__serdegen {
     } Item;
 
     struct {
-        Exception       (*deserialize)(json_rd_c* jr, Order2* out_item, IAllocator allc);
-        void            (*destroy)(Order2* item, IAllocator allc);
-        Exc             (*print)(Order2* item, json_wr_kw* json_writer_kwargs);
-        Exception       (*serialize)(json_wr_c* jw, Order2* item);
+        Exception       (*deserialize)(json_rd_c* jr, Order2_c* out_item, IAllocator allc);
+        void            (*destroy)(Order2_c* item, IAllocator allc);
+        Exc             (*print)(Order2_c* item, json_wr_kw* json_writer_kwargs);
+        Exception       (*serialize)(json_wr_c* jw, Order2_c* item);
     } Order2;
 
     struct {
@@ -53,17 +53,17 @@ struct __cex_namespace__serdegen {
     } Order;
 
     struct {
-        Exception       (*deserialize)(json_rd_c* jr, Position* out_item, IAllocator allc);
-        void            (*destroy)(Position* item, IAllocator allc);
-        Exc             (*print)(Position* item, json_wr_kw* json_writer_kwargs);
-        Exception       (*serialize)(json_wr_c* jw, Position* item);
+        Exception       (*deserialize)(json_rd_c* jr, Position_c* out_item, IAllocator allc);
+        void            (*destroy)(Position_c* item, IAllocator allc);
+        Exc             (*print)(Position_c* item, json_wr_kw* json_writer_kwargs);
+        Exception       (*serialize)(json_wr_c* jw, Position_c* item);
     } Position;
 
     struct {
-        Exception       (*deserialize)(json_rd_c* jr, Stock* out_item, IAllocator allc);
-        void            (*destroy)(Stock* item, IAllocator allc);
-        Exc             (*print)(Stock* item, json_wr_kw* json_writer_kwargs);
-        Exception       (*serialize)(json_wr_c* jw, Stock* item);
+        Exception       (*deserialize)(json_rd_c* jr, Stock_c* out_item, IAllocator allc);
+        void            (*destroy)(Stock_c* item, IAllocator allc);
+        Exc             (*print)(Stock_c* item, json_wr_kw* json_writer_kwargs);
+        Exception       (*serialize)(json_wr_c* jw, Stock_c* item);
     } Stock;
 
     // clang-format on

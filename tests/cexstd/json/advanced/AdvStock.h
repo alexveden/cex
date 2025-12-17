@@ -4,18 +4,18 @@
 
 /// Hi this is my comment
 json$$struct();
-typedef struct Stock
+typedef struct Stock_c
 {
     u64 id;
     json$$field(.nullable = true, .optional = true);
     char* ticker;
     json$$field(.nullable = true);
     char* exchange;
-} Stock;
+} Stock_c;
 
 
 json$$struct();
-typedef struct ItemNullable
+typedef struct ItemNullable_c
 {
     json$$field(.nullable = true);
     sbuf_c sbuf_field;
@@ -24,21 +24,21 @@ typedef struct ItemNullable
     json$$field(.nullable = true);
     char* char_field;
     json$$field(.nullable = true);
-    Stock* stock_field;
+    Stock_c* stock_field;
     json$$field(.nullable = true);
-    Stock stock_val;
-} ItemNullable;
+    Stock_c stock_val;
+} ItemNullable_c;
 
 json$$struct();
-typedef struct Item
+typedef struct Item_c
 {
     sbuf_c sbuf_field;
     str_s str_s_field;
     char* char_field;
-    Stock* stock_field;
+    Stock_c* stock_field;
 
     json$$field(.skip = true);
-    Stock* stock_field_skipped;
+    Stock_c* stock_field_skipped;
 } Item;
 
 json$$struct();
@@ -49,12 +49,12 @@ typedef struct Order
     i32 qty;
     bool is_active;
     char* exchange;
-    Stock* stock;
+    Stock_c* stock;
 } Order;
 
 json$$struct();
-typedef struct Order2
+typedef struct Order2_c
 {
     json$$field(.name = "my_json_id");
     u64 id;
-} Order2;
+} Order2_c;

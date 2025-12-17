@@ -1305,7 +1305,7 @@ _cex_json__gen__codegen_serialize_field(json_gen_c* self, cex_codegen_s* cg$var,
         }
         cg$scope ("e$except_silent (err, %s.%s.serialize(jw, %sitem->%s)) ",
                   self->namespace,
-                  field_type->name,
+                  field_type->ns_name,
                   f->flags.is_ptr ? "" : "&",
                   f->name) {
             cg$pn("jw->error = err;");
@@ -1361,14 +1361,14 @@ _cex_json__gen__codegen_deserialize_field(
                     cg$pf(
                         "json$rd_egoto(jr, %s.%s.deserialize(jr, out_item->%s, allc), fail);",
                         self->namespace,
-                        field_type->name,
+                        field_type->ns_name,
                         f->name
                     );
                 } else {
                     cg$pf(
                         "json$rd_egoto(jr, %s.%s.deserialize(jr, &out_item->%s, allc), fail);",
                         self->namespace,
-                        field_type->name,
+                        field_type->ns_name,
                         f->name
                     );
                 }
@@ -1483,10 +1483,10 @@ _cex_json__gen__codegen_destroy_field(json_gen_c* self, cex_codegen_s* cg$var, j
     json_gen_type_s* field_type = hm$get(self->types, f->type);
     if (field_type) {
         if (f->flags.is_ptr) {
-            cg$pf("%s.%s.destroy(item->%s, allc);", self->namespace, field_type->name, f->name);
+            cg$pf("%s.%s.destroy(item->%s, allc);", self->namespace, field_type->ns_name, f->name);
             cg$pf("mem$free(allc, item->%s);", f->name);
         } else {
-            cg$pf("%s.%s.destroy(&item->%s, allc);", self->namespace, field_type->name, f->name);
+            cg$pf("%s.%s.destroy(&item->%s, allc);", self->namespace, field_type->ns_name, f->name);
         }
     } else if (f->flags.is_string) {
         if (str$eq(f->type, "char")) {
