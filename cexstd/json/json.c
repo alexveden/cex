@@ -1792,7 +1792,7 @@ cex_json__gen__process_file(json_gen_c* self, char* path)
         bool has_serializable = false;
         while ((t = CexParser.next_entity(&lx, &items)).type) {
             if (t.type == CexTkn__error) {
-                log$error(CexParser$err_fmt(&lx, NULL));
+                log$error(CexParser$err_fmt(&lx, path));
                 return lx.error;
             }
 
