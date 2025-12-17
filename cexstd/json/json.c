@@ -1231,6 +1231,7 @@ _cex_json__gen___process_field_attr(
                 for (t = CexParser.next_token(lx);
                      t.type == CexTkn__comment_single || t.type == CexTkn__comment_multi;
                      t = CexParser.next_token(lx)) {}
+
                 e$assertf(t.type == CexTkn__ident, "Expected identifier after cex$$attr field");
                 break;
             } else if (t.type == CexTkn__comma || t.type == CexTkn__lparen) {
@@ -1518,7 +1519,7 @@ _cex_json__gen__generate_type(json_gen_c* self, cex_codegen_s* cg$var, json_gen_
     //
     cg$func ("Exception %s__%s__serialize(json_wr_c* jw, %s* item) ",
              self->namespace,
-             t->name,
+             t->ns_name,
              t->name) {
         cg$if ("!item") {
             cg$scope ("json$wr_scope(jw, JsonType__null)") { cg$pn("json$wr_val(NULL);"); }
@@ -1543,7 +1544,7 @@ _cex_json__gen__generate_type(json_gen_c* self, cex_codegen_s* cg$var, json_gen_
     //
     cg$func ("Exc %s__%s__print(%s* item, json_wr_kw* json_writer_kwargs) ",
              self->namespace,
-             t->name,
+             t->ns_name,
              t->name) {
         cg$pn("json_wr_c jw;");
         cg$pn("json_wr_kw kwargs = {.stream = stdout, .indent = 0, .simplified = true};");
@@ -1554,14 +1555,14 @@ _cex_json__gen__generate_type(json_gen_c* self, cex_codegen_s* cg$var, json_gen_
         cg$pn("e$ret(json.wr.create(&jw, &kwargs));");
         cg$if ("kwargs.simplified") {
             cg$pf("json.wr.print_val(&jw, \"%s(\");", t->name);
-            cg$pf("Exc err = %s.%s.serialize(&jw, item);", self->namespace, t->name);
+            cg$pf("Exc err = %s.%s.serialize(&jw, item);", self->namespace, t->ns_name);
             cg$pf(
                 "json.wr.print_val(&jw, \"%%s%%s%%s)\\n\", (err) ? \" [error: \": \"\", (err) ? err : \"\", (err) ? \"]\": \"\" );",
                 t->name
             );
             cg$pn("return err;");
         }
-        cg$else () { cg$pf("return %s.%s.serialize(&jw, item);", self->namespace, t->name); }
+        cg$else () { cg$pf("return %s.%s.serialize(&jw, item);", self->namespace, t->ns_name); }
     }
 
     //
@@ -1569,7 +1570,7 @@ _cex_json__gen__generate_type(json_gen_c* self, cex_codegen_s* cg$var, json_gen_
     //
     cg$func ("Exception %s__%s__deserialize(json_rd_c* jr, %s* out_item, IAllocator allc) ",
              self->namespace,
-             t->name,
+             t->ns_name,
              t->name) {
         cg$pn("uassert(jr != NULL);");
         cg$pn("uassert(out_item != NULL);");
@@ -1611,14 +1612,14 @@ _cex_json__gen__generate_type(json_gen_c* self, cex_codegen_s* cg$var, json_gen_
         cg$dedent();
         cg$pn("fail: ");
         cg$indent();
-        cg$pf("%s.%s.destroy(out_item, allc);", self->namespace, t->name);
+        cg$pf("%s.%s.destroy(out_item, allc);", self->namespace, t->ns_name);
         cg$pn("return jr->error;");
     }
 
     //
     // destroy codegen
     //
-    cg$func ("void %s__%s__destroy(%s* item, IAllocator allc) ", self->namespace, t->name, t->name) {
+    cg$func ("void %s__%s__destroy(%s* item, IAllocator allc) ", self->namespace, t->ns_name, t->name) {
         cg$pn("uassert(allc != NULL);");
         cg$if ("item") {
             for$each (it, t->fields) {
@@ -1665,7 +1666,7 @@ cex_json__gen__generate_full(json_gen_c* self)
                 "        %s*: %s.%s.print",
                 self->types[i].value->name,
                 self->namespace,
-                self->types[i].value->name
+                self->types[i].value->ns_name
             );
         }
         cg$pa("\\\n");
@@ -1716,6 +1717,14 @@ _cex_json__gen__process_decl(json_gen_c* self, CexParser_c* lx, cex_decl_s* d, b
 
             stype->name = str.slice.clone(d->name, self->allc);
             if (!stype->name) { return Error.memory; }
+
+            if(d->name.len > 2 && d->name.buf[d->name.len - 2] == '_') {
+                // Strip _s suffixes
+                stype->ns_name = str.slice.clone(str.slice.sub(d->name, 0, -2), self->allc);
+            } else {
+                stype->ns_name = str.slice.clone(d->name, self->allc);
+            }
+            if (!stype->ns_name) { return Error.memory; }
 
             // TODO: parse json$$struct here for params
 

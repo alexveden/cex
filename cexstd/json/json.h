@@ -258,6 +258,7 @@ typedef struct json_gen_field_s
 typedef struct json_gen_type_s
 {
     char* name;
+    char* ns_name;
     arr$(json_gen_field_s*) fields;
     struct
     {

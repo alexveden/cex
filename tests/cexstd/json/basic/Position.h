@@ -8,4 +8,10 @@ typedef struct Position {
     i32 qty;
     f32 fill_price;
     Stock* stock;
-} Position;
+} Position_c;
+
+
+json$$struct();
+typedef struct foo_c {
+    i32 qty;
+} foo_c;

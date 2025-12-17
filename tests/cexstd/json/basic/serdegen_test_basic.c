@@ -32,7 +32,7 @@ print_json_expected(sbuf_c s)
 test$case(serde_basic)
 {
     Stock s = { .id = 9988, .exchange = "NYSE", .ticker = "UBER" };
-    Position p = {
+    Position_c p = {
         .qty = -10,
         .fill_price = 9.123456,
         .stock = &s,
@@ -86,7 +86,7 @@ test$case(test_Stock_serialize)
 test$case(test_Position_serialize)
 {
     Stock s = { .id = 9988, .exchange = "NYSE", .ticker = "UBER" };
-    Position p = {
+    Position_c p = {
         .qty = -10,
         .fill_price = 9.123456,
         .stock = &s,
@@ -114,7 +114,7 @@ test$case(test_Position_serialize)
     json_rd_c jr;
     e$ret(json$rd_new(&jr, sb, 0, .strict_mode = true));
 
-    Position p2 = { 0 };
+    Position_c p2 = { 0 };
     e$ret(serdegen.Position.deserialize(&jr, &p2, mem$));
 
     tassert_eq(p2.qty, -10);
@@ -127,6 +127,14 @@ test$case(test_Position_serialize)
     sbuf.destroy(&sb);
     serdegen.Position.destroy(&p2, mem$);
 
+    return EOK;
+}
+
+test$case(serde_basic_foo_suffix)
+{
+    foo_c s = { .qty = 999 };
+    serdegen.foo.print(&s, NULL);
+    io.printf("\n");
     return EOK;
 }
 
