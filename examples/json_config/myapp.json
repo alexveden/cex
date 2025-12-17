@@ -1,0 +1,13 @@
+// This is a config file for App_c init for using json code generation in CEX
+{
+    /* Comments are allowed  */
+    number: 77, 
+    my_string: "foo",
+
+    "my_schema": {
+        // FIX: !!!!! foo/bar.txt
+        "path": "foo/bar.txt", 
+        factor: 3.14,
+        capacity: 999,
+    },
+}
