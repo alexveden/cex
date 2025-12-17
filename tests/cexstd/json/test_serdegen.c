@@ -32,8 +32,8 @@ test$case(serdegen_myserde_basic)
             &sg,
             _,
             &(json_gen_kw){ .out_namespace = "serdegen",
-                               .buf_initial_capacity = 32 * 1024,
-                               .workdir = TESTDIR "/basic/" }
+                            .buf_initial_capacity = 32 * 1024,
+                            .workdir = TESTDIR "/basic/" }
         ));
         tassert_eq(sg.namespace, "serdegen");
         tassert_eq(sbuf.capacity(&sg.c_file_content), 32 * 1024 - sizeof(sbuf_head_s) - 1);
@@ -46,7 +46,7 @@ test$case(serdegen_myserde_basic)
         io.printf("\nCompiling and running serdegen program\n");
         io.printf("-------------------------\n");
         os_cmd_c cmd = { 0 };
-#if mem$asan_enabled()
+#    if mem$asan_enabled()
         char* cc_args[] = { "cc",
                             "-I.",
                             "-Wall",
@@ -62,7 +62,7 @@ test$case(serdegen_myserde_basic)
                             TESTDIR "basic/serdegen_test_basic.c",
                             "cexstd/json/json.c",
                             NULL };
-#else
+#    else
         char* cc_args[] = { "cc",
                             "-I.",
                             "-Wall",
@@ -74,7 +74,7 @@ test$case(serdegen_myserde_basic)
                             TESTDIR "basic/serdegen_test_basic.c",
                             "cexstd/json/json.c",
                             NULL };
-#endif
+#    endif
         _os$args_print("CMD: ", cc_args, arr$len(cc_args));
         e$ret(os.cmd.create(
             &cmd,
@@ -128,8 +128,8 @@ test$case(serdegen_myserde_advanced)
             &sg,
             _,
             &(json_gen_kw){ .out_namespace = "serdegen",
-                               .buf_initial_capacity = 32 * 1024,
-                               .workdir = TESTDIR "/advanced/" }
+                            .buf_initial_capacity = 32 * 1024,
+                            .workdir = TESTDIR "/advanced/" }
         ));
         tassert_eq(sg.namespace, "serdegen");
         tassert_eq(sbuf.capacity(&sg.c_file_content), 32 * 1024 - sizeof(sbuf_head_s) - 1);
@@ -142,7 +142,7 @@ test$case(serdegen_myserde_advanced)
         io.printf("\nCompiling and running serdegen program\n");
         io.printf("-------------------------\n");
         os_cmd_c cmd = { 0 };
-#if mem$asan_enabled()
+#    if mem$asan_enabled()
         char* cc_args[] = { "cc",
                             "-I.",
                             "-Wall",
@@ -158,7 +158,7 @@ test$case(serdegen_myserde_advanced)
                             "cexstd/json/json.c",
                             TESTDIR "advanced/serdegen_test_advanced.c",
                             NULL };
-#else
+#    else
         char* cc_args[] = { "cc",
                             "-I.",
                             "-Wall",
@@ -170,7 +170,7 @@ test$case(serdegen_myserde_advanced)
                             TESTDIR "advanced/serdegen_test_advanced.c",
                             "cexstd/json/json.c",
                             NULL };
-#endif
+#    endif
         _os$args_print("CMD: ", cc_args, arr$len(cc_args));
         e$ret(os.cmd.create(
             &cmd,
@@ -207,11 +207,50 @@ test$case(serdegen_myserde_advanced)
     return EOK;
 }
 
+test$case(serdegen_json_comments)
+{
+    mem$arena(256 * 1024, _)
+    {
+        char* code = "json$$struct();\n"
+                     "typedef struct App_c {\n"
+                     "    i32 number;\n"
+                     "    json$$field(.name = \"my_schema\");  // mycomment \n"
+                     "    /* my comment */ \n"
+                     "    u32 schema; \n"
+                     "} App_c;\n";
+
+        json_gen_c self = {0};
+        e$ret(json.gen.create(&self, _, NULL));
+        arr$(cex_token_s) items = arr$new(items, _);
+        CexParser_c lx = CexParser.create(code, 0, true);
+        cex_token_s t;
+        bool has_serde = false;
+
+        while ((t = CexParser.next_entity(&lx, &items)).type) {
+            if (t.type == CexTkn__error) {
+                log$error(CexParser$err_fmt(&lx, NULL));
+                tassert(lx.error != EOK);
+                return lx.error;
+            }
+
+            cex_decl_s* d = CexParser.decl_parse(&lx, t, items, NULL, _);
+            if (d == NULL) { continue; }
+            tassert_eq(EOK, _cex_json__gen__process_decl(&self, &lx, d, &has_serde));
+        }
+
+        tassert(has_serde);
+
+
+    }
+
+
+    return EOK;
+}
 #else
 test$case(os_cmd_not_supported_by_platform)
 {
     return EOK;
 }
-#endif  // #if !defined(__EMSCRIPTEN__)
+#endif // #if !defined(__EMSCRIPTEN__)
 
 test$main();

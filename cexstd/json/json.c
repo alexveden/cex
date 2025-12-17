@@ -1227,8 +1227,11 @@ _cex_json__gen___process_field_attr(
             } else if (t.type == CexTkn__rparen) {
                 t = CexParser.next_token(lx);
                 e$assertf(t.type == CexTkn__eos, "Missing semicolon after cex$$attr field");
-                t = CexParser.next_token(lx);
-                e$assertf(t.type == CexTkn__ident, "Expected indent after cex$$attr field");
+
+                for (t = CexParser.next_token(lx);
+                     t.type == CexTkn__comment_single || t.type == CexTkn__comment_multi;
+                     t = CexParser.next_token(lx)) {}
+                e$assertf(t.type == CexTkn__ident, "Expected identifier after cex$$attr field");
                 break;
             } else if (t.type == CexTkn__comma || t.type == CexTkn__lparen) {
                 continue;
@@ -1649,7 +1652,10 @@ cex_json__gen__generate_full(json_gen_c* self)
         cg$pn("");
         cg$pf("/// Generic `%s` type printer using json", self->namespace);
         cg$pf("/// Example: ");
-        cg$pf("/// %s$print(any_supported_type_pointer, .indent = 0, .simplified = true ); ", self->namespace);
+        cg$pf(
+            "/// %s$print(any_supported_type_pointer, .indent = 0, .simplified = true ); ",
+            self->namespace
+        );
         cg$pf("#define %s$print(item, kwargs...) \\", self->namespace);
         cg$pf("    _Generic((item), \\");
 
