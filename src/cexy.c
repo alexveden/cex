@@ -89,7 +89,7 @@ cexy_build_self(int argc, char** argv, char* cex_source)
         char* custom_args[] = { cexy$cex_self_args };
         arr$pusha(args, custom_args);
 
-        arr$pushm(args, "-o", bin_path, cex_source, NULL);
+        arr$pushm(args, "-I.", "-o", bin_path, cex_source, NULL);
         _os$args_print("CMD:", args, arr$len(args));
         os_cmd_c _cmd = { 0 };
         e$except (err, os.cmd.run(args, arr$len(args), &_cmd)) { goto fail_recovery; }

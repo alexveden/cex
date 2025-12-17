@@ -1,5 +1,10 @@
 #pragma once
-#include "cex.h"
+
+#if __has_include("cex.h")
+#    include "cex.h"
+#else
+#error "./cex.h not found, check if exist or you should set compiler argument `-I.`"
+#endif
 
 #ifndef json$$struct
 /// JSON Generator attribute, put it before your `typedef struct` to enable JSON code generation

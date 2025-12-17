@@ -121,7 +121,7 @@ Use `cex -D config` to reset all project config flags to defaults
 #define cex$version_major 0
 #define cex$version_minor 18
 #define cex$version_patch 0
-#define cex$version_date "2025-12-16"
+#define cex$version_date "2025-12-17"
 
 
 
@@ -15318,7 +15318,7 @@ cexy_build_self(int argc, char** argv, char* cex_source)
         char* custom_args[] = { cexy$cex_self_args };
         arr$pusha(args, custom_args);
 
-        arr$pushm(args, "-o", bin_path, cex_source, NULL);
+        arr$pushm(args, "-I.", "-o", bin_path, cex_source, NULL);
         _os$args_print("CMD:", args, arr$len(args));
         os_cmd_c _cmd = { 0 };
         e$except (err, os.cmd.run(args, arr$len(args), &_cmd)) { goto fail_recovery; }
