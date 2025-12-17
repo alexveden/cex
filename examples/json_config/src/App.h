@@ -13,7 +13,7 @@ typedef struct App_c {
     i32 number;
     char* my_string;
 
-    json$$field(.name = "my_schema");
+    json$$field(.name = "my_schema");  // mycomment
     schema_s schema;
 } App_c;
 

@@ -6,7 +6,7 @@
 #else
 // Overriding config values
 #    define cexy$cc_include "-I.", "-I./lib"
-#    define cexy$cex_self_args "-I."
+// #    define cexy$cex_self_args "-I."
 #    define CEX_LOG_LVL 4 /* 0 (mute all) - 5 (log$trace) */
 #endif
 
