@@ -73,5 +73,4 @@ const struct __cex_namespace__fuzz fuzz = {
 
     // clang-format on
 };
-
 #endif

@@ -107,7 +107,7 @@ struct __cex_namespace__sbuf {
     /// Returns string length from its metadata
     u32             (*len)(sbuf_c* self);
     /// Sets the length of a string to any value, if new_length greater than capacity, re-allocates more
-    /// space, always null-terminating.
+    /// space, always null-terminating. Newly allocated space is not ZII'ed, you must fill it yourself.
     Exc             (*set_len)(sbuf_c* self, usize new_length);
     /// Validate dynamic string state, with detailed Exception
     Exception       (*validate)(sbuf_c* self);

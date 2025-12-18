@@ -571,5 +571,4 @@ const struct __cex_namespace__io io = {
 
     // clang-format on
 };
-
 #endif

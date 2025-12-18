@@ -643,5 +643,4 @@ const struct __cex_namespace__argparse argparse = {
 
     // clang-format on
 };
-
 #endif

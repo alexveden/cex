@@ -116,5 +116,4 @@ struct __cex_namespace__CexParser {
 
     // clang-format on
 };
-
 #endif

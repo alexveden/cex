@@ -933,5 +933,4 @@ const struct __cex_namespace__CexParser CexParser = {
 
     // clang-format on
 };
-
 #endif

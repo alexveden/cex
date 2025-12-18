@@ -33,7 +33,8 @@ main(int argc, char** argv)
             cexy$cmd_test, /* feel free to make your own if needed */
             cexy$cmd_app,  /* feel free to make your own if needed */
             { .name = "build-lib", .func = cmd_build_lib, .help = "Custom build command" },
-            { .name = "json-build", .func = cmd_json_build, .help = "Build JSON serde" },
+            // { .name = "json-build", .func = cmd_json_build, .help = "Build JSON serde" },
+            { .name = "json-build", .func = json.gen.cexy_cmd, .help = "Build JSON serde" },
         ),
     };
     if (argparse.parse(&args, argc, argv)) { return 1; }

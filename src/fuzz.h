@@ -203,7 +203,7 @@ struct __cex_namespace__fuzz {
     cex_fuzz_s      (*create)(const u8* data, usize size);
     /// Get result from random data into buffer (returns false if not enough data)
     bool            (*dget)(cex_fuzz_s* fz, void* out_result, usize result_size);
-    /// Get deterministic probability using fuzz data, based on threshold
+    /// Get probability using fuzz data, based on threshold
     bool            (*dprob)(cex_fuzz_s* fz, double threshold);
 
     // clang-format on

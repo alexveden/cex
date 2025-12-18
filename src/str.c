@@ -621,7 +621,7 @@ cex_str__slice__iter_split(str_s s, char* split_by, cex_iterator_s* iterator)
 
 
 static Exception
-cex_str__to_signed_num(char* self, usize len, i64* num, i64 num_min, i64 num_max)
+cex_str_to_signed_num_(char* self, usize len, i64* num, i64 num_min, i64 num_max)
 {
     static_assert(sizeof(i64) == 8, "unexpected u64 size");
     uassert(num_min < num_max);
@@ -701,7 +701,7 @@ cex_str__to_signed_num(char* self, usize len, i64* num, i64 num_min, i64 num_max
 }
 
 static Exception
-cex_str__to_unsigned_num(char* s, usize len, u64* num, u64 num_max)
+cex_str_to_unsigned_num_(char* s, usize len, u64* num, u64 num_max)
 {
     static_assert(sizeof(u64) == 8, "unexpected u64 size");
     uassert(num_max > 0);
@@ -776,7 +776,7 @@ cex_str__to_unsigned_num(char* s, usize len, u64* num, u64 num_max)
 }
 
 static Exception
-cex_str__to_double(char* self, usize len, double* num, i32 exp_min, i32 exp_max)
+cex_str_to_double_(char* self, usize len, double* num, i32 exp_min, i32 exp_max)
 {
     static_assert(sizeof(double) == 8, "unexpected double precision");
     if (unlikely(self == NULL)) { return Error.argument; }
@@ -955,7 +955,7 @@ cex_str__convert__to_f32s(str_s s, f32* num)
 {
     if (unlikely(!num)) { return Error.argument; }
     f64 res = 0;
-    Exc r = cex_str__to_double(s.buf, s.len, &res, -37, 38);
+    Exc r = cex_str_to_double_(s.buf, s.len, &res, -37, 38);
     *num = (f32)res;
     return r;
 }
@@ -964,7 +964,7 @@ static Exception
 cex_str__convert__to_f64s(str_s s, f64* num)
 {
     if (unlikely(!num)) { return Error.argument; }
-    return cex_str__to_double(s.buf, s.len, num, -307, 308);
+    return cex_str_to_double_(s.buf, s.len, num, -307, 308);
 }
 
 static Exception
@@ -972,7 +972,7 @@ cex_str__convert__to_i8s(str_s s, i8* num)
 {
     if (unlikely(!num)) { return Error.argument; }
     i64 res = 0;
-    Exc r = cex_str__to_signed_num(s.buf, s.len, &res, INT8_MIN, INT8_MAX);
+    Exc r = cex_str_to_signed_num_(s.buf, s.len, &res, INT8_MIN, INT8_MAX);
     *num = res;
     return r;
 }
@@ -982,7 +982,7 @@ cex_str__convert__to_i16s(str_s s, i16* num)
 {
     if (unlikely(!num)) { return Error.argument; }
     i64 res = 0;
-    auto r = cex_str__to_signed_num(s.buf, s.len, &res, INT16_MIN, INT16_MAX);
+    auto r = cex_str_to_signed_num_(s.buf, s.len, &res, INT16_MIN, INT16_MAX);
     *num = res;
     return r;
 }
@@ -992,7 +992,7 @@ cex_str__convert__to_i32s(str_s s, i32* num)
 {
     if (unlikely(!num)) { return Error.argument; }
     i64 res = 0;
-    auto r = cex_str__to_signed_num(s.buf, s.len, &res, INT32_MIN, INT32_MAX);
+    auto r = cex_str_to_signed_num_(s.buf, s.len, &res, INT32_MIN, INT32_MAX);
     *num = res;
     return r;
 }
@@ -1004,7 +1004,7 @@ cex_str__convert__to_i64s(str_s s, i64* num)
     if (unlikely(!num)) { return Error.argument; }
     i64 res = 0;
     // NOTE:INT64_MIN+1 because negating of INT64_MIN leads to UB!
-    auto r = cex_str__to_signed_num(s.buf, s.len, &res, INT64_MIN + 1, INT64_MAX);
+    auto r = cex_str_to_signed_num_(s.buf, s.len, &res, INT64_MIN + 1, INT64_MAX);
     *num = res;
     return r;
 }
@@ -1014,7 +1014,7 @@ cex_str__convert__to_u8s(str_s s, u8* num)
 {
     if (unlikely(!num)) { return Error.argument; }
     u64 res = 0;
-    Exc r = cex_str__to_unsigned_num(s.buf, s.len, &res, UINT8_MAX);
+    Exc r = cex_str_to_unsigned_num_(s.buf, s.len, &res, UINT8_MAX);
     *num = res;
     return r;
 }
@@ -1024,7 +1024,7 @@ cex_str__convert__to_u16s(str_s s, u16* num)
 {
     if (unlikely(!num)) { return Error.argument; }
     u64 res = 0;
-    Exc r = cex_str__to_unsigned_num(s.buf, s.len, &res, UINT16_MAX);
+    Exc r = cex_str_to_unsigned_num_(s.buf, s.len, &res, UINT16_MAX);
     *num = res;
     return r;
 }
@@ -1034,7 +1034,7 @@ cex_str__convert__to_u32s(str_s s, u32* num)
 {
     if (unlikely(!num)) { return Error.argument; }
     u64 res = 0;
-    Exc r = cex_str__to_unsigned_num(s.buf, s.len, &res, UINT32_MAX);
+    Exc r = cex_str_to_unsigned_num_(s.buf, s.len, &res, UINT32_MAX);
     *num = res;
     return r;
 }
@@ -1044,7 +1044,7 @@ cex_str__convert__to_u64s(str_s s, u64* num)
 {
     if (unlikely(!num)) { return Error.argument; }
     u64 res = 0;
-    Exc r = cex_str__to_unsigned_num(s.buf, s.len, &res, UINT64_MAX);
+    Exc r = cex_str_to_unsigned_num_(s.buf, s.len, &res, UINT64_MAX);
     *num = res;
 
     return r;

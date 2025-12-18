@@ -254,6 +254,45 @@ test$case(test_src_changed_include_skips_system)
     return EOK;
 }
 
+test$case(test_process_fn_match)
+{
+    tassert_eq(true, _cexy__fn_match(str$s("ns_foo"), str$s("ns")));
+    tassert_eq(true, _cexy__fn_match(str$s("cex_ns_foo"), str$s("ns")));
+    tassert_eq(true, _cexy__fn_match(str$s("cex_ns__foo__asd"), str$s("ns")));
+    tassert_eq(true, _cexy__fn_match(str$s("cex_ns__foo__a_sd"), str$s("ns")));
+    tassert_eq(true, _cexy__fn_match(str$s("ns__foo__asd"), str$s("ns")));
+    tassert_eq(true, _cexy__fn_match(str$s("ns__foo__a_sd"), str$s("ns")));
+    tassert_eq(true, _cexy__fn_match(str$s("ns__fo_o__a_sd"), str$s("ns")));
+    tassert_eq(true, _cexy__fn_match(str$s("ns__foo___a_sd"), str$s("ns")));
+    tassert_eq(true, _cexy__fn_match(str$s("cex_ns__foo"), str$s("ns")));
+
+    tassert_eq(false, _cexy__fn_match(str$s("cex_ns__foo__"), str$s("ns")));
+    tassert_eq(false, _cexy__fn_match(str$s("ns__foo__"), str$s("ns")));
+
+    tassert_eq(false, _cexy__fn_match(str$s("ns_foo"), str$s("ns_")));
+    tassert_eq(false, _cexy__fn_match(str$s("ns_foo_"), str$s("ns")));
+    tassert_eq(false, _cexy__fn_match(str$s("_ns_foo"), str$s("ns")));
+    tassert_eq(false, _cexy__fn_match(str$s("cex__ns_foo"), str$s("ns")));
+    tassert_eq(false, _cexy__fn_match(str$s("_ns_foo"), str$s("ns")));
+    tassert_eq(false, _cexy__fn_match(str$s("_cex_ns_foo"), str$s("ns")));
+
+    return EOK;
+}
+
+test$case(test_process_fn_subnamespace)
+{
+    tassert_eq((str_s){0}, _cexy__fn_subnamespace(str$s("ns_foo"), str$s("ns")));
+    tassert_eq(str$s("foo"), _cexy__fn_subnamespace(str$s("ns__foo__bar"), str$s("ns")));
+    tassert_eq(str$s("fo_o"), _cexy__fn_subnamespace(str$s("ns__fo_o__bar"), str$s("ns")));
+    tassert_eq(str$s("foo"), _cexy__fn_subnamespace(str$s("cex_ns__foo__bar"), str$s("ns")));
+    tassert_eq(str$s("foo"), _cexy__fn_subnamespace(str$s("cex_ns__foo__bar_baz"), str$s("ns")));
+    tassert_eq(str$s("ns_foo"), _cexy__fn_subnamespace(str$s("cex_ns__ns_foo__bar_baz"), str$s("ns")));
+
+    tassert_eq((str_s){0}, _cexy__fn_subnamespace(str$s("ns__foo__bar"), str$s("bar")));
+    tassert_eq((str_s){0}, _cexy__fn_subnamespace(str$s("ns__foo__bar"), str$s("foo")));
+
+    return EOK;
+}
 
 #if 0
 /* FIX: broken until pushed to main!!! */

@@ -575,5 +575,4 @@ const struct __cex_namespace__AllocatorArena AllocatorArena = {
 
     // clang-format on
 };
-
 #endif
