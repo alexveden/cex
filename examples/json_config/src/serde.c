@@ -26,6 +26,9 @@ Exception serde__schema__serialize(json_wr_c* jw, schema_s* item) {
         json$wr_key("capacity");
         json$wr_val(item->capacity);
 
+        json$wr_key("test_field");
+        json$wr_val(item->test_field);
+
     }
     return jw->error;
 }
@@ -81,12 +84,18 @@ Exception serde__schema__deserialize(json_rd_c* jr, schema_s* out_item, IAllocat
                 json$rd_egoto(jr, JsonError.wrong_type, fail);
             }
             json$rd_egoto(jr, str$convert(v, &out_item->capacity), fail);
+        } else if (str$eq(k, "test_field")) {
+            fields_mask |= (1 << 3);
+            if (!json$rd_is_type_compatible(jr, &out_item->test_field)) {
+                json$rd_egoto(jr, JsonError.wrong_type, fail);
+            }
+            json$rd_egoto(jr, str$convert(v, &out_item->test_field), fail);
         } else {
             jr->error = JsonError.unknown_field;
             goto fail;
         }
     }
-    if (fields_mask != ((1 << 3) - 1)) {
+    if (fields_mask != ((1 << 4) - 1)) {
         if (!jr->error) {
             jr->error = JsonError.missing_field;
         }

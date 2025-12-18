@@ -6,6 +6,7 @@ typedef struct schema_s {
     char* path;
     f32 factor;
     u32 capacity;
+    bool test_field;
 } schema_s;
 
 json$$struct();

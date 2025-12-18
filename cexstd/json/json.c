@@ -1294,7 +1294,9 @@ _cex_json__gen__codegen_serialize_field(json_gen_c* self, cex_codegen_s* cg$var,
         // Project Type
         if (f->flags.is_ptr) {
             if (!f->flags.is_nullable) {
-                cg$if ("unlikely(!item->%s)", f->name) { cg$pf("jw->error = JsonError.null_field;"); }
+                cg$if ("unlikely(!item->%s)", f->name) {
+                    cg$pf("jw->error = JsonError.null_field;");
+                }
             } else {
                 cg$pf("// field `%s` is nullable json$$field(.nullable = true)", f->name);
             }
@@ -1616,7 +1618,10 @@ _cex_json__gen__generate_type(json_gen_c* self, cex_codegen_s* cg$var, json_gen_
     //
     // destroy codegen
     //
-    cg$func ("void %s__%s__destroy(%s* item, IAllocator allc) ", self->namespace, t->ns_name, t->name) {
+    cg$func ("void %s__%s__destroy(%s* item, IAllocator allc) ",
+             self->namespace,
+             t->ns_name,
+             t->name) {
         cg$pn("uassert(allc != NULL);");
         cg$if ("item") {
             for$each (it, t->fields) {
@@ -1716,7 +1721,7 @@ _cex_json__gen__process_decl(json_gen_c* self, CexParser_c* lx, cex_decl_s* d, b
             stype->name = str.slice.clone(d->name, self->allc);
             if (!stype->name) { return Error.memory; }
 
-            if(d->name.len > 2 && d->name.buf[d->name.len - 2] == '_') {
+            if (d->name.len > 2 && d->name.buf[d->name.len - 2] == '_') {
                 // Strip _s suffixes
                 stype->ns_name = str.slice.clone(str.slice.sub(d->name, 0, -2), self->allc);
             } else {
@@ -1876,6 +1881,64 @@ cex_json__gen__run(json_gen_c* self)
     return EOK;
 }
 
+Exception
+cex_json__gen__cexy_cmd(int argc, char** argv, void* user_ctx)
+{
+    (void)argc;
+    (void)argv;
+    (void)user_ctx;
+
+    char* cmd = argv[0];
+
+    // clang-format off
+    char* process_help = "Automated code generation for json$$struct() types in the project.";
+
+    char* workdir = "./";
+    char* out_namespace = "serde";
+    char* out_dir = "./src";
+
+    mem$scope(tmem$, _)
+    {
+        // clang-format on
+        argparse_c cmd_args = {
+            .program_name = "./cex",
+            .usage = str.fmt(_, "%s [options]", cmd),
+            .description = process_help,
+            argparse$opt_list(
+                argparse$opt_group("Options"),
+                argparse$opt_help(),
+                argparse$opt(&workdir, 'd', "dir", .help = "directory for source search"),
+                argparse$opt(
+                    &out_namespace,
+                    'n',
+                    "namespace",
+                    .help = "namespace for generated code"
+                ),
+                argparse$opt(
+                    &out_dir,
+                    'o',
+                    "out-dir",
+                    .help = "directory for saving generated files"
+                ),
+            ),
+        };
+        if (argparse.parse(&cmd_args, argc, argv)) { return Error.argsparse; }
+
+        json_gen_c sg;
+        e$ret(json.gen.create(
+            &sg,
+            _,
+            &(json_gen_kw){ .out_namespace = out_namespace,
+                            .out_dir = out_dir,
+                            .buf_initial_capacity = 32 * 1024,
+                            .workdir = workdir }
+        ));
+
+        e$ret(json.gen.run(&sg));
+    }
+
+    return EOK;
+}
 
 #undef $next_tok /* TEMP MACRO */
 #undef $print
@@ -1892,6 +1955,7 @@ const struct __cex_namespace__json json = {
 
 
     .gen = {
+        .cexy_cmd = cex_json__gen__cexy_cmd,
         .create = cex_json__gen__create,
         .generate_full = cex_json__gen__generate_full,
         .process_file = cex_json__gen__process_file,

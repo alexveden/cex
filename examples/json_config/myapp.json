@@ -9,5 +9,6 @@
         "path": "foo/bar.txt", 
         factor: 3.14,
         capacity: 999,
+        test_field: false,
     },
 }

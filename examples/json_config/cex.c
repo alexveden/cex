@@ -33,7 +33,6 @@ main(int argc, char** argv)
             cexy$cmd_test, /* feel free to make your own if needed */
             cexy$cmd_app,  /* feel free to make your own if needed */
             { .name = "build-lib", .func = cmd_build_lib, .help = "Custom build command" },
-            // { .name = "json-build", .func = cmd_json_build, .help = "Build JSON serde" },
             { .name = "json-build", .func = json.gen.cexy_cmd, .help = "Build JSON serde" },
         ),
     };
@@ -43,27 +42,6 @@ main(int argc, char** argv)
     return 0;
 }
 
-Exception cmd_json_build(int argc, char** argv, void* user_ctx) {
-    (void)argc;
-    (void)argv;
-    (void)user_ctx;
-
-    mem$scope(tmem$, _)
-    {
-        json_gen_c sg;
-        e$ret(json.gen.create(
-            &sg,
-            _,
-            &(json_gen_kw){ .out_namespace = "serde",
-                            .buf_initial_capacity = 32 * 1024,
-                            .workdir = "src/" }
-        ));
-
-        e$ret(json.gen.run(&sg));
-    }
-    
-    return EOK;
-}
 
 /// Custom build command for building static lib
 Exception

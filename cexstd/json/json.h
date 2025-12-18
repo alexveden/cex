@@ -300,6 +300,7 @@ struct __cex_namespace__json {
 
 
     struct {
+        Exception       (*cexy_cmd)(int argc, char** argv, void* user_ctx);
         /// JSON Generator in can parse all json$$struct() inside source code and automatically
         Exception       (*create)(json_gen_c* self, IAllocator allc, json_gen_kw* kwargs);
         /// (low-level) Generates a content of a json serde engine and stores it in `self` sbuf.

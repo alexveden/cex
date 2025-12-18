@@ -4,7 +4,7 @@
 #pragma once
 #include "cex.h"
 #include "cexstd/json/json.h"
-#include "src/App.h"
+#include "./src/App.h"
 
 /// Generic `serde` type printer using json
 /// Example: 
