@@ -73,7 +73,7 @@ runs:
         echo "--------- Random.h tail"
         tail cexstd/random/Random.h
         echo "--------- Random.h clean and content"
-        echo "(clean)" > lib/random/Random.h
+        echo "(clean)" > cexstd/random/Random.h
         tail cexstd/random/Random.h
         echo "--------- Random.h re-update"
         ./cex libfetch -U cexstd/random/
