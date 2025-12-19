@@ -121,7 +121,7 @@ Use `cex -D config` to reset all project config flags to defaults
 #define cex$version_major 0
 #define cex$version_minor 18
 #define cex$version_patch 0
-#define cex$version_date "2025-12-18"
+#define cex$version_date "2025-12-19"
 
 
 
@@ -1553,19 +1553,6 @@ struct _cexds__arr_new_kwargs_s
     ((a) = _cexds__arrgrowf((a), sizeof *(a), (add_len), (min_cap), alignof(typeof(*a)), NULL))
 
 
-#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 12)
-#    define arr$len(arr)                                                                           \
-        ({                                                                                         \
-            __builtin_types_compatible_p(                                                          \
-                typeof(arr),                                                                       \
-                typeof(&(arr)[0])                                                                  \
-            )                          /* check if array or ptr */                                 \
-                ? _cexds__arr_len(arr) /* some pointer or arr$ */                                  \
-                : (                                                                                \
-                      sizeof(arr) / sizeof((arr)[0]) /* static array[] */                          \
-                  );                                                                               \
-        })
-#else
 /// Versatile array length, works with dynamic (arr$) and static compile time arrays
 #    define arr$len(arr)                                                                           \
         ({                                                                                         \
@@ -1585,7 +1572,6 @@ struct _cexds__arr_new_kwargs_s
             /* NOLINTEND */                                                                        \
             _Pragma("GCC diagnostic pop");                                                         \
         })
-#endif
 
 static inline void*
 _cex__get_buf_addr(void* a)
