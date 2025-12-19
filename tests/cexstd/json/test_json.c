@@ -1814,21 +1814,19 @@ test$case(json_writer_unicode_unescape_valid_hex_short)
 
 test$case(json_writer_unicode_unescape_self_ref)
 {
-    mem$scope(tmem$, _)
-    {
-        tassert_eq(str$s("€").len, 3);
+    tassert_eq(str$s("€").len, 3);
 
-        char buf[] = {"\\u20aC\0"};
-        str_s slice = str.sstr(buf);
-        tassert_eq(slice.len, 6);
+    char buf[] = {"\\u20aC\0"};
+    str_s slice = str.sstr(buf);
+    tassert_eq(slice.len, 6);
 
-        usize cnt = slice.len + 1;
-        e$ret(json$rd_str_unescape_inplace(slice, buf, &cnt));
+    usize cnt = slice.len + 1;
+    e$ret(json$rd_str_unescape_inplace(slice, buf, &cnt));
 
-        tassert_eq(cnt, 3);
-        tassert_eq(buf, "€");
-    }
+    tassert_eq(cnt, 3);
+    tassert_eq(buf, "€");
 
     return EOK;
 }
+
 test$main();

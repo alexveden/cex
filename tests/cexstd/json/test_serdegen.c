@@ -235,7 +235,7 @@ test$case(serdegen_json_comments)
 
             cex_decl_s* d = CexParser.decl_parse(&lx, t, items, NULL, _);
             if (d == NULL) { continue; }
-            tassert_eq(EOK, _cex_json__gen__process_decl(&self, &lx, d, &has_serde));
+            tassert_eq(EOK, _cex_json__gen__process_decl(&self, d, &has_serde));
         }
 
         tassert(has_serde);

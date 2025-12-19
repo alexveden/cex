@@ -1698,10 +1698,9 @@ cex_json__gen__generate_full(json_gen_c* self)
 }
 
 Exception
-_cex_json__gen__process_decl(json_gen_c* self, CexParser_c* lx, cex_decl_s* d, bool* has_serde)
+_cex_json__gen__process_decl(json_gen_c* self,  cex_decl_s* d, bool* has_serde)
 {
     uassert(self);
-    uassert(lx);
     uassert(d);
     uassert(has_serde);
 
@@ -1804,7 +1803,7 @@ cex_json__gen__process_file(json_gen_c* self, char* path)
             cex_decl_s* d = CexParser.decl_parse(&lx, t, items, NULL, _);
             if (d == NULL) { continue; }
             bool has_serde = false;
-            e$ret(_cex_json__gen__process_decl(self, &lx, d, &has_serde));
+            e$ret(_cex_json__gen__process_decl(self, d, &has_serde));
             if (has_serde) { has_serializable = true; }
         }
 
