@@ -83,3 +83,33 @@ runs:
         ./cex config
         ./cex app run myapp
         ./cex test run tests/test_myapp.c
+
+    - name: Cex Json
+      shell: ${{ inputs.shell }}
+      run: |
+        echo ""
+        echo "---------------------------------------------------------------------"
+        echo "           STEP: example json-fonfig"
+        echo "---------------------------------------------------------------------"
+        cd examples/json_config/
+        cc -g ./cex.c -o ./cex 
+        ./cex config
+        ./cex json-build
+        ./cex app run myapp myapp.json
+
+    - name: Cex FreeStanding
+      shell: ${{ inputs.shell }}
+      run: |
+        echo ""
+        echo "---------------------------------------------------------------------"
+        echo "           STEP: example freestanding"
+        echo "---------------------------------------------------------------------"
+        cd examples/freestanding/
+        cc -g ./cex.c -o ./cex 
+        ./cex config
+        ./cex build src/freestanding_1minimal.c
+        ./cex build src/freestanding_2mem.c
+        ./cex build src/freestanding_3ds.c
+        ./cex build src/freestanding_4strings.c
+        ./cex build src/freestanding_5io.c
+        ./cex build src/freestanding_6os.c
