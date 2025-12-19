@@ -323,43 +323,6 @@ jobs:
           cp ./docs/install.sh ./public/
           echo "cex-c.org" > ./public/CNAME
 
-      - name: Release latest
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: latest
-          body: |
-            Latest automated build from main branch
-            - Commit: ${{ env.SHORT_SHA }}
-            - Build date: ${{ env.BUILD_DATE }}
-            - Triggered by: ${{ github.actor }}
-          files: |
-            cex.h
-            docs.html
-            cex.zip
-          draft: false
-          prerelease: true
-          generate_release_notes: false
-          overwrite_files: true
-
-      - name: Release
-        uses: softprops/action-gh-release@v2
-        if: github.ref_type == 'tag'
-        with:
-          files: |
-            cex.h
-            docs.html
-            cex.zip
-          draft: true
-          generate_release_notes: false
-          overwrite_files: true
-
-      - name: Generate Release Notes
-        uses: release-drafter/release-drafter@v5
-        with:
-          config-name: release-drafter.yml
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Deploy web site 🚀
         uses: peaceiris/actions-gh-pages@v3
         with:
