@@ -92,7 +92,7 @@ runs:
         echo "           STEP: example json-fonfig"
         echo "---------------------------------------------------------------------"
         cd examples/json_config/
-        cc -g ./cex.c -o ./cex 
+        cc -g -I. ./cex.c -o ./cex 
         ./cex config
         ./cex json-build
         ./cex app run myapp myapp.json
