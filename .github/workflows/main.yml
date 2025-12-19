@@ -311,7 +311,7 @@ jobs:
         run: |
           ./cex build-docs
           cp docs/docs.html docs.html
-          zip cex.zip cex.h docs.html README.md
+          zip cexstd/ cex.zip cex.h docs.html README.md
 
       - name: prepare web site
         run: |
@@ -333,6 +333,7 @@ jobs:
             - Build date: ${{ env.BUILD_DATE }}
             - Triggered by: ${{ github.actor }}
           files: |
+            cexstd/
             cex.h
             docs.html
             cex.zip
@@ -346,6 +347,7 @@ jobs:
         if: github.ref_type == 'tag'
         with:
           files: |
+            cexstd/
             cex.h
             docs.html
             cex.zip
