@@ -3036,7 +3036,7 @@ Total asserts per LOC    |       39.94% |         <<<  |
 
 ### Fetching libraries and CEX updates
 
-`./cex libfetch` command is a simple `git` wrapper for retrieving/updating cex `lib/` files or updating `cex.h` itself. This command can be used with any git repo, for getting single-header files.
+`./cex libfetch` command is a simple `git` wrapper for retrieving/updating `cexstd/` library files or updating `cex.h` itself. This command can be used with any git repo, for getting single-header files.
 
 ```sh
 
@@ -3053,9 +3053,9 @@ Fetching 3rd party libraries via git (by default it uses cex git repo as source)
     -p, --preserve-dirs   Preserve directory structure as in repo (default: Y)
 
 Command examples:
-cex libfetch lib/test/fff.h                            - fetch signle header lib from CEX repo
+cex libfetch cexstd/testing/fff.h                      - fetch signle header lib from CEX repo
 cex libfetch -U cex.h                                  - update cex.h to most recent version
-cex libfetch lib/random/                               - fetch whole directory recursively from CEX lib
+cex libfetch cexstd/random/                            - fetch whole directory recursively from CEX lib
 cex libfetch --git-label=v2.0 file.h                   - fetch using specific label or commit
 cex libfetch -u https://github.com/m/lib.git file.h    - fetch from arbitrary repo
 cex help --example cexy.utils.git_lib_fetch            - you can call it from your cex.c (see example)
@@ -3321,17 +3321,17 @@ Just type:
 
 ## CEX lib
 
-### Role of CEX lib
-CEX lib (see `lib/` folder in repo) is designed to be a collection of random tools and libraries that are not so frequently used. Currently, it's in early alpha stage, API stability is not guaranteed, backward compatibility is not guaranteed. Feel free to contribute your ideas, if you think it could be useful.
+### Role of CEX std lib
+CEX std lib (see `cexstd/` folder in repo) is designed to be a collection of random tools and libraries that are not so frequently used. Currently, it's in early alpha stage, API stability is not guaranteed, backward compatibility is not guaranteed. Feel free to contribute your ideas, if you think it could be useful.
 
 ### Installing libraries
 Installing and updating libs from the main CEX repo is pretty straightforward, and you can use:
 
 ```sh
-cex libfetch lib/test/fff.h                            - fetch signle header lib from CEX repo
+cex libfetch cexstd/testing/fff.h                      - fetch signle header lib from CEX repo
 cex libfetch -U cex.h                                  - update cex.h to most recent version
-cex libfetch lib/random/                               - fetch whole directory recursively from CEX lib
-cex libfetch lib/                                      - fetch everything available in CEX lib
+cex libfetch cexstd/random/                            - fetch whole directory recursively from CEX lib
+cex libfetch cexstd/                                   - fetch everything available in CEX std lib
 cex libfetch --git-label=v2.0 file.h                   - fetch using specific label or commit
 cex libfetch -u https://github.com/m/lib.git file.h    - fetch from arbitrary repo
 cex help --example cexy.utils.git_lib_fetch            - you can call it from your cex.c
