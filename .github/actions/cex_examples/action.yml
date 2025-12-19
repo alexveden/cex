@@ -106,7 +106,6 @@ runs:
         echo "---------------------------------------------------------------------"
         cd examples/freestanding/
         cc -g ./cex.c -o ./cex 
-        ./cex config
         ./cex build src/freestanding_1minimal.c
         ./cex build src/freestanding_2mem.c
         ./cex build src/freestanding_3ds.c

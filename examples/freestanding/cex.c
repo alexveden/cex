@@ -10,7 +10,7 @@ main(int argc, char** argv)
 {
     if (os.platform.current() != OSPlatform__linux) {
         io.printf("Only linux platform supported for this program");
-        return 1;
+        return 0;
     }
     cexy$initialize(); // cex self rebuild and init
     argparse_c args = {
