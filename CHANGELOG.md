@@ -1,17 +1,69 @@
 # CEX Release Notes
 
 ## 0.18.0
-2025-11-25
+2025-12-19
 
 ### Changes / improvements
 - feat: Added static code analyzer support in CI (clang-tidy) for better code quality
 - feat: cexy build system generates `compile_flags.txt` unless it explicitly disabled `#define cexy$create_compile_flags 0`
+- feat(CexParser): added attributes to decl meta
+- feat(CexParser): added cex$$attribute()
+- feat(CexParser): CexParser$err_fmt - formatting error info (macro)
+- feat(CexParser): introduced error field for keeping error state
+- feat(cexy): (breaking) ./cex process allowing `_` in subnamespaces + different private markers
+- feat(cg$): added cg$init_scope - making cg$var in scope for multiple reuse of cg$ scope in a function
+- feat: str$eq(slice, compare_to_literal) - added efficient comparer between literals and slices
+- feat(str): null handling instead of assert in convert functions
+- feat(str): convert to bool implemented (only true/false string values)
+- feat(test_eq): added multi-line comparison for long strings if applicable with diff marker
+- refactor(cexstd): (breaking) lib/ renamed to cexstd/ for clarity and reducing possible conflicts with existing projects
+- refactor(Error.empty): (breaking) Error.empty -> Error.null_or_empty
+- refactor(sbuf): (breaking) refactored sbuf.shrink() to sbuf.set_len() allowing growth + auto allocating
+- refactor(sbuf): (breaking) sbuf.set_len() does not nullify empty space
+- refactor(str.match): (breaking) + and * in [] must be escaped with \\* or \\+
+
+### cexstd - standard lib
+- feat(cexstd) - (breaking) renamed standard lib folder from `lib/` to `cexstd/`
+- feat(json): (breaking) refactored JSON handling API in lib/json/json.h (WIP)
+- example(json): json_config - new json gen (bugs fixes)
+- feat(json.gen): added .optional serde$$field() + test
+- feat(json.gen): added .skip for serde$$field() + test
+- feat(json.gen): added utf decoding in codegen logic
+- feat(json.gen): type compatibility checks
+- feat(json.gen): unknown field handling + extra comments on serde logic (nullable, skipped, etc)
+- feat(json.gen): added json.gen.cexy_cmd() common json serde command for cexy
+- feat(json): added jr$is_type_compatible()
+- feat(json): added json$$field(.name = "custom") option
+- feat(json): example app for JSON generation
+- feat(json): implemented decode
+- feat(json): jr$decode_str / jr$decode_str_inplace macros
+- feat(json): jw$val(bool) prints to true/false
+- feat(json): serdegen$print macro for universal generic print
+- fix(json): fixed fputs() error check when escaping the data
+- fix(json.gen): added #pragma once
+- fix(json.gen): allowed comments after json$$field
+- fix(json.gen): filename in parser errors
+- fix(json.gen): skipping struct suffixes from json.gen (sub-namespaces)
+- fix(json.gen): trimming struct _s prefixes
+- fix(json.gen): ZII inside deserialize() + nullable pointer when struct by val
 
 
 ### Fixes
 - Fixed some possible null pointer dereferences
 - Fixed `clangd` "Too many errors emitted" diagnostic at the beginning of the code file
 - Fixed `clang-tidy` warnings
+- fix(arr$len): old GCC <11 pointer cast troubles
+- fix(cexy): help system excluded cex.c + cex.h as priority
+- fix(cexy): issues when adding cexstd lib files into ./cex.c (+ compiler error)
+- fix(cg$): allowing calling cg$ macros without second arg (e.g. cg$pn("")) + renamed cex_codegen_s to public-like name
+- fix(str.match): added bounds checking
+- fix(str.match): added extra asserts if str_len < 0
+- fix(str.match): fixed regression assert in pattern handling with special chars
+- fix(str.match): performance degradation for some patterns, performance gain 100x+
+- fix(str): split_lines() unhandled end of string if there is no new line
+- fix(test): long line comparison failure only if the difference in new line (edge case)
+- fuzz(str.match): fuzzer for bounds constrained tests
+
 
 ## 0.17.0
 2025-10-15
