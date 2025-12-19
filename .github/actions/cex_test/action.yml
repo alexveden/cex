@@ -68,13 +68,13 @@ runs:
         ./cex test run all
         ./cex app run myapp
         ./cex process lib/mylib.c
-        ./cex libfetch lib/random/
-        ./cex libfetch lib/test/fff.h
+        ./cex libfetch cexstd/random/
+        ./cex libfetch cexstd/testing/fff.h
         echo "--------- Random.h tail"
-        tail lib/random/Random.h
+        tail cexstd/random/Random.h
         echo "--------- Random.h clean and content"
         echo "(clean)" > lib/random/Random.h
-        tail lib/random/Random.h
+        tail cexstd/random/Random.h
         echo "--------- Random.h re-update"
-        ./cex libfetch -U lib/random/
-        tail lib/random/Random.h
+        ./cex libfetch -U cexstd/random/
+        tail cexstd/random/Random.h
