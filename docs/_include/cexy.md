@@ -45,6 +45,9 @@
 /// Simple test runner command (test runner, debugger launch, etc)
 #define cexy$cmd_test
 
+/// If 1 creates `compile_flags.txt` in project dir at every ./cex run, 0 - ignores creation (default: 1)
+#define cexy$create_compile_flags
+
 /// Command for launching debugger for cex test/app debug (may be overridden)
 #define cexy$debug_cmd
 

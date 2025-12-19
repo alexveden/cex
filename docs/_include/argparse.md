@@ -95,13 +95,13 @@ main(int argc, char** argv)
 #define argparse$opt_list(...)
 
 /// main argparse struct (used as options config)
-typedef argparse_c
+typedef struct argparse_c
 
 /// command settings type (prefer macros)
-typedef argparse_cmd_s
+typedef struct argparse_cmd_s
 
 /// command line options type (prefer macros)
-typedef argparse_opt_s
+typedef struct argparse_opt_s
 
 
 

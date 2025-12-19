@@ -120,13 +120,13 @@ test$case(test_os_find_all_c_files)
 #define os$path_join(allocator, path_parts...)
 
 /// Command container (current state of subprocess)
-typedef os_cmd_c
+typedef struct os_cmd_c
 
 /// Additional flags for os.cmd.create()
-typedef os_cmd_flags_s
+typedef struct os_cmd_flags_s
 
 /// File stats metadata (cross-platform), returned by os.fs.stats
-typedef os_fs_stat_s
+typedef struct os_fs_stat_s
 
 
 
@@ -143,7 +143,7 @@ os {
     f64             (*timer)(void);
 
     struct {
-        /// Creates new os command (use os$cmd() and os$cmd() for easy cases)
+        /// Creates new os command (use os$cmd() and os$cmd() for easy cases). flags can be NULL.
         Exception       (*create)(os_cmd_c* self, char** args, usize args_len, os_cmd_flags_s* flags);
         /// Check if `cmd_exe` program name exists in PATH. cmd_exe can be absolute, or simple command name,
         /// e.g. `cat`

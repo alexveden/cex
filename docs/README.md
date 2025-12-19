@@ -1718,8 +1718,9 @@ sbuf.destroy(&s);
     bool            sbuf.isvalid(sbuf_c* self);
     /// Returns string length from its metadata
     u32             sbuf.len(sbuf_c* self);
-    /// Shrinks string length to new_length
-    Exc             sbuf.shrink(sbuf_c* self, usize new_length);
+    /// Sets the length of a string to any value, if new_length greater than capacity, re-allocates more
+    /// space, always null-terminating. Newly allocated space is not ZII'ed, you must fill it yourself.
+    Exc             sbuf.set_len(sbuf_c* self, usize new_length);
     /// Validate dynamic string state, with detailed Exception
     Exception       sbuf.validate(sbuf_c* self);
 ```
@@ -3147,8 +3148,6 @@ macro_func           arr$setcap                     ./src/ds.h:166
 macro_func           arr$slice                      ./fuzz/CexParser/fuzz_cex_parser_corpus.out/cex_base.h:491
 macro_func           arr$sort                       ./src/ds.h:255
 macro_func           curlcheck_arr                  ./examples/libs_vcpkg/build/vcpkg/packages/curl_x64-linux/include/curl/typecheck-gcc.h:472
-macro_func           json$arr                       ./lib/json/json.h:96
-macro_func           json$karr                      ./lib/json/json.h:82
 macro_func           luaC_barrier                   ./examples/lua_module/build/lua/src/lgc.h:118
 macro_func           luaC_barrierback               ./examples/lua_module/build/lua/src/lgc.h:122
 macro_func           luaC_objbarrier                ./examples/lua_module/build/lua/src/lgc.h:126

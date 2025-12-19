@@ -126,6 +126,9 @@ tassert(str.slice.match(src, "my_test*.txt"));
 /// Parses string contents as value type based on generic numeric type of out_var_ptr
 #define str$convert(str_or_slice, out_var_ptr)
 
+/// Compares str_s (slice) with literal in performance efficient way
+#define str$eq(str_s_slice, compare_to_literal)
+
 /// Joins parts of strings using a separator str$join(allc, ",", "a", "b", "c") -> "a,b,c"
 #define str$join(allocator, str_join_by, str_parts...)
 
@@ -198,6 +201,8 @@ str {
     Exception       (*vsprintf)(char* dest, usize dest_len, char* format, va_list va);
 
     struct {
+        Exception       (*to_bool)(char* s, bool* num);
+        Exception       (*to_bools)(str_s s, bool* num);
         Exception       (*to_f32)(char* s, f32* num);
         Exception       (*to_f32s)(str_s s, f32* num);
         Exception       (*to_f64)(char* s, f64* num);
