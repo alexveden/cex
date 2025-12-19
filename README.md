@@ -91,13 +91,15 @@ The philosophy of CEX revolves around independence and self-containment, minimiz
 - New error handling model (support of stack traceback on errors, assertions with stack trace (with ASAN))
 - Developer experience - unit test runner / code generation / help system included in `cex.h`
 - Code distribution system based on Git and managing dependencies (system libs) with `pkgconf`/`vcpkg`
-- Simple, but powerful standard lib included in `cex.h`:
+- Simple, but powerful core lib included in `cex.h`:
     * Generic / type-safe dynamic arrays and hashmaps included
     * Strings refactored: safe-string functions (copy/formatting), dynamic string buffer (`sbuf`), string views/slices (`str_s`), simple pattern matching engine (wildcard patterns).
     * `os` namespace - for running commands, filesystem manipulation, environment variables, path manipulation, platform info
     * `io` namespace - cross platform IO support, including helper functions, e.g. `io.file.load/save()`
     * `argparse` - convenient argument parsing for CLI tools with built-in commands support
     * `cexy` - fancy project management tool and build system.
+- **cexstd** lib additionally available via single command `./cex libfetch cexstd/`:
+    * `cexstd/json/json.h` `json` namespace - for working with JSON, also offers automatic serialization/deserialization code generation for your data structures.
 
 ## Code example
 ```c
@@ -215,10 +217,11 @@ The CEX codebase uses the `clang-tidy` static analyzer in its continuous integra
 * [Building Lua + Lua Module in CEX](https://github.com/alexveden/cex/tree/master/examples/lua_module)
 * [Building SQLite Program From Source](https://github.com/alexveden/cex/tree/master/examples/sqlite)
 * [Building with system libraries](https://github.com/alexveden/cex/tree/master/examples/libs_sys)
+
 * [Building with vcpkg local repo](https://github.com/alexveden/cex/tree/master/examples/libs_vcpkg)
 * [Pre-built CEX for faster build times](https://github.com/alexveden/cex/tree/master/examples/cex_compiled_hdr)
 * [Freestanding / embedded concept](https://github.com/alexveden/cex/tree/master/examples/freestanding)
-
+* [JSON config file / serde code generation](https://github.com/alexveden/cex/tree/master/examples/json_config)
 
 ## Credits
 
@@ -240,7 +243,7 @@ CEX contains some code and ideas from the following projects, all of them licens
 
 MIT License
 
-Copyright (c) 2024-2025 Aleksandr Vedeneev
+Copyright (c) 2024-2026 Aleksandr Vedeneev
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
