@@ -294,14 +294,12 @@ test$case(test_process_fn_subnamespace)
     return EOK;
 }
 
-#if 0
-/* FIX: broken until pushed to main!!! */
 test$case(test_lib_fetch_check_args)
 {
     mem$scope(tmem$, _)
     {
         (void)_;
-        char* paths[] = { "cex.h", "cexstd/random", "cexstd/testing/fff.h" }; */
+        char* paths[] = { "cex.h", "cexstd/random", "cexstd/testing/fff.h" }; 
         tassert_er(
             Error.argument,
             cexy.utils.git_lib_fetch("", "HEAD", TBUILDDIR, false, true, paths, arr$len(paths))
@@ -579,7 +577,6 @@ test$case(test_git_lib_fetch_update)
     }
     return EOK;
 }
-#endif
 
 #else
 test$case(not_supported_by_platform)
