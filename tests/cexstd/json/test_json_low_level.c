@@ -571,7 +571,7 @@ test$case(jr_comments_multi_line)
         "{ // Hi comment \n \"foo\" /* my key */ : /* my value */ -inf, \"bar\": +Inf }"
     );
     json_rd_c js;
-    tassert_eq(EOK, json.rd.create(&js, content.buf, 0, false));
+    tassert_eq(EOK, json.rd.create(&js, content.buf, 0, NULL));
 
     tassert_eq(js.type, JsonType__obj);
     tassert_eq(js.key.buf, NULL);
@@ -608,7 +608,7 @@ test$case(jr_comments_multi_line_before_obj)
         "/*another comment*/{ // Hi comment \n \"foo\" /* my key */ : /* my value */ -inf, \"bar\": +Inf }"
     );
     json_rd_c js;
-    tassert_eq(EOK, json.rd.create(&js, content.buf, 0, false));
+    tassert_eq(EOK, json.rd.create(&js, content.buf, 0, NULL));
 
     tassert_eq(js.type, JsonType__obj);
     tassert_eq(js.key.buf, NULL);
@@ -744,43 +744,5 @@ test$case(json_reader_bad_stuff_handling)
 
     return EOK;
 }
-
-// FIX
-// test$case(json_writer_proto)
-// {
-//     mem$scope(tmem$, _)
-//     {
-//         json_wr_c jb;
-//         tassert_er(EOK, json.buf.create(&jb, 1024, 4, _));
-//         json$buf(&jb, JsonType__obj)
-//         {
-//             json$fmt("// How about a comment? %d\n", 2);
-//             json$kstr("foo2", "%d", 1);
-//             json$kval("foo3", "%d", 4);
-//             json$karr("bar")
-//             {
-//                 json$str("%s", "foo");
-//                 json$val("%d", 39);
-//                 json$arr()
-//                 {
-//                     json$val("%d", 19);
-//                     json$val("%d", 45);
-//                 }
-//             }
-//             json$kobj("far")
-//             {
-//                 json$fmt("\"%s_%d\": %d,\n", "mykey", 2, 77);
-//                 json$kval("zoo", "%d", 1);
-//             }
-//         }
-//         io.printf("JSON: \n`%s`", jb.buf);
-//         // tassert(false);
-//         tassert_eq(jb.buf, json.buf.get(&jb));
-//         tassert_er(EOK, jb.error);
-//     }
-//     return EOK;
-// }
-
-
 
 test$main();
