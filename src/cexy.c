@@ -584,7 +584,7 @@ _cexy__fn_subnamespace(str_s fn_name, str_s ns_prefix)
     // fn_name = "ns__foo__asd"
     //  result = "foo"
 
-    if (str.slice.starts_with(fn_name, str$s("cex_"))){
+    if (str.slice.starts_with(fn_name, str$s("cex_"))) {
         // "cex_ns__foo__asd" -> ns__foo__asd
         fn_name = str.slice.sub(fn_name, 4, 0);
     }
@@ -597,12 +597,10 @@ _cexy__fn_subnamespace(str_s fn_name, str_s ns_prefix)
     if (fn_name.len > 0 && fn_name.buf[0] == '_') {
         // "_foo__asd" -> _*foo*__asd
         isize idx = str.slice.index_of(fn_name, str$s("__"));
-        if (idx != -1) {
-            return str.slice.sub(fn_name, 1, idx);
-        }
+        if (idx != -1) { return str.slice.sub(fn_name, 1, idx); }
     }
 
-    return (str_s){0};
+    return (str_s){ 0 };
 }
 
 static Exception
@@ -2129,12 +2127,21 @@ static Exception
 cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
 {
     (void)user_ctx;
+    i32 njobs = -1;
     argparse_c cmd_args = {
         .program_name = "./cex",
         .usage = "test [options] {run,build,create,clean,debug} all|tests/test_file.c [--test-options]",
         .description = _cexy$cmd_test_help,
         .epilog = _cexy$cmd_test_epilog,
-        argparse$opt_list(argparse$opt_help(), ),
+        argparse$opt_list(
+            argparse$opt_help(),
+            argparse$opt(
+                &njobs,
+                .short_name = 'j',
+                .long_name = "jobs",
+                .help = "Number of compiler jobs for test building"
+            ),
+        ),
     };
 
     e$ret(argparse.parse(&cmd_args, argc, argv));
@@ -2160,10 +2167,30 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
     // Build stage
     u32 n_tests = 0;
     u32 n_built = 0;
+    f64 timer = os.timer();
+
     (void)n_tests;
     (void)n_built;
+    (void)timer;
+
     mem$scope(tmem$, _)
     {
+        i32 ncpu = os.cpu_count();
+        if (ncpu <= 1) {
+            ncpu = 1;
+            njobs = 1;
+        } else {
+            if (njobs <= 0) {
+                njobs = ncpu - 1;
+            } else {
+                njobs = ncpu > njobs ? njobs : ncpu;
+            }
+        }
+
+        uassert(njobs > 0);
+
+        arr$(os_cmd_c) jobs = arr$new(jobs, _, .capacity = njobs);
+
         for$each (test_src, os.fs.find(target, true, _)) {
             char* test_target = cexy.target_make(test_src, cexy$build_dir, ".test", _);
             log$trace("Test src: %s -> %s\n", test_src, test_target);
@@ -2187,15 +2214,34 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
                 e$ret(cexy$pkgconf(_, &args, "--cflags", "--libs", cexy$pkgconf_libs));
             }
             arr$pushm(args, "-o", test_target);
-
-
             arr$push(args, NULL);
-            e$ret(os$cmda(args));
+
+            // Apply multi-core compilation
+            if (arr$len(jobs) == (usize)njobs) {
+                e$ret(os.cmd.wait(jobs, arr$len(jobs), 0));
+                arr$clear(jobs);
+            }
+
+            _os$args_print("CMD:", args, arr$len(args));
+
+            os_cmd_c* c = arr$push(jobs, (os_cmd_c){ 0 });
+            e$ret(os.cmd.run(args, arr$len(args), c));
             n_built++;
+        }
+
+        if (arr$len(jobs) > 0) {
+            e$ret(os.cmd.wait(jobs, arr$len(jobs), 0));
+            arr$clear(jobs);
         }
     }
 
-    log$info("Tests building: %d tests processed, %d tests built\n", n_tests, n_built);
+    log$info(
+        "Tests building: %d tests processed, %d tests built in %0.3fsec (%d jobs)\n",
+        n_tests,
+        n_built,
+        os.timer() - timer,
+        njobs
+    );
     fflush(stdout);
 
     if (str.match(cmd, "(run|debug)")) {
@@ -3174,6 +3220,6 @@ const struct __cex_namespace__cexy cexy = {
 
     // clang-format on
 };
-# endif // defined(CEX_BUILD)
+#    endif // defined(CEX_BUILD)
 
 #endif
