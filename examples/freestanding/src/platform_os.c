@@ -201,6 +201,10 @@ fdopen(int fd, const char* mode)
     return NULL;
 }
 
+long sysconf(int name) {
+    return -1;
+}
+
 
 int
 posix_spawn(
