@@ -8,6 +8,9 @@
 - fix: added support for clang 22
 - fix: added support for gcc 16
 - fix(os.cmd.wait): waiting NULL cmd on windows returns no error when subprocess_join() called internally
+- feat: ./cex test run all - now uses multiple cores by default, altered by -j/--jobs flag
+- feat: arr$push() returns a pointer to the last array item
+- feat: os.cpu_count() retrieving number of cores
 
 ## 0.18.0
 2025-12-19
