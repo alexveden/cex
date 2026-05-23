@@ -605,16 +605,13 @@ test$case(os_cmd_wait_on_zii_data)
 {
     os_cmd_c c[3] = { 0 };
 
-    mem$scope(tmem$, _)
-    {
-        tassert_er(Error.ok, os.cmd.wait(c, arr$len(c), 0));
-        tassert_eq(0, os.cmd.is_alive(&c[0]));
-        tassert_eq(0, os.cmd.ret_code(&c[0]));
-        tassert_eq(0, os.cmd.is_alive(&c[1]));
-        tassert_eq(0, os.cmd.ret_code(&c[1]));
-        tassert_eq(0, os.cmd.is_alive(&c[2]));
-        tassert_eq(0, os.cmd.ret_code(&c[2]));
-    }
+    tassert_er(Error.ok, os.cmd.wait(c, arr$len(c), 0));
+    tassert_eq(0, os.cmd.is_alive(&c[0]));
+    tassert_eq(0, os.cmd.ret_code(&c[0]));
+    tassert_eq(0, os.cmd.is_alive(&c[1]));
+    tassert_eq(0, os.cmd.ret_code(&c[1]));
+    tassert_eq(0, os.cmd.is_alive(&c[2]));
+    tassert_eq(0, os.cmd.ret_code(&c[2]));
     return EOK;
 }
 #else
