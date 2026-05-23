@@ -222,6 +222,7 @@ struct _cexds__arr_new_kwargs_s
             abort();                                                                               \
         }                                                                                          \
         (a)[_cexds__header(a)->length++] = (value);                                                \
+        &(a)[_cexds__header(a)->length-1];                                                         \
     })
 
 /// Push many elements to the end

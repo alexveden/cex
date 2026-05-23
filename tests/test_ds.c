@@ -224,6 +224,41 @@ test$case(test_array_struct)
     return EOK;
 }
 
+test$case(test_array_struct_initialilzer)
+{
+    arr$(my_struct) array = arr$new(array, mem$, .capacity = 128);
+    tassert_eq(arr$cap(array), 128);
+
+    arr$push(array, (my_struct){ 20, 5.0, "hello", 0 });
+
+    tassert_eq(array[0].my_string, "hello");
+    tassert_eq(array[0].key, 20);
+
+    arr$free(array);
+
+    return EOK;
+}
+
+
+test$case(test_array_push_returns_a_pointer)
+{
+    arr$(my_struct) array = arr$new(array, mem$, .capacity = 128);
+    tassert_eq(arr$cap(array), 128);
+
+    my_struct* s = arr$push(array, (my_struct){ 20, 5.0, "hello", 0 });
+
+    tassert_eq(array[0].my_string, "hello");
+    tassert_eq(array[0].key, 20);
+
+    tassert_eq((usize)s, (usize)&array[0]);
+    tassert_eq(s->my_string, "hello");
+    tassert_eq(s->key, 20);
+
+
+    arr$free(array);
+
+    return EOK;
+}
 
 typedef struct
 {
