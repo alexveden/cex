@@ -32,4 +32,12 @@ test$case(test_timer)
     return EOK;
 }
 
+test$case(test_cpu_count)
+{
+
+    tassert_ge(os.cpu_count(), 1);
+    tassert_le(os.cpu_count(), 128);
+
+    return EOK;
+}
 test$main();
