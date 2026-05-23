@@ -13955,13 +13955,6 @@ cex_os_cpu_count(void)
     SYSTEM_INFO sysinfo;
     GetSystemInfo(&sysinfo);
     return (int)sysinfo.dwNumberOfProcessors;
-#    elif defined(__APPLE__) || defined(__FreeBSD__)
-    i32 ncpu;
-    size_t len = sizeof(ncpu);
-    i32 mib[2] = { CTL_HW, HW_NCPU };
-
-    if (sysctl(mib, 2, &ncpu, &len, NULL, 0) == -1) { return -1; }
-    return ncpu;
 #    else
     // Linux, Solaris, and other POSIX systems
     long ncpus = sysconf(_SC_NPROCESSORS_ONLN);
