@@ -32,6 +32,7 @@ typedef struct os_cmd_c
     struct subprocess_s _subpr;
     os_cmd_flags_s _flags;
     bool _is_subprocess;
+    i32 _ret_code;
 } os_cmd_c;
 
 /// File stats metadata (cross-platform), returned by os.fs.stats
@@ -144,7 +145,7 @@ __attribute__((unused)) static const char* OSArch_str[] = {
         _os$args_print("CMD:", args, _args_len);                                                   \
         os_cmd_c _cmd = { 0 };                                                                     \
         Exc result = os.cmd.run(args, _args_len, &_cmd);                                           \
-        if (result == EOK) { result = os.cmd.join(&_cmd, 0, NULL); };                              \
+        if (result == EOK) { result = os.cmd.wait(&_cmd, 1, 0); };                                 \
         result;                                                                                    \
         /* NOLINTEND */                                                                            \
     })
@@ -239,7 +240,7 @@ test$case(os_cmd_create)
         io.printf("%s\n", output);
 
         int err_code = 0;
-        tassert_er(Error.runtime, os.cmd.join(&c, 0, &err_code));
+        tassert_er(Error.runtime, os.cmd.wait(&c, 1, 0));
         tassert_eq(err_code, 1);
     }
     return EOK;
@@ -297,17 +298,20 @@ struct __cex_namespace__os {
         FILE*           (*fstdout)(os_cmd_c* self);
         /// Checks if process is running
         bool            (*is_alive)(os_cmd_c* self);
-        /// Waits process to end, and get `out_ret_code`, if timeout_sec=0 - infinite wait, raises
-        /// Error.runtime if out_ret_code != 0
-        Exception       (*join)(os_cmd_c* self, u32 timeout_sec, i32* out_ret_code);
         /// Terminates the running process
         Exception       (*kill)(os_cmd_c* self);
         /// Read all output from process stdout, NULL if stdout is not available
         char*           (*read_all)(os_cmd_c* self, IAllocator allc);
         /// Read line from process stdout, NULL if stdout is not available
         char*           (*read_line)(os_cmd_c* self, IAllocator allc);
+        /// Get return code of the finished command result, active process always return -1.
+        i32             (*ret_code)(os_cmd_c* self);
         /// Run command using arguments array and resulting os_cmd_c
         Exception       (*run)(char** args, usize args_len, os_cmd_c* out_cmd);
+        /// Waits until array of `procs` is finished. If timeout_sec is 0 waits indefinitely, when
+        /// timeout occurs `Error.timeout` returned and `procs` untouched. Otherwise all `procs` awaited and
+        /// cleaned up, `Error.runtime` returned in case of any non-zero return code.
+        Exception       (*wait)(os_cmd_c* procs, usize procs_cnt, u32 timeout_sec);
         /// Writes line to the process stdin
         Exception       (*write_line)(os_cmd_c* self, char* line);
     } cmd;

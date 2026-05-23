@@ -70,7 +70,7 @@ test$case(os_cmd_create)
         io.printf("%s\n", output);
 
         int err_code = 0;
-        tassert_er(Error.runtime, os.cmd.join(&c, 0, &err_code));
+        tassert_er(Error.runtime, os.cmd.wait(&c, 1, 0));
         tassert_eq(err_code, 1);
     }
     return EOK;

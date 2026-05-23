@@ -308,7 +308,7 @@ struct _cexds__arr_new_kwargs_s
              * arr$(T) */                                                                          \
             _Pragma("GCC diagnostic ignored \"-Wsizeof-pointer-div\"");                            \
             /* NOLINTBEGIN */                                                                      \
-            __builtin_types_compatible_p(                                                          \
+            usize __cex_array_len = __builtin_types_compatible_p(                                                          \
                 typeof(arr),                                                                       \
                 typeof(&(arr)[0])                                                                  \
             )                          /* check if array or ptr */                                 \
@@ -318,6 +318,7 @@ struct _cexds__arr_new_kwargs_s
                   );                                                                               \
             /* NOLINTEND */                                                                        \
             _Pragma("GCC diagnostic pop");                                                         \
+            __cex_array_len;                                                                       \
         })
 #endif
 

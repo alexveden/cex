@@ -33,7 +33,7 @@ test_app(char* app_name, IAllocator allc)
             (os.platform.current() == OSPlatform__win) ? ".exe" : ""
         )
     );
-    log$debug("Making test app: %s\n", result);
+    // log$debug("Making test app: %s\n", result);
     return result;
 }
 
@@ -87,9 +87,8 @@ test$case(os_cmd_create)
         tassert(output != NULL);
         // printf("%s\n", output);
         tassert(str.starts_with(output, "Usage: "));
-        int err_code = 0;
-        tassert_er(Error.runtime, os.cmd.join(&c, 0, &err_code));
-        tassert_eq(err_code, 1);
+        tassert_er(Error.runtime, os.cmd.wait(&c, 1, 0));
+        tassert_eq(os.cmd.ret_code(&c), 1);
     }
     return EOK;
 }
@@ -111,9 +110,8 @@ test$case(os_cmd_file_handles)
         tassert(output != NULL);
         // printf("%s\n", output);
         tassert(str.starts_with(output, "Usage: "));
-        int err_code = 0;
-        tassert_er(Error.runtime, os.cmd.join(&c, 0, &err_code));
-        tassert_eq(err_code, 1);
+        tassert_er(Error.runtime, os.cmd.wait(&c, 1, 0));
+        tassert_eq(os.cmd.ret_code(&c), 1);
     }
     return EOK;
 }
@@ -130,9 +128,8 @@ test$case(os_cmd_read_all_small)
         char* output = os.cmd.read_all(&c, _);
         tassert(output != NULL);
         // printf("%s\n", output);
-        int err_code = 1;
-        tassert_er(Error.ok, os.cmd.join(&c, 0, &err_code));
-        tassert_eq(err_code, 0);
+        tassert_er(Error.ok, os.cmd.wait(&c, 1, 0));
+        tassert_eq(os.cmd.ret_code(&c), 0);
 
         arr$(char*) lines = str.split_lines(output, _);
         tassert_eq(arr$len(lines), 10);
@@ -161,9 +158,8 @@ test$case(os_cmd_read_all_huge)
 
         char* output = os.cmd.read_all(&c, _);
         tassert(output != NULL);
-        int err_code = 1;
-        tassert_er(Error.ok, os.cmd.join(&c, 0, &err_code));
-        tassert_eq(err_code, 0);
+        tassert_er(Error.ok, os.cmd.wait(&c, 1, 0));
+        tassert_eq(os.cmd.ret_code(&c), 0);
 
         arr$(char*) lines = str.split_lines(output, _);
         tassert_eq(arr$len(lines), 100000);
@@ -187,9 +183,8 @@ test$case(os_cmd_read_line_huge)
             tassert_eq(str.fmt(_, "%09d", lcnt), line);
             lcnt++;
         }
-        int err_code = 1;
-        tassert_er(Error.ok, os.cmd.join(&c, 0, &err_code));
-        tassert_eq(err_code, 0);
+        tassert_er(Error.ok, os.cmd.wait(&c, 1, 0));
+        tassert_eq(os.cmd.ret_code(&c), 0);
 
         tassert_eq(lcnt, 100000);
     }
@@ -209,9 +204,8 @@ test$case(os_cmd_read_all_only_stdout)
         tassert(output != NULL);
         tassert_eq(output, "");
 
-        int err_code = 1;
-        tassert_er(Error.ok, os.cmd.join(&c, 0, &err_code));
-        tassert_eq(err_code, 0);
+        tassert_er(Error.ok, os.cmd.wait(&c, 1, 0));
+        tassert_eq(os.cmd.ret_code(&c), 0);
     }
     return EOK;
 }
@@ -231,9 +225,8 @@ test$case(os_cmd_read_all_combined_stderr)
 
         char* output = os.cmd.read_all(&c, _);
         tassert(output != NULL);
-        int err_code = 1;
-        tassert_er(Error.ok, os.cmd.join(&c, 0, &err_code));
-        tassert_eq(err_code, 0);
+        tassert_er(Error.ok, os.cmd.wait(&c, 1, 0));
+        tassert_eq(os.cmd.ret_code(&c), 0);
 
         arr$(char*) lines = str.split_lines(output, _);
         tassert_eq(arr$len(lines), 10);
@@ -264,15 +257,13 @@ test$case(os_cmd_join_timeout)
         tassert_er(EOK, os.cmd.create(&c, args, arr$len(args), NULL));
         tassert_eq(1, os.cmd.is_alive(&c));
 
-        int err_code = 0;
-        tassert_er(Error.timeout, os.cmd.join(&c, 1, &err_code));
-        tassert_eq(err_code, -1);
+        tassert_er(Error.timeout, os.cmd.wait(&c, 1, 1));
+        tassert_eq(os.cmd.ret_code(&c), -1);
 
         tassert_er(EOK, os.cmd.create(&c, args, arr$len(args), NULL));
 
-        err_code = 777;
-        tassert_er(Error.ok, os.cmd.join(&c, 3, &err_code));
-        tassert_eq(err_code, 0);
+        tassert_er(Error.ok, os.cmd.wait(&c, 1, 3));
+        tassert_eq(os.cmd.ret_code(&c), 0);
     }
     return EOK;
 }
@@ -286,9 +277,8 @@ test$case(os_cmd_huge_join)
         arr$pushm(args, test_app("write_lines", _), "stdout", "100000", NULL);
         tassert_er(EOK, os.cmd.create(&c, args, arr$len(args), NULL));
 
-        int err_code = 1;
-        tassert_er(Error.timeout, os.cmd.join(&c, 1, &err_code));
-        tassert_eq(err_code, -1);
+        tassert_er(Error.timeout, os.cmd.wait(&c, 1, 1));
+        tassert_eq(os.cmd.ret_code(&c), -1);
     }
     return EOK;
 }
@@ -302,9 +292,8 @@ test$case(os_cmd_huge_join_stderr)
         arr$pushm(args, test_app("write_lines", _), "stderr", "100000", NULL);
         tassert_er(EOK, os.cmd.create(&c, args, arr$len(args), NULL));
 
-        int err_code = 1;
-        tassert_er(Error.timeout, os.cmd.join(&c, 1, &err_code));
-        tassert_eq(err_code, -1);
+        tassert_er(Error.timeout, os.cmd.wait(&c, 1, 1));
+        tassert_eq(os.cmd.ret_code(&c), -1);
     }
     return EOK;
 }
@@ -326,7 +315,7 @@ test$case(os_cmd_stdin_communucation)
         tassert_eq("out: world", os.cmd.read_line(&c, _));
         tassert_er(EOK, os.cmd.write_line(&c, "end"));
 
-        tassert_er(Error.ok, os.cmd.join(&c, 1, NULL));
+        tassert_er(Error.ok, os.cmd.wait(&c, 1, 1));
     }
     return EOK;
 }
@@ -343,9 +332,8 @@ test$case(os_cmd_read_all_small_wdelay)
         char* output = os.cmd.read_all(&c, _);
         tassert(output != NULL);
         log$debug("write_lines_delay output:\n`%s`", output);
-        int err_code = 1;
-        tassert_er(Error.ok, os.cmd.join(&c, 0, &err_code));
-        tassert_eq(err_code, 0);
+        tassert_er(Error.ok, os.cmd.wait(&c, 1, 0));
+        tassert_eq(os.cmd.ret_code(&c), 0);
 
         arr$(char*) lines = str.split_lines(output, _);
         tassert_eq(arr$len(lines), 10);
@@ -373,7 +361,7 @@ test$case(os_cmd_run)
 #if defined(_WIN32)
         tassert(c._subpr.hProcess != NULL);
 #endif
-        tassert_er(EOK, os.cmd.join(&c, 0, NULL));
+        tassert_er(EOK, os.cmd.wait(&c, 1, 0));
     }
     return EOK;
 }
@@ -402,9 +390,7 @@ test$case(os_cmd_run_read_all)
         char* output = os.cmd.read_all(&c, _);
         tassert(output != NULL);
         log$debug("write_arg output:\n`%s`", output);
-        int err_code = 1;
-        tassert_er(Error.ok, os.cmd.join(&c, 0, &err_code));
-        tassert_eq(err_code, 0);
+        tassert_er(Error.ok, os.cmd.wait(&c, 1, 0));
 
         tassert(str.starts_with(output, "1st argument: 'hello world'"));
     }
@@ -424,10 +410,9 @@ test$case(os_cmd_env_inheritance)
         char* output = os.cmd.read_all(&c, _);
         tassert(output != NULL);
         printf("%s\n", output);
-        int err_code = 0;
-        tassert_er(Error.ok, os.cmd.join(&c, 0, &err_code));
+        tassert_er(Error.ok, os.cmd.wait(&c, 1, 0));
         tassert(str.starts_with(output, "TEST_CEX_ENV=cool!"));
-        tassert_eq(err_code, 0);
+        tassert_eq(os.cmd.ret_code(&c), 0);
     }
     return EOK;
 }
@@ -453,11 +438,191 @@ test$case(os_cmd_env_inheritance_cmd_run_not_found)
     return EOK;
 }
 
+test$case(os_cmd_wait_all_infinite)
+{
+    os_cmd_c c[3] = { 0 };
+    char* timeouts[3] = {"100", "300", "400"};
+
+    mem$scope(tmem$, _)
+    {
+        for(u32 i = 0; i < arr$len(c); i++ ){
+            arr$(char*) args = arr$new(args, _);
+            arr$pushm(args, test_app("sleep_ms", _), timeouts[i], NULL);
+            tassert_er(EOK, os.cmd.run(args, arr$len(args), &c[i]));
+        }
+        tassert_er(EOK, os.cmd.wait(c, arr$len(c), 0));
+    }
+    io.printf("Done waiting\n");
+    return EOK;
+}
+
+
+test$case(os_cmd_wait_all_timeout)
+{
+    os_cmd_c c[3] = { 0 };
+    char* timeouts[3] = {"1100", "1300", "1400"};
+
+    mem$scope(tmem$, _)
+    {
+        for(u32 i = 0; i < arr$len(c); i++ ){
+            arr$(char*) args = arr$new(args, _);
+            arr$pushm(args, test_app("sleep_ms", _), timeouts[i], NULL);
+            io.printf("run sleep_ms %s\n", timeouts[i]);
+            tassert_er(EOK, os.cmd.run(args, arr$len(args), &c[i]));
+            fflush(stdout);
+        }
+
+        tassert_er(Error.timeout, os.cmd.wait(c, arr$len(c), 1));
+
+        for$eachp(it, c) {
+            tassert_eq(1, os.cmd.is_alive(it));
+            // living process always return -1 return code
+            tassert_eq(-1, os.cmd.ret_code(it));
+        }
+
+        tassert_er(EOK, os.cmd.wait(c, arr$len(c), 1));
+        for$eachp(it, c) {
+            tassert_eq(0, os.cmd.is_alive(it));
+            tassert_eq(0, os.cmd.ret_code(it));
+        }
+    }
+    io.printf("Done waiting\n");
+    return EOK;
+}
+
+test$case(os_cmd_wait_all_timeout_partial_done)
+{
+    os_cmd_c c[3] = { 0 };
+    char* timeouts[3] = {"100", "1300", "1400"};
+
+    mem$scope(tmem$, _)
+    {
+        for(u32 i = 0; i < arr$len(c); i++ ){
+            arr$(char*) args = arr$new(args, _);
+            arr$pushm(args, test_app("sleep_ms", _), timeouts[i], NULL);
+            tassert_er(EOK, os.cmd.run(args, arr$len(args), &c[i]));
+        }
+
+        tassert_er(Error.timeout, os.cmd.wait(c, arr$len(c), 1));
+
+        tassert_eq(0, os.cmd.is_alive(&c[0]));
+        tassert_eq(0, os.cmd.ret_code(&c[0]));
+        tassert_eq(1, os.cmd.is_alive(&c[1]));
+        tassert_eq(-1, os.cmd.ret_code(&c[1]));
+        tassert_eq(1, os.cmd.is_alive(&c[2]));
+        tassert_eq(-1, os.cmd.ret_code(&c[2]));
+
+        tassert_er(EOK, os.cmd.wait(c, arr$len(c), 1));
+        tassert_eq(0, os.cmd.is_alive(&c[0]));
+        tassert_eq(0, os.cmd.ret_code(&c[0]));
+        tassert_eq(0, os.cmd.is_alive(&c[1]));
+        tassert_eq(0, os.cmd.ret_code(&c[1]));
+        tassert_eq(0, os.cmd.is_alive(&c[2]));
+        tassert_eq(0, os.cmd.ret_code(&c[2]));
+    }
+    io.printf("Done waiting\n");
+    return EOK;
+}
+
+test$case(os_cmd_wait_all_timeout_partial_done_errs)
+{
+    os_cmd_c c[3] = { 0 };
+    char* timeouts[3] = {"117", "1300", "1400"};
+
+    mem$scope(tmem$, _)
+    {
+        for(u32 i = 0; i < arr$len(c); i++ ){
+            arr$(char*) args = arr$new(args, _);
+            arr$pushm(args, test_app("sleep_ms", _), timeouts[i], NULL);
+            tassert_er(EOK, os.cmd.run(args, arr$len(args), &c[i]));
+        }
+
+        tassert_er(Error.timeout, os.cmd.wait(c, arr$len(c), 1));
+
+        tassert_eq(0, os.cmd.is_alive(&c[0]));
+        tassert_eq(17, os.cmd.ret_code(&c[0]));
+        tassert_eq(1, os.cmd.is_alive(&c[1]));
+        tassert_eq(-1, os.cmd.ret_code(&c[1]));
+        tassert_eq(1, os.cmd.is_alive(&c[2]));
+        tassert_eq(-1, os.cmd.ret_code(&c[2]));
+
+        tassert_er(Error.runtime, os.cmd.wait(c, arr$len(c), 1));
+        tassert_eq(0, os.cmd.is_alive(&c[0]));
+        tassert_eq(17, os.cmd.ret_code(&c[0]));
+        tassert_eq(0, os.cmd.is_alive(&c[1]));
+        tassert_eq(0, os.cmd.ret_code(&c[1]));
+        tassert_eq(0, os.cmd.is_alive(&c[2]));
+        tassert_eq(0, os.cmd.ret_code(&c[2]));
+
+        // redundant call, still works
+        tassert_er(Error.runtime, os.cmd.wait(c, arr$len(c), 1));
+        tassert_eq(0, os.cmd.is_alive(&c[0]));
+        tassert_eq(17, os.cmd.ret_code(&c[0]));
+        tassert_eq(0, os.cmd.is_alive(&c[1]));
+        tassert_eq(0, os.cmd.ret_code(&c[1]));
+        tassert_eq(0, os.cmd.is_alive(&c[2]));
+        tassert_eq(0, os.cmd.ret_code(&c[2]));
+    }
+    io.printf("Done waiting\n");
+    return EOK;
+}
+
+test$case(os_cmd_wait_all_infinite_partial_done_errs)
+{
+    os_cmd_c c[3] = { 0 };
+    char* timeouts[3] = {"117", "300", "400"};
+
+    mem$scope(tmem$, _)
+    {
+        for(u32 i = 0; i < arr$len(c); i++ ){
+            arr$(char*) args = arr$new(args, _);
+            arr$pushm(args, test_app("sleep_ms", _), timeouts[i], NULL);
+            tassert_er(EOK, os.cmd.run(args, arr$len(args), &c[i]));
+        }
+
+        tassert_er(Error.runtime, os.cmd.wait(c, arr$len(c), 0));
+        tassert_eq(0, os.cmd.is_alive(&c[0]));
+        tassert_eq(17, os.cmd.ret_code(&c[0]));
+        tassert_eq(0, os.cmd.is_alive(&c[1]));
+        tassert_eq(0, os.cmd.ret_code(&c[1]));
+        tassert_eq(0, os.cmd.is_alive(&c[2]));
+        tassert_eq(0, os.cmd.ret_code(&c[2]));
+
+        // redundant call, still works
+        tassert_er(Error.runtime, os.cmd.wait(c, arr$len(c), 0));
+        tassert_eq(0, os.cmd.is_alive(&c[0]));
+        tassert_eq(17, os.cmd.ret_code(&c[0]));
+        tassert_eq(0, os.cmd.is_alive(&c[1]));
+        tassert_eq(0, os.cmd.ret_code(&c[1]));
+        tassert_eq(0, os.cmd.is_alive(&c[2]));
+        tassert_eq(0, os.cmd.ret_code(&c[2]));
+    }
+    io.printf("Done waiting\n");
+    return EOK;
+}
+
+test$case(os_cmd_wait_on_zii_data)
+{
+    os_cmd_c c[3] = { 0 };
+
+    mem$scope(tmem$, _)
+    {
+        tassert_er(Error.ok, os.cmd.wait(c, arr$len(c), 0));
+        tassert_eq(0, os.cmd.is_alive(&c[0]));
+        tassert_eq(0, os.cmd.ret_code(&c[0]));
+        tassert_eq(0, os.cmd.is_alive(&c[1]));
+        tassert_eq(0, os.cmd.ret_code(&c[1]));
+        tassert_eq(0, os.cmd.is_alive(&c[2]));
+        tassert_eq(0, os.cmd.ret_code(&c[2]));
+    }
+    return EOK;
+}
 #else
 test$case(os_cmd_not_supported_by_platform)
 {
     return EOK;
 }
 #endif  // #if !defined(__EMSCRIPTEN__)
+
 
 test$main();

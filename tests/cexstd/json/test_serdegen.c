@@ -83,7 +83,7 @@ test$case(serdegen_myserde_basic)
             &(os_cmd_flags_s){ .combine_stdouterr = true, .no_window = true }
         ));
         char* output = os.cmd.read_all(&cmd, _);
-        e$except (err, os.cmd.join(&cmd, 10, NULL)) {
+        e$except (err, os.cmd.wait(&cmd, 1, 10)) {
             log$error("Compiler error: \n%s\n", output);
             return err;
         }
@@ -100,7 +100,7 @@ test$case(serdegen_myserde_basic)
             &(os_cmd_flags_s){ .combine_stdouterr = true, .no_window = true }
         ));
         output = os.cmd.read_all(&cmd, _);
-        e$except (err, os.cmd.join(&cmd, 10, NULL)) {
+        e$except (err, os.cmd.wait(&cmd, 1, 10)) {
             log$error("Test error: \n%s\n", output);
             return err;
         }
@@ -179,7 +179,7 @@ test$case(serdegen_myserde_advanced)
             &(os_cmd_flags_s){ .combine_stdouterr = true, .no_window = true }
         ));
         char* output = os.cmd.read_all(&cmd, _);
-        e$except (err, os.cmd.join(&cmd, 10, NULL)) {
+        e$except (err, os.cmd.wait(&cmd, 1, 10)) {
             log$error("Compiler error: \n%s\n", output);
             return err;
         }
@@ -196,7 +196,7 @@ test$case(serdegen_myserde_advanced)
             &(os_cmd_flags_s){ .combine_stdouterr = true, .no_window = true }
         ));
         output = os.cmd.read_all(&cmd, _);
-        e$except (err, os.cmd.join(&cmd, 10, NULL)) {
+        e$except (err, os.cmd.wait(&cmd, 1, 10)) {
             log$error("Test error: \n%s\n", output);
             return err;
         }

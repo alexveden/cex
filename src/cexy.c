@@ -93,7 +93,7 @@ cexy_build_self(int argc, char** argv, char* cex_source)
         _os$args_print("CMD:", args, arr$len(args));
         os_cmd_c _cmd = { 0 };
         e$except (err, os.cmd.run(args, arr$len(args), &_cmd)) { goto fail_recovery; }
-        e$except (err, os.cmd.join(&_cmd, 0, NULL)) { goto fail_recovery; }
+        e$except (err, os.cmd.wait(&_cmd, 1, 0)) { goto fail_recovery; }
 
         // All good new build successful, remove old binary
         if (os.fs.remove(old_name)) {}
@@ -105,7 +105,7 @@ cexy_build_self(int argc, char** argv, char* cex_source)
         arr$pushm(args, NULL);
         _os$args_print("CMD:", args, arr$len(args));
         e$except (err, os.cmd.run(args, arr$len(args), &_cmd)) { goto err; }
-        if (os.cmd.join(&_cmd, 0, NULL)) { goto err; }
+        if (os.cmd.wait(&_cmd, 1, 0)) { goto err; }
         exit(0); // unconditionally exit after build was successful
     fail_recovery:
         if (os.path.exists(old_name)) {
@@ -2754,9 +2754,8 @@ cexy__utils__git_hash(IAllocator allc)
             return NULL;
         }
         char* output = os.cmd.read_all(&c, _);
-        int err_code = 0;
-        e$except_silent (err, os.cmd.join(&c, 0, &err_code)) {
-            log$error("`git rev-parse HEAD` error: %s err_code: %d\n", err, err_code);
+        e$except_silent (err, os.cmd.wait(&c, 1, 0)) {
+            log$error("`git rev-parse HEAD` error: %s err_code: %d\n", err, os.cmd.ret_code(&c));
             return NULL;
         }
         if (output == NULL || output[0] == '\0') {
@@ -2956,7 +2955,7 @@ cexy__utils__pkgconf(
         );
 
         char* output = os.cmd.read_all(&c, _);
-        e$except_silent (err, os.cmd.join(&c, 0, NULL)) {
+        e$except_silent (err, os.cmd.wait(&c, 1, 0)) {
             log$error("%s program error:\n%s\n", cexy$pkgconf_cmd, output);
             return err;
         }

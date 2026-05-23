@@ -242,11 +242,13 @@ test$case(test_foreachp_zero_offset_to_null_ub)
 
     for$eachp(it, arr)
     {
+        (void)it;
         tassert(false && "never!");
     }
 
     for$eachp(it, arr, 0)
     {
+        (void)it;
         tassert(false && "never!");
     }
     return EOK;

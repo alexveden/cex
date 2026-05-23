@@ -543,13 +543,16 @@ int subprocess_join(struct subprocess_s *const process,
     process->hStdInput = SUBPROCESS_NULL;
   }
 
-  WaitForSingleObject(process->hProcess, infinite);
+  if (process->hProcess) {
+    // It's fine to have NULL process, just skip it
+    WaitForSingleObject(process->hProcess, infinite);
 
-  if (out_return_code) {
-    if (!GetExitCodeProcess(
-            process->hProcess,
-            SUBPROCESS_PTR_CAST(unsigned long *, out_return_code))) {
-      return -1;
+    if (out_return_code) {
+      if (!GetExitCodeProcess(
+              process->hProcess,
+              SUBPROCESS_PTR_CAST(unsigned long *, out_return_code))) {
+        return -1;
+      }
     }
   }
 
@@ -751,7 +754,8 @@ int subprocess_alive(struct subprocess_s *const process) {
 #else
   {
     int status;
-    is_alive = 0 == waitpid(process->child, &status, WNOHANG);
+    int waitpid_ret = waitpid(process->child, &status, WNOHANG);
+    is_alive = 0 == waitpid_ret;
 
     // If the process was successfully waited on we need to cleanup now.
     if (!is_alive) {

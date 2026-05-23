@@ -285,7 +285,7 @@ cmd_test_lua_lib(int argc, char** argv, void* user_ctx)
     mem$scope(tmem$, _)
     {
         char* cmd_out = os.cmd.read_all(&cmd, _);
-        e$ret(os.cmd.join(&cmd, 1, NULL));
+        e$ret(os.cmd.wait(&cmd, 1, 1));
         // Checking the printout of the command
         e$assert(cmd_out != NULL);
         e$assert(str.len(cmd_out) > 5);

@@ -1,5 +1,14 @@
 # CEX Release Notes
 
+## 0.19.0
+2026-05-23
+
+### Changes / improvements
+- refactor(os.cmd): (breaking) - refactored os.cmd.join() to os.cmd.wait() with support of waiting for multiple commands
+- fix: added support for clang 22
+- fix: added support for gcc 16
+- fix(os.cmd.wait): waiting NULL cmd on windows returns no error when subprocess_join() called internally
+
 ## 0.18.0
 2025-12-19
 

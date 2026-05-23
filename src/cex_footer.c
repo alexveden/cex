@@ -26,7 +26,7 @@ CEX contains some code and ideas from the following projects, all of them licens
 
 MIT License
 
-Copyright (c) 2024-2025 Aleksandr Vedeneev
+Copyright (c) 2024-2026 Aleksandr Vedeneev
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

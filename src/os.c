@@ -1,9 +1,9 @@
 #if !defined(cex$enable_minimal) || defined(cex$enable_os)
-#include "os.h"
+#    include "os.h"
 
-#ifndef _WIN32
-#    include <dirent.h>
-#else // _WIN32
+#    ifndef _WIN32
+#        include <dirent.h>
+#    else // _WIN32
 // minirent.h HEADER BEGIN
 // Copyright 2021 Alexey Kutepov <reximkut@gmail.com>
 //
@@ -28,8 +28,8 @@
 //
 // ============================================================
 
-#    define WIN32_LEAN_AND_MEAN
-#    include <windows.h>
+#        define WIN32_LEAN_AND_MEAN
+#        include <windows.h>
 
 struct dirent
 {
@@ -122,34 +122,34 @@ closedir(DIR* dirp)
 
     return 0;
 }
-#endif // _WIN32
+#    endif // _WIN32
 
 /// Sleep for `period_millisec` duration
 static void
 cex_os_sleep(u32 period_millisec)
 {
-#ifdef _WIN32
+#    ifdef _WIN32
     Sleep(period_millisec);
-#else
+#    else
     usleep(period_millisec * 1000);
-#endif
+#    endif
 }
 
 /// Get high performance monotonic timer value in seconds
 static f64
 cex_os_timer(void)
 {
-#ifdef _WIN32
+#    ifdef _WIN32
     static LARGE_INTEGER frequency = { 0 };
     if (unlikely(frequency.QuadPart == 0)) { QueryPerformanceFrequency(&frequency); }
     LARGE_INTEGER start;
     QueryPerformanceCounter(&start);
     return (f64)(start.QuadPart) / (f64)frequency.QuadPart;
-#else
+#    else
     struct timespec start;
     clock_gettime(CLOCK_MONOTONIC, &start);
     return (f64)start.tv_sec + (f64)start.tv_nsec / 1e9;
-#endif
+#    endif
 }
 
 /// Get last system API error as string representation (Exception compatible). Result content may be
@@ -157,7 +157,7 @@ cex_os_timer(void)
 static Exc
 cex_os_get_last_error(void)
 {
-#ifdef _WIN32
+#    ifdef _WIN32
     DWORD err = GetLastError();
     switch (err) {
         case ERROR_FILE_NOT_FOUND:
@@ -202,7 +202,7 @@ cex_os_get_last_error(void)
     }
 
     return win32_err_buf;
-#else
+#    else
     switch (errno) {
         case 0:
             uassert(errno != 0 && "errno is ok");
@@ -218,7 +218,7 @@ cex_os_get_last_error(void)
         default:
             return strerror(errno);
     }
-#endif
+#    endif
 }
 
 /// Renames file or directory
@@ -228,13 +228,13 @@ cex_os__fs__rename(char* old_path, char* new_path)
     if (old_path == NULL || old_path[0] == '\0') { return Error.argument; }
     if (new_path == NULL || new_path[0] == '\0') { return Error.argument; }
     if (os.path.exists(new_path)) { return Error.exists; }
-#ifdef _WIN32
+#    ifdef _WIN32
     if (!MoveFileEx(old_path, new_path, MOVEFILE_REPLACE_EXISTING)) { return os.get_last_error(); }
     return EOK;
-#else
+#    else
     if (rename(old_path, new_path) < 0) { return os.get_last_error(); }
     return EOK;
-#endif // _WIN32
+#    endif // _WIN32
 }
 
 /// Makes directory (no error if exists)
@@ -242,11 +242,11 @@ static Exception
 cex_os__fs__mkdir(char* path)
 {
     if (path == NULL || path[0] == '\0') { return Error.argument; }
-#ifdef _WIN32
+#    ifdef _WIN32
     int result = mkdir(path);
-#else
+#    else
     int result = mkdir(path, 0755);
-#endif
+#    endif
     if (result < 0) {
         uassert(errno != 0);
         if (errno == EEXIST) { return EOK; }
@@ -287,7 +287,7 @@ cex_os__fs__stat(char* path)
     os_fs_stat_s result = { .error = Error.argument };
     if (path == NULL || path[0] == '\0') { return result; }
 
-#ifdef _WIN32
+#    ifdef _WIN32
     // NOTE: for mingw64 _stat() doesn't do well when path has trailing /
     usize plen = strlen(path);
     if (unlikely(plen >= PATH_MAX)) {
@@ -333,7 +333,7 @@ cex_os__fs__stat(char* path)
     result.size = statbuf.st_size;
 
     return result;
-#else // _WIN32
+#    else // _WIN32
     struct stat statbuf;
     if (unlikely(lstat(path, &statbuf) < 0)) {
         result.error = os.get_last_error();
@@ -370,7 +370,7 @@ cex_os__fs__stat(char* path)
     }
     result.size = statbuf.st_size;
     return result;
-#endif
+#    endif
 }
 
 /// Removes file or empty directory (also see os.fs.remove_tree)
@@ -381,7 +381,7 @@ cex_os__fs__remove(char* path)
 
     os_fs_stat_s stat = os.fs.stat(path);
     if (!stat.is_valid) { return stat.error; }
-#ifdef _WIN32
+#    ifdef _WIN32
     if (stat.is_file || stat.is_symlink) {
         if (!DeleteFileA(path)) { return os.get_last_error(); }
     } else if (stat.is_directory) {
@@ -390,10 +390,10 @@ cex_os__fs__remove(char* path)
         return "Unsupported path type";
     }
     return EOK;
-#else
+#    else
     if (remove(path) < 0) { return os.get_last_error(); }
     return EOK;
-#endif
+#    endif
 }
 
 /// Iterates over directory (can be recursive) using callback function
@@ -598,9 +598,9 @@ static arr$(char*) cex_os__fs__find(char* path_pattern, bool is_recursive, IAllo
 
     str_s dir_part = os.path.split(path_pattern, true);
     if (dir_part.buf == NULL) {
-#if defined(CEX_TEST) || defined(CEX_BUILD)
+#    if defined(CEX_TEST) || defined(CEX_BUILD)
         (void)e$raise(Error.argument, "Bad path: os.fn.find('%s')", path_pattern);
-#endif
+#    endif
         return NULL;
     }
 
@@ -656,11 +656,11 @@ cex_os__fs__getcwd(IAllocator allc)
     char* buf = mem$malloc(allc, PATH_MAX);
 
     char* result = NULL;
-#ifdef _WIN32
+#    ifdef _WIN32
     result = _getcwd(buf, PATH_MAX);
-#else
+#    else
     result = getcwd(buf, PATH_MAX);
-#endif
+#    endif
     if (result == NULL) { mem$free(allc, buf); }
 
     return result;
@@ -673,11 +673,11 @@ cex_os__fs__chdir(char* path)
     if (path == NULL || path[0] == '\0') { return Error.exists; }
 
     int result;
-#ifdef _WIN32
+#    ifdef _WIN32
     result = _chdir(path);
-#else
+#    else
     result = chdir(path);
-#endif
+#    endif
 
     if (result == -1) {
         if (errno == ENOENT) {
@@ -702,10 +702,10 @@ cex_os__fs__copy(char* src_path, char* dst_path)
 
     if (os.path.exists(dst_path)) { return Error.exists; }
 
-#ifdef _WIN32
+#    ifdef _WIN32
     if (!CopyFile(src_path, dst_path, FALSE)) { return os.get_last_error(); }
     return EOK;
-#else
+#    else
     int src_fd = -1;
     int dst_fd = -1;
     size_t buf_size = 32 * 1024;
@@ -755,7 +755,7 @@ defer:
     if (src_fd >= 0) { close(src_fd); }
     if (dst_fd >= 0) { close(dst_fd); }
     return result;
-#endif
+#    endif
 }
 
 /// Get environment variable, with `deflt` if not found
@@ -773,11 +773,11 @@ cex_os__env__get(char* name, char* deflt)
 static Exception
 cex_os__env__set(char* name, char* value)
 {
-#ifdef _WIN32
+#    ifdef _WIN32
     _putenv_s(name, value);
-#else
+#    else
     setenv(name, value, true);
-#endif
+#    endif
     // TODO: add error reporting
     return EOK;
 }
@@ -799,12 +799,12 @@ cex_os__path__abs(char* path, IAllocator allc)
 
     char buffer[PATH_MAX];
 
-#ifdef _WIN32
+#    ifdef _WIN32
     DWORD result = GetFullPathNameA(path, sizeof(buffer), buffer, NULL);
     if (result == 0 || result > sizeof(buffer) - 1) { return NULL; }
-#else
+#    else
     if (realpath(path, buffer) == NULL) { return NULL; }
-#endif
+#    endif
 
     return str.clone(buffer, allc);
 }
@@ -888,6 +888,7 @@ cex_os__cmd__create(os_cmd_c* self, char** args, usize args_len, os_cmd_flags_s*
 
     *self = (os_cmd_c){
         ._is_subprocess = true,
+        ._ret_code = -1,
         ._flags = (flags) ? *flags : (os_cmd_flags_s){ 0 },
     };
 
@@ -908,6 +909,27 @@ static bool
 cex_os__cmd__is_alive(os_cmd_c* self)
 {
     return subprocess_alive(&self->_subpr);
+
+//     int is_alive = self->_subpr.alive;
+//     if (!is_alive) { return 0; }
+//
+// #    if defined(_WIN32)
+//     {
+//         const unsigned long zero = 0x0;
+//         const unsigned long wait_object_0 = 0x00000000L;
+//
+//         is_alive = wait_object_0 != WaitForSingleObject(process->hProcess, zero);
+//     }
+// #    else
+//     {
+//         int status;
+//         is_alive = 0 == waitpid(self->_subpr.child, &status, WNOHANG);
+//     }
+// #    endif
+//
+//     if (!is_alive) { self->_subpr.alive = 0; }
+//
+//     return is_alive;
 }
 
 /// Terminates the running process
@@ -920,59 +942,66 @@ cex_os__cmd__kill(os_cmd_c* self)
     return EOK;
 }
 
-/// Waits process to end, and get `out_ret_code`, if timeout_sec=0 - infinite wait, raises
-/// Error.runtime if out_ret_code != 0
+/// Waits until array of `procs` is finished. If timeout_sec is 0 waits indefinitely, when
+/// timeout occurs `Error.timeout` returned and `procs` untouched. Otherwise all `procs` awaited and
+/// cleaned up, `Error.runtime` returned in case of any non-zero return code.
 static Exception
-cex_os__cmd__join(os_cmd_c* self, u32 timeout_sec, i32* out_ret_code)
+cex_os__cmd__wait(os_cmd_c* procs, usize procs_cnt, u32 timeout_sec)
 {
-    uassert(self != NULL);
-    Exc result = Error.os;
-    int ret_code = 1;
+    uassert(procs_cnt > 0);
+    uassert(procs);
+    Exc result = EOK;
 
-    if (timeout_sec == 0) {
-        // timeout_sec == 0 -> infinite wait
-        int join_result = subprocess_join(&self->_subpr, &ret_code);
-        if (join_result != 0) {
-            ret_code = -1;
-            result = Error.os;
-            goto end;
-        }
-    } else {
-        uassert(timeout_sec < INT32_MAX && "timeout is negative or too high");
-        u64 timeout_elapsed_ms = 0;
-        u64 timeout_ms = timeout_sec * 1000;
-        do {
-            if (cex_os__cmd__is_alive(self)) {
-                cex_os_sleep(100); // 100 ms sleep
-            } else {
-                subprocess_join(&self->_subpr, &ret_code);
-                break;
-            }
-            timeout_elapsed_ms += 100;
-        } while (timeout_elapsed_ms < timeout_ms);
 
-        if (timeout_elapsed_ms >= timeout_ms) {
-            result = Error.timeout;
-            if (cex_os__cmd__kill(self)) { // discard
+    f64 timer = 0.0;
+    if (timeout_sec){
+        timer = cex_os_timer();
+    }
+
+    while (true) {
+        bool is_all_done = true;
+
+        for$eachp (it, procs, procs_cnt) { is_all_done &= !cex_os__cmd__is_alive(it); }
+
+        if (!is_all_done) {
+            cex_os_sleep(10);
+
+            if (timeout_sec > 0) {
+                f64 duration = cex_os_timer() - timer;
+                if (duration > timeout_sec) {
+                    result = Error.timeout;
+                    break;
+                }
             }
-            subprocess_join(&self->_subpr, NULL);
-            ret_code = -1;
-            goto end;
+        } else {
+            break;
         }
     }
 
-    if (ret_code != 0) {
-        result = Error.runtime;
-        goto end;
+    for$eachp (it, procs, procs_cnt) {
+        // We still can have running processes in case of timeouts
+        if (!cex_os__cmd__is_alive(it)) {
+
+            if (subprocess_join(&it->_subpr, &it->_ret_code)) {
+                result = result == EOK ? Error.os : result;
+            } else if (it->_ret_code != 0) {
+                result = result == EOK ? Error.runtime : result;
+            }
+
+            subprocess_destroy(&it->_subpr);
+        }
     }
 
-    result = Error.ok;
-
-end:
-    if (out_ret_code) { *out_ret_code = ret_code; }
-    subprocess_destroy(&self->_subpr);
-    memset(self, 0, sizeof(os_cmd_c));
     return result;
+}
+
+/// Get return code of the finished command result, active process always return -1.
+static i32
+cex_os__cmd__ret_code(os_cmd_c* self)
+{
+    if (self->_subpr.alive) { return -1; }
+
+    return self->_ret_code;
 }
 
 /// Get running command stdout stream
@@ -1047,7 +1076,7 @@ cex_os__cmd__exists(char* cmd_exe)
     if (cmd_exe == NULL || cmd_exe[0] == '\0') { return false; }
     mem$scope(tmem$, _)
     {
-#ifdef _WIN32
+#    ifdef _WIN32
         char* extensions[] = { ".exe", ".cmd", ".bat" };
         bool has_ext = str.find(os.path.basename(cmd_exe, _), ".") != NULL;
 
@@ -1080,7 +1109,7 @@ cex_os__cmd__exists(char* cmd_exe)
                 }
             }
         }
-#else
+#    else
         if (str.find(cmd_exe, "/") != NULL) {
             os_fs_stat_s stat = os.fs.stat(cmd_exe);
             if (stat.is_valid && stat.is_file && access(cmd_exe, X_OK) == 0) {
@@ -1097,7 +1126,7 @@ cex_os__cmd__exists(char* cmd_exe)
             os_fs_stat_s stat = os.fs.stat(exe);
             if (stat.is_valid && stat.is_file && access(exe, X_OK) == 0) { return true; }
         }
-#endif
+#    endif
     }
     return false;
 }
@@ -1127,7 +1156,7 @@ cex_os__cmd__run(char** args, usize args_len, os_cmd_c* out_cmd)
     }
 
 
-#ifdef _WIN32
+#    ifdef _WIN32
     Exc result = Error.runtime;
 
     STARTUPINFO si = { 0 };
@@ -1175,6 +1204,7 @@ cex_os__cmd__run(char** args, usize args_len, os_cmd_c* out_cmd)
     }
 
     *out_cmd = (os_cmd_c){ ._is_subprocess = false,
+                           ._ret_code = -1,
                            ._subpr = {
                                .hProcess = pi.hProcess,
                                .alive = 1,
@@ -1183,7 +1213,7 @@ cex_os__cmd__run(char** args, usize args_len, os_cmd_c* out_cmd)
     result = EOK;
 end:
     return result;
-#else
+#    else
     pid_t cpid = fork();
     if (cpid < 0) { return e$raise(Error.os, "Could not fork child process: %s", strerror(errno)); }
 
@@ -1196,13 +1226,14 @@ end:
     }
 
     *out_cmd = (os_cmd_c){ ._is_subprocess = false,
+                           ._ret_code = -1,
                            ._subpr = {
                                .child = cpid,
                                .alive = 1,
                            } };
     return EOK;
 
-#endif
+#    endif
 }
 
 /// Returns current OS platform, returns enum of OSPlatform__*, e.g. OSPlatform__win,
@@ -1210,33 +1241,33 @@ end:
 static OSPlatform_e
 cex_os__platform__current(void)
 {
-#if defined(_WIN32)
+#    if defined(_WIN32)
     return OSPlatform__win;
-#elif defined(__linux__)
+#    elif defined(__linux__)
     return OSPlatform__linux;
-#elif defined(__APPLE__) || defined(__MACH__)
+#    elif defined(__APPLE__) || defined(__MACH__)
     return OSPlatform__macos;
-#elif defined(__unix__)
-#    if defined(__FreeBSD__)
+#    elif defined(__unix__)
+#        if defined(__FreeBSD__)
     return OSPlatform__freebsd;
-#    elif defined(__NetBSD__)
+#        elif defined(__NetBSD__)
     return OSPlatform__netbsd;
-#    elif defined(__OpenBSD__)
+#        elif defined(__OpenBSD__)
     return OSPlatform__openbsd;
-#    elif defined(__ANDROID__)
+#        elif defined(__ANDROID__)
     return OSPlatform__android;
+#        elif defined(__EMSCRIPTEN__)
+    return OSPlatform__wasm;
+#        else
+#            error "Untested platform. Need more?"
+#        endif
+#    elif defined(__wasm__)
+    return OSPlatform__wasm;
 #    elif defined(__EMSCRIPTEN__)
     return OSPlatform__wasm;
 #    else
 #        error "Untested platform. Need more?"
 #    endif
-#elif defined(__wasm__)
-    return OSPlatform__wasm;
-#elif defined(__EMSCRIPTEN__)
-    return OSPlatform__wasm;
-#else
-#    error "Untested platform. Need more?"
-#endif
 }
 
 /// Returns string name of current platform
@@ -1301,11 +1332,12 @@ const struct __cex_namespace__os os = {
         .fstdin = cex_os__cmd__fstdin,
         .fstdout = cex_os__cmd__fstdout,
         .is_alive = cex_os__cmd__is_alive,
-        .join = cex_os__cmd__join,
         .kill = cex_os__cmd__kill,
         .read_all = cex_os__cmd__read_all,
         .read_line = cex_os__cmd__read_line,
+        .ret_code = cex_os__cmd__ret_code,
         .run = cex_os__cmd__run,
+        .wait = cex_os__cmd__wait,
         .write_line = cex_os__cmd__write_line,
     },
 
