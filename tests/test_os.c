@@ -13,9 +13,12 @@ test$case(test_timer)
     tassert(!isnan(t));
     tassert(t < INFINITY);
     tassert(t > -INFINITY);
+    // timer starts from first call of os.timer(), so numbers should be small
+    tassert_le(t, 5); 
 
     f64 t2 = os.timer();
     tassert(t2 >= t);
+    tassert_le(t2, 5); 
 
     os.sleep(100);
     t2 = os.timer();

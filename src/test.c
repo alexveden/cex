@@ -218,7 +218,7 @@ _check_eq_str(char* a, char* b, int line, enum _cex_test_eq_op_e op)
                             usize max_len = al_len > bl_len ? al_len : bl_len;
                             usize min_len = al_len < bl_len ? al_len : bl_len;
                             sbuf.appendf(&errors, "\t                ");
-                            for(usize z = 0; z < max_len; z++) {
+                            for (usize z = 0; z < max_len; z++) {
                                 if (z < min_len && al[z] == bl[z]) {
                                     sbuf.appendf(&errors, " ");
                                 } else {
@@ -245,7 +245,6 @@ _check_eq_str(char* a, char* b, int line, enum _cex_test_eq_op_e op)
                     sbuf.appendf(&errors, "\tA at line: `%S`\n", str.slice.sub(str.sstr(a), -10, 0));
                     sbuf.appendf(&errors, "\tB at line: `%S`\n", str.slice.sub(str.sstr(b), -10, 0));
                     sbuf.appendf(&errors, "^ New line diff (only last part displayed)\n");
-
                 }
                 str.sprintf(
                     _cex_test__mainfn_state.str_buf,
@@ -385,6 +384,110 @@ cex_test_unmute(Exc test_result)
     }
 }
 
+Exc test$noopt __attribute__((noinline))
+_cex_test_flush_cpu_cache(void)
+{
+    u64 buffer_size = 128 * 1024 * 1024;
+
+    volatile char* flush_buffer = (volatile char*)malloc(buffer_size);
+    if (!flush_buffer) { return Error.memory; }
+
+    // The 'volatile' keyword prevents the compiler from optimizing this loop away
+    for (size_t i = 0; i < buffer_size; i += 64) { // Step by typical cache line size (64 bytes)
+        flush_buffer[i] = (char)(i & 0xFF);
+    }
+    free((void*)flush_buffer);
+    return Error.ok;
+}
+
+Exc test$noopt __attribute__((noinline))
+_cex_test_bench_call_timer_overhead(void)
+{
+    os.timer();
+    return EOK;
+}
+
+static Exc test$noopt __attribute__((noinline))
+cex_test_run_bench_case(struct _cex_test_case_s* case_ctx)
+{
+    uassert(case_ctx->is_benchmark);
+
+    Exc result = EOK;
+
+    f64 t = os.timer();
+    f64 t_overhead = 100000000.0;
+
+    // Assess empty function call overhead
+    for (u32 i = 0; i < 100; i++) {
+        t = os.timer();
+        result = _cex_test_bench_call_timer_overhead();
+        f64 t2 = os.timer();
+        f64 t3 = os.timer(); // this one for excluding t2 call time
+        f64 t_elapsed = t2 - t - (t3 - t2);
+        if (t_elapsed > 0 && t_elapsed < t_overhead) { t_overhead = t_elapsed; }
+    }
+    uassert(t_overhead > 0 && t_overhead < 0.001);
+
+    // Evict CPU cache to make sure next function call is cold cached
+    t = os.timer();
+    _cex_test_flush_cpu_cache();
+    f64 t_elapsed = os.timer() - t;
+    uassert(t_elapsed > 0.001 && "cpu cache flush happened too fast");
+    // printf("cpu cache flush took: %fsec, call overhead: %fns\n", t_elapsed, t_overhead*1e9);
+
+
+    // Cold start handle
+    t = os.timer();
+    result = case_ctx->test_fn();
+    t_elapsed = os.timer() - t;
+    if (result) { return result; }
+
+    f64 cold_time = t_elapsed;
+    f64 hot_time = t_elapsed;
+
+    for (u32 i = 0; i < 10; i++) {
+        t = os.timer();
+        result = case_ctx->test_fn();
+        t_elapsed = os.timer() - t;
+        if (result) { return result; }
+        e$assert(t_elapsed > 0.0);
+        // Instead of using averaging, we use minimum non zero time statistic,
+        // which should converge to the statistical mode of the distribution (most frequency of
+        // measurements) Inspired by code::dive conference 2015 - Andrei Alexandrescu - Writing Fast
+        // Code I https://www.youtube.com/watch?v=vrfYLlR8X8k&t=1036s
+        if (t_elapsed < hot_time) { hot_time = t_elapsed; }
+    }
+
+    if (cold_time > t_overhead) { cold_time -= t_overhead; }
+    if (hot_time > t_overhead) { hot_time -= t_overhead; }
+
+    char* duration = "sec";
+    f64 factor = 1.0;
+    if (hot_time < 1) {
+        if (hot_time < 10e-4) {
+            if (hot_time < 10e-7) {
+                duration = "ns ";
+                factor = 10e8;
+            } else {
+                duration = "us";
+                factor = 10e5;
+            }
+        } else {
+            duration = "ms ";
+            factor = 10e2;
+        }
+    }
+    fprintf(
+        stderr,
+        "cold: %0.3f%s hot: %0.3f%s ",
+        cold_time * factor,
+        duration,
+        hot_time * factor,
+        duration
+    );
+
+    return result;
+}
 
 static int __attribute__((noinline))
 cex_test_main_fn(int argc, char** argv)
@@ -412,6 +515,7 @@ cex_test_main_fn(int argc, char** argv)
         argparse$opt(&ctx->case_filter, 'f', "filter", .help = "execute cases with filter"),
         argparse$opt(&ctx->quiet_mode, 'q', "quiet", .help = "run test in quiet_mode"),
         argparse$opt(&ctx->breakpoint, 'b', "breakpoint", .help = "breakpoint on tassert failure"),
+        argparse$opt(&ctx->is_benchmark, '\0', "bench", .help = "run test$bench() functions"),
         argparse$opt(
             &ctx->no_stdout_capture,
             'o',
@@ -468,14 +572,24 @@ cex_test_main_fn(int argc, char** argv)
         }
     }
 
-    if (ctx->quiet_mode) { fprintf(stderr, "%s ", ctx->suite_file); }
+    if (ctx->quiet_mode) {
+        fprintf(stderr, "%s ", ctx->suite_file);
+        if (ctx->is_benchmark) { fprintf(stderr, " >>>>\n"); }
+    }
+
+    if (ctx->is_benchmark && mem$asan_enabled()) {
+        log$warn(
+            "ASAN is enabled, it will take performance impact! Try recompile with enabled optimization and ASAN off.\n"
+        );
+    }
 
     for$each (t, ctx->test_cases) {
         ctx->case_name = t.test_name;
         ctx->tests_run++;
+        if (ctx->is_benchmark != t.is_benchmark) { continue; }
         if (ctx->case_filter && !str.find(t.test_name, ctx->case_filter)) { continue; }
 
-        if (!ctx->quiet_mode) {
+        if (!ctx->quiet_mode || ctx->is_benchmark) {
             fprintf(stderr, "%s", t.test_name);
             for (u32 i = 0; i < max_name - strlen(t.test_name) + 2; i++) { putc('.', stderr); }
             if (ctx->no_stdout_capture) { putc('\n', stderr); }
@@ -501,17 +615,24 @@ cex_test_main_fn(int argc, char** argv)
             return 1;
         }
 
-        cex_test_mute();
-        err = t.test_fn();
-        if (ctx->quiet_mode && err != EOK) {
-            fprintf(stdout, "[%s] %s\n", ctx->has_ansi ? io$ansi("FAIL", "31") : "FAIL", err);
-            fprintf(stdout, "Test suite: %s case: %s\n", ctx->suite_file, t.test_name);
+        if (ctx->is_benchmark) {
+            // NOTE: we don't mute bench output because muting uses files on disk,
+            //       therefore has huge performance impact
+            err = cex_test_run_bench_case(&t);
+        } else {
+            cex_test_mute();
+            err = t.test_fn();
+            if (ctx->quiet_mode && err != EOK) {
+                fprintf(stdout, "[%s] %s\n", ctx->has_ansi ? io$ansi("FAIL", "31") : "FAIL", err);
+                fprintf(stdout, "Test suite: %s case: %s\n", ctx->suite_file, t.test_name);
+            }
+            cex_test_unmute(err);
         }
-        cex_test_unmute(err);
 
         if (err == EOK) {
             if (ctx->quiet_mode) {
                 fprintf(stderr, ".");
+                if (ctx->is_benchmark) { fprintf(stderr, "\n"); }
             } else {
                 fprintf(stderr, "[%s]\n", ctx->has_ansi ? io$ansi("PASS", "32") : "PASS");
             }
@@ -527,6 +648,7 @@ cex_test_main_fn(int argc, char** argv)
                 );
             } else {
                 fprintf(stderr, "F");
+                if (ctx->is_benchmark) { fprintf(stderr, "\n"); }
             }
         }
         if (ctx->teardown_case_fn && (err = ctx->teardown_case_fn()) != EOK) {
@@ -595,6 +717,7 @@ cex_test_main_fn(int argc, char** argv)
                 ctx->tests_failed
             );
         }
+        if (ctx->is_benchmark) { fprintf(stderr, "<<<< %s\n", ctx->suite_file); }
     }
 
     if (ctx->out_stream) {

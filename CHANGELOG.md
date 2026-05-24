@@ -11,6 +11,8 @@
 - feat: ./cex test run all - now uses multiple cores by default, altered by -j/--jobs flag
 - feat: arr$push() returns a pointer to the last array item
 - feat: os.cpu_count() retrieving number of cores
+- feat: os.timer() starts from os.timer() initial first call, first call can be around zero + some nanoseconds
+- feat: test$bench - added benchmarking engine for test suite, can be run with `./cex test bench tests/test_something.c`
 
 ## 0.18.0
 2025-12-19

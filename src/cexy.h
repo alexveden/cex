@@ -261,6 +261,12 @@ See `cex help str.match` for more information about patter syntax.
         "    tassert_lt(0, 1);\n"\
         "    return EOK;\n"\
         "}\n"\
+        "\nBenchmarking case:\n"\
+        "\ntest$bench(my_bench_case_name) {\n"\
+        "    // This code only execudes when `./cex test bench <filename>` is executed\n" \
+        "    some_function_of_interest(0, 1);\n"\
+        "    return EOK;\n"\
+        "}\n"\
         \
         "\nIf you need more control you can build your own test runner. Just use cex help\n"\
         "and get source code `./cex help --source cexy.cmd.simple_test`\n")
@@ -274,7 +280,8 @@ See `cex help str.match` for more information about patter syntax.
         "cex test debug tests/test_file.c         - run test via `cexy$debug_cmd` program\n"\
         "cex test clean all                       - delete all test executables in `cexy$build_dir`\n"\
         "cex test clean test/test_file.c          - delete specific test executable\n"\
-        "cex test run tests/test_file.c [--help]  - run test with passing arguments to the test runner program\n"
+        "cex test run tests/test_file.c [--help]  - run test with passing arguments to the test runner program\n" \
+        "cex test bench test/test_file.c          - run all test$bench() functions for timing\n"
 
 
 // clang-format on
@@ -314,7 +321,7 @@ struct __cex_namespace__cexy {
         Exception       (*clean)(char* target);
         Exception       (*create)(char* target, bool include_sample);
         Exception       (*make_target_pattern)(char** target);
-        Exception       (*run)(char* target, bool is_debug, int argc, char** argv);
+        Exception       (*run)(char* target, char* cmd, int argc, char** argv);
     } test;
 
     struct {

@@ -18,6 +18,15 @@ runs:
         echo "---------------------------------------------------------------------"
         ./cex test run all
 
+    - name: Runs bench code
+      shell: ${{ inputs.shell }}
+      run: |
+        echo ""
+        echo "---------------------------------------------------------------------"
+        echo "           STEP: Runs all bench in tests"
+        echo "---------------------------------------------------------------------"
+        ./cex test bench tests/test_bench.c
+
     - name: Cex Help
       shell: ${{ inputs.shell }}
       run: |

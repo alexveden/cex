@@ -135,20 +135,37 @@ cex_os_sleep(u32 period_millisec)
 #    endif
 }
 
-/// Get high performance monotonic timer value in seconds
+/// Get high performance monotonic timer value in seconds, started from the first call of the os.timer()
 static f64
 cex_os_timer(void)
 {
+    // NOTE: we calculate start time only once, and keep it indefinitely (because of static modifier)
+
 #    ifdef _WIN32
     static LARGE_INTEGER frequency = { 0 };
     if (unlikely(frequency.QuadPart == 0)) { QueryPerformanceFrequency(&frequency); }
-    LARGE_INTEGER start;
-    QueryPerformanceCounter(&start);
-    return (f64)(start.QuadPart) / (f64)frequency.QuadPart;
+
+    static LARGE_INTEGER start = { 0 };
+    if (unlikely(start.QuadPart == 0)) {
+        QueryPerformanceCounter(&start);
+    }
+
+    static LARGE_INTEGER now;
+    QueryPerformanceCounter(&now);
+    return (f64)(now.QuadPart - start.QuadPart) / (f64)frequency.QuadPart;
+
 #    else
-    struct timespec start;
-    clock_gettime(CLOCK_MONOTONIC, &start);
-    return (f64)start.tv_sec + (f64)start.tv_nsec / 1e9;
+    static u64 start_ticks = 0;
+    if (unlikely(start_ticks == 0)){
+        struct timespec start;
+        clock_gettime(CLOCK_MONOTONIC, &start);
+        start_ticks = (u64)start.tv_sec*1000000000 + (u64)start.tv_nsec; 
+    }
+    static struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    u64 now_ticks = (u64)now.tv_sec*1000000000 + (u64)now.tv_nsec; 
+
+    return (f64)(now_ticks - start_ticks) / (f64)1e9;
 #    endif
 }
 

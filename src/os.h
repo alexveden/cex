@@ -283,7 +283,7 @@ struct __cex_namespace__os {
     Exc             (*get_last_error)(void);
     /// Sleep for `period_millisec` duration
     void            (*sleep)(u32 period_millisec);
-    /// Get high performance monotonic timer value in seconds
+    /// Get high performance monotonic timer value in seconds, started from the first call of the os.timer()
     f64             (*timer)(void);
 
     struct {

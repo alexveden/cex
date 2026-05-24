@@ -11,6 +11,7 @@ struct _cex_test_case_s
     _cex_test_case_f test_fn;
     char* test_name;
     u32 test_line;
+    bool is_benchmark;
 };
 
 struct _cex_test_context_s
@@ -30,6 +31,7 @@ struct _cex_test_context_s
     bool has_ansi;
     bool no_stdout_capture;
     bool breakpoint;
+    bool is_benchmark;
     char* suite_file;
     char* case_filter;
     char str_buf[CEX_TEST_AMSG_MAX_LEN];
@@ -160,6 +162,25 @@ test$case(my_test_case){
     }                                                                                               \
     Exception test$noopt cex_test_##NAME(void)
 
+#define test$bench(NAME)                                                                             \
+    extern struct _cex_test_context_s _cex_test__mainfn_state;                                      \
+    static Exception cex_test_##NAME();                                                             \
+    static void cex_test_register_##NAME(void) __attribute__((constructor));                        \
+    static void cex_test_register_##NAME(void)                                                      \
+    {                                                                                               \
+        if (_cex_test__mainfn_state.test_cases == NULL) {                                           \
+            _cex_test__mainfn_state.test_cases = arr$new(_cex_test__mainfn_state.test_cases, mem$); \
+            uassert(_cex_test__mainfn_state.test_cases != NULL && "memory error");                  \
+        };                                                                                          \
+        arr$push(                                                                                   \
+            _cex_test__mainfn_state.test_cases,                                                     \
+            (struct _cex_test_case_s){ .test_fn = &cex_test_##NAME,                                 \
+                                       .test_name = #NAME,                                          \
+                                       .is_benchmark = true,                                        \
+                                       .test_line = __LINE__ }                                      \
+        );                                                                                          \
+    }                                                                                               \
+    Exception test$noopt cex_test_##NAME(void)
 
 #ifndef CEX_TEST
 #    define _test$env_check()                                                                       \

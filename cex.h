@@ -121,7 +121,7 @@ Use `cex -D config` to reset all project config flags to defaults
 #define cex$version_major 0
 #define cex$version_minor 19
 #define cex$version_patch 0
-#define cex$version_date "2026-05-23"
+#define cex$version_date "2026-05-24"
 
 
 
@@ -3817,7 +3817,7 @@ struct __cex_namespace__os {
     Exc             (*get_last_error)(void);
     /// Sleep for `period_millisec` duration
     void            (*sleep)(u32 period_millisec);
-    /// Get high performance monotonic timer value in seconds
+    /// Get high performance monotonic timer value in seconds, started from the first call of the os.timer()
     f64             (*timer)(void);
 
     struct {
@@ -3940,6 +3940,7 @@ struct _cex_test_case_s
     _cex_test_case_f test_fn;
     char* test_name;
     u32 test_line;
+    bool is_benchmark;
 };
 
 struct _cex_test_context_s
@@ -3959,6 +3960,7 @@ struct _cex_test_context_s
     bool has_ansi;
     bool no_stdout_capture;
     bool breakpoint;
+    bool is_benchmark;
     char* suite_file;
     char* case_filter;
     char str_buf[CEX_TEST_AMSG_MAX_LEN];
@@ -4089,6 +4091,25 @@ test$case(my_test_case){
     }                                                                                               \
     Exception test$noopt cex_test_##NAME(void)
 
+#define test$bench(NAME)                                                                             \
+    extern struct _cex_test_context_s _cex_test__mainfn_state;                                      \
+    static Exception cex_test_##NAME();                                                             \
+    static void cex_test_register_##NAME(void) __attribute__((constructor));                        \
+    static void cex_test_register_##NAME(void)                                                      \
+    {                                                                                               \
+        if (_cex_test__mainfn_state.test_cases == NULL) {                                           \
+            _cex_test__mainfn_state.test_cases = arr$new(_cex_test__mainfn_state.test_cases, mem$); \
+            uassert(_cex_test__mainfn_state.test_cases != NULL && "memory error");                  \
+        };                                                                                          \
+        arr$push(                                                                                   \
+            _cex_test__mainfn_state.test_cases,                                                     \
+            (struct _cex_test_case_s){ .test_fn = &cex_test_##NAME,                                 \
+                                       .test_name = #NAME,                                          \
+                                       .is_benchmark = true,                                        \
+                                       .test_line = __LINE__ }                                      \
+        );                                                                                          \
+    }                                                                                               \
+    Exception test$noopt cex_test_##NAME(void)
 
 #ifndef CEX_TEST
 #    define _test$env_check()                                                                       \
@@ -4600,7 +4621,7 @@ _check_eq_str(char* a, char* b, int line, enum _cex_test_eq_op_e op)
                             usize max_len = al_len > bl_len ? al_len : bl_len;
                             usize min_len = al_len < bl_len ? al_len : bl_len;
                             sbuf.appendf(&errors, "\t                ");
-                            for(usize z = 0; z < max_len; z++) {
+                            for (usize z = 0; z < max_len; z++) {
                                 if (z < min_len && al[z] == bl[z]) {
                                     sbuf.appendf(&errors, " ");
                                 } else {
@@ -4627,7 +4648,6 @@ _check_eq_str(char* a, char* b, int line, enum _cex_test_eq_op_e op)
                     sbuf.appendf(&errors, "\tA at line: `%S`\n", str.slice.sub(str.sstr(a), -10, 0));
                     sbuf.appendf(&errors, "\tB at line: `%S`\n", str.slice.sub(str.sstr(b), -10, 0));
                     sbuf.appendf(&errors, "^ New line diff (only last part displayed)\n");
-
                 }
                 str.sprintf(
                     _cex_test__mainfn_state.str_buf,
@@ -4767,6 +4787,110 @@ cex_test_unmute(Exc test_result)
     }
 }
 
+Exc test$noopt __attribute__((noinline))
+_cex_test_flush_cpu_cache(void)
+{
+    u64 buffer_size = 128 * 1024 * 1024;
+
+    volatile char* flush_buffer = (volatile char*)malloc(buffer_size);
+    if (!flush_buffer) { return Error.memory; }
+
+    // The 'volatile' keyword prevents the compiler from optimizing this loop away
+    for (size_t i = 0; i < buffer_size; i += 64) { // Step by typical cache line size (64 bytes)
+        flush_buffer[i] = (char)(i & 0xFF);
+    }
+    free((void*)flush_buffer);
+    return Error.ok;
+}
+
+Exc test$noopt __attribute__((noinline))
+_cex_test_bench_call_timer_overhead(void)
+{
+    os.timer();
+    return EOK;
+}
+
+static Exc test$noopt __attribute__((noinline))
+cex_test_run_bench_case(struct _cex_test_case_s* case_ctx)
+{
+    uassert(case_ctx->is_benchmark);
+
+    Exc result = EOK;
+
+    f64 t = os.timer();
+    f64 t_overhead = 100000000.0;
+
+    // Assess empty function call overhead
+    for (u32 i = 0; i < 100; i++) {
+        t = os.timer();
+        result = _cex_test_bench_call_timer_overhead();
+        f64 t2 = os.timer();
+        f64 t3 = os.timer(); // this one for excluding t2 call time
+        f64 t_elapsed = t2 - t - (t3 - t2);
+        if (t_elapsed > 0 && t_elapsed < t_overhead) { t_overhead = t_elapsed; }
+    }
+    uassert(t_overhead > 0 && t_overhead < 0.001);
+
+    // Evict CPU cache to make sure next function call is cold cached
+    t = os.timer();
+    _cex_test_flush_cpu_cache();
+    f64 t_elapsed = os.timer() - t;
+    uassert(t_elapsed > 0.001 && "cpu cache flush happened too fast");
+    // printf("cpu cache flush took: %fsec, call overhead: %fns\n", t_elapsed, t_overhead*1e9);
+
+
+    // Cold start handle
+    t = os.timer();
+    result = case_ctx->test_fn();
+    t_elapsed = os.timer() - t;
+    if (result) { return result; }
+
+    f64 cold_time = t_elapsed;
+    f64 hot_time = t_elapsed;
+
+    for (u32 i = 0; i < 10; i++) {
+        t = os.timer();
+        result = case_ctx->test_fn();
+        t_elapsed = os.timer() - t;
+        if (result) { return result; }
+        e$assert(t_elapsed > 0.0);
+        // Instead of using averaging, we use minimum non zero time statistic,
+        // which should converge to the statistical mode of the distribution (most frequency of
+        // measurements) Inspired by code::dive conference 2015 - Andrei Alexandrescu - Writing Fast
+        // Code I https://www.youtube.com/watch?v=vrfYLlR8X8k&t=1036s
+        if (t_elapsed < hot_time) { hot_time = t_elapsed; }
+    }
+
+    if (cold_time > t_overhead) { cold_time -= t_overhead; }
+    if (hot_time > t_overhead) { hot_time -= t_overhead; }
+
+    char* duration = "sec";
+    f64 factor = 1.0;
+    if (hot_time < 1) {
+        if (hot_time < 10e-4) {
+            if (hot_time < 10e-7) {
+                duration = "ns ";
+                factor = 10e8;
+            } else {
+                duration = "us";
+                factor = 10e5;
+            }
+        } else {
+            duration = "ms ";
+            factor = 10e2;
+        }
+    }
+    fprintf(
+        stderr,
+        "cold: %0.3f%s hot: %0.3f%s ",
+        cold_time * factor,
+        duration,
+        hot_time * factor,
+        duration
+    );
+
+    return result;
+}
 
 static int __attribute__((noinline))
 cex_test_main_fn(int argc, char** argv)
@@ -4794,6 +4918,7 @@ cex_test_main_fn(int argc, char** argv)
         argparse$opt(&ctx->case_filter, 'f', "filter", .help = "execute cases with filter"),
         argparse$opt(&ctx->quiet_mode, 'q', "quiet", .help = "run test in quiet_mode"),
         argparse$opt(&ctx->breakpoint, 'b', "breakpoint", .help = "breakpoint on tassert failure"),
+        argparse$opt(&ctx->is_benchmark, '\0', "bench", .help = "run test$bench() functions"),
         argparse$opt(
             &ctx->no_stdout_capture,
             'o',
@@ -4850,14 +4975,24 @@ cex_test_main_fn(int argc, char** argv)
         }
     }
 
-    if (ctx->quiet_mode) { fprintf(stderr, "%s ", ctx->suite_file); }
+    if (ctx->quiet_mode) {
+        fprintf(stderr, "%s ", ctx->suite_file);
+        if (ctx->is_benchmark) { fprintf(stderr, " >>>>\n"); }
+    }
+
+    if (ctx->is_benchmark && mem$asan_enabled()) {
+        log$warn(
+            "ASAN is enabled, it will take performance impact! Try recompile with enabled optimization and ASAN off.\n"
+        );
+    }
 
     for$each (t, ctx->test_cases) {
         ctx->case_name = t.test_name;
         ctx->tests_run++;
+        if (ctx->is_benchmark != t.is_benchmark) { continue; }
         if (ctx->case_filter && !str.find(t.test_name, ctx->case_filter)) { continue; }
 
-        if (!ctx->quiet_mode) {
+        if (!ctx->quiet_mode || ctx->is_benchmark) {
             fprintf(stderr, "%s", t.test_name);
             for (u32 i = 0; i < max_name - strlen(t.test_name) + 2; i++) { putc('.', stderr); }
             if (ctx->no_stdout_capture) { putc('\n', stderr); }
@@ -4883,17 +5018,24 @@ cex_test_main_fn(int argc, char** argv)
             return 1;
         }
 
-        cex_test_mute();
-        err = t.test_fn();
-        if (ctx->quiet_mode && err != EOK) {
-            fprintf(stdout, "[%s] %s\n", ctx->has_ansi ? io$ansi("FAIL", "31") : "FAIL", err);
-            fprintf(stdout, "Test suite: %s case: %s\n", ctx->suite_file, t.test_name);
+        if (ctx->is_benchmark) {
+            // NOTE: we don't mute bench output because muting uses files on disk,
+            //       therefore has huge performance impact
+            err = cex_test_run_bench_case(&t);
+        } else {
+            cex_test_mute();
+            err = t.test_fn();
+            if (ctx->quiet_mode && err != EOK) {
+                fprintf(stdout, "[%s] %s\n", ctx->has_ansi ? io$ansi("FAIL", "31") : "FAIL", err);
+                fprintf(stdout, "Test suite: %s case: %s\n", ctx->suite_file, t.test_name);
+            }
+            cex_test_unmute(err);
         }
-        cex_test_unmute(err);
 
         if (err == EOK) {
             if (ctx->quiet_mode) {
                 fprintf(stderr, ".");
+                if (ctx->is_benchmark) { fprintf(stderr, "\n"); }
             } else {
                 fprintf(stderr, "[%s]\n", ctx->has_ansi ? io$ansi("PASS", "32") : "PASS");
             }
@@ -4909,6 +5051,7 @@ cex_test_main_fn(int argc, char** argv)
                 );
             } else {
                 fprintf(stderr, "F");
+                if (ctx->is_benchmark) { fprintf(stderr, "\n"); }
             }
         }
         if (ctx->teardown_case_fn && (err = ctx->teardown_case_fn()) != EOK) {
@@ -4977,6 +5120,7 @@ cex_test_main_fn(int argc, char** argv)
                 ctx->tests_failed
             );
         }
+        if (ctx->is_benchmark) { fprintf(stderr, "<<<< %s\n", ctx->suite_file); }
     }
 
     if (ctx->out_stream) {
@@ -5479,6 +5623,12 @@ See `cex help str.match` for more information about patter syntax.
         "    tassert_lt(0, 1);\n"\
         "    return EOK;\n"\
         "}\n"\
+        "\nBenchmarking case:\n"\
+        "\ntest$bench(my_bench_case_name) {\n"\
+        "    // This code only execudes when `./cex test bench <filename>` is executed\n" \
+        "    some_function_of_interest(0, 1);\n"\
+        "    return EOK;\n"\
+        "}\n"\
         \
         "\nIf you need more control you can build your own test runner. Just use cex help\n"\
         "and get source code `./cex help --source cexy.cmd.simple_test`\n")
@@ -5492,7 +5642,8 @@ See `cex help str.match` for more information about patter syntax.
         "cex test debug tests/test_file.c         - run test via `cexy$debug_cmd` program\n"\
         "cex test clean all                       - delete all test executables in `cexy$build_dir`\n"\
         "cex test clean test/test_file.c          - delete specific test executable\n"\
-        "cex test run tests/test_file.c [--help]  - run test with passing arguments to the test runner program\n"
+        "cex test run tests/test_file.c [--help]  - run test with passing arguments to the test runner program\n" \
+        "cex test bench test/test_file.c          - run all test$bench() functions for timing\n"
 
 
 // clang-format on
@@ -5532,7 +5683,7 @@ struct __cex_namespace__cexy {
         Exception       (*clean)(char* target);
         Exception       (*create)(char* target, bool include_sample);
         Exception       (*make_target_pattern)(char** target);
-        Exception       (*run)(char* target, bool is_debug, int argc, char** argv);
+        Exception       (*run)(char* target, char* cmd, int argc, char** argv);
     } test;
 
     struct {
@@ -13930,20 +14081,37 @@ cex_os_sleep(u32 period_millisec)
 #    endif
 }
 
-/// Get high performance monotonic timer value in seconds
+/// Get high performance monotonic timer value in seconds, started from the first call of the os.timer()
 static f64
 cex_os_timer(void)
 {
+    // NOTE: we calculate start time only once, and keep it indefinitely (because of static modifier)
+
 #    ifdef _WIN32
     static LARGE_INTEGER frequency = { 0 };
     if (unlikely(frequency.QuadPart == 0)) { QueryPerformanceFrequency(&frequency); }
-    LARGE_INTEGER start;
-    QueryPerformanceCounter(&start);
-    return (f64)(start.QuadPart) / (f64)frequency.QuadPart;
+
+    static LARGE_INTEGER start = { 0 };
+    if (unlikely(start.QuadPart == 0)) {
+        QueryPerformanceCounter(&start);
+    }
+
+    static LARGE_INTEGER now;
+    QueryPerformanceCounter(&now);
+    return (f64)(now.QuadPart - start.QuadPart) / (f64)frequency.QuadPart;
+
 #    else
-    struct timespec start;
-    clock_gettime(CLOCK_MONOTONIC, &start);
-    return (f64)start.tv_sec + (f64)start.tv_nsec / 1e9;
+    static u64 start_ticks = 0;
+    if (unlikely(start_ticks == 0)){
+        struct timespec start;
+        clock_gettime(CLOCK_MONOTONIC, &start);
+        start_ticks = (u64)start.tv_sec*1000000000 + (u64)start.tv_nsec; 
+    }
+    static struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    u64 now_ticks = (u64)now.tv_sec*1000000000 + (u64)now.tv_nsec; 
+
+    return (f64)(now_ticks - start_ticks) / (f64)1e9;
 #    endif
 }
 
@@ -15731,6 +15899,16 @@ cexy__test__create(char* target, bool include_sample)
             cg$pn("return EOK;");
         }
         cg$pn("");
+        cg$scope ("test$bench(%s)", (include_sample) ? "mylib_test_bench" : "my_test_bench") {
+            cg$pn("// This code only run when `./cex test bench <filename>` is called");
+            cg$pn(
+                "// consider calling project specific function, you may use test$setup_case() for making test data"
+            );
+            cg$pn("// Contents of this function intentionally are not optimized by compiler");
+            if (include_sample) { cg$pn("mylib_add(1, 2);"); }
+            cg$pn("return EOK;");
+        }
+        cg$pn("");
         cg$pn("test$main();");
 
         e$ret(io.file.save(target, buf));
@@ -15782,8 +15960,10 @@ cexy__test__make_target_pattern(char** target)
 }
 
 Exception
-cexy__test__run(char* target, bool is_debug, int argc, char** argv)
+cexy__test__run(char* target, char* cmd, int argc, char** argv)
 {
+    if (!str.match(cmd, "(run|debug|bench)")) { return "Unsupported command"; }
+
     Exc result = EOK;
     u32 n_tests = 0;
     u32 n_failed = 0;
@@ -15804,9 +15984,15 @@ cexy__test__run(char* target, bool is_debug, int argc, char** argv)
             n_tests++;
             char* test_target = cexy.target_make(test_src, cexy$build_dir, ".test", _);
             arr$(char*) args = arr$new(args, _);
-            if (is_debug) { arr$pushm(args, cexy$debug_cmd); }
+
+            if (str.eq(cmd, "debug")) { arr$pushm(args, cexy$debug_cmd); }
+
             arr$pushm(args, test_target, );
+
+            if (str.eq(cmd, "bench")) { arr$push(args, "--bench"); }
+
             if (str.ends_with(target, "test_*.c")) { arr$push(args, "--quiet"); }
+
             arr$pusha(args, argv, argc);
             arr$push(args, NULL);
             if (os$cmda(args)) {
@@ -17427,7 +17613,7 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
     i32 njobs = -1;
     argparse_c cmd_args = {
         .program_name = "./cex",
-        .usage = "test [options] {run,build,create,clean,debug} all|tests/test_file.c [--test-options]",
+        .usage = "test [options] {run,build,create,clean,debug,bench} all|tests/test_file.c [--test-options]",
         .description = _cexy$cmd_test_help,
         .epilog = _cexy$cmd_test_epilog,
         argparse$opt_list(
@@ -17445,7 +17631,7 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
     char* cmd = argparse.next(&cmd_args);
     char* target = argparse.next(&cmd_args);
 
-    if (!str.match(cmd, "(run|build|create|clean|debug)") || target == NULL) {
+    if (!str.match(cmd, "(run|build|create|clean|debug|bench)") || target == NULL) {
         argparse.usage(&cmd_args);
         return e$raise(Error.argsparse, "Invalid command: '%s' or target: '%s'", cmd, target);
     }
@@ -17502,7 +17688,18 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
             char* cc_args_test[] = { cexy$cc_args_test };
             char* cc_include[] = { cexy$cc_include };
             char* cc_ld_args[] = { cexy$ld_args };
-            arr$pusha(args, cc_args_test);
+            if (!str.eq(cmd, "bench")) {
+                // typical test, use as is
+                arr$pusha(args, cc_args_test);
+            } else {
+                // for bench tests set optimization and exclude sanitizer
+                arr$push(args, "-O3");
+                for$each (it, cc_args_test) {
+                    if (str.starts_with(it, "-fsanitize")) { continue; }
+                    if (str.starts_with(it, "-O")) { continue; }
+                    arr$push(args, it);
+                }
+            }
             arr$pusha(args, cc_include);
             arr$push(args, test_src);
             arr$pusha(args, cc_ld_args);
@@ -17541,8 +17738,8 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
     );
     fflush(stdout);
 
-    if (str.match(cmd, "(run|debug)")) {
-        e$ret(cexy.test.run(target, str.eq(cmd, "debug"), cmd_args.argc, cmd_args.argv));
+    if (str.match(cmd, "(run|debug|bench)")) {
+        e$ret(cexy.test.run(target, cmd, cmd_args.argc, cmd_args.argv));
     }
     return EOK;
 }

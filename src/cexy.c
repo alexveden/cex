@@ -434,6 +434,16 @@ cexy__test__create(char* target, bool include_sample)
             cg$pn("return EOK;");
         }
         cg$pn("");
+        cg$scope ("test$bench(%s)", (include_sample) ? "mylib_test_bench" : "my_test_bench") {
+            cg$pn("// This code only run when `./cex test bench <filename>` is called");
+            cg$pn(
+                "// consider calling project specific function, you may use test$setup_case() for making test data"
+            );
+            cg$pn("// Contents of this function intentionally are not optimized by compiler");
+            if (include_sample) { cg$pn("mylib_add(1, 2);"); }
+            cg$pn("return EOK;");
+        }
+        cg$pn("");
         cg$pn("test$main();");
 
         e$ret(io.file.save(target, buf));
@@ -485,8 +495,10 @@ cexy__test__make_target_pattern(char** target)
 }
 
 Exception
-cexy__test__run(char* target, bool is_debug, int argc, char** argv)
+cexy__test__run(char* target, char* cmd, int argc, char** argv)
 {
+    if (!str.match(cmd, "(run|debug|bench)")) { return "Unsupported command"; }
+
     Exc result = EOK;
     u32 n_tests = 0;
     u32 n_failed = 0;
@@ -507,9 +519,15 @@ cexy__test__run(char* target, bool is_debug, int argc, char** argv)
             n_tests++;
             char* test_target = cexy.target_make(test_src, cexy$build_dir, ".test", _);
             arr$(char*) args = arr$new(args, _);
-            if (is_debug) { arr$pushm(args, cexy$debug_cmd); }
+
+            if (str.eq(cmd, "debug")) { arr$pushm(args, cexy$debug_cmd); }
+
             arr$pushm(args, test_target, );
+
+            if (str.eq(cmd, "bench")) { arr$push(args, "--bench"); }
+
             if (str.ends_with(target, "test_*.c")) { arr$push(args, "--quiet"); }
+
             arr$pusha(args, argv, argc);
             arr$push(args, NULL);
             if (os$cmda(args)) {
@@ -2130,7 +2148,7 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
     i32 njobs = -1;
     argparse_c cmd_args = {
         .program_name = "./cex",
-        .usage = "test [options] {run,build,create,clean,debug} all|tests/test_file.c [--test-options]",
+        .usage = "test [options] {run,build,create,clean,debug,bench} all|tests/test_file.c [--test-options]",
         .description = _cexy$cmd_test_help,
         .epilog = _cexy$cmd_test_epilog,
         argparse$opt_list(
@@ -2148,7 +2166,7 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
     char* cmd = argparse.next(&cmd_args);
     char* target = argparse.next(&cmd_args);
 
-    if (!str.match(cmd, "(run|build|create|clean|debug)") || target == NULL) {
+    if (!str.match(cmd, "(run|build|create|clean|debug|bench)") || target == NULL) {
         argparse.usage(&cmd_args);
         return e$raise(Error.argsparse, "Invalid command: '%s' or target: '%s'", cmd, target);
     }
@@ -2205,7 +2223,18 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
             char* cc_args_test[] = { cexy$cc_args_test };
             char* cc_include[] = { cexy$cc_include };
             char* cc_ld_args[] = { cexy$ld_args };
-            arr$pusha(args, cc_args_test);
+            if (!str.eq(cmd, "bench")) {
+                // typical test, use as is
+                arr$pusha(args, cc_args_test);
+            } else {
+                // for bench tests set optimization and exclude sanitizer
+                arr$push(args, "-O3");
+                for$each (it, cc_args_test) {
+                    if (str.starts_with(it, "-fsanitize")) { continue; }
+                    if (str.starts_with(it, "-O")) { continue; }
+                    arr$push(args, it);
+                }
+            }
             arr$pusha(args, cc_include);
             arr$push(args, test_src);
             arr$pusha(args, cc_ld_args);
@@ -2244,8 +2273,8 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
     );
     fflush(stdout);
 
-    if (str.match(cmd, "(run|debug)")) {
-        e$ret(cexy.test.run(target, str.eq(cmd, "debug"), cmd_args.argc, cmd_args.argv));
+    if (str.match(cmd, "(run|debug|bench)")) {
+        e$ret(cexy.test.run(target, cmd, cmd_args.argc, cmd_args.argv));
     }
     return EOK;
 }
