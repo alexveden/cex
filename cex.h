@@ -4848,17 +4848,18 @@ cex_test_run_bench_case(struct _cex_test_case_s* case_ctx)
     f64 cold_time = t_elapsed;
     f64 hot_time = t_elapsed;
 
-    for (u32 i = 0; i < 10; i++) {
+    u32 n = (cold_time > 0.010) ? 10 : 100;
+
+    for (u32 i = 0; i < n; i++) {
         t = os.timer();
         result = case_ctx->test_fn();
         t_elapsed = os.timer() - t;
         if (result) { return result; }
-        e$assert(t_elapsed > 0.0);
         // Instead of using averaging, we use minimum non zero time statistic,
         // which should converge to the statistical mode of the distribution (most frequency of
         // measurements) Inspired by code::dive conference 2015 - Andrei Alexandrescu - Writing Fast
         // Code I https://www.youtube.com/watch?v=vrfYLlR8X8k&t=1036s
-        if (t_elapsed < hot_time) { hot_time = t_elapsed; }
+        if (t_elapsed > 0 && t_elapsed < hot_time) { hot_time = t_elapsed; }
     }
 
     if (cold_time > t_overhead) { cold_time -= t_overhead; }
@@ -14094,6 +14095,8 @@ cex_os_timer(void)
     static LARGE_INTEGER start = { 0 };
     if (unlikely(start.QuadPart == 0)) {
         QueryPerformanceCounter(&start);
+        uassert(start.QuadPart > 1);
+        start.QuadPart -= 1;
     }
 
     static LARGE_INTEGER now;
@@ -14105,7 +14108,9 @@ cex_os_timer(void)
     if (unlikely(start_ticks == 0)){
         struct timespec start;
         clock_gettime(CLOCK_MONOTONIC, &start);
-        start_ticks = (u64)start.tv_sec*1000000000 + (u64)start.tv_nsec; 
+        start_ticks = (u64)start.tv_sec*1000000000 + (u64)start.tv_nsec;
+        uassert(start_ticks > 1);
+        start_ticks -= 1;
     }
     static struct timespec now;
     clock_gettime(CLOCK_MONOTONIC, &now);

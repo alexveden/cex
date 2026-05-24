@@ -148,6 +148,8 @@ cex_os_timer(void)
     static LARGE_INTEGER start = { 0 };
     if (unlikely(start.QuadPart == 0)) {
         QueryPerformanceCounter(&start);
+        uassert(start.QuadPart > 1);
+        start.QuadPart -= 1;
     }
 
     static LARGE_INTEGER now;
@@ -159,7 +161,9 @@ cex_os_timer(void)
     if (unlikely(start_ticks == 0)){
         struct timespec start;
         clock_gettime(CLOCK_MONOTONIC, &start);
-        start_ticks = (u64)start.tv_sec*1000000000 + (u64)start.tv_nsec; 
+        start_ticks = (u64)start.tv_sec*1000000000 + (u64)start.tv_nsec;
+        uassert(start_ticks > 1);
+        start_ticks -= 1;
     }
     static struct timespec now;
     clock_gettime(CLOCK_MONOTONIC, &now);
