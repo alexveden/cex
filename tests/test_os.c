@@ -14,11 +14,11 @@ test$case(test_timer)
     tassert(t < INFINITY);
     tassert(t > -INFINITY);
     // timer starts from first call of os.timer(), so numbers should be small
-    tassert_le(t, 5); 
+    tassert_le(t, 5);
 
     f64 t2 = os.timer();
     tassert(t2 >= t);
-    tassert_le(t2, 5); 
+    tassert_le(t2, 5);
 
     os.sleep(100);
     t2 = os.timer();
@@ -40,6 +40,25 @@ test$case(test_cpu_count)
 
     tassert_ge(os.cpu_count(), 1);
     tassert_le(os.cpu_count(), 128);
+
+    return EOK;
+}
+
+test$case(test_time_scope)
+{
+    os$time_scope()
+    {
+        os.sleep(100);
+    }
+    os$time_scope()
+    {
+        os.sleep(1100);
+    }
+    os$time_scope() {}
+    os$time_scope()
+    {
+        break; // early exit warning
+    }
 
     return EOK;
 }

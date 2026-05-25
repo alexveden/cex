@@ -121,7 +121,7 @@ Use `cex -D config` to reset all project config flags to defaults
 #define cex$version_major 0
 #define cex$version_minor 19
 #define cex$version_patch 0
-#define cex$version_date "2026-05-24"
+#define cex$version_date "2026-05-25"
 
 
 
@@ -3537,18 +3537,18 @@ struct subprocess_s {
 #if !defined(cex$enable_minimal) || defined(cex$enable_os)
 
 
-#ifdef _WIN32
-#    define WIN32_LEAN_AND_MEAN
-#    include <windows.h>
-#    include <direct.h>
-#else
-#    include <dirent.h>
-#    include <fcntl.h>
-#    include <limits.h>
-#    include <sys/stat.h>
-#    include <sys/types.h>
-#    include <unistd.h>
-#endif
+#    ifdef _WIN32
+#        define WIN32_LEAN_AND_MEAN
+#        include <direct.h>
+#        include <windows.h>
+#    else
+#        include <dirent.h>
+#        include <fcntl.h>
+#        include <limits.h>
+#        include <sys/stat.h>
+#        include <sys/types.h>
+#        include <unistd.h>
+#    endif
 
 /// Additional flags for os.cmd.create()
 typedef struct os_cmd_flags_s
@@ -3588,119 +3588,132 @@ static_assert(sizeof(os_fs_stat_s) <= sizeof(u64) * 2, "size?");
 
 typedef Exception os_fs_dir_walk_f(char* path, os_fs_stat_s ftype, void* user_ctx);
 
-#define _CexOSPlatformList                                                                         \
-    X(linux)                                                                                       \
-    X(win)                                                                                         \
-    X(macos)                                                                                       \
-    X(wasm)                                                                                        \
-    X(android)                                                                                     \
-    X(freebsd)                                                                                     \
-    X(openbsd)
+#    define _CexOSPlatformList                                                                     \
+        X(linux)                                                                                   \
+        X(win)                                                                                     \
+        X(macos)                                                                                   \
+        X(wasm)                                                                                    \
+        X(android)                                                                                 \
+        X(freebsd)                                                                                 \
+        X(openbsd)
 
-#define _CexOSArchList                                                                             \
-    X(x86_32)                                                                                      \
-    X(x86_64)                                                                                      \
-    X(arm)                                                                                         \
-    X(wasm32)                                                                                      \
-    X(wasm64)                                                                                      \
-    X(aarch64)                                                                                     \
-    X(riscv32)                                                                                     \
-    X(riscv64)                                                                                     \
-    X(xtensa)
+#    define _CexOSArchList                                                                         \
+        X(x86_32)                                                                                  \
+        X(x86_64)                                                                                  \
+        X(arm)                                                                                     \
+        X(wasm32)                                                                                  \
+        X(wasm64)                                                                                  \
+        X(aarch64)                                                                                 \
+        X(riscv32)                                                                                 \
+        X(riscv64)                                                                                 \
+        X(xtensa)
 
-#define X(name) OSPlatform__##name,
+#    define X(name) OSPlatform__##name,
 typedef enum OSPlatform_e
 {
     OSPlatform__unknown,
     _CexOSPlatformList OSPlatform__count,
 } OSPlatform_e;
-#undef X
+#    undef X
 
 __attribute__((unused)) static const char* OSPlatform_str[] = {
-#define X(name) #name,
+#    define X(name) #name,
     NULL,
     _CexOSPlatformList
-#undef X
+#    undef X
 };
 
 typedef enum OSArch_e
 {
-#define X(name) OSArch__##name,
+#    define X(name) OSArch__##name,
     OSArch__unknown,
     _CexOSArchList OSArch__count,
-#undef X
+#    undef X
 } OSArch_e;
 
 __attribute__((unused)) static const char* OSArch_str[] = {
-#define X(name) cex$stringize(name),
+#    define X(name) cex$stringize(name),
     NULL,
     _CexOSArchList
-#undef X
+#    undef X
 };
 
-#ifdef _WIN32
+#    ifdef _WIN32
 /// OS path separator, generally '\' for Windows, '/' otherwise
-#    define os$PATH_SEP '\\'
-#else
-#    define os$PATH_SEP '/'
-#endif
+#        define os$PATH_SEP '\\'
+#    else
+#        define os$PATH_SEP '/'
+#    endif
 
-#if defined(CEX_BUILD) && CEX_LOG_LVL > 3
-#    define _os$args_print(msg, args, args_len)                                                    \
-        log$debug(msg "");                                                                         \
-        for (u32 i = 0; i < args_len - 1; i++) {                                                   \
-            char* a = args[i];                                                                     \
-            io.printf(" ");                                                                        \
-            if (str.find(a, " ")) {                                                                \
-                io.printf("\'%s\'", a);                                                            \
-            } else if (a == NULL || *a == '\0') {                                                  \
-                io.printf("\'%s\'", a);                                                            \
-            } else {                                                                               \
-                io.printf("%s", a);                                                                \
+#    if defined(CEX_BUILD) && CEX_LOG_LVL > 3
+#        define _os$args_print(msg, args, args_len)                                                \
+            log$debug(msg "");                                                                     \
+            for (u32 i = 0; i < args_len - 1; i++) {                                               \
+                char* a = args[i];                                                                 \
+                io.printf(" ");                                                                    \
+                if (str.find(a, " ")) {                                                            \
+                    io.printf("\'%s\'", a);                                                        \
+                } else if (a == NULL || *a == '\0') {                                              \
+                    io.printf("\'%s\'", a);                                                        \
+                } else {                                                                           \
+                    io.printf("%s", a);                                                            \
+                }                                                                                  \
             }                                                                                      \
-        }                                                                                          \
-        io.printf("\n");                                                                           \
-        fflush(stdout);
+            io.printf("\n");                                                                       \
+            fflush(stdout);
 
-#else
-#    define _os$args_print(msg, args, args_len)
-#endif
+#    else
+#        define _os$args_print(msg, args, args_len)
+#    endif
 
 /// Run command by dynamic or static array (returns Exc, but error check is not mandatory). Pipes
 /// all IO to stdout/err/in into current terminal, feels totally interactive.
-#define os$cmda(args, args_len...)                                                                 \
-    ({                                                                                             \
-        /* NOLINTBEGIN */                                                                          \
-        static_assert(sizeof(args) > 0, "You must pass at least one item");                        \
-        usize _args_len_va[] = { args_len };                                                       \
-        (void)_args_len_va;                                                                        \
-        usize _args_len = (sizeof(_args_len_va) > 0) ? _args_len_va[0] : arr$len(args);            \
-        uassert(_args_len < PTRDIFF_MAX && "negative length or overflow");                         \
-        _os$args_print("CMD:", args, _args_len);                                                   \
-        os_cmd_c _cmd = { 0 };                                                                     \
-        Exc result = os.cmd.run(args, _args_len, &_cmd);                                           \
-        if (result == EOK) { result = os.cmd.wait(&_cmd, 1, 0); };                                 \
-        result;                                                                                    \
-        /* NOLINTEND */                                                                            \
-    })
+#    define os$cmda(args, args_len...)                                                             \
+        ({                                                                                         \
+            /* NOLINTBEGIN */                                                                      \
+            static_assert(sizeof(args) > 0, "You must pass at least one item");                    \
+            usize _args_len_va[] = { args_len };                                                   \
+            (void)_args_len_va;                                                                    \
+            usize _args_len = (sizeof(_args_len_va) > 0) ? _args_len_va[0] : arr$len(args);        \
+            uassert(_args_len < PTRDIFF_MAX && "negative length or overflow");                     \
+            _os$args_print("CMD:", args, _args_len);                                               \
+            os_cmd_c _cmd = { 0 };                                                                 \
+            Exc result = os.cmd.run(args, _args_len, &_cmd);                                       \
+            if (result == EOK) { result = os.cmd.wait(&_cmd, 1, 0); };                             \
+            result;                                                                                \
+            /* NOLINTEND */                                                                        \
+        })
 
 /// Run command by arbitrary set of arguments (returns Exc, but error check is not mandatory). Pipes
-/// all IO to stdout/err/in into current terminal, feels totally interactive. 
+/// all IO to stdout/err/in into current terminal, feels totally interactive.
 /// Example: e$ret(os$cmd("cat", "./cex.c"))
-#define os$cmd(args...)                                                                            \
-    ({                                                                                             \
-        char* _args[] = { args, NULL };                                                            \
-        usize _args_len = arr$len(_args);                                                          \
-        os$cmda(_args, _args_len);                                                                 \
-    })
+#    define os$cmd(args...)                                                                        \
+        ({                                                                                         \
+            char* _args[] = { args, NULL };                                                        \
+            usize _args_len = arr$len(_args);                                                      \
+            os$cmda(_args, _args_len);                                                             \
+        })
 
 /// Path parts join by variable set of args: os$path_join(mem$, "foo", "bar", "cex.c")
-#define os$path_join(allocator, path_parts...)                                                     \
-    ({                                                                                             \
-        char* _args[] = { path_parts };                                                            \
-        usize _args_len = arr$len(_args);                                                          \
-        os.path.join(_args, _args_len, allocator);                                                 \
-    })
+#    define os$path_join(allocator, path_parts...)                                                 \
+        ({                                                                                         \
+            char* _args[] = { path_parts };                                                        \
+            usize _args_len = arr$len(_args);                                                      \
+            os.path.join(_args, _args_len, allocator);                                             \
+        })
+
+
+void _cex_os_time_scope_cleanup(f64* timer);
+
+/// Takes time measurement of code inside the scope, prints timings into stdout via log$debug()
+#    define os$time_scope()                                                                        \
+        for (f64 cex$tmpname(scope_timer)                                                          \
+                 __attribute__((__cleanup__(_cex_os_time_scope_cleanup))) = os.timer(),            \
+                 cex$tmpname(scope_cntr) = 0;                                                      \
+             cex$tmpname(scope_cntr) < 1;                                                          \
+             cex$tmpname(scope_timer) = (os.timer() - cex$tmpname(scope_timer)) * -1,              \
+                 cex$tmpname(scope_cntr)++,                                                        \
+                 log$debug(""))
 
 /**
 
@@ -3806,7 +3819,8 @@ test$case(test_os_find_all_c_files)
 
 
 */
-struct __cex_namespace__os {
+struct __cex_namespace__os
+{
     // Autogenerated by CEX
     // clang-format off
 
@@ -14082,7 +14096,8 @@ cex_os_sleep(u32 period_millisec)
 #    endif
 }
 
-/// Get high performance monotonic timer value in seconds, started from the first call of the os.timer()
+/// Get high performance monotonic timer value in seconds, started from the first call of the
+/// os.timer()
 static f64
 cex_os_timer(void)
 {
@@ -14105,16 +14120,16 @@ cex_os_timer(void)
 
 #    else
     static u64 start_ticks = 0;
-    if (unlikely(start_ticks == 0)){
+    if (unlikely(start_ticks == 0)) {
         struct timespec start;
         clock_gettime(CLOCK_MONOTONIC, &start);
-        start_ticks = (u64)start.tv_sec*1000000000 + (u64)start.tv_nsec;
+        start_ticks = (u64)start.tv_sec * 1000000000 + (u64)start.tv_nsec;
         uassert(start_ticks > 1);
         start_ticks -= 1;
     }
     static struct timespec now;
     clock_gettime(CLOCK_MONOTONIC, &now);
-    u64 now_ticks = (u64)now.tv_sec*1000000000 + (u64)now.tv_nsec; 
+    u64 now_ticks = (u64)now.tv_sec * 1000000000 + (u64)now.tv_nsec;
 
     return (f64)(now_ticks - start_ticks) / (f64)1e9;
 #    endif
@@ -15300,6 +15315,44 @@ cex_os__platform__arch_to_str(OSArch_e platform)
 {
     if (unlikely(platform <= OSArch__unknown || platform >= OSArch__count)) { return NULL; }
     return (char*)OSArch_str[platform];
+}
+
+void
+_cex_os_time_scope_cleanup(f64* timer)
+{
+    uassert(timer);
+    f64 t = *timer;
+
+    char* format = NULL;
+
+    if (t < 0) {
+        // Good, os$time_scope normally will make negative value
+        format = "os$time_scope() took: %0.3f%s\n";
+        t *= -1;
+    } else {
+        // Likely to happen when we goto label, break or return from os$time_scope()
+        t = os.timer() - t;
+        format = "os$time_scope() exited early: %0.3f%s\n";
+    }
+
+    f64 factor = 1.0;
+    char* duration = "sec";
+    if (t < 1) {
+        if (t < 10e-4) {
+            if (t < 10e-7) {
+                duration = "ns ";
+                factor = 10e8;
+            } else {
+                duration = "us";
+                factor = 10e5;
+            }
+        } else {
+            duration = "ms ";
+            factor = 10e2;
+        }
+    }
+
+    io.printf(format, t * factor, duration);
 }
 
 const struct __cex_namespace__os os = {

@@ -135,7 +135,8 @@ cex_os_sleep(u32 period_millisec)
 #    endif
 }
 
-/// Get high performance monotonic timer value in seconds, started from the first call of the os.timer()
+/// Get high performance monotonic timer value in seconds, started from the first call of the
+/// os.timer()
 static f64
 cex_os_timer(void)
 {
@@ -158,16 +159,16 @@ cex_os_timer(void)
 
 #    else
     static u64 start_ticks = 0;
-    if (unlikely(start_ticks == 0)){
+    if (unlikely(start_ticks == 0)) {
         struct timespec start;
         clock_gettime(CLOCK_MONOTONIC, &start);
-        start_ticks = (u64)start.tv_sec*1000000000 + (u64)start.tv_nsec;
+        start_ticks = (u64)start.tv_sec * 1000000000 + (u64)start.tv_nsec;
         uassert(start_ticks > 1);
         start_ticks -= 1;
     }
     static struct timespec now;
     clock_gettime(CLOCK_MONOTONIC, &now);
-    u64 now_ticks = (u64)now.tv_sec*1000000000 + (u64)now.tv_nsec; 
+    u64 now_ticks = (u64)now.tv_sec * 1000000000 + (u64)now.tv_nsec;
 
     return (f64)(now_ticks - start_ticks) / (f64)1e9;
 #    endif
@@ -1353,6 +1354,44 @@ cex_os__platform__arch_to_str(OSArch_e platform)
 {
     if (unlikely(platform <= OSArch__unknown || platform >= OSArch__count)) { return NULL; }
     return (char*)OSArch_str[platform];
+}
+
+void
+_cex_os_time_scope_cleanup(f64* timer)
+{
+    uassert(timer);
+    f64 t = *timer;
+
+    char* format = NULL;
+
+    if (t < 0) {
+        // Good, os$time_scope normally will make negative value
+        format = "os$time_scope() took: %0.3f%s\n";
+        t *= -1;
+    } else {
+        // Likely to happen when we goto label, break or return from os$time_scope()
+        t = os.timer() - t;
+        format = "os$time_scope() exited early: %0.3f%s\n";
+    }
+
+    f64 factor = 1.0;
+    char* duration = "sec";
+    if (t < 1) {
+        if (t < 10e-4) {
+            if (t < 10e-7) {
+                duration = "ns ";
+                factor = 10e8;
+            } else {
+                duration = "us";
+                factor = 10e5;
+            }
+        } else {
+            duration = "ms ";
+            factor = 10e2;
+        }
+    }
+
+    io.printf(format, t * factor, duration);
 }
 
 const struct __cex_namespace__os os = {
