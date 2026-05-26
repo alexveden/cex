@@ -327,7 +327,7 @@ struct __cex_namespace__os {
         /// Waits until array of `procs` is finished. If timeout_sec is 0 waits indefinitely, when
         /// timeout occurs `Error.timeout` returned and `procs` untouched. Otherwise all `procs` awaited and
         /// cleaned up, `Error.runtime` returned in case of any non-zero return code.
-        Exception       (*wait)(os_cmd_c* procs, usize procs_cnt, u32 timeout_sec);
+        Exception       (*wait)(os_cmd_c* procs, usize procs_cnt, f64 timeout_sec);
         /// Writes line to the process stdin
         Exception       (*write_line)(os_cmd_c* self, char* line);
     } cmd;

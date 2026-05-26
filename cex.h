@@ -2260,10 +2260,10 @@ CEXSP__PUBLICDEC void cexsp__set_separators(char comma, char period);
 
 #if !defined(cex$enable_minimal) || defined(cex$enable_str)
 
-
 #if defined(cex$enable_minimal) && !defined(cex$enable_ds)
 #error "CEX str namespace depends on `#define cex$enable_ds`"
 #endif
+
 
 /// Compares str_s (slice) with literal in performance efficient way
 #define str$eq(str_s_slice, compare_to_literal)                                                    \
@@ -3875,7 +3875,7 @@ struct __cex_namespace__os {
         /// Waits until array of `procs` is finished. If timeout_sec is 0 waits indefinitely, when
         /// timeout occurs `Error.timeout` returned and `procs` untouched. Otherwise all `procs` awaited and
         /// cleaned up, `Error.runtime` returned in case of any non-zero return code.
-        Exception       (*wait)(os_cmd_c* procs, usize procs_cnt, u32 timeout_sec);
+        Exception       (*wait)(os_cmd_c* procs, usize procs_cnt, f64 timeout_sec);
         /// Writes line to the process stdin
         Exception       (*write_line)(os_cmd_c* self, char* line);
     } cmd;
@@ -15027,7 +15027,7 @@ cex_os__cmd__kill(os_cmd_c* self)
 /// timeout occurs `Error.timeout` returned and `procs` untouched. Otherwise all `procs` awaited and
 /// cleaned up, `Error.runtime` returned in case of any non-zero return code.
 static Exception
-cex_os__cmd__wait(os_cmd_c* procs, usize procs_cnt, u32 timeout_sec)
+cex_os__cmd__wait(os_cmd_c* procs, usize procs_cnt, f64 timeout_sec)
 {
     uassert(procs_cnt > 0);
     uassert(procs);

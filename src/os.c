@@ -987,7 +987,7 @@ cex_os__cmd__kill(os_cmd_c* self)
 /// timeout occurs `Error.timeout` returned and `procs` untouched. Otherwise all `procs` awaited and
 /// cleaned up, `Error.runtime` returned in case of any non-zero return code.
 static Exception
-cex_os__cmd__wait(os_cmd_c* procs, usize procs_cnt, u32 timeout_sec)
+cex_os__cmd__wait(os_cmd_c* procs, usize procs_cnt, f64 timeout_sec)
 {
     uassert(procs_cnt > 0);
     uassert(procs);
