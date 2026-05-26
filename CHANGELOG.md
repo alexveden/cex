@@ -14,6 +14,12 @@
 - feat: os.timer() starts from os.timer() initial first call, first call can be around zero + some nanoseconds
 - feat: test$bench - added benchmarking engine for test suite, can be run with `./cex test bench tests/test_something.c`
 - feat: added os$time_scope() for quick benchmarking chunks of code inside scope
+- refactor: hashes now u64 instead of platform dependent usize (code reuse of hashmap general hash)
+- feat: added str.hash() str.slice.hash() functions
+- feat: os.hash() added alias of general purpose hash
+- refactor: os.cmd.wait() timeout_sec argument now a floating point (allows fraction of seconds waits)
+- feat: tasssert_eq - added case for uint64 eq checks
+- feat: test$bench output aligned formatting
 
 ## 0.18.0
 2025-12-19
