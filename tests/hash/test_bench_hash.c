@@ -1,8 +1,8 @@
 #define CEX_IMPLEMENTATION
 #define CEX_TEST
 #include "cex.h"
-#include "komihash_port.h"
-//#include "komihash.h"
+//#include "komihash_port.h"
+#include "komihash.h"
 #include "a5hash.h"
 
 #define G_BUF_LEN 1 * 1024 * 1024
@@ -152,14 +152,12 @@ test$case(komihash_stability){
     u64 h = komihash(buf, 10, 0);
     tassert_eq(h, 4432705459570477571L);
 
-    /*
     komihash_stream_t ctx;
     komihash_stream_init( &ctx, 0 );
     komihash_stream_update( &ctx, buf, 5);
     komihash_stream_update( &ctx, buf + 5, 5);
     uint64_t stream_h = komihash_stream_final( &ctx );
     tassert_eq(stream_h, 4432705459570477571L);
-    */
 
     h = komihash(buf, 5, 0);
     h = komihash(buf + 5, 5, h);
