@@ -2260,10 +2260,10 @@ CEXSP__PUBLICDEC void cexsp__set_separators(char comma, char period);
 
 #if !defined(cex$enable_minimal) || defined(cex$enable_str)
 
-#if !defined(cex$enable_ds)
+
+#if defined(cex$enable_minimal) && !defined(cex$enable_ds)
 #error "CEX str namespace depends on `#define cex$enable_ds`"
 #endif
-
 
 /// Compares str_s (slice) with literal in performance efficient way
 #define str$eq(str_s_slice, compare_to_literal)                                                    \

@@ -6,7 +6,7 @@
 #pragma once
 #if !defined(cex$enable_minimal) || defined(cex$enable_str)
 
-#if !defined(cex$enable_ds)
+#if defined(cex$enable_minimal) && !defined(cex$enable_ds)
 #error "CEX str namespace depends on `#define cex$enable_ds`"
 #endif
 
