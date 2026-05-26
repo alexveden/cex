@@ -439,17 +439,13 @@ _cexds__siphash_bytes(const void* p, usize len, u64 seed)
     u64 j = 0;
     for (i = 0; i + sizeof(u64) <= len; i += sizeof(u64), d += sizeof(u64)) {
         data = (u64)d[0] | ((u64)d[1] << 8) | ((u64)d[2] << 16) | ((u64)d[3] << 24);
-
-#if UINTPTR_MAX > 0xFFFFFFFFU
-        // 64 bits only
         data |= (u64)(d[4] | (d[5] << 8) | (d[6] << 16) | (d[7] << 24)) << 16 << 16;
-#endif
 
         v3 ^= data;
         for (j = 0; j < _CEXDS_SIPHASH_C_ROUNDS; ++j) { _CEXDS_SIPROUND(); }
         v0 ^= data;
     }
-    data = len << (_CEXDS_usize_BITS - 8);
+    data = (u64)len << (_CEXDS_usize_BITS - 8);
     switch (len - i) {
         case 7:
             data |= ((u64)d[6] << 24) << 24; // fall through
