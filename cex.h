@@ -2119,6 +2119,9 @@ enum
 };
 
 #define _cexds__shmode_func_wrapper(t, e, m) _cexds__shmode_func(e, m)
+
+usize _cexds__hash_string(const char* str, usize str_cap, usize seed);
+
 #endif
 
 
@@ -2256,6 +2259,11 @@ CEXSP__PUBLICDEC void cexsp__set_separators(char comma, char period);
  */
 
 #if !defined(cex$enable_minimal) || defined(cex$enable_str)
+
+#if !defined(cex$enable_ds)
+#error "CEX str namespace depends on `#define cex$enable_ds`"
+#endif
+
 
 /// Compares str_s (slice) with literal in performance efficient way
 #define str$eq(str_s_slice, compare_to_literal)                                                    \
@@ -4214,7 +4222,7 @@ test$case(my_test_case){
             i32: _check_eq_int,                                                                    \
             u32: _check_eq_int,                                                                    \
             i64: _check_eq_int,                                                                    \
-            u64: _check_eq_int,                                                                    \
+            u64: _check_eq_u64,                                                                    \
             i16: _check_eq_int,                                                                    \
             u16: _check_eq_int,                                                                    \
             i8: _check_eq_int,                                                                     \
@@ -4476,6 +4484,56 @@ _check_eq_int(i64 a, i64 b, int line, enum _cex_test_eq_op_e op)
             _cex_test__mainfn_state.str_buf,
             sizeof(_cex_test__mainfn_state.str_buf),
             "%s:%d -> %ld %s %ld",
+            _cex_test__mainfn_state.suite_file,
+            line,
+            a,
+            ops,
+            b
+        );
+        return _cex_test__mainfn_state.str_buf;
+    }
+    return EOK;
+}
+static Exc __attribute__((noinline))
+_check_eq_u64(u64 a, u64 b, int line, enum _cex_test_eq_op_e op)
+{
+    extern struct _cex_test_context_s _cex_test__mainfn_state;
+    bool passed = false;
+    char* ops = "?";
+    switch (op) {
+        case _cex_test_eq_op__na:
+            unreachable();
+            break;
+        case _cex_test_eq_op__eq:
+            passed = a == b;
+            ops = "!=";
+            break;
+        case _cex_test_eq_op__ne:
+            passed = a != b;
+            ops = "==";
+            break;
+        case _cex_test_eq_op__lt:
+            passed = a < b;
+            ops = ">=";
+            break;
+        case _cex_test_eq_op__le:
+            passed = a <= b;
+            ops = ">";
+            break;
+        case _cex_test_eq_op__gt:
+            passed = a > b;
+            ops = "<=";
+            break;
+        case _cex_test_eq_op__ge:
+            passed = a >= b;
+            ops = "<";
+            break;
+    }
+    if (!passed) {
+        str.sprintf(
+            _cex_test__mainfn_state.str_buf,
+            sizeof(_cex_test__mainfn_state.str_buf),
+            "%s:%d -> %lu %s %lu",
             _cex_test__mainfn_state.suite_file,
             line,
             a,
@@ -7527,7 +7585,7 @@ typedef int _CEXDS_SIPHASH_2_4_can_only_be_used_in_64_bit_builds[sizeof(usize) =
 #    define _CEXDS_SIPHASH_D_ROUNDS 1
 #endif
 
-static inline usize
+usize
 _cexds__hash_string(const char* str, usize str_cap, usize seed)
 {
     usize hash = seed;
@@ -9886,6 +9944,14 @@ cex_str_eqi(char* a, char* b)
         b++;
     }
     return (*a == '\0' && *b == '\0');
+}
+
+/// Compares two null-terminated strings (null tolerant)
+static u64
+cex_str_hash(char* a, u64 seed)
+{
+    if (unlikely(a == NULL || a[0] == '\0')) { return 0; }
+    return _cexds__hash_string(a, UINT32_MAX, seed);
 }
 
 /// Compares two string slices, null tolerant
