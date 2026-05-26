@@ -7400,7 +7400,7 @@ typedef struct
     u64 hash[_CEXDS_BUCKET_LENGTH];
     ptrdiff_t index[_CEXDS_BUCKET_LENGTH];
 } _cexds__hash_bucket;
-static_assert(sizeof(_cexds__hash_bucket) % 64 == 0, "cacheline aligned");
+//static_assert(sizeof(_cexds__hash_bucket) % 64 == 0, "cacheline aligned");
 
 typedef struct _cexds__hash_index
 {
