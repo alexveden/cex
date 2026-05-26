@@ -836,7 +836,7 @@ _cexds__hmput_key(
 
     // we iterate hash table explicitly because we want to track if we saw a tombstone
     {
-        usize hash = _cexds__hash(key_type, key, keysize, table->seed);
+        u64 hash = _cexds__hash(key_type, key, keysize, table->seed);
         usize step = _CEXDS_BUCKET_LENGTH;
         usize pos;
         ptrdiff_t tombstone = -1;
