@@ -294,6 +294,10 @@ struct __cex_namespace__os {
     /// Get last system API error as string representation (Exception compatible). Result content may be
     /// affected by OS locale settings.
     Exc             (*get_last_error)(void);
+    /// Computes generic buffer SIP hash (platform/endiannes stable), seed can be null, or previous hash
+    /// value for hash stacking  (null or empty `p` returns 0 hash). (This is the same general hash
+    /// function is used in str.hash() and hm$ hashmaps)
+    u64             (*hash)(void* p, usize psize, u64 seed);
     /// Sleep for `period_millisec` duration
     void            (*sleep)(u32 period_millisec);
     /// Get high performance monotonic timer value in seconds, started from the first call of the

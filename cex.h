@@ -3842,6 +3842,10 @@ struct __cex_namespace__os {
     /// Get last system API error as string representation (Exception compatible). Result content may be
     /// affected by OS locale settings.
     Exc             (*get_last_error)(void);
+    /// Computes generic buffer SIP hash (platform/endiannes stable), seed can be null, or previous hash
+    /// value for hash stacking  (null or empty `p` returns 0 hash). (This is the same general hash
+    /// function is used in str.hash() and hm$ hashmaps)
+    u64             (*hash)(void* p, usize psize, u64 seed);
     /// Sleep for `period_millisec` duration
     void            (*sleep)(u32 period_millisec);
     /// Get high performance monotonic timer value in seconds, started from the first call of the
@@ -14214,6 +14218,17 @@ cex_os_timer(void)
 #    endif
 }
 
+/// Computes generic buffer SIP hash (platform/endiannes stable), seed can be null, or previous hash
+/// value for hash stacking  (null or empty `p` returns 0 hash). (This is the same general hash
+/// function is used in str.hash() and hm$ hashmaps)
+static u64
+cex_os_hash(void* p, usize psize, u64 seed)
+{
+    if (unlikely(p == NULL || psize == 0)) { return 0; }
+    return _cexds__hash_bytes(p, psize, seed);
+}
+
+
 /// Get available CPU cores on system, or -1 on error
 i32
 cex_os_cpu_count(void)
@@ -15440,6 +15455,7 @@ const struct __cex_namespace__os os = {
 
     .cpu_count = cex_os_cpu_count,
     .get_last_error = cex_os_get_last_error,
+    .hash = cex_os_hash,
     .sleep = cex_os_sleep,
     .timer = cex_os_timer,
 

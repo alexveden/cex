@@ -62,4 +62,22 @@ test$case(test_time_scope)
 
     return EOK;
 }
+
+test$case(test_hash)
+{
+    char cstr[] = { "hello" };
+    tassert_eq(sizeof(cstr), 6);
+
+    u64 h0 = os.hash(cstr, sizeof(cstr), 0);
+    tassert(h0 != 0);
+    tassert_eq(_cexds__hash_bytes(cstr, sizeof(cstr), 0), h0);
+    tassert_eq(h0, 6329348214770146015UL);
+
+    tassert_eq(os.hash(NULL, 0, 10), 0);
+    tassert_eq(os.hash("", 0, 10), 0);
+
+
+    return EOK;
+}
+
 test$main();
