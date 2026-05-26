@@ -185,7 +185,7 @@ _cexds__arrfreef(void* a)
 
 typedef struct
 {
-    usize hash[_CEXDS_BUCKET_LENGTH];
+    u64 hash[_CEXDS_BUCKET_LENGTH];
     ptrdiff_t index[_CEXDS_BUCKET_LENGTH];
 } _cexds__hash_bucket;
 static_assert(sizeof(_cexds__hash_bucket) % 64 == 0, "cacheline aligned");
@@ -223,7 +223,7 @@ _cexds__probe_position(u64 hash, usize slot_count, usize slot_log2)
 {
     usize pos;
     (void)(slot_log2);
-    pos = hash & (slot_count - 1);
+    pos = hash & ((u64)slot_count - 1);
 #ifdef _CEXDS_INTERNAL_BUCKET_START
     pos &= ~_CEXDS_BUCKET_MASK;
 #endif
