@@ -271,7 +271,7 @@ test$case(my_test_case){
             i32: _check_eq_int,                                                                    \
             u32: _check_eq_int,                                                                    \
             i64: _check_eq_int,                                                                    \
-            u64: _check_eq_int,                                                                    \
+            u64: _check_eq_u64,                                                                    \
             i16: _check_eq_int,                                                                    \
             u16: _check_eq_int,                                                                    \
             i8: _check_eq_int,                                                                     \

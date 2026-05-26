@@ -69,6 +69,56 @@ _check_eq_int(i64 a, i64 b, int line, enum _cex_test_eq_op_e op)
     }
     return EOK;
 }
+static Exc __attribute__((noinline))
+_check_eq_u64(u64 a, u64 b, int line, enum _cex_test_eq_op_e op)
+{
+    extern struct _cex_test_context_s _cex_test__mainfn_state;
+    bool passed = false;
+    char* ops = "?";
+    switch (op) {
+        case _cex_test_eq_op__na:
+            unreachable();
+            break;
+        case _cex_test_eq_op__eq:
+            passed = a == b;
+            ops = "!=";
+            break;
+        case _cex_test_eq_op__ne:
+            passed = a != b;
+            ops = "==";
+            break;
+        case _cex_test_eq_op__lt:
+            passed = a < b;
+            ops = ">=";
+            break;
+        case _cex_test_eq_op__le:
+            passed = a <= b;
+            ops = ">";
+            break;
+        case _cex_test_eq_op__gt:
+            passed = a > b;
+            ops = "<=";
+            break;
+        case _cex_test_eq_op__ge:
+            passed = a >= b;
+            ops = "<";
+            break;
+    }
+    if (!passed) {
+        str.sprintf(
+            _cex_test__mainfn_state.str_buf,
+            sizeof(_cex_test__mainfn_state.str_buf),
+            "%s:%d -> %lu %s %lu",
+            _cex_test__mainfn_state.suite_file,
+            line,
+            a,
+            ops,
+            b
+        );
+        return _cex_test__mainfn_state.str_buf;
+    }
+    return EOK;
+}
 
 static Exc __attribute__((noinline))
 _check_eq_almost(f64 a, f64 b, f64 delta, int line)
