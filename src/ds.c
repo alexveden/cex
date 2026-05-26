@@ -374,7 +374,7 @@ typedef int _CEXDS_SIPHASH_2_4_can_only_be_used_in_64_bit_builds[sizeof(usize) =
 #    define _CEXDS_SIPHASH_D_ROUNDS 1
 #endif
 
-u64
+static inline u64
 _cexds__hash_string(const char* str, usize str_cap, u64 seed)
 {
     u64 hash = seed;
@@ -477,7 +477,7 @@ _cexds__siphash_bytes(const void* p, usize len, u64 seed)
 #endif
 }
 
-static inline u64
+u64
 _cexds__hash_bytes(const void* p, usize len, u64 seed)
 {
 #ifdef _CEXDS_SIPHASH_2_4

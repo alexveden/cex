@@ -3279,4 +3279,27 @@ test$case(test_str_sub_slice)
 }
 
 
+test$case(test_hash)
+{
+    char* cstr = "hello";
+
+
+    u64 h0 = str.hash(cstr, 0);
+    tassert(h0 != 0);
+    tassert_eq(_cexds__hash_bytes(cstr, strlen(cstr), 0), h0);
+    tassert_eq(h0, 3591233635104275187UL);
+
+    u64 h1 = str.hash(cstr, h0);
+    tassert_eq(_cexds__hash_bytes(cstr, strlen(cstr), h0), h1);
+
+    tassert_eq(str.hash(NULL, 0), 0);
+    tassert_eq(str.hash("", 0), 0);
+
+    tassert_eq(str.slice.hash(str.sstr(cstr), 0), h0);
+    tassert_eq(str.slice.hash((str_s){.buf = cstr, .len = 0}, 0), 0);
+    tassert_eq(str.slice.hash((str_s){.buf = NULL, .len = 4}, 0), 0);
+
+    return EOK;
+}
+
 test$main();

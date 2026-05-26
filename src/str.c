@@ -88,6 +88,24 @@ cex_str_eqi(char* a, char* b)
     return (*a == '\0' && *b == '\0');
 }
 
+/// Computes string hash, seed can be null, or previous hash value for hash stacking  (null or empty
+/// string returns 0 hash)
+static u64
+cex_str_hash(char* a, u64 seed)
+{
+    if (unlikely(a == NULL || a[0] == '\0')) { return 0; }
+    return _cexds__hash_bytes(a, strlen(a), seed);
+}
+
+/// Computes string hash, seed can be null, or previous hash value for hash stacking  (null or empty
+/// string returns 0 hash)
+static u64
+cex_str__slice__hash(str_s a, u64 seed)
+{
+    if (unlikely(a.buf == NULL || a.len == 0)) { return 0; }
+    return _cexds__hash_bytes(a.buf, a.len, seed);
+}
+
 /// Compares two string slices, null tolerant
 static bool
 cex_str__slice__eq(str_s a, str_s b)
@@ -1596,9 +1614,7 @@ main_loop_again:
     }
 
     // Drain pattern if we have remaining * (zero-or-any)
-    while(*pattern == '*') {
-        pattern++;
-    }
+    while (*pattern == '*') { pattern++; }
 
     return str_len == 0 && *pattern == '\0';
 }
@@ -1658,6 +1674,7 @@ const struct __cex_namespace__str str = {
     .find = cex_str_find,
     .findr = cex_str_findr,
     .fmt = cex_str_fmt,
+    .hash = cex_str_hash,
     .join = cex_str_join,
     .len = cex_str_len,
     .lower = cex_str_lower,
@@ -1706,6 +1723,7 @@ const struct __cex_namespace__str str = {
         .ends_with = cex_str__slice__ends_with,
         .eq = cex_str__slice__eq,
         .eqi = cex_str__slice__eqi,
+        .hash = cex_str__slice__hash,
         .index_of = cex_str__slice__index_of,
         .iter_split = cex_str__slice__iter_split,
         .lstrip = cex_str__slice__lstrip,

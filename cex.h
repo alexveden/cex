@@ -2120,7 +2120,7 @@ enum
 
 #define _cexds__shmode_func_wrapper(t, e, m) _cexds__shmode_func(e, m)
 
-u64 _cexds__hash_string(const char* str, usize str_cap, u64 seed);
+u64 _cexds__hash_bytes(const void* p, usize len, u64 seed);
 
 #endif
 
@@ -2453,6 +2453,9 @@ struct __cex_namespace__str {
     char*           (*findr)(char* haystack, char* needle);
     /// Formats string and allocates it dynamically using allocator, supports CEX format engine
     char*           (*fmt)(IAllocator allc, char* format,...);
+    /// Computes string hash, seed can be null, or previous hash value for hash stacking  (null or empty
+    /// string returns 0 hash)
+    u64             (*hash)(char* a, u64 seed);
     /// Joins string using a separator (join_by), NULL tolerant, returns NULL on error.
     char*           (*join)(char** str_arr, usize str_arr_len, char* join_by, IAllocator allc);
     /// Calculates string length, NULL tolerant.
@@ -2529,6 +2532,9 @@ struct __cex_namespace__str {
         bool            (*eq)(str_s a, str_s b);
         /// Compares two string slices, null tolerant, case insensitive
         bool            (*eqi)(str_s a, str_s b);
+        /// Computes string hash, seed can be null, or previous hash value for hash stacking  (null or empty
+        /// string returns 0 hash)
+        u64             (*hash)(str_s a, u64 seed);
         /// Get index of first occurrence of `needle`, returns -1 on error.
         isize           (*index_of)(str_s s, str_s needle);
         /// iterator over slice splits:  for$iter (str_s, it, str.slice.iter_split(s, ",", &it.iterator)) {}
@@ -7586,7 +7592,7 @@ typedef int _CEXDS_SIPHASH_2_4_can_only_be_used_in_64_bit_builds[sizeof(usize) =
 #    define _CEXDS_SIPHASH_D_ROUNDS 1
 #endif
 
-u64
+static inline u64
 _cexds__hash_string(const char* str, usize str_cap, u64 seed)
 {
     u64 hash = seed;
@@ -7689,7 +7695,7 @@ _cexds__siphash_bytes(const void* p, usize len, u64 seed)
 #endif
 }
 
-static inline u64
+u64
 _cexds__hash_bytes(const void* p, usize len, u64 seed)
 {
 #ifdef _CEXDS_SIPHASH_2_4
@@ -9943,12 +9949,22 @@ cex_str_eqi(char* a, char* b)
     return (*a == '\0' && *b == '\0');
 }
 
-/// Compares two null-terminated strings (null tolerant)
+/// Computes string hash, seed can be null, or previous hash value for hash stacking  (null or empty
+/// string returns 0 hash)
 static u64
 cex_str_hash(char* a, u64 seed)
 {
     if (unlikely(a == NULL || a[0] == '\0')) { return 0; }
-    return _cexds__hash_string(a, UINT32_MAX, seed);
+    return _cexds__hash_bytes(a, strlen(a), seed);
+}
+
+/// Computes string hash, seed can be null, or previous hash value for hash stacking  (null or empty
+/// string returns 0 hash)
+static u64
+cex_str__slice__hash(str_s a, u64 seed)
+{
+    if (unlikely(a.buf == NULL || a.len == 0)) { return 0; }
+    return _cexds__hash_bytes(a.buf, a.len, seed);
 }
 
 /// Compares two string slices, null tolerant
@@ -11459,9 +11475,7 @@ main_loop_again:
     }
 
     // Drain pattern if we have remaining * (zero-or-any)
-    while(*pattern == '*') {
-        pattern++;
-    }
+    while (*pattern == '*') { pattern++; }
 
     return str_len == 0 && *pattern == '\0';
 }
@@ -11521,6 +11535,7 @@ const struct __cex_namespace__str str = {
     .find = cex_str_find,
     .findr = cex_str_findr,
     .fmt = cex_str_fmt,
+    .hash = cex_str_hash,
     .join = cex_str_join,
     .len = cex_str_len,
     .lower = cex_str_lower,
@@ -11569,6 +11584,7 @@ const struct __cex_namespace__str str = {
         .ends_with = cex_str__slice__ends_with,
         .eq = cex_str__slice__eq,
         .eqi = cex_str__slice__eqi,
+        .hash = cex_str__slice__hash,
         .index_of = cex_str__slice__index_of,
         .iter_split = cex_str__slice__iter_split,
         .lstrip = cex_str__slice__lstrip,
