@@ -179,6 +179,28 @@ test$case(cexds_hash_stability){
     h = _cexds__hash_bytes(buf + 10, 10, h);
     tassert_eq(h, 9777486606392370344UL);
 
+    // WARNING: string hash uses different algo 
+    h = _cexds__hash_string(buf, 1000, 0);
+    tassert_eq(h, 9355514798287909589UL);
+
+    return EOK;
+}
+
+test$case(cexds_hash_stability_4or8){
+    char buf[] = {"01230123"}; 
+
+    u64 h = _cexds__hash_bytes(buf, 4, 0);
+    tassert_eq(h, 14843858323657194021UL);
+
+    h = _cexds__hash_bytes(buf + 4, 4, 0);
+    tassert_eq(h, 14843858323657194021UL);
+
+    h = _cexds__hash_bytes(buf + 4, 4, h);
+    tassert_eq(h, 9392861481796581258UL);
+
+    h = _cexds__hash_bytes(buf, 8, 0);
+    tassert_eq(h, 11948792088630395043UL);
+
     return EOK;
 }
 

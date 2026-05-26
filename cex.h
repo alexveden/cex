@@ -7430,7 +7430,7 @@ typedef struct _cexds__hash_index
 #define _CEXDS_usize_BITS ((sizeof(usize)) * 8)
 
 static inline usize
-_cexds__probe_position(usize hash, usize slot_count, usize slot_log2)
+_cexds__probe_position(u64 hash, usize slot_count, usize slot_log2)
 {
     usize pos;
     (void)(slot_log2);
@@ -7585,10 +7585,10 @@ typedef int _CEXDS_SIPHASH_2_4_can_only_be_used_in_64_bit_builds[sizeof(usize) =
 #    define _CEXDS_SIPHASH_D_ROUNDS 1
 #endif
 
-usize
-_cexds__hash_string(const char* str, usize str_cap, usize seed)
+u64
+_cexds__hash_string(const char* str, usize str_cap, u64 seed)
 {
-    usize hash = seed;
+    u64 hash = seed;
     // NOTE: using max buffer capacity capping, this allows using hash
     //       on char buf[N] - without stack overflowing
     for (usize i = 0; i < str_cap && *str; i++) {
@@ -7606,17 +7606,17 @@ _cexds__hash_string(const char* str, usize str_cap, usize seed)
     return hash + seed;
 }
 
-static inline usize
-_cexds__siphash_bytes(const void* p, usize len, usize seed)
+static inline u64
+_cexds__siphash_bytes(const void* p, usize len, u64 seed)
 {
     // hash that works on 32- or 64-bit registers without knowing which we have
     // (computes different results on 32-bit and 64-bit platform)
     // derived from siphash, but on 32-bit platforms very different as it uses 4 32-bit state not 4
     // 64-bit
-    usize v0 = ((((usize)0x736f6d65 << 16) << 16) + 0x70736575) ^ seed;
-    usize v1 = ((((usize)0x646f7261 << 16) << 16) + 0x6e646f6d) ^ ~seed;
-    usize v2 = ((((usize)0x6c796765 << 16) << 16) + 0x6e657261) ^ seed;
-    usize v3 = ((((usize)0x74656462 << 16) << 16) + 0x79746573) ^ ~seed;
+    u64 v0 = ((((u64)0x736f6d65 << 16) << 16) + 0x70736575) ^ seed;
+    u64 v1 = ((((u64)0x646f7261 << 16) << 16) + 0x6e646f6d) ^ ~seed;
+    u64 v2 = ((((u64)0x6c796765 << 16) << 16) + 0x6e657261) ^ seed;
+    u64 v3 = ((((u64)0x74656462 << 16) << 16) + 0x79746573) ^ ~seed;
 
 #ifdef _CEXDS_TEST_SIPHASH_2_4
     // hardcoded with key material in the siphash test vectors
@@ -7645,15 +7645,15 @@ _cexds__siphash_bytes(const void* p, usize len, usize seed)
     } while (0)
 
     unsigned char* d = (unsigned char*)p;
-    usize data = 0;
-    usize i = 0;
-    usize j = 0;
-    for (i = 0; i + sizeof(usize) <= len; i += sizeof(usize), d += sizeof(usize)) {
-        data = (usize)d[0] | ((usize)d[1] << 8) | ((usize)d[2] << 16) | ((usize)d[3] << 24);
+    u64 data = 0;
+    u64 i = 0;
+    u64 j = 0;
+    for (i = 0; i + sizeof(u64) <= len; i += sizeof(u64), d += sizeof(u64)) {
+        data = (u64)d[0] | ((u64)d[1] << 8) | ((u64)d[2] << 16) | ((u64)d[3] << 24);
 
 #if UINTPTR_MAX > 0xFFFFFFFFU
         // 64 bits only
-        data |= (usize)(d[4] | (d[5] << 8) | (d[6] << 16) | (d[7] << 24)) << 16 << 16;
+        data |= (u64)(d[4] | (d[5] << 8) | (d[6] << 16) | (d[7] << 24)) << 16 << 16;
 #endif
 
         v3 ^= data;
@@ -7663,11 +7663,11 @@ _cexds__siphash_bytes(const void* p, usize len, usize seed)
     data = len << (_CEXDS_usize_BITS - 8);
     switch (len - i) {
         case 7:
-            data |= ((usize)d[6] << 24) << 24; // fall through
+            data |= ((u64)d[6] << 24) << 24; // fall through
         case 6:
-            data |= ((usize)d[5] << 20) << 20; // fall through
+            data |= ((u64)d[5] << 20) << 20; // fall through
         case 5:
-            data |= ((usize)d[4] << 16) << 16; // fall through
+            data |= ((u64)d[4] << 16) << 16; // fall through
         case 4:
             data |= (d[3] << 24); // fall through
         case 3:
@@ -7692,16 +7692,16 @@ _cexds__siphash_bytes(const void* p, usize len, usize seed)
 #endif
 }
 
-static inline usize
-_cexds__hash_bytes(const void* p, usize len, usize seed)
+static inline u64
+_cexds__hash_bytes(const void* p, usize len, u64 seed)
 {
 #ifdef _CEXDS_SIPHASH_2_4
     return _cexds__siphash_bytes(p, len, seed);
 #else
     unsigned char* d = (unsigned char*)p;
 
-    if (len == 4) {
-        u32 hash = (u32)d[0] | ((u32)d[1] << 8) | ((u32)d[2] << 16) | ((u32)d[3] << 24);
+    if (unlikely(len == 4)) {
+        u64 hash = (u32)d[0] | ((u32)d[1] << 8) | ((u32)d[2] << 16) | ((u32)d[3] << 24);
         // HASH32-BB  Bob Jenkin's presumably-accidental version of Thomas Wang hash with rotates
         // turned into shifts. Note that converting these back to rotates makes it run a lot slower,
         // presumably due to collisions, so I'm not really sure what's going on.
@@ -7712,11 +7712,11 @@ _cexds__hash_bytes(const void* p, usize len, usize seed)
         hash = hash * 0x27d4eb2d;
         hash ^= seed;
         hash = hash ^ (hash >> 15);
-        return (((usize)hash << 16 << 16) | hash) ^ seed;
-    } else if (len == 8 && sizeof(usize) == 8) {
-        usize hash = (usize)d[0] | ((usize)d[1] << 8) | ((usize)d[2] << 16) | ((usize)d[3] << 24);
+        return (((u64)hash << 16 << 16) | hash) ^ seed;
+    } else if (unlikely(len == 8)) {
+        u64 hash = (u64)d[0] | ((u64)d[1] << 8) | ((u64)d[2] << 16) | ((u64)d[3] << 24);
 
-        hash |= (usize)((usize)d[4] | ((usize)d[5] << 8) | ((usize)d[6] << 16) | ((usize)d[7] << 24))
+        hash |= (u64)((u64)d[4] | ((u64)d[5] << 8) | ((u64)d[6] << 16) | ((u64)d[7] << 24))
              << 16 << 16;
         hash ^= seed;
         hash = (~hash) + (hash << 21);
@@ -7735,8 +7735,8 @@ _cexds__hash_bytes(const void* p, usize len, usize seed)
 #endif
 }
 
-static inline usize
-_cexds__hash(enum _CexDsKeyType_e key_type, const void* key, usize key_size, usize seed)
+static inline u64
+_cexds__hash(enum _CexDsKeyType_e key_type, const void* key, usize key_size, u64 seed)
 {
     switch (key_type) {
         case _CexDsKeyType__generic:
@@ -7862,7 +7862,7 @@ _cexds__hm_find_slot(void* a, usize elemsize, void* key, usize keysize, usize ke
     _cexds__arr_integrity(a, _CEXDS_HM_MAGIC);
     _cexds__hash_index* table = _cexds__hash_table(a);
     enum _CexDsKeyType_e key_type = table->key_type;
-    usize hash = _cexds__hash(key_type, key, keysize, table->seed);
+    u64 hash = _cexds__hash(key_type, key, keysize, table->seed);
     usize step = _CEXDS_BUCKET_LENGTH;
 
     if (hash < 2) {
