@@ -7427,7 +7427,8 @@ typedef struct _cexds__hash_index
 #define _CEXDS_HASH_EMPTY 0
 #define _CEXDS_HASH_DELETED 1
 
-#define _CEXDS_usize_BITS ((sizeof(usize)) * 8)
+//#define _CEXDS_usize_BITS ((sizeof(usize)) * 8)
+#define _CEXDS_usize_BITS ((sizeof(u64)) * 8)
 
 static inline usize
 _cexds__probe_position(u64 hash, usize slot_count, usize slot_log2)
