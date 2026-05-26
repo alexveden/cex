@@ -121,7 +121,7 @@ Use `cex -D config` to reset all project config flags to defaults
 #define cex$version_major 0
 #define cex$version_minor 19
 #define cex$version_patch 0
-#define cex$version_date "2026-05-25"
+#define cex$version_date "2026-05-26"
 
 
 
@@ -4879,7 +4879,7 @@ cex_test_run_bench_case(struct _cex_test_case_s* case_ctx)
     if (cold_time > t_overhead) { cold_time -= t_overhead; }
     if (hot_time > t_overhead) { hot_time -= t_overhead; }
 
-    char* duration = "sec";
+    char* duration = "s  ";
     f64 factor = 1.0;
     if (hot_time < 1) {
         if (hot_time < 10e-4) {
@@ -4887,7 +4887,7 @@ cex_test_run_bench_case(struct _cex_test_case_s* case_ctx)
                 duration = "ns ";
                 factor = 10e8;
             } else {
-                duration = "us";
+                duration = "us ";
                 factor = 10e5;
             }
         } else {
@@ -4897,7 +4897,7 @@ cex_test_run_bench_case(struct _cex_test_case_s* case_ctx)
     }
     fprintf(
         stderr,
-        "cold: %0.3f%s hot: %0.3f%s ",
+        " cold: %8.3f%s hot: %8.3f%s ",
         cold_time * factor,
         duration,
         hot_time * factor,
