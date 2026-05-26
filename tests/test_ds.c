@@ -870,6 +870,8 @@ test$case(test_hashmap_struct_full_setget)
     tassert(hm$gets(smap, -1) == NULL);
 
     tassert(hm$del(smap, 2));
+    tassert(hm$gets(smap, 1) != NULL);
+    tassert(hm$gets(smap, 2) == NULL);
     tassert(hm$del(smap, 1));
     tassert_eq(hm$len(smap), 0);
     tassert(hm$gets(smap, 1) == NULL);
@@ -933,7 +935,7 @@ test$case(test_hashmap_hash)
     const char* keyvar[1] = { key };
 
     size_t seed = 27361;
-    size_t hash_key = _cexds__hash(_CexDsKeyType__charptr, keyvar, 10000, seed);
+    u64 hash_key = _cexds__hash(_CexDsKeyType__charptr, keyvar, 10000, seed);
     tassert(hash_key > 0);
 
     tassert_eq(_cexds__hash(_CexDsKeyType__charbuf, key_buf, sizeof(key_buf), seed), hash_key);

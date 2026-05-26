@@ -317,7 +317,7 @@ _cexds__make_hash_index(
             _cexds__hash_bucket* ob = &old_table->storage[i];
             for (j = 0; j < _CEXDS_BUCKET_LENGTH; ++j) {
                 if (_CEXDS_INDEX_IN_USE(ob->index[j])) {
-                    usize hash = ob->hash[j];
+                    u64 hash = ob->hash[j];
                     usize pos = _cexds__probe_position(hash, t->slot_count, t->slot_count_log2);
                     usize step = _CEXDS_BUCKET_LENGTH;
                     _CEXDS_STATS(++_cexds__rehash_items);
