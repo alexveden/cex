@@ -2120,7 +2120,7 @@ enum
 
 #define _cexds__shmode_func_wrapper(t, e, m) _cexds__shmode_func(e, m)
 
-usize _cexds__hash_string(const char* str, usize str_cap, usize seed);
+u64 _cexds__hash_string(const char* str, usize str_cap, u64 seed);
 
 #endif
 
