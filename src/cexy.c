@@ -800,7 +800,14 @@ _cexy__process_update_code(
                 if (!has_module_struct) { e$ret(sbuf.appendf(&new_code, "%s\n", cex_h_struct)); }
                 has_module_struct = true;
             } else {
-                if (code_buf.buf == NULL) { code_buf.buf = t.value.buf; }
+                if (code_buf.buf == NULL) {
+                    if (t.type == CexTkn__preproc) {
+                        code_buf.buf = t.value.buf;
+                        while (*code_buf.buf != '#') { code_buf.buf--; }
+                    } else {
+                        code_buf.buf = t.value.buf;
+                    }
+                }
                 code_buf.len = t.value.buf - code_buf.buf + t.value.len;
             }
         }
