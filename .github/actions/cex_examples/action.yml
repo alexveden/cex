@@ -76,9 +76,9 @@ runs:
       run: |
         echo ""
         echo "---------------------------------------------------------------------"
-        echo "           STEP: example cex-prebuilt"
+        echo "           STEP: example cex-prebuilt-fast-build"
         echo "---------------------------------------------------------------------"
-        cd examples/cex_compiled_hdr/
+        cd examples/cex_fast_build/
         cc -g ./cex.c -o ./cex 
         ./cex config
         ./cex app run myapp
