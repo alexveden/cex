@@ -273,17 +273,13 @@ cexy_src_changed(char* target_path, char** src_array, usize src_array_len)
         return false;
     }
 
-    bool has_error = false;
     for$each (p, src_array, src_array_len) {
         auto ftype = os.fs.stat(p);
         if (!ftype.is_valid) {
             (void)e$raise(ftype.error, "Error src: %s", p);
-            has_error = true;
         } else if (!ftype.is_file || ftype.is_symlink) {
-            (void)e$raise("Bad type", "src is not a file: %s", p);
-            has_error = true;
+            (void)e$raise("Bad type", "src is not a regular file: %s", p);
         } else {
-            if (has_error) { continue; }
             if (ftype.mtime > target_ftype.mtime) {
                 log$trace("Source changed '%s'\n", p);
                 return true;
@@ -1630,55 +1626,60 @@ end:
 }
 
 static Exception
-cexy__add_precompiled_debug_cex_h(arr$(char*) * cc_args)
+_cexy__add_precompiled_debug_cex_h(arr$(char*) * out_cc_args, IAllocator allc)
 {
-    uassert(arr$len(*cc_args) > 2 && "too few compiler args");
-    io.printf("cexy__add_precompiled_debug_cex_h\n");
-    /*
-    mem$scope(tmem$, _)
-    {
-        arr$(char*) cex_args = arr$new(cex_args, _, .capacity = arr$len(cc_args) + 10);
-        arr$pusha(cex_args, *cc_args);
-        bool has_optimization = false;
+#        ifndef cexy$disable_cex_precompiling
+    uassert(arr$len(*out_cc_args) > 2 && "too few compiler args");
 
-        for$each (it, cex_args) {
-            if (str.starts_with(it, "-O") && !str.eq(it, "-O0")) {
-                has_optimization = true;
-                break;
-            }
-            if (str.ends_with(it, ".c")) {
-                return e$raise(
-                    Error.argument,
-                    "You passed .c file in cc_args list, `%s`, you must pass only core compiler options",
-                    it
-                );
-            }
+    arr$(char*) cex_args = arr$new(cex_args, allc, .capacity = arr$len(*out_cc_args) + 20);
+    arr$pusha(cex_args, *out_cc_args);
+    bool has_optimization = false;
+    u64 args_hash = 0;
+
+    for$each (it, cex_args) {
+        if (str.starts_with(it, "-O") && !str.eq(it, "-O0")) {
+            has_optimization = true;
+            break;
         }
-
-        if (has_optimization) {
-            log$debug("Build with enabled optimization, skipping fast cex.h build path\n");
-            return EOK;
-        }
-
-        char* cex_obj_target = cexy$build_dir "/cex.obj";
-        char* src[] = { "./cex.h" };
-        if (cexy.src_changed(cex_obj_target, src, arr$len(src))) {
-            arr$pushm(
-                cex_args,
-                "-DCEX_IMPLEMENTATION",
-                "-x",
-                "c",
-                "-c",
-                "./cex.h",
-                "-o",
-                cex_obj_target
+        if (str.ends_with(it, ".c")) {
+            return e$raise(
+                Error.argument,
+                "You passed .c file in cc_args list, `%s`, you must pass only core compiler options",
+                it
             );
-            arr$push(cex_args, NULL);
-            e$ret(os$cmda(cex_args));
         }
-
+        args_hash = str.hash(it, args_hash);
     }
-    */
+    uassert(args_hash > 0);
+
+    if (has_optimization) {
+        log$debug("Build with enabled optimization, skipping fast cex.h build path\n");
+        return EOK;
+    }
+
+    char* cex_obj_target = str.fmt(allc, cexy$build_dir "/cex.%lx.obj", args_hash);
+    char* src[] = { "./cex.h" };
+    if (cexy.src_changed(cex_obj_target, src, arr$len(src))) {
+        arr$pushm(
+            cex_args,
+            "-DCEX_IMPLEMENTATION",
+            "-DCEX_MAIN_BUILD",
+            "-x",
+            "c",
+            "-c",
+            "./cex.h",
+            "-o",
+            cex_obj_target
+        );
+        arr$push(cex_args, NULL);
+        e$ret(os$cmda(cex_args));
+    }
+
+    // Updating upstream args, to include pre-built cex.obj
+    arr$pushm(*out_cc_args, "-DCEX_PREBUILT", cex_obj_target);
+
+
+#        endif // ifndef cexy$disable_cex_precompiling
     return EOK;
 }
 
@@ -2291,7 +2292,7 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
             arr$pusha(args, cc_include);
 
             // Handling cex.h -> cex.obj for faster debug builds
-            e$ret(cexy__add_precompiled_debug_cex_h(&args));
+            e$ret(_cexy__add_precompiled_debug_cex_h(&args, _));
 
             arr$push(args, test_src);
             arr$pusha(args, cc_ld_args);
@@ -2669,6 +2670,10 @@ cexy__cmd__simple_app(int argc, char** argv, void* user_ctx)
         char* pkgconf_libargs[] = { cexy$pkgconf_libs };
         arr$pusha(args, cc_args);
         arr$pusha(args, cc_include);
+
+        // Handling cex.h -> cex.obj for faster debug builds
+        e$ret(_cexy__add_precompiled_debug_cex_h(&args, _));
+
         if (arr$len(pkgconf_libargs)) {
             e$ret(cexy$pkgconf(_, &args, "--cflags", cexy$pkgconf_libs));
         }

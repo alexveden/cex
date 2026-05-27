@@ -1,4 +1,6 @@
+#if !defined(CEX_MAIN_BUILD) && !defined(CEX_NEW) 
 #pragma once
+#endif
 #ifndef CEX_HEADER_H
 #define CEX_HEADER_H
 /*
@@ -121,7 +123,7 @@ Use `cex -D config` to reset all project config flags to defaults
 #define cex$version_major 0
 #define cex$version_minor 19
 #define cex$version_patch 0
-#define cex$version_date "2026-05-26"
+#define cex$version_date "2026-05-27"
 
 
 
@@ -6140,7 +6142,7 @@ CEX_NAMESPACE struct __cex_namespace__fuzz fuzz;
 
 
 
-#if defined(CEX_IMPLEMENTATION) || defined(CEX_NEW)
+#if !defined(CEX_PREBUILT) && (defined(CEX_IMPLEMENTATION) || defined(CEX_NEW))
 
 
 
@@ -15891,17 +15893,13 @@ cexy_src_changed(char* target_path, char** src_array, usize src_array_len)
         return false;
     }
 
-    bool has_error = false;
     for$each (p, src_array, src_array_len) {
         auto ftype = os.fs.stat(p);
         if (!ftype.is_valid) {
             (void)e$raise(ftype.error, "Error src: %s", p);
-            has_error = true;
         } else if (!ftype.is_file || ftype.is_symlink) {
-            (void)e$raise("Bad type", "src is not a file: %s", p);
-            has_error = true;
+            (void)e$raise("Bad type", "src is not a regular file: %s", p);
         } else {
-            if (has_error) { continue; }
             if (ftype.mtime > target_ftype.mtime) {
                 log$trace("Source changed '%s'\n", p);
                 return true;
@@ -17248,6 +17246,64 @@ end:
 }
 
 static Exception
+_cexy__add_precompiled_debug_cex_h(arr$(char*) * out_cc_args, IAllocator allc)
+{
+#        ifndef cexy$disable_cex_precompiling
+    uassert(arr$len(*out_cc_args) > 2 && "too few compiler args");
+
+    arr$(char*) cex_args = arr$new(cex_args, allc, .capacity = arr$len(*out_cc_args) + 20);
+    arr$pusha(cex_args, *out_cc_args);
+    bool has_optimization = false;
+    u64 args_hash = 0;
+
+    for$each (it, cex_args) {
+        if (str.starts_with(it, "-O") && !str.eq(it, "-O0")) {
+            has_optimization = true;
+            break;
+        }
+        if (str.ends_with(it, ".c")) {
+            return e$raise(
+                Error.argument,
+                "You passed .c file in cc_args list, `%s`, you must pass only core compiler options",
+                it
+            );
+        }
+        args_hash = str.hash(it, args_hash);
+    }
+    uassert(args_hash > 0);
+
+    if (has_optimization) {
+        log$debug("Build with enabled optimization, skipping fast cex.h build path\n");
+        return EOK;
+    }
+
+    char* cex_obj_target = str.fmt(allc, cexy$build_dir "/cex.%lx.obj", args_hash);
+    char* src[] = { "./cex.h" };
+    if (cexy.src_changed(cex_obj_target, src, arr$len(src))) {
+        arr$pushm(
+            cex_args,
+            "-DCEX_IMPLEMENTATION",
+            "-DCEX_MAIN_BUILD",
+            "-x",
+            "c",
+            "-c",
+            "./cex.h",
+            "-o",
+            cex_obj_target
+        );
+        arr$push(cex_args, NULL);
+        e$ret(os$cmda(cex_args));
+    }
+
+    // Updating upstream args, to include pre-built cex.obj
+    arr$pushm(*out_cc_args, "-DCEX_PREBUILT", cex_obj_target);
+
+
+#        endif // ifndef cexy$disable_cex_precompiling
+    return EOK;
+}
+
+static Exception
 cexy__cmd__help(int argc, char** argv, void* user_ctx)
 {
     (void)user_ctx;
@@ -17854,6 +17910,10 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
                 }
             }
             arr$pusha(args, cc_include);
+
+            // Handling cex.h -> cex.obj for faster debug builds
+            e$ret(_cexy__add_precompiled_debug_cex_h(&args, _));
+
             arr$push(args, test_src);
             arr$pusha(args, cc_ld_args);
             char* pkgconf_libargs[] = { cexy$pkgconf_libs };
@@ -18230,6 +18290,10 @@ cexy__cmd__simple_app(int argc, char** argv, void* user_ctx)
         char* pkgconf_libargs[] = { cexy$pkgconf_libs };
         arr$pusha(args, cc_args);
         arr$pusha(args, cc_include);
+
+        // Handling cex.h -> cex.obj for faster debug builds
+        e$ret(_cexy__add_precompiled_debug_cex_h(&args, _));
+
         if (arr$len(pkgconf_libargs)) {
             e$ret(cexy$pkgconf(_, &args, "--cflags", cexy$pkgconf_libs));
         }
