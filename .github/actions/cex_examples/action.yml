@@ -82,7 +82,7 @@ runs:
         cc -g ./cex.c -o ./cex 
         ./cex config
         ./cex app run myapp
-        ./cex test run tests/test_myapp.c
+        ./cex test run tests/test_mylib.c
 
     - name: Cex Json
       shell: ${{ inputs.shell }}
