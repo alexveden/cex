@@ -273,6 +273,37 @@ test$case(stb_sprintf_integers_64bits)
     return EOK;
 }
 
+test$case(stb_sprintf_integers_64bits_hex)
+{
+    mem$scope(tmem$, _)
+    {
+        i64 _i64 = 123;
+        u64 _u64 = 123;
+
+        tassert_eq("7b", str.fmt(_, "%lx", _i64));
+        tassert_eq("7b", str.fmt(_, "%lx", _u64));
+
+        _i64 = INT64_MAX;
+        _u64 = INT64_MAX;
+        tassert_eq("7fffffffffffffff", str.fmt(_, "%lx", _i64));
+        tassert_eq("7fffffffffffffff", str.fmt(_, "%lx", _u64));
+        tassert_eq("0x7fffffffffffffff", str.fmt(_, "%#lx", _i64));
+        tassert_eq("0x7fffffffffffffff", str.fmt(_, "%#lx", _u64));
+
+        _i64 = INT64_MIN;
+        _u64 = UINT64_MAX;
+        // NOTE: libc printf() also use hex without negative sign!!!
+        // printf("--- %#lx \n", _i64);
+        tassert_eq("0x8000000000000000", str.fmt(_, "%#lx", _i64));
+        tassert_eq("0xffffffffffffffff", str.fmt(_, "%#lx", _u64));
+        tassert_eq("8000000000000000", str.fmt(_, "%lx", _i64));
+        tassert_eq("ffffffffffffffff", str.fmt(_, "%lx", _u64));
+        tassert_eq("-1", str.fmt(_, "%ld", _u64));
+    }
+
+    return EOK;
+}
+
 test$case(stb_sprintf_size_t)
 {
     mem$scope(tmem$, _)

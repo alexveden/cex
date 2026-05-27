@@ -1630,6 +1630,59 @@ end:
 }
 
 static Exception
+cexy__add_precompiled_debug_cex_h(arr$(char*) * cc_args)
+{
+    uassert(arr$len(*cc_args) > 2 && "too few compiler args");
+    io.printf("cexy__add_precompiled_debug_cex_h\n");
+    /*
+    mem$scope(tmem$, _)
+    {
+        arr$(char*) cex_args = arr$new(cex_args, _, .capacity = arr$len(cc_args) + 10);
+        arr$pusha(cex_args, *cc_args);
+        bool has_optimization = false;
+
+        for$each (it, cex_args) {
+            if (str.starts_with(it, "-O") && !str.eq(it, "-O0")) {
+                has_optimization = true;
+                break;
+            }
+            if (str.ends_with(it, ".c")) {
+                return e$raise(
+                    Error.argument,
+                    "You passed .c file in cc_args list, `%s`, you must pass only core compiler options",
+                    it
+                );
+            }
+        }
+
+        if (has_optimization) {
+            log$debug("Build with enabled optimization, skipping fast cex.h build path\n");
+            return EOK;
+        }
+
+        char* cex_obj_target = cexy$build_dir "/cex.obj";
+        char* src[] = { "./cex.h" };
+        if (cexy.src_changed(cex_obj_target, src, arr$len(src))) {
+            arr$pushm(
+                cex_args,
+                "-DCEX_IMPLEMENTATION",
+                "-x",
+                "c",
+                "-c",
+                "./cex.h",
+                "-o",
+                cex_obj_target
+            );
+            arr$push(cex_args, NULL);
+            e$ret(os$cmda(cex_args));
+        }
+
+    }
+    */
+    return EOK;
+}
+
+static Exception
 cexy__cmd__help(int argc, char** argv, void* user_ctx)
 {
     (void)user_ctx;
@@ -2236,6 +2289,10 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
                 }
             }
             arr$pusha(args, cc_include);
+
+            // Handling cex.h -> cex.obj for faster debug builds
+            e$ret(cexy__add_precompiled_debug_cex_h(&args));
+
             arr$push(args, test_src);
             arr$pusha(args, cc_ld_args);
             char* pkgconf_libargs[] = { cexy$pkgconf_libs };
