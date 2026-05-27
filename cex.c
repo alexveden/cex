@@ -14,6 +14,7 @@ Visit https://cex-c.org for more information
 #    include "cex_config.h"
 #endif
 
+#define cexy$disable_cex_precompiling
 #define CEX_IMPLEMENTATION
 #define CEX_BUILD
 #include "cex.h"
@@ -163,7 +164,9 @@ cex_bundle(void)
         // Using CEX code generation engine for bundling
         sbuf_c hbuf = sbuf.create(1024 * 1024, _);
         cg$init(&hbuf);
+        cg$pn("#if !defined(CEX_MAIN_BUILD) && !defined(CEX_NEW) ");
         cg$pn("#pragma once");
+        cg$pn("#endif");
         cg$pn("#ifndef CEX_HEADER_H");
         cg$pn("#define CEX_HEADER_H");
 
@@ -220,7 +223,7 @@ cex_bundle(void)
         cg$pn("*                   CEX IMPLEMENTATION ");
         cg$pn("*/");
         cg$pn("\n\n");
-        cg$pn("#if defined(CEX_IMPLEMENTATION) || defined(CEX_NEW)\n");
+        cg$pn("#if !defined(CEX_PREBUILT) && (defined(CEX_IMPLEMENTATION) || defined(CEX_NEW))\n");
 
         e$except_null (cex_header = io.file.load("src/cex_header.c", _)) { exit(1); }
         cg$pn(cex_header);
