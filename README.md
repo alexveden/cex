@@ -219,7 +219,6 @@ The CEX codebase uses the `clang-tidy` static analyzer in its continuous integra
 * [Building with system libraries](https://github.com/alexveden/cex/tree/master/examples/libs_sys)
 
 * [Building with vcpkg local repo](https://github.com/alexveden/cex/tree/master/examples/libs_vcpkg)
-* [Pre-built CEX for faster build times](https://github.com/alexveden/cex/tree/master/examples/cex_compiled_hdr)
 * [Freestanding / embedded concept](https://github.com/alexveden/cex/tree/master/examples/freestanding)
 * [JSON config file / serde code generation](https://github.com/alexveden/cex/tree/master/examples/json_config)
 
