@@ -123,7 +123,7 @@ Use `cex -D config` to reset all project config flags to defaults
 #define cex$version_major 0
 #define cex$version_minor 19
 #define cex$version_patch 0
-#define cex$version_date "2026-05-27"
+#define cex$version_date "2026-05-28"
 
 
 
@@ -5075,7 +5075,8 @@ cex_test_main_fn(int argc, char** argv)
         ctx->case_name = t.test_name;
         ctx->tests_run++;
         if (ctx->is_benchmark != t.is_benchmark) { continue; }
-        if (ctx->case_filter && !str.find(t.test_name, ctx->case_filter)) { continue; }
+        if (ctx->case_filter && !(str.match(t.test_name, ctx->case_filter) || str.find(t.test_name, ctx->case_filter))) {
+            continue; }
 
         if (!ctx->quiet_mode || ctx->is_benchmark) {
             fprintf(stderr, "%s", t.test_name);
@@ -7704,6 +7705,7 @@ _cexds__siphash_bytes(const void* p, usize len, u64 seed)
 u64
 _cexds__hash_bytes(const void* p, usize len, u64 seed)
 {
+    if (unlikely(p == NULL || len == 0)) { return 0; }
 #ifdef _CEXDS_SIPHASH_2_4
     return _cexds__siphash_bytes(p, len, seed);
 #else
