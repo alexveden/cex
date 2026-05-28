@@ -20,35 +20,31 @@ Principles:
 
 - Creating array
 ```c
-    // Using heap allocator (need to free later!)
+int main(void)
+{
+    // heap allocator — must call arr$free() later, or use mem$scope() for automatic cleanup
     arr$(i32) array = arr$new(array, mem$);
 
-    // adding elements
-    arr$pushm(array, 1, 2, 3); // multiple at once
-    arr$push(array, 4); // single element
+    arr$pushm(array, 1, 2, 3);   // multiple elements at once (compound-literal temp array)
+    arr$push(array, 4);          // single element
 
-    // length of array
-    arr$len(array);
+    io.printf("len=%zu\n", arr$len(array));  // works on arr$, hm$, static C arrays, pointer+len
 
-    // getting i-th elements
-    array[1];
-
-    // iterating array (by value)
+    // iteration by value — copies each element into `it` (≤ CEX_FOREACH_MAX_COPY_SIZE bytes)
     for$each(it, array) {
         io.printf("el=%d\n", it);
     }
 
-    // iterating array (by pointer - prefer for bigger structs to avoid copying)
+    // iteration by pointer — no copy, prefer for large structs
+    // TIP: derive index from pointer subtraction
     for$eachp(it, array) {
-        // TIP: making array index out of `it`
-        usize i = it - array;
-
-        // NOTE: 'it' now is a pointer
-        io.printf("el[%zu]=%d\n", i, *it);
+        io.printf("el[%zu]=%d\n", (usize)(it - array), *it);
     }
 
-    // free resources
+    // gotcha: memory not freed until arr$free() — safe to call on NULL (no-op)
     arr$free(array);
+    return 0;
+}
 ```
 
 - Array of structs
@@ -62,25 +58,25 @@ typedef struct
     int value;
 } my_struct;
 
-void somefunc(void)
+int main(void)
 {
+    // pre-allocate capacity to avoid early reallocs; .capacity is optional,
+    // defaults to 16 if omitted
     arr$(my_struct) array = arr$new(array, mem$, .capacity = 128);
-    uassert(arr$cap(array), 128);
 
-    my_struct s;
-    s = (my_struct){ 20, 5.0, "hello ", 0 };
-    arr$push(array, s);
-    s = (my_struct){ 40, 2.5, "failure", 0 };
-    arr$push(array, s);
-    s = (my_struct){ 40, 1.1, "world!", 0 };
-    arr$push(array, s);
+    // gotcha: structs are copied by value into the array — the original `s` can
+    // be reused or stack-allocated. For pointer-heavy structs you may need
+    // deep-copy semantics handled by your own code.
+    arr$push(array, ((my_struct){ 20, 5.0f, "hello", 0 }));
+    arr$push(array, ((my_struct){ 40, 2.5f, "world", 0 }));
 
+    // arr$len() works on both arr$ and static C arrays
     for (usize i = 0; i < arr$len(array); ++i) {
         io.printf("key: %d str: %s\n", array[i].key, array[i].my_string);
     }
-    arr$free(array);
 
-    return EOK;
+    arr$free(array);
+    return 0;
 }
 ```
 

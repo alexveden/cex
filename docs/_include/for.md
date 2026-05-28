@@ -15,11 +15,12 @@ All three work identically on `arr$`, `hm$`, static C arrays, and pointer+length
 - Using for$ as unified array iterator
 ```c
 
-test$case(test_array_iteration)
+int main(void)
 {
     arr$(int) array = arr$new(array, mem$);
     arr$pushm(array, 1, 2, 3);
 
+    // for$each copies elements by value (up to CEX_FOREACH_MAX_COPY_SIZE bytes)
     for$each(it, array) {
         io.printf("el=%d\n", it);
     }
@@ -28,12 +29,11 @@ test$case(test_array_iteration)
     // el=2
     // el=3
 
-    // NOTE: prefer this when you work with bigger structs to avoid extra memory copying
+    // for$eachp provides a pointer — no copy, prefer for large structs
     for$eachp(it, array) {
-        // TIP: making array index out of `it`
-        usize i = it - array;
+        // TIP: derive index from pointer subtraction
+        usize i = (usize)(it - array);
 
-        // NOTE: it now is a pointer
         io.printf("el[%zu]=%d\n", i, *it);
     }
     // Prints:
@@ -41,7 +41,7 @@ test$case(test_array_iteration)
     // el[1]=2
     // el[2]=3
 
-    // Static arrays work as well (arr$len inferred)
+    // Static C arrays work too — arr$len() inferred from sizeof
     i32 arr_int[] = {1, 2, 3, 4, 5};
     for$each(it, arr_int) {
         io.printf("static=%d\n", it);
@@ -53,8 +53,7 @@ test$case(test_array_iteration)
     // static=4
     // static=5
 
-
-    // Simple pointer+length also works (let's do a slice)
+    // Pointer+length slice — pass len as third arg
     i32* slice = &arr_int[2];
     for$each(it, slice, 2) {
         io.printf("slice=%d\n", it);
@@ -63,11 +62,11 @@ test$case(test_array_iteration)
     // slice=3
     // slice=4
 
-
-    // it is type of cex_iterator_s
-    // NOTE: run in shell: ➜ ./cex help cex_iterator_s
-    s = str.sstr("123,456");
+    // for$iter uses a custom iterator function and cex_iterator_s
+    // NOTE: str_s is passed by value (stack-allocated slice)
+    str_s s = str.sstr("123,456");
     for$iter (str_s, it, str.slice.iter_split(s, ",", &it.iterator)) {
+        // gotcha: it.val is a non-null-terminated slice — use %S, not %s
         io.printf("it.value = %S\n", it.val);
     }
     // Prints:
@@ -75,9 +74,8 @@ test$case(test_array_iteration)
     // it.value = 456
 
     arr$free(array);
-    return EOK;
+    return 0;
 }
-
 ```
 
 
