@@ -36,6 +36,7 @@ Set via `./cex -D<PRESET> config`.
 - **src/** — 21 `.h` + 21 `.c` files bundled into `cex.h` in deterministic order (defined in `cex.c:cex_bundle`). Uses `#pragma once`/`#include` stripping during bundling.
 - **tests/** — each test file `#include "src/all.c"` (accesses CEX internals). Each test file ends with `test$main();`.
 - **cexstd/** — optional std lib (json, random, fsm, testing), fetched via `./cex libfetch cexstd/`.
+- C11 (with GNU C extensions) library (C23 compatible), CEX is specifically tailored for GCC/Clang compilers
 
 ## Namespace convention
 - CEX introduces namespace concept, which requires special treatment
@@ -67,6 +68,7 @@ Set via `./cex -D<PRESET> config`.
 - Each case `test$bench(name)` - has `__attribute__((optimize("O0")))` no need to do tricks to keep this code from eliminating by compiler, but consider only calling other functions from there, loops are also fine
 - DO NOT do any data initialization logic in `test$bench(name)`, use `test$setup_case()`, `test$teardown_case()`, `test$setup_suite()`, `test$teardown_suite()` and global state variables for data bootstrapping for benchmarks.
 - Use this file as example: `tests/hash/test_bench_hash.c`
+- DO NOT generate benchmark cases with X-macros / use strait code generation for every function
 
 ## Code style & tooling
 
