@@ -1,5 +1,14 @@
 # CEX Release Notes
 
+## 0.19.1
+2026-05-28
+### Fixes
+- refactor: for$each removed assert + added for$each() static assertion big struct copy warning
+- fix: _cexds__hash_bytes UB wanings + added some more tests
+- fix: _cex_ds_hash_bytes() returns 0 if pointer NULL or len=0
+- fix: test --filter syntax
+
+
 ## 0.19.0
 2026-05-23
 
