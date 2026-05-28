@@ -1275,7 +1275,25 @@ CEX_NAMESPACE struct __cex_namespace__AllocatorArena AllocatorArena;
 
 /**
 
-* Creating array
+Generic type-safe dynamic array backed by a heap header.
+
+`arr$(T)` is just `T*` — zero overhead, fully C-array compatible with no hidden
+pointer or fat-pointer indirection. The runtime header
+(`_cexds__array_header`) lives *before* the user pointer at a negative offset.
+
+Principles:
+
+1. **Zero overhead** — `arr$(T)` = `T*`. Pass them to any function expecting a C pointer+length.
+2. **Allocator-backed** — Every array carries its `IAllocator`. Passed once at `arr$new`.
+3. **O(1) amortized growth** — Capacity doubles when full (minimum 16).
+4. **Unified length** — `arr$len()` works on dynamic `arr$`, static C arrays, and hashmaps.
+5. **Unified iteration** — `for$each` / `for$eachp` iterate any array (arr$, static, pointer+len, hm$).
+6. **Debug integrity** — Each array header has a magic number checked by every mutating macro
+   (`_CEXDS_ARR_MAGIC = 0xC001DAAD`). Wrong magic triggers an assertion.
+7. **ASAN-aware** — The 8-byte poison area after the header is marked poisoned so ASAN catches
+   underflow reads/writes.
+
+- Creating array
 ```c
     // Using heap allocator (need to free later!)
     arr$(i32) array = arr$new(array, mem$);
@@ -1308,7 +1326,7 @@ CEX_NAMESPACE struct __cex_namespace__AllocatorArena AllocatorArena;
     arr$free(array);
 ```
 
-* Array of structs
+- Array of structs
 ```c
 
 typedef struct
@@ -1408,14 +1426,14 @@ static_assert(
 
 #define _cexds__header(t) ((_cexds__array_header*)(((char*)(t)) - sizeof(_cexds__array_header)))
 
-/// Generic array type definition. Use arr$(int) myarr - defines new myarr variable, as int array
+/// Declares a dynamic array variable. `arr$(int) myarr` = `int* myarr`. Zero overhead, fully C-compatible.
 #define arr$(T) T*
 
 struct _cexds__arr_new_kwargs_s
 {
     usize capacity;
 };
-/// Array initialization: use arr$(int) arr = arr$new(arr, mem$, .capacity = , ...)
+/// Initializes a dynamic array. Pass the array variable, an `IAllocator`, and optional `.capacity = N`. Returns the new pointer on success, NULL on memory error.
 #define arr$new(a, allocator, kwargs...)                                                           \
     ({                                                                                             \
         static_assert(_Alignof(typeof(*a)) <= 64, "array item alignment too high");                \
@@ -1431,19 +1449,19 @@ struct _cexds__arr_new_kwargs_s
         );                                                                                         \
     })
 
-/// Free resources for dynamic array (only needed if mem$ allocator was used)
+/// Frees the array memory and sets the pointer to NULL. Safe on NULL arrays (no-op).
 #define arr$free(a) (_cexds__arr_integrity(a, _CEXDS_ARR_MAGIC), _cexds__arrfreef((a)), (a) = NULL)
 
-/// Set array capacity and resize if needed
+/// Resizes the array capacity to at least `n` elements. No-op if current capacity >= n.
 #define arr$setcap(a, n) (_cexds__arr_integrity(a, _CEXDS_ARR_MAGIC), arr$grow(a, 0, n))
 
-/// Clear array contents
+/// Clears the array (sets length to 0). Does NOT free or shrink memory — use `arr$free` for that.
 #define arr$clear(a) (_cexds__arr_integrity(a, _CEXDS_ARR_MAGIC), _cexds__header(a)->length = 0)
 
-/// Returns current array capacity
+/// Returns the current allocated capacity (in elements). Returns 0 if array is NULL.
 #define arr$cap(a) ((a) ? (_cexds__header(a)->capacity) : 0)
 
-/// Delete array elements by index (memory will be shifted, order preserved)
+/// Deletes element at index `i` by shifting subsequent elements left. Order preserved. O(n).
 #define arr$del(a, i)                                                                              \
     ({                                                                                             \
         _cexds__arr_integrity(a, _CEXDS_ARR_MAGIC);                                                \
@@ -1452,7 +1470,7 @@ struct _cexds__arr_new_kwargs_s
         _cexds__header(a)->length--;                                                               \
     })
 
-/// Delete element by swapping with last one (no memory overhear, element order changes)
+/// Deletes element at index `i` by swapping with the last element. Order NOT preserved, but O(1).
 #define arr$delswap(a, i)                                                                          \
     ({                                                                                             \
         _cexds__arr_integrity(a, _CEXDS_ARR_MAGIC);                                                \
@@ -1461,7 +1479,7 @@ struct _cexds__arr_new_kwargs_s
         _cexds__header(a)->length -= 1;                                                            \
     })
 
-/// Return last element of array
+/// Returns the last element (by value). Asserts that the array is not empty.
 #define arr$last(a)                                                                                \
     ({                                                                                             \
         _cexds__arr_integrity(a, _CEXDS_ARR_MAGIC);                                                \
@@ -1469,7 +1487,7 @@ struct _cexds__arr_new_kwargs_s
         (a)[_cexds__header(a)->length - 1];                                                        \
     })
 
-/// Get element at index (bounds checking with uassert())
+/// Returns element at index `i` (by value) with bounds checking via `uassert()`. Also works on `hm$`.
 #define arr$at(a, i)                                                                               \
     ({                                                                                             \
         _cexds__arr_integrity(a, 0); /* may work also on hm$ */                                    \
@@ -1477,7 +1495,7 @@ struct _cexds__arr_new_kwargs_s
         (a)[i];                                                                                    \
     })
 
-/// Pop element from the end
+/// Pops and returns the last element (by value). Assert-fails on empty array. Decrements length.
 #define arr$pop(a)                                                                                 \
     ({                                                                                             \
         _cexds__arr_integrity(a, _CEXDS_ARR_MAGIC);                                                \
@@ -1485,7 +1503,7 @@ struct _cexds__arr_new_kwargs_s
         (a)[_cexds__header(a)->length];                                                            \
     })
 
-/// Push element to the end
+/// Appends a single element to the end. Automatically grows capacity if needed. Returns pointer to the new slot.
 #define arr$push(a, value...)                                                                      \
     ({                                                                                             \
         if (unlikely(!arr$grow_check(a, 1))) {                                                     \
@@ -1496,7 +1514,7 @@ struct _cexds__arr_new_kwargs_s
         &(a)[_cexds__header(a)->length-1];                                                         \
     })
 
-/// Push many elements to the end
+/// Appends multiple elements at once: `arr$pushm(arr, 1, 2, 3)`. Uses a compound-literal temporary array.
 #define arr$pushm(a, items...)                                                                     \
     ({                                                                                             \
         /* NOLINTBEGIN */                                                                          \
@@ -1506,7 +1524,7 @@ struct _cexds__arr_new_kwargs_s
         /* NOLINTEND */                                                                            \
     })
 
-/// Push another array into a. array can be dynamic or static or pointer+len
+/// Appends all elements from `array` (dynamic, static, or pointer+len) into `a`. `array_len` is optional for pointer+len.
 #define arr$pusha(a, array, array_len...)                                                          \
     ({                                                                                             \
         /* NOLINTBEGIN */                                                                          \
@@ -1523,7 +1541,7 @@ struct _cexds__arr_new_kwargs_s
         /* NOLINTEND */                                                                            \
     })
 
-/// Sort array with qsort() libc function
+/// Sorts the array in-place using `qsort()` with the provided comparator.
 #define arr$sort(a, qsort_cmp)                                                                     \
     ({                                                                                             \
         _cexds__arr_integrity(a, _CEXDS_ARR_MAGIC);                                                \
@@ -1531,7 +1549,7 @@ struct _cexds__arr_new_kwargs_s
     })
 
 
-/// Inserts element into array at index `i`
+/// Inserts element at index `i`, shifting subsequent elements right. Order preserved. O(n).
 #define arr$ins(a, i, value...)                                                                    \
     do {                                                                                           \
         if (unlikely(!arr$grow_check(a, 1))) {                                                     \
@@ -1544,14 +1562,14 @@ struct _cexds__arr_new_kwargs_s
         (a)[i] = (value);                                                                          \
     } while (0)
 
-/// Check array capacity and return false on memory error
+/// Checks if array has room for `add_extra` elements, growing if needed. Returns false on memory error.
 #define arr$grow_check(a, add_extra)                                                               \
     ((_cexds__arr_integrity(a, _CEXDS_ARR_MAGIC) &&                                                \
       _cexds__header(a)->length + (add_extra) > _cexds__header(a)->capacity)                       \
          ? (arr$grow(a, add_extra, 0), a != NULL)                                                  \
          : true)
 
-/// Grows array capacity
+/// Grows array so it can hold at least `add_len` more elements, with the absolute minimum of `min_cap`.
 #define arr$grow(a, add_len, min_cap)                                                              \
     ((a) = _cexds__arrgrowf((a), sizeof *(a), (add_len), (min_cap), alignof(typeof(*a)), NULL))
 
@@ -1572,7 +1590,7 @@ struct _cexds__arr_new_kwargs_s
                   );                                                                               \
         })
 #else
-/// Versatile array length, works with dynamic (arr$) and static compile time arrays
+/// Returns the number of elements. Works on `arr$`, `hm$`, static C arrays, and pointer+length slices.
 #    define arr$len(arr)                                                                           \
         ({                                                                                         \
             _Pragma("GCC diagnostic push");                                                        \
@@ -1607,8 +1625,19 @@ _cex__get_buf_addr(void* a)
 
 /**
 
-- using for$ as unified array iterator
+Unified array / hashmap / slice iteration framework.
 
+`for$` macros provide a single syntax for looping over any iterable data in CEX:
+
+| Variant                              | Copies elements?          | Use case                                         |
+|--------------------------------------|---------------------------|--------------------------------------------------|
+| `for$each(it, array, len?)`          | By value (≤ 64 B)         | Small types / copy iteration / slices            |
+| `for$eachp(it, array, len?)`         | By pointer (no copy)      | Large structs / avoid copy overhead / slices     |
+| `for$iter(T, it, iter_func)`         | Custom (cex_iterator_s)   | Tokenizers, generators, splitters                |
+
+All three work identically on `arr$`, `hm$`, static C arrays, and pointer+length slices.
+
+- Using for$ as unified array iterator
 ```c
 
 test$case(test_array_iteration)
@@ -1680,7 +1709,15 @@ test$case(test_array_iteration)
 #define __for$
 
 /**
- * @brief cex_iterator_s - CEX iterator interface
+ * @brief Generic iterator state (≤ 64 bytes). Used by `for$iter()` and custom iterator functions.
+ *
+ * Fields:
+ * - `idx.i` — integer index (for array iteration)
+ * - `idx.skey` — string key (for char*-keyed iteration)
+ * - `idx.pkey` — opaque pointer key
+ * - `_ctx[47]` — opaque per-iterator state
+ * - `stopped` — set to 1 by the iterator function when exhausted
+ * - `initialized` — set to 1 after first call
  */
 typedef struct
 {
@@ -1703,12 +1740,21 @@ static_assert(alignof(cex_iterator_s) == alignof(void*), "alignof");
 static_assert(sizeof(cex_iterator_s) <= 64, "cex size");
 
 /**
- * @brief Iterates via iterator function (see usage below)
+ * @brief Iterates via a custom iterator function.
+ *
+ * The iterator function receives a `cex_iterator_s*` and returns the next value
+ * (or a zero-initialized sentinel when iteration is complete — the `.stopped`
+ * field is set to 1).
  *
  * Iterator function signature:
- * u32* array_iterator(u32 array[], u32 len, cex_iterator_s* iter)
+ * ```c
+ * MyType next_value(MyType array[], usize len, cex_iterator_s* iter);
+ * ```
  *
+ * Usage:
+ * ```c
  * for$iter(u32, it, array_iterator(arr2, arr$len(arr2), &it.iterator))
+ * ```
  */
 #define for$iter(it_val_type, it, iter_func)                                                       \
     struct cex$tmpname(__cex_iter_)                                                                \
@@ -1737,8 +1783,7 @@ static_assert(sizeof(cex_iterator_s) <= 64, "cex size");
 #define CEX_FOREACH_MAX_COPY_SIZE 64
 #endif
 
-/// Iterates over arrays `it` is iterated **value**, array may be arr$/or static / or pointer,
-/// array_len is only required for pointer+len use case
+/// Iterates over arrays by **value** (copies each element into `it`). Works on arr$, hm$, static arrays, and pointer+len. Capped at `CEX_FOREACH_MAX_COPY_SIZE` (64 B) per element.
 #define for$each(it, array, array_len...)                                                          \
     /* NOLINTBEGIN*/                                                                               \
     static_assert(sizeof(typeof((array)[0])) <= CEX_FOREACH_MAX_COPY_SIZE,                          \
@@ -1759,8 +1804,7 @@ static_assert(sizeof(cex_iterator_s) <= 64, "cex size");
     /* NOLINTEND */                                                                                \
 
 
-/// Iterates over arrays `it` is iterated by **pointer**, array may be arr$/or static / or pointer,
-/// array_len is only required for pointer+len use case
+/// Iterates over arrays by **pointer** (no copy — `it` is `T*`). Best for large structs. Works on arr$, hm$, static arrays, and pointer+len.
 #define for$eachp(it, array, array_len...)                                                         \
     /* NOLINTBEGIN*/                                                                               \
     usize cex$tmpname(arr_length_opt)[] = { array_len }; /* decide if user passed array_len */     \
@@ -1777,25 +1821,39 @@ static_assert(sizeof(cex_iterator_s) <= 64, "cex size");
 /*
  *                 HASH MAP
  */
-
 /**
-Generic type-safe hashmap
+
+Generic type-safe hashmap backed by open-addressing with quadratic probing.
+
+The hashmap shares the same backing engine as `arr$` (same header, same allocator).
+This means every `hm$` is also an `arr$` — you can iterate, index, and take its length
+just like a regular dynamic array.
+
+Key features:
+
+1. **Open-addressing** with bucketed hash table (8 slots per cache-line-aligned bucket).
+2. **Quadratic probing** with tombstone tracking for efficient deletions.
+3. **Key type auto-detection** via `_Generic` — numeric (memcmp), `char*` (strcmp),
+   `char[N]` (strcmp), `str_s` (memcmp with length check).
+4. **String key modes** — no-copy (default), copy via `malloc`/`strdup`
+   (`.copy_keys = true`), or copy via arena allocator
+   (`.copy_keys = true, .copy_keys_arena_pgsize = NNN`).
+5. **Grow / shrink** — table doubles at 75% load factor, halves below 25%,
+   tombstones trigger rebuild at ~12%.
+6. **Dual index** — `hm$` data array is sorted by insertion order (stable until
+   first delete). Hash table entries point into this array, so `arr$len()`,
+   `for$each`, and bracket indexing all work transparently.
 
 Principles:
 
-1. Data is backed by engine similar to arr$
-2. `arr$len()` works with hashmap too
-3. Array indexing works with hashmap
-4. `for$each`/`for$eachp` is applicable
-5. `hm$` generic type is essentially a struct with `key` and `value` fields
-6. `hm$` supports following keys: numeric (by default it's just binary representation), char*,
-char[N], str_s (CEX sting slice).
-7. `hm$` with string keys are stored without copy, use  `hm$new(hm, mem$, .copy_keys = true)` for
-copy-mode.
-8. `hm$` can store string keys inside an Arena allocator when  `hm$new(hm, mem$, .copy_keys = true,
-.copy_keys_arena_pgsize = NNN)`
+1. `hm$(K,V)` is a struct `{ K key; V value; }*`.
+2. `hm$s(S)` treats any struct with a `.key` field as a hashmap record.
+3. `arr$len()`, `arr$cap()`, `for$each`, `for$eachp` all work on `hm$` types.
+4. Array indexing `smap[i].key` / `smap[i].value` works but order may change after
+   calls to `hm$del`.
+5. `hm$new` can return `NULL` on memory error — always check (or use `uassert`).
 
-
+- Basic usage
 ```c
 
 test$case(test_simple_hashmap)
@@ -1940,7 +1998,7 @@ test$case(test_hashmap_basic)
 */
 #define __hm$
 
-/// Defines hashmap generic type
+/// Declares a hashmap variable. `hm$(char*, int) map` = `struct { char* key; int value; }*`.
 #define hm$(_KeyType, _ValType)                                                                    \
     struct                                                                                         \
     {                                                                                              \
@@ -1948,7 +2006,7 @@ test$case(test_hashmap_basic)
         _ValType value;                                                                            \
     }*
 
-/// Defines hashmap type based on _StructType, must have `key` field
+/// Declares a hashmap based on a custom struct that has a `.key` field. The struct itself becomes the key+value record.
 #define hm$s(_StructType) _StructType*
 
 /// hm$new(kwargs...) - default values always zeroed (ZII)
@@ -1961,8 +2019,7 @@ struct _cexds__hm_new_kwargs_s
 };
 
 
-/// Creates new hashmap of hm$(KType, VType) using allocator, kwargs: .capacity, .seed,
-/// .copy_keys_arena_pgsize, .copy_keys
+/// Creates a new hashmap. Keyword args: `.capacity`, `.seed`, `.copy_keys` (for char* keys), `.copy_keys_arena_pgsize`. Returns the new pointer on success, NULL on memory error.
 #define hm$new(t, allocator, kwargs...)                                                            \
     ({                                                                                             \
         static_assert(_Alignof(typeof(*t)) <= 64, "hashmap record alignment too high");            \
@@ -1982,7 +2039,7 @@ struct _cexds__hm_new_kwargs_s
     })
 
 
-/// Set hashmap key/value, replaces if exists 
+/// Sets `key` to `value` in the hashmap. Replaces if key already exists. Returns pointer to the record, or NULL on memory error.
 #define hm$set(t, k, v...)                                                                         \
     ({                                                                                             \
         typeof(t) result = NULL;                                                                   \
@@ -1999,7 +2056,7 @@ struct _cexds__hm_new_kwargs_s
         result;                                                                                    \
     })
 
-/// Add new item and returns pointer of hashmap record for `k`, for further editing  
+/// Adds or gets a key and returns a pointer to its value field for direct mutation. Returns NULL on memory error.
 #define hm$setp(t, k)                                                                              \
     ({                                                                                             \
         typeof(t) result = NULL;                                                                   \
@@ -2015,7 +2072,7 @@ struct _cexds__hm_new_kwargs_s
         (result ? &result->value : NULL);                                                          \
     })
 
-/// Set full record, must be initialized by user
+/// Sets a full pre-initialized record (struct with `.key` field) into the hashmap. Returns pointer to the stored record, or NULL on memory error.
 #define hm$sets(t, v...)                                                                           \
     ({                                                                                             \
         typeof(t) result = NULL;                                                                   \
@@ -2032,7 +2089,7 @@ struct _cexds__hm_new_kwargs_s
         result;                                                                                    \
     })
 
-/// Get item by value, def - default value (zeroed by default), can be any type
+/// Gets the value for key `k` by value. Returns `def` (defaults to zero) if key not found.
 #define hm$get(t, k, def...)                                                                       \
     ({                                                                                             \
         typeof(t) result = _cexds__hmget_key(                                                      \
@@ -2046,7 +2103,7 @@ struct _cexds__hm_new_kwargs_s
         result ? result->value : _def[0];                                                          \
     })
 
-/// Get item by pointer (no copy, direct pointer inside hashmap)
+/// Gets a pointer to the value for key `k`. Returns NULL if key not found (no copy — direct pointer into hashmap storage).
 #define hm$getp(t, k)                                                                              \
     ({                                                                                             \
         typeof(t) result = _cexds__hmget_key(                                                      \
@@ -2059,7 +2116,7 @@ struct _cexds__hm_new_kwargs_s
         result ? &result->value : NULL;                                                            \
     })
 
-/// Get a pointer to full hashmap record, NULL if not found
+/// Gets a pointer to the full hashmap record (key+value struct) for key `k`. Returns NULL if not found.
 #define hm$gets(t, k)                                                                              \
     ({                                                                                             \
         typeof(t) result = _cexds__hmget_key(                                                      \
@@ -2072,7 +2129,7 @@ struct _cexds__hm_new_kwargs_s
         result;                                                                                    \
     })
 
-/// Clears hashmap contents
+/// Clears all entries from the hashmap. Frees copied string keys if `.copy_keys` was set. Does NOT free the hashmap itself.
 #define hm$clear(t)                                                                                \
     ({                                                                                             \
         _cexds__arr_integrity(t, _CEXDS_HM_MAGIC);                                                 \
@@ -2082,7 +2139,7 @@ struct _cexds__hm_new_kwargs_s
         true;                                                                                      \
     })
 
-/// Deletes items, IMPORTANT hashmap array may be reordered after this call
+/// Deletes the entry for key `k`. IMPORTANT: the backing array may be reordered (swap-with-last). Frees copied string keys if applicable.
 #define hm$del(t, k)                                                                               \
     ({                                                                                             \
         _cexds__hmdel_key(                                                                         \
@@ -2095,10 +2152,10 @@ struct _cexds__hm_new_kwargs_s
     })
 
 
-/// Frees hashmap resources
+/// Frees all hashmap resources (entries, key copies, arena, hash table) and sets the pointer to NULL.
 #define hm$free(t) (_cexds__hmfree_func((t), sizeof *(t), offsetof(typeof(*t), key)), (t) = NULL)
 
-/// Returns hashmap length, also you can use arr$len()
+/// Returns the number of entries in the hashmap. Equivalent to `arr$len()`. Returns 0 if NULL.
 #define hm$len(t)                                                                                  \
     ({                                                                                             \
         if (t != NULL) { _cexds__arr_integrity(t, _CEXDS_HM_MAGIC); }                              \
