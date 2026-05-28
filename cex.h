@@ -189,9 +189,27 @@ __attribute__((noinline)) void __cex__panic(void);
 *                          src/cex_base.h
 */
 /**
- * @file cex/cex.h
- * @brief CEX core file
- */
+ 
+Core foundation of CEX — bundled into `cex.h`.
+
+Provides primitive type aliases (`u8` … `u64`, `i8` … `i64`, `f32`/`f64`,
+`usize`/`isize`), `IAllocator` allocator interface, `str_s` string slice,
+error handling (`__e$`), logging (`__log$`), assertions (`uassert`), and
+utility macros (`unlikely`/`likely`/`breakpoint`/`unreachable`/token concat).
+
+| Type                | Description                               |
+| auto                | Automatically inferred variable type      |
+| bool                | Boolean type                              |
+| u8 / i8 … u64/i64  | Fixed-width integer types                 |
+| f32 / f64           | 32/64-bit floating point                  |
+| usize / isize       | Unsigned/signed size types                |
+| char*               | Null-terminated string                    |
+| str_s               | String slice (buf + len)                  |
+| Exc / Exception     | Error type (NULL = success)               |
+| Error.*             | Standard error constants                  |
+| IAllocator          | Allocator interface vtable                |
+
+*/
 
 /*
  *                 CORE TYPES
@@ -213,6 +231,22 @@ typedef ptrdiff_t isize;
 /// automatic variable type, supported by GCC/Clang or C23
 #    define auto __auto_type
 #endif
+
+/**
+
+IAllocator — 64-byte allocator vtable interface.
+
+Every function that may allocate memory takes an `IAllocator` parameter.
+The same code works with heap allocators, arena allocators, or temp allocators.
+
+Fields:
+- `malloc` / `calloc` / `realloc` / `free` — standard allocation (with alignment)
+- `scope_enter` / `scope_exit` / `scope_depth` — arena scope management (for `mem$scope`)
+- `meta.is_arena` / `meta.is_temp` / `meta.magic_id` — allocator type identification
+
+Size is exactly 64 bytes (one cache line).
+
+*/
 
 // clang-format off
 #define IAllocator const struct Allocator_i* 
@@ -251,11 +285,11 @@ static_assert(sizeof(str_s) == sizeof(usize) * 2, "size");
 
 
 /**
- * @brief creates str_s, instance from string literals/constants: str$s("my string")
- *
- * Uses compile time string length calculation, only literals
- *
- */
+
+Creates `str_s` from string literals at compile time: `str$s("my string")`.
+Only works with string literals — not `char*` pointers.
+
+*/
 #define str$s(string)                                                                              \
     (str_s){ .buf = /* WARNING: only literals!!!*/ "" string, .len = sizeof((string)) - 1 }
 
@@ -280,41 +314,51 @@ static_assert(sizeof(str_s) == sizeof(usize) * 2, "size");
 /*
  *                 ERRORS
  */
-
 /**
-CEX Error handling cheat sheet:
 
-1. Errors can be any `char*`, or string literals.
-2. EOK / Error.ok - is NULL, means no error
-3. Exception return type forced to be checked by compiler
-4. Error is built-in generic error type
-5. Errors should be checked by pointer comparison, not string contents.
-6. `e$` are helper macros for error handling
-7.  DO NOT USE break/continue inside e\$except/e\$except_* scopes (these macros are for loops too)!
+CEX Exception-based error handling.
 
+Errors are `char*` pointers:
+- `EOK` (or `Error.ok`) = `NULL` → success
+- Any non-NULL value → an error
+- `Exception` return type forces the caller to check (`warn_unused_result`)
+- Errors are compared by **address**, never by string content
 
-Generic errors:
+Principles:
 
-```c
-Error.ok = EOK;                       // Success
-Error.memory = "MemoryError";         // memory allocation error
-Error.io = "IOError";                 // IO error
-Error.overflow = "OverflowError";     // buffer overflow
-Error.argument = "ArgumentError";     // function argument error
-Error.integrity = "IntegrityError";   // data integrity error
-Error.exists = "ExistsError";         // entity or key already exists
-Error.not_found = "NotFoundError";    // entity or key already exists
-Error.skip = "ShouldBeSkipped";       // NOT an error, function result must be skipped
-Error.null_or_empty = "NullOrEmptyError";           // value is null or resource is empty
-Error.eof = "EOF";                    // end of file reached
-Error.argsparse = "ProgramArgsError"; // program arguments empty or incorrect
-Error.runtime = "RuntimeError";       // generic runtime error
-Error.assert = "AssertError";         // generic runtime check
-Error.os = "OSError";                 // generic OS check
-Error.timeout = "TimeoutError";       // await interval timeout
-Error.permission = "PermissionError"; // Permission denied
-Error.try_again = "TryAgainError";    // EAGAIN / EWOULDBLOCK errno analog for async operations
-```
+1. **Unambiguous** — only two states: OK or error, never mixed with valid return values
+2. **General purpose** — same pattern for allocation errors, IO, argument validation, etc.
+3. **Easy to report** — errors are printable strings; use `e$raise` for location-tagged logging
+4. **Bubbling up** — pass the same error pointer upward; no error-code translation needed
+5. **Extensible** — define custom error structs with your own string constants
+6. **Low overhead** — one pointer (one register), comparison is a single instruction
+7. **Natural** — regular `if` / `switch` works; `e$` macros are optional helpers
+8. **Mandatory checking** — `Exception` return type triggers `-Werror=unused-result` if ignored
+
+Standard errors:
+
+| Error.*         | String Value           | Description                           |
+| --------------- | ---------------------- | ------------------------------------- |
+| Error.ok        | EOK (NULL)             | Success (no error)                    |
+| Error.memory    | "MemoryError"          | Memory allocation error               |
+| Error.io        | "IOError"              | I/O error                             |
+| Error.overflow  | "OverflowError"        | Buffer overflow                       |
+| Error.argument  | "ArgumentError"        | Invalid function argument             |
+| Error.integrity | "IntegrityError"       | Data integrity violation              |
+| Error.exists    | "ExistsError"          | Entity or key already exists          |
+| Error.not_found | "NotFoundError"        | Entity or key not found               |
+| Error.skip      | "ShouldBeSkipped"      | Not an error — result must be skipped |
+| Error.null_or_empty | "NullOrEmptyError" | Value is NULL or resource is empty    |
+| Error.eof       | "EOF"                  | End of file reached                   |
+| Error.argsparse | "ProgramArgsError"     | Program arguments error               |
+| Error.runtime   | "RuntimeError"         | Generic runtime error                 |
+| Error.assert    | "AssertError"          | Assertion failure                     |
+| Error.os        | "OSError"              | OS-level error                        |
+| Error.timeout   | "TimeoutError"         | Interval timeout                      |
+| Error.permission | "PermissionError"     | Permission denied                     |
+| Error.try_again | "TryAgainError"        | EAGAIN / EWOULDBLOCK analog           |
+
+Examples:
 
 ```c
 
@@ -322,7 +366,7 @@ Exception
 remove_file(char* path)
 {
     if (path == NULL || path[0] == '\0') {
-        return Error.argument;  // Empty of null file
+        return Error.argument;  // Empty path
     }
     if (!os.path.exists(path)) {
         return "Not exists" // literal error are allowed, but must be handled as strcmp()
@@ -337,7 +381,9 @@ remove_file(char* path)
     return EOK;
 }
 
-Exception read_file(char* filename) {
+Exception
+read_file(char* filename)
+{
     e$assert(buff != NULL);
 
     int fd = 0;
@@ -345,20 +391,20 @@ Exception read_file(char* filename) {
     return EOK;
 }
 
-Exception do_stuff(char* filename) {
+Exception
+do_stuff(char* filename)
+{
     // return immediately with error + prints traceback
     e$ret(read_file("foo.txt"));
 
     // jumps to label if read_file() fails + prints traceback
     e$goto(read_file(NULL), fail);
 
-    // silent error handing without tracebacks
+    // silent error handling without tracebacks
     e$except_silent (err, foo(0)) {
 
         // Nesting of error handlers is allowed
-        e$except_silent (err, foo(2)) {
-            return err;
-        }
+        e$except_silent (err, foo(2)) { return err; }
 
         // NOTE: `err` is address of char* compared with address Error.os (not by string contents!)
         if (err == Error.os) {
@@ -376,6 +422,12 @@ fail:
     return Error.io;
 }
 ```
+
+Caveats:
+
+- Do NOT use `break` / `continue` inside `e$except` or `e$except_*` scopes when nested inside loops — these macros are backed by `for()` loops, so `break`/`continue` affects the error-handling loop, not the outer loop.
+
+
 */
 #define __e$
 
@@ -391,9 +443,10 @@ typedef char* Exc;
 
 
 /**
- * @brief Generic errors list, used as constant pointers, errors must be checked as
- * pointer comparison, not as strcmp() !!!
- */
+
+Generic errors as constant pointers — compare by address, never by strcmp().
+
+*/
 extern const struct _CEX_Error_struct
 {
     Exc ok; // NOTE: must be the 1st, same as EOK
@@ -450,21 +503,33 @@ __cex__fprintf_dummy(void)
 #endif
 
 /**
-Simple console logging engine:
 
-- Prints file:line + log type: `[INFO]    ( file.c:14 cexy_fun() ) Message format: ./cex`
+Simple console logging with file:line location prefix.
+
+`log$error` / `log$warn` / `log$info` / `log$debug` / `log$trace`
+
+- Output format: `[INFO]    ( file.c:14 func() ) message`
 - Supports CEX formatting engine
-- Can be regulated using compile time level, e.g. `#define CEX_LOG_LVL 4`
+- Compile-time level control via `#define CEX_LOG_LVL <level>`
 
+Log levels:
 
-Log levels (CEX_LOG_LVL value):
+- 0 — mute all (including asserts, tracebacks, errors)
+- 1 — `log$error` + asserts + tracebacks
+- 2 — `log$warn`
+- 3 — `log$info`
+- 4 — `log$debug` (default)
+- 5 — `log$trace`
 
-- 0 - mute all including assert messages, tracebacks, errors
-- 1 - allow log$error + assert messages, tracebacks
-- 2 - allow log$warn
-- 3 - allow log$info
-- 4 - allow log$debug (default level if CEX_LOG_LVL is not set)
-- 5 - allow log$trace
+Example:
+```c
+#define CEX_LOG_LVL 3
+int main(void)
+{
+    log$info("Hello from CEX\n");
+    return 0;
+}
+```
 
 */
 #define __log$
@@ -616,8 +681,16 @@ Log levels (CEX_LOG_LVL value):
 
 
 /**
- *                 ASSERTIONS MACROS
- */
+ 
+Assertion macros, ASAN detection, and stack-trace helpers.
+
+- `mem$asan_enabled()` — compile-time check for Address Sanitizer
+- `sanitizer_stack_trace()` — prints ASAN stack trace when available
+- `uassert(A)` — hard assertion, prints file:line:func + traceback, then aborts
+- `uassertf(A, format, ...)` — assertion with formatted message
+- `uassert_disable()` / `uassert_enable()` — suppress assertions in test mode
+
+*/
 #ifndef mem$asan_enabled
 #    if defined(__has_feature)
 #        if __has_feature(address_sanitizer)
@@ -675,10 +748,7 @@ int __cex_test_uassert_enabled = 1;
 #    endif // #ifdef CEX_TEST
 
 
-/**
- * @def uassert(A)
- * @brief Custom assertion, with support of sanitizer call stack printout at failure.
- */
+/// Hard assertion with ASAN stack trace on failure. Aborts via `cex$platform_panic()`.
 #    define uassert(A)                                                                             \
         ({                                                                                         \
             if (unlikely(!((A)))) {                                                                \
@@ -728,6 +798,7 @@ int __cex_test_uassert_enabled = 1;
         })
 #endif
 
+/// Cross-platform debugger breakpoint.
 #if defined(_WIN32) || defined(_WIN64)
 #    define breakpoint() __debugbreak()
 #elif defined(__APPLE__)

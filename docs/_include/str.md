@@ -132,7 +132,7 @@ tassert(str.slice.match(src, "my_test*.txt"));
 /// Joins parts of strings using a separator str$join(allc, ",", "a", "b", "c") -> "a,b,c"
 #define str$join(allocator, str_join_by, str_parts...)
 
-/// creates str_s, instance from string literals/constants: str$s("my string")
+/// Creates `str_s` from string literals at compile time: `str$s("my string")`.
 #define str$s(string)
 
 /// Represents char* slice (string view) + may not be null-term at len!
