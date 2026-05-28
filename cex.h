@@ -332,7 +332,7 @@ Principles:
 4. **Bubbling up** — pass the same error pointer upward; no error-code translation needed
 5. **Extensible** — define custom error structs with your own string constants
 6. **Low overhead** — one pointer (one register), comparison is a single instruction
-7. **Natural** — regular `if` / `switch` works; `e$` macros are optional helpers
+7. **Natural** — regular `if` works; `e$` macros are optional helpers
 8. **Mandatory checking** — `Exception` return type triggers `-Werror=unused-result` if ignored
 
 Standard errors:

@@ -1,19 +1,31 @@
 
-Simple console logging engine:
 
-- Prints file:line + log type: `[INFO]    ( file.c:14 cexy_fun() ) Message format: ./cex`
+Simple console logging with file:line location prefix.
+
+`log$error` / `log$warn` / `log$info` / `log$debug` / `log$trace`
+
+- Output format: `[INFO]    ( file.c:14 func() ) message`
 - Supports CEX formatting engine
-- Can be regulated using compile time level, e.g. `#define CEX_LOG_LVL 4`
+- Compile-time level control via `#define CEX_LOG_LVL <level>`
 
+Log levels:
 
-Log levels (CEX_LOG_LVL value):
+- 0 — mute all (including asserts, tracebacks, errors)
+- 1 — `log$error` + asserts + tracebacks
+- 2 — `log$warn`
+- 3 — `log$info`
+- 4 — `log$debug` (default)
+- 5 — `log$trace`
 
-- 0 - mute all including assert messages, tracebacks, errors
-- 1 - allow log$error + assert messages, tracebacks
-- 2 - allow log$warn
-- 3 - allow log$info
-- 4 - allow log$debug (default level if CEX_LOG_LVL is not set)
-- 5 - allow log$trace
+Example:
+```c
+#define CEX_LOG_LVL 3
+int main(void)
+{
+    log$info("Hello from CEX\n");
+    return 0;
+}
+```
 
 
 
