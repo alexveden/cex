@@ -78,6 +78,14 @@ Set via `./cex -D<PRESET> config`.
 - CI clang-tidy: `clang-tidy $(find ./src -name "*.c" -o -name "*.h")`.
 - CEX namespace convention: `$` in macro identifiers (e.g. `test$case`, `mem$scope`, `e$ret`, `for$each`).
 
+## Documentation conventions
+- `./cex help` a special command for getting help, it automatically parses full project files to search usage
+- `///` brief docs comments are placed before each function in the namespace
+- Large `/** */` doc comment is placed in namespace header file right before `struct __cex_namespace__<namespace>` definition
+- Sometimes there is no `struct __cex_namespace__<namespace>` definition so large `/** */` doc comment is placed before `#define __<namespace>$`
+- All files in `docs/_include/*.md` are auto generated, do not edit them directly, edit `/** */` in headers before namespace definition
+- If you need to use markdown tables in doc-strings, make sure white space alignment with max 120 width, because they will be displayed in terminal 
+
 ## Key conventions
 
 - `$` in identifiers indicates it's a macro, typically `<namespace>$<name>`, `$<name>` allowed for private use and must be `#undef $<name>` in the same file or function (depends on scope)
