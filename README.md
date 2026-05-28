@@ -7,7 +7,7 @@
 ![Examples](https://github.com/alexveden/cex/actions/workflows/examples.yml/badge.svg)
 
 
-Cex.C (officially pronounced /ˈtsɛk.si/ "tsek-see") was born as alternative answer to a plethora of brand new LLVM based languages which strive to replace old C. Cex.C still remains C language itself, with small, but important tweaks that bring a completely different development experience.
+Cex.C (officially pronounced /ˈtsɛk.si/ "tsek-see") was born as an alternative answer to a plethora of brand new LLVM based languages which strive to replace old C. Cex.C still remains C language itself, with small, but important tweaks that bring a completely different development experience.
 
 LEGAL NOTICE: Any intentional mispronunciation of Cex.C or cexy$ (build system), officially pronounced /ˈtsɛk.si/ ("tsek-see"), into an incorrect form may be considered intentional tseksual harassment of the project — which identifies itself with the code gender (it/its) — and may be subject to legal action under the MIT License. /LOL/ 
 
@@ -39,7 +39,7 @@ cd project_dir
 gcc -D CEX_NEW -x c ./cex.h -o cex
 clang -D CEX_NEW -x c ./cex.h -o cex
 ```
-4. Run cex program for project initilization
+4. Run cex program for project initialization
 ```
 ./cex
 ```
@@ -84,11 +84,11 @@ The philosophy of CEX revolves around independence and self-containment, minimiz
 
 ### Key Features
 - Cross-platform, multi-architecture support, big/little endian
-- No dependency, single header C programming language less than 20k lines
+- No dependencies, single header C programming language less than 20k lines
 - Integrated build system - CEX builds itself, no external build system needed!
 - New memory management model based on Allocators (temporary memory scopes with auto-free, arenas, etc.)
 - New namespacing capabilities for grouping functions / simulating OOP classes
-- New error handling model (support of stack traceback on errors, assertions with stack trace (with ASAN))
+- New error handling model (support for stack traceback on errors, assertions with stack trace (with ASAN))
 - Developer experience - unit test runner / code generation / help system included in `cex.h`
 - Code distribution system based on Git and managing dependencies (system libs) with `pkgconf`/`vcpkg`
 - Simple, but powerful core lib included in `cex.h`:
@@ -172,7 +172,7 @@ cmd_custom_test(u32 argc, char** argv, void* user_ctx)
 ### Tested compilers / Libc support
 - GCC - 10, 11, 12, 13, 14, 15, 16
 - Clang - 13, 14, 15, 16, 17, 18, 19, 20, 21, 22
-- MSVC - unsupported, probably never will
+- MSVC - unsupported, probably never will be
 - LibC tested - glibc (linux), musl (linux), ucrt/mingw (windows), macos
 - Emscripten - for wasm
 - Freestanding/embedded - CEX supports optional feature disabling for constrained environments, even without LIBC (see [example](https://github.com/alexveden/cex/tree/master/examples/freestanding))
@@ -182,7 +182,7 @@ cmd_custom_test(u32 argc, char** argv, void* user_ctx)
 - Alpine linux - (libc musl, gcc) on architectures x86_64, x86, aarch64, armhf, armv7, loongarch64, ppc64le, riscv64, and s390x (big-endian) 
 - Windows (via MSYS2 build) - x64 (mingw64 + clang), libc mscrt/ucrt
 - Macos - x64 / arm64 (clang)
-- WASM - emscripten compiler ( due to platform limitations, `os.cmd.` related features are not available )
+- WASM - emscripten compiler (due to platform limitations, `os.cmd.` related features are not available)
 
 ### Test suite
 CEX is tested on various platforms, compiler versions, sanitizers, and optimization flags, ensuring future compatibility and stability. Sanitizers and Valgrind verify the absence of memory leaks, buffer overflows, and undefined behavior. Additionally, tests with release flags confirm that compiler optimizations do not interfere with the code logic.
@@ -226,7 +226,7 @@ The CEX codebase uses the `clang-tidy` static analyzer in its continuous integra
 
 CEX contains some code and ideas from the following projects, all of them licensed under MIT license (or Public Domain):
 
-1. [nob.h](https://github.com/tsoding/nob.h) - by Tsoding / Alexey Kutepov, MIT/Public domain, great idea of making self-contained build system, great youtube channel btw
+1. [nob.h](https://github.com/tsoding/nob.h) - by Tsoding / Alexey Kutepov, MIT/Public domain, great idea of making self-contained build system, great YouTube channel
 2. [stb_ds.h](https://github.com/nothings/stb/blob/master/stb_ds.h) - MIT/Public domain, by Sean Barrett, CEX arr$/hm$ are refactored versions of STB data structures, great idea 
 3. [stb_sprintf.h](https://github.com/nothings/stb/blob/master/stb_sprintf.h) - MIT/Public domain, by Sean Barrett, I refactored it, fixed all UB warnings from UBSAN, added CEX specific formatting
 4. [minirent.h](https://github.com/tsoding/minirent) - Alexey Kutepov, MIT license, WIN32 compatibility lib 
