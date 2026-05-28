@@ -1733,17 +1733,25 @@ static_assert(sizeof(cex_iterator_s) <= 64, "cex size");
          it.val = (iter_func))
 
 
+#ifndef CEX_FOREACH_MAX_COPY_SIZE
+#define CEX_FOREACH_MAX_COPY_SIZE 64
+#endif
+
 /// Iterates over arrays `it` is iterated **value**, array may be arr$/or static / or pointer,
 /// array_len is only required for pointer+len use case
 #define for$each(it, array, array_len...)                                                          \
     /* NOLINTBEGIN*/                                                                               \
+    static_assert(sizeof(typeof((array)[0])) <= CEX_FOREACH_MAX_COPY_SIZE,                          \
+        "for$each() copies elements by value, but element type is too large "                      \
+        "(sizeof(element) > CEX_FOREACH_MAX_COPY_SIZE). "                                          \
+        "Use for$eachp() for pointer-based iteration, "                                            \
+        "or increase CEX_FOREACH_MAX_COPY_SIZE.");                                                 \
     usize cex$tmpname(arr_length_opt)[] = { array_len }; /* decide if user passed array_len */     \
     usize cex$tmpname(arr_length) = (sizeof(cex$tmpname(arr_length_opt)) > 0)                      \
                                       ? cex$tmpname(arr_length_opt)[0]                             \
                                       : arr$len(array); /* prevents multi call of (length)*/       \
     typeof((array)[0])* cex$tmpname(arr_arrp) = _cex__get_buf_addr(array);                         \
     usize cex$tmpname(arr_index) = 0;                                                              \
-    uassert(cex$tmpname(arr_length) < PTRDIFF_MAX && "negative length or overflow");               \
     for (typeof((array)[0]) it = { 0 };                                                            \
          (cex$tmpname(arr_index) < cex$tmpname(arr_length) &&                                      \
           ((it) = cex$tmpname(arr_arrp)[cex$tmpname(arr_index)], 1));                              \
@@ -1759,7 +1767,6 @@ static_assert(sizeof(cex_iterator_s) <= 64, "cex size");
     usize cex$tmpname(arr_length) = (sizeof(cex$tmpname(arr_length_opt)) > 0)                      \
                                       ? cex$tmpname(arr_length_opt)[0]                             \
                                       : arr$len(array); /* prevents multi call of (length)*/       \
-    uassert(cex$tmpname(arr_length) < PTRDIFF_MAX && "negative length or overflow");               \
     typeof((array)[0])* cex$tmpname(arr_arrp) = _cex__get_buf_addr(array);                         \
     usize cex$tmpname(arr_index) = 0;                                                              \
     for (typeof((array)[0])* it = cex$tmpname(arr_arrp);                                           \
