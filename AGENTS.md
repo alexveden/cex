@@ -59,7 +59,7 @@ Set via `./cex -D<PRESET> config`.
 - Assertions: `tassert()`, `tassert_eq(a, b)` (type-generic), `tassert_ne`, `tassert_eq_almost`,
   `tassert_eq_arr`, `tassert_eq_ptr`, `tassert_eq_mem`, `tassert_er`, `tassertf`.
 - `uassert()` = hard assertion (aborts), `tassert()` = soft (fails test, continues).
-- Test output is captured by default (stdout suppressed); use `./cex test run <file> --no-capture` to see full output.
+- Test output is captured by default (stdout suppressed), but all failed tests will show their captured stdout and error messages.
 - Test cases for running may be filtered when you work on specific feature; use `./cex test run <file> --filter='my_full_case_name'`  runs only `test$case(my_full_case_name)`, you can use wildcards `--filter='my_full_case*'` or list of cases `--filter='(my_full_case_name|another_case|case3)'`.
 
 ## Benchmarking conventions
@@ -83,6 +83,7 @@ Set via `./cex -D<PRESET> config`.
 - `e$ret(func())` — return-with-traceback on error. `e$except(err, func()) { }` — catch error scope.
 - `Exception` return type forces caller to check (uses `warn_unused_result`).
 - DO NOT edit `./cex.h` directly, work on `src/*` and then run `./cex test <test file>` command, this will ensure `./cex.h` reassembly
+- All CEX `printf`-like functions and macros use custom printing format, which is mostly posix complient, with some differences (**platform independent**): `i64` type is handled by `%ld` format, `u64` is `%lu` format, `str_s` variables formatted by `%S`.
 
 ## Development workflow
 - Typically you should work on `src/*.[ch]` files
