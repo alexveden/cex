@@ -1376,4 +1376,87 @@ test$case(test_hashmap_string_copy_clear_cleanup_arena)
     hm$free(smap);
     return EOK;
 }
+test$case(test_hash_bytes)
+{
+    // --- NULL / zero-length ---
+    tassert_eq(_cexds__hash_bytes(NULL, 0, 10), 0);
+    tassert_eq(_cexds__hash_bytes("", 0, 10), 0);
+    tassert_eq(_cexds__hash_bytes("hello", 0, 0), 0);
+
+    // --- 4-byte fast path (len==4) ---
+    {
+        u32 v4 = 0xDEADBEEF;
+        u64 h4 = _cexds__hash_bytes(&v4, sizeof(v4), 0);
+        tassert(h4 != 0);
+        tassert_eq(_cexds__hash_bytes(&v4, sizeof(v4), 0), h4);
+        // different seed => different hash
+        tassert_ne(h4, _cexds__hash_bytes(&v4, sizeof(v4), 1));
+    }
+
+    // --- 8-byte fast path (len==8) ---
+    {
+        u64 v8 = 0x0123456789ABCDEFULL;
+        u64 h8 = _cexds__hash_bytes(&v8, sizeof(v8), 0);
+        tassert(h8 != 0);
+        tassert_eq(_cexds__hash_bytes(&v8, sizeof(v8), 0), h8);
+        tassert_ne(h8, _cexds__hash_bytes(&v8, sizeof(v8), 7));
+    }
+
+    // --- SipHash path (various lengths 1..9) ---
+    {
+        const char* odd = "abcdefghi";
+        for (usize len = 1; len <= 9; len++) {
+            u64 h = _cexds__hash_bytes((void*)odd, len, 0);
+            tassert(h != 0);
+            tassert_eq(_cexds__hash_bytes(odd, len, 0), h);
+        }
+    }
+
+    // --- seed chaining ---
+    {
+        char buf[] = "hello";
+        u64 h0 = _cexds__hash_bytes(buf, sizeof(buf), 0);
+        tassert(h0 != 0);
+        tassert_eq(h0, 6329348214770146015UL);
+
+        u64 h1 = _cexds__hash_bytes(buf, sizeof(buf), h0);
+        tassert(h1 != 0);
+        tassert_ne(h0, h1);
+        tassert_eq(_cexds__hash_bytes(buf, sizeof(buf), h0), h1);
+
+        // chain again
+        tassert_eq(_cexds__hash_bytes(buf, sizeof(buf), h1),
+                   _cexds__hash_bytes(buf, sizeof(buf), h1));
+    }
+
+    // --- binary data (embedded \0) ---
+    {
+        u8 bin[] = { 0x00, 0x01, 0x02, 0x00, 0xFF, 0xFE };
+        u64 h = _cexds__hash_bytes(bin, sizeof(bin), 0);
+        tassert(h != 0);
+        tassert_eq(_cexds__hash_bytes(bin, sizeof(bin), 0), h);
+    }
+
+    // --- large buffer (multi-block SipHash) ---
+    {
+        u8 big[256];
+        for (usize i = 0; i < sizeof(big); i++)
+            big[i] = (u8)(i * 31 + 7);
+        u64 h = _cexds__hash_bytes(big, sizeof(big), 0);
+        tassert(h != 0);
+        tassert_eq(_cexds__hash_bytes(big, sizeof(big), 0), h);
+    }
+
+    // --- avalanche: different seeds on same input ---
+    {
+        u64 v = 42;
+        u64 h[4];
+        for (u64 s = 0; s < 4; s++)
+            h[s] = _cexds__hash_bytes(&v, sizeof(v), s);
+        tassert(h[0] != h[1] || h[1] != h[2] || h[2] != h[3]);
+    }
+
+    return EOK;
+}
+
 test$main();

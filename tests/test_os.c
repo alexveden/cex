@@ -65,17 +65,18 @@ test$case(test_time_scope)
 
 test$case(test_hash)
 {
-    char cstr[] = { "hello" };
-    tassert_eq(sizeof(cstr), 6);
+    // --- NULL / empty ---
+    tassert_eq(os.hash(NULL, 0, 10), 0);
+    tassert_eq(os.hash("", 0, 10), 0);
+    tassert_eq(os.hash("hello", 0, 0), 0);
+    tassert_eq(os.hash("hello", 0, 42), 0);
 
+    // --- basic smoke: delegates to _cexds__hash_bytes ---
+    char cstr[] = { "hello" };
     u64 h0 = os.hash(cstr, sizeof(cstr), 0);
     tassert(h0 != 0);
     tassert_eq(_cexds__hash_bytes(cstr, sizeof(cstr), 0), h0);
     tassert_eq(h0, 6329348214770146015UL);
-
-    tassert_eq(os.hash(NULL, 0, 10), 0);
-    tassert_eq(os.hash("", 0, 10), 0);
-
 
     return EOK;
 }

@@ -480,6 +480,7 @@ _cexds__siphash_bytes(const void* p, usize len, u64 seed)
 u64
 _cexds__hash_bytes(const void* p, usize len, u64 seed)
 {
+    if (unlikely(p == NULL || len == 0)) { return 0; }
 #ifdef _CEXDS_SIPHASH_2_4
     return _cexds__siphash_bytes(p, len, seed);
 #else
