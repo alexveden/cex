@@ -638,7 +638,8 @@ cex_test_main_fn(int argc, char** argv)
         ctx->case_name = t.test_name;
         ctx->tests_run++;
         if (ctx->is_benchmark != t.is_benchmark) { continue; }
-        if (ctx->case_filter && !str.find(t.test_name, ctx->case_filter)) { continue; }
+        if (ctx->case_filter && !(str.match(t.test_name, ctx->case_filter) || str.find(t.test_name, ctx->case_filter)) {
+            continue; }
 
         if (!ctx->quiet_mode || ctx->is_benchmark) {
             fprintf(stderr, "%s", t.test_name);
