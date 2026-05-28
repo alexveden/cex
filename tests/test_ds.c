@@ -1459,4 +1459,92 @@ test$case(test_hash_bytes)
     return EOK;
 }
 
+test$case(test_hash_random)
+{
+    srand(42); // fixed seed for reproducibility
+
+    // --- determinism & cross-check with os.hash ---
+    for (usize trial = 0; trial < 500; trial++) {
+        usize len = (usize)(rand() % 1024) + 1;
+        u8 buf[1024];
+        for (usize i = 0; i < len; i++)
+            buf[i] = (u8)(rand() & 0xFF);
+
+        u64 seed = (u64)(rand() & 0xFF);
+        u64 h1 = _cexds__hash_bytes(buf, len, seed);
+        u64 h2 = _cexds__hash_bytes(buf, len, seed);
+        tassert_eq(h1, h2); // determinism
+
+        // cross-check with os.hash
+        tassert_eq(os.hash(buf, len, seed), h1);
+    }
+
+    // --- single-byte buffer determinism (edge: len=1) ---
+    for (usize trial = 0; trial < 256; trial++) {
+        u8 v = (u8)trial;
+        u64 seed = (u64)trial;
+        u64 h1 = _cexds__hash_bytes(&v, 1, seed);
+        u64 h2 = _cexds__hash_bytes(&v, 1, seed);
+        tassert_eq(h1, h2);
+    }
+
+    // --- bit-flip avalanche: one bit changes ~50% of output bits ---
+    {
+        u64 total_bit_flips = 0;
+        u64 total_trials = 0;
+        for (usize trial = 0; trial < 2000; trial++) {
+            usize len = (usize)(rand() % 128) + 1;
+            u8 buf[128];
+            for (usize i = 0; i < len; i++)
+                buf[i] = (u8)(rand() & 0xFF);
+
+            u64 seed = (u64)(rand() & 0xFF);
+
+            usize flip_byte = (usize)(rand() % len);
+            u8 flip_bit = (u8)(1 << (rand() % 8));
+
+            u64 h_orig = _cexds__hash_bytes(buf, len, seed);
+            buf[flip_byte] ^= flip_bit;
+            u64 h_flip = _cexds__hash_bytes(buf, len, seed);
+
+            tassert_ne(h_orig, h_flip); // must change
+
+            // count differing bits
+            u64 diff = h_orig ^ h_flip;
+            u64 bits = 0;
+            while (diff) {
+                bits += diff & 1;
+                diff >>= 1;
+            }
+            total_bit_flips += bits;
+            total_trials++;
+        }
+        // expect roughly 50% of 64 bits = 32 bits flipped on average
+        f64 avg = (f64)total_bit_flips / (f64)total_trials;
+        tassertf(avg > 20.0 && avg < 44.0, "avg bit flips: %g", avg);
+    }
+
+    // --- different seeds produce different hashes ---
+    // (rare collisions possible, so we verify statistically)
+    {
+        u64 collisions = 0;
+        u64 trials = 0;
+        for (usize trial = 0; trial < 500; trial++) {
+            usize len = (usize)(rand() % 64) + 1;
+            u8 buf[64];
+            for (usize i = 0; i < len; i++)
+                buf[i] = (u8)(rand() & 0xFF);
+
+            u64 h0 = _cexds__hash_bytes(buf, len, trial);
+            u64 h1 = _cexds__hash_bytes(buf, len, trial + 1);
+            if (h0 == h1) { collisions++; }
+            trials++;
+        }
+        tassertf(collisions < trials / 100, "seed collisions: %lu / %lu",
+                 collisions, trials);
+    }
+
+    return EOK;
+}
+
 test$main();
