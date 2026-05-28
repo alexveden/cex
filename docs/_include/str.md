@@ -161,6 +161,9 @@ str {
     char*           (*findr)(char* haystack, char* needle);
     /// Formats string and allocates it dynamically using allocator, supports CEX format engine
     char*           (*fmt)(IAllocator allc, char* format,...);
+    /// Computes string hash, seed can be null, or previous hash value for hash stacking  (null or empty
+    /// string returns 0 hash)
+    u64             (*hash)(char* a, u64 seed);
     /// Joins string using a separator (join_by), NULL tolerant, returns NULL on error.
     char*           (*join)(char** str_arr, usize str_arr_len, char* join_by, IAllocator allc);
     /// Calculates string length, NULL tolerant.
@@ -237,6 +240,9 @@ str {
         bool            (*eq)(str_s a, str_s b);
         /// Compares two string slices, null tolerant, case insensitive
         bool            (*eqi)(str_s a, str_s b);
+        /// Computes string hash, seed can be null, or previous hash value for hash stacking  (null or empty
+        /// string returns 0 hash)
+        u64             (*hash)(str_s a, u64 seed);
         /// Get index of first occurrence of `needle`, returns -1 on error.
         isize           (*index_of)(str_s s, str_s needle);
         /// iterator over slice splits:  for$iter (str_s, it, str.slice.iter_split(s, ",", &it.iterator)) {}

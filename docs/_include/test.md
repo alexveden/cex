@@ -84,6 +84,8 @@ test$case(my_test_case){
 
 
 ```c
+#define test$bench(NAME)
+
 /// Unit-test test case
 #define test$case(NAME)
 

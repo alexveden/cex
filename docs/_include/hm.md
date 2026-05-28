@@ -1,21 +1,36 @@
 
-Generic type-safe hashmap
+
+Generic type-safe hashmap backed by open-addressing with quadratic probing.
+
+The hashmap shares the same backing engine as `arr$` (same header, same allocator).
+This means every `hm$` is also an `arr$` — you can iterate, index, and take its length
+just like a regular dynamic array.
+
+Key features:
+
+1. **Open-addressing** with bucketed hash table (8 slots per cache-line-aligned bucket).
+2. **Quadratic probing** with tombstone tracking for efficient deletions.
+3. **Key type auto-detection** via `_Generic` — numeric (memcmp), `char*` (strcmp),
+   `char[N]` (strcmp), `str_s` (memcmp with length check).
+4. **String key modes** — no-copy (default), copy via `malloc`/`strdup`
+   (`.copy_keys = true`), or copy via arena allocator
+   (`.copy_keys = true, .copy_keys_arena_pgsize = NNN`).
+5. **Grow / shrink** — table doubles at 75% load factor, halves below 25%,
+   tombstones trigger rebuild at ~12%.
+6. **Dual index** — `hm$` data array is sorted by insertion order (stable until
+   first delete). Hash table entries point into this array, so `arr$len()`,
+   `for$each`, and bracket indexing all work transparently.
 
 Principles:
 
-1. Data is backed by engine similar to arr$
-2. `arr$len()` works with hashmap too
-3. Array indexing works with hashmap
-4. `for$each`/`for$eachp` is applicable
-5. `hm$` generic type is essentially a struct with `key` and `value` fields
-6. `hm$` supports following keys: numeric (by default it's just binary representation), char*,
-char[N], str_s (CEX sting slice).
-7. `hm$` with string keys are stored without copy, use  `hm$new(hm, mem$, .copy_keys = true)` for
-copy-mode.
-8. `hm$` can store string keys inside an Arena allocator when  `hm$new(hm, mem$, .copy_keys = true,
-.copy_keys_arena_pgsize = NNN)`
+1. `hm$(K,V)` is a struct `{ K key; V value; }*`.
+2. `hm$s(S)` treats any struct with a `.key` field as a hashmap record.
+3. `arr$len()`, `arr$cap()`, `for$each`, `for$eachp` all work on `hm$` types.
+4. Array indexing `smap[i].key` / `smap[i].value` works but order may change after
+   calls to `hm$del`.
+5. `hm$new` can return `NULL` on memory error — always check (or use `uassert`).
 
-
+- Basic usage
 ```c
 
 test$case(test_simple_hashmap)
@@ -160,44 +175,43 @@ test$case(test_hashmap_basic)
 
 
 ```c
-/// Defines hashmap generic type
+/// Declares a hashmap variable. `hm$(char*, int) map` = `struct { char* key; int value; }*`.
 #define hm$(_KeyType, _ValType)
 
-/// Clears hashmap contents
+/// Clears all entries from the hashmap. Frees copied string keys if `.copy_keys` was set. Does NOT free the hashmap itself.
 #define hm$clear(t)
 
-/// Deletes items, IMPORTANT hashmap array may be reordered after this call
+/// Deletes the entry for key `k`. IMPORTANT: the backing array may be reordered (swap-with-last). Frees copied string keys if applicable.
 #define hm$del(t, k)
 
-/// Frees hashmap resources
+/// Frees all hashmap resources (entries, key copies, arena, hash table) and sets the pointer to NULL.
 #define hm$free(t)
 
-/// Get item by value, def - default value (zeroed by default), can be any type
+/// Gets the value for key `k` by value. Returns `def` (defaults to zero) if key not found.
 #define hm$get(t, k, def...)
 
-/// Get item by pointer (no copy, direct pointer inside hashmap)
+/// Gets a pointer to the value for key `k`. Returns NULL if key not found (no copy — direct pointer into hashmap storage).
 #define hm$getp(t, k)
 
-/// Get a pointer to full hashmap record, NULL if not found
+/// Gets a pointer to the full hashmap record (key+value struct) for key `k`. Returns NULL if not found.
 #define hm$gets(t, k)
 
-/// Returns hashmap length, also you can use arr$len()
+/// Returns the number of entries in the hashmap. Equivalent to `arr$len()`. Returns 0 if NULL.
 #define hm$len(t)
 
-/// Creates new hashmap of hm$(KType, VType) using allocator, kwargs: .capacity, .seed,
-/// .copy_keys_arena_pgsize, .copy_keys
+/// Creates a new hashmap. Keyword args: `.capacity`, `.seed`, `.copy_keys` (for char* keys), `.copy_keys_arena_pgsize`. Returns the new pointer on success, NULL on memory error.
 #define hm$new(t, allocator, kwargs...)
 
-/// Defines hashmap type based on _StructType, must have `key` field
+/// Declares a hashmap based on a custom struct that has a `.key` field. The struct itself becomes the key+value record.
 #define hm$s(_StructType)
 
-/// Set hashmap key/value, replaces if exists
+/// Sets `key` to `value` in the hashmap. Replaces if key already exists. Returns pointer to the record, or NULL on memory error.
 #define hm$set(t, k, v...)
 
-/// Add new item and returns pointer of hashmap record for `k`, for further editing
+/// Adds or gets a key and returns a pointer to its value field for direct mutation. Returns NULL on memory error.
 #define hm$setp(t, k)
 
-/// Set full record, must be initialized by user
+/// Sets a full pre-initialized record (struct with `.key` field) into the hashmap. Returns pointer to the stored record, or NULL on memory error.
 #define hm$sets(t, v...)
 
 

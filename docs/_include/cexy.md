@@ -131,7 +131,7 @@ cexy {
         Exception       (*clean)(char* target);
         Exception       (*create)(char* target, bool include_sample);
         Exception       (*make_target_pattern)(char** target);
-        Exception       (*run)(char* target, bool is_debug, int argc, char** argv);
+        Exception       (*run)(char* target, char* cmd, int argc, char** argv);
     } test;
 
     struct {

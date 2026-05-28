@@ -1,7 +1,18 @@
 
 
-- using for$ as unified array iterator
+Unified array / hashmap / slice iteration framework.
 
+`for$` macros provide a single syntax for looping over any iterable data in CEX:
+
+| Variant                              | Copies elements?          | Use case                                         |
+|--------------------------------------|---------------------------|--------------------------------------------------|
+| `for$each(it, array, len?)`          | By value (≤ 64 B)         | Small types / copy iteration / slices            |
+| `for$eachp(it, array, len?)`         | By pointer (no copy)      | Large structs / avoid copy overhead / slices     |
+| `for$iter(T, it, iter_func)`         | Custom (cex_iterator_s)   | Tokenizers, generators, splitters                |
+
+All three work identically on `arr$`, `hm$`, static C arrays, and pointer+length slices.
+
+- Using for$ as unified array iterator
 ```c
 
 test$case(test_array_iteration)
@@ -72,15 +83,13 @@ test$case(test_array_iteration)
 
 
 ```c
-/// Iterates over arrays `it` is iterated **value**, array may be arr$/or static / or pointer,
-/// array_len is only required for pointer+len use case
+/// Iterates over arrays by **value** (copies each element into `it`). Works on arr$, hm$, static arrays, and pointer+len. Capped at `CEX_FOREACH_MAX_COPY_SIZE` (64 B) per element.
 #define for$each(it, array, array_len...)
 
-/// Iterates over arrays `it` is iterated by **pointer**, array may be arr$/or static / or pointer,
-/// array_len is only required for pointer+len use case
+/// Iterates over arrays by **pointer** (no copy — `it` is `T*`). Best for large structs. Works on arr$, hm$, static arrays, and pointer+len.
 #define for$eachp(it, array, array_len...)
 
-/// Iterates via iterator function (see usage below)
+/// Iterates via a custom iterator function.
 #define for$iter(it_val_type, it, iter_func)
 
 

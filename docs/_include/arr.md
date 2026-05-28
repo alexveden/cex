@@ -1,6 +1,24 @@
 
 
-* Creating array
+Generic type-safe dynamic array backed by a heap header.
+
+`arr$(T)` is just `T*` — zero overhead, fully C-array compatible with no hidden
+pointer or fat-pointer indirection. The runtime header
+(`_cexds__array_header`) lives *before* the user pointer at a negative offset.
+
+Principles:
+
+1. **Zero overhead** — `arr$(T)` = `T*`. Pass them to any function expecting a C pointer+length.
+2. **Allocator-backed** — Every array carries its `IAllocator`. Passed once at `arr$new`.
+3. **O(1) amortized growth** — Capacity doubles when full (minimum 16).
+4. **Unified length** — `arr$len()` works on dynamic `arr$`, static C arrays, and hashmaps.
+5. **Unified iteration** — `for$each` / `for$eachp` iterate any array (arr$, static, pointer+len, hm$).
+6. **Debug integrity** — Each array header has a magic number checked by every mutating macro
+   (`_CEXDS_ARR_MAGIC = 0xC001DAAD`). Wrong magic triggers an assertion.
+7. **ASAN-aware** — The 8-byte poison area after the header is marked poisoned so ASAN catches
+   underflow reads/writes.
+
+- Creating array
 ```c
     // Using heap allocator (need to free later!)
     arr$(i32) array = arr$new(array, mem$);
@@ -33,7 +51,7 @@
     arr$free(array);
 ```
 
-* Array of structs
+- Array of structs
 ```c
 
 typedef struct
@@ -69,61 +87,61 @@ void somefunc(void)
 
 
 ```c
-/// Generic array type definition. Use arr$(int) myarr - defines new myarr variable, as int array
+/// Declares a dynamic array variable. `arr$(int) myarr` = `int* myarr`. Zero overhead, fully C-compatible.
 #define arr$(T)
 
-/// Get element at index (bounds checking with uassert())
+/// Returns element at index `i` (by value) with bounds checking via `uassert()`. Also works on `hm$`.
 #define arr$at(a, i)
 
-/// Returns current array capacity
+/// Returns the current allocated capacity (in elements). Returns 0 if array is NULL.
 #define arr$cap(a)
 
-/// Clear array contents
+/// Clears the array (sets length to 0). Does NOT free or shrink memory — use `arr$free` for that.
 #define arr$clear(a)
 
-/// Delete array elements by index (memory will be shifted, order preserved)
+/// Deletes element at index `i` by shifting subsequent elements left. Order preserved. O(n).
 #define arr$del(a, i)
 
-/// Delete element by swapping with last one (no memory overhear, element order changes)
+/// Deletes element at index `i` by swapping with the last element. Order NOT preserved, but O(1).
 #define arr$delswap(a, i)
 
-/// Free resources for dynamic array (only needed if mem$ allocator was used)
+/// Frees the array memory and sets the pointer to NULL. Safe on NULL arrays (no-op).
 #define arr$free(a)
 
-/// Grows array capacity
+/// Grows array so it can hold at least `add_len` more elements, with the absolute minimum of `min_cap`.
 #define arr$grow(a, add_len, min_cap)
 
-/// Check array capacity and return false on memory error
+/// Checks if array has room for `add_extra` elements, growing if needed. Returns false on memory error.
 #define arr$grow_check(a, add_extra)
 
-/// Inserts element into array at index `i`
+/// Inserts element at index `i`, shifting subsequent elements right. Order preserved. O(n).
 #define arr$ins(a, i, value...)
 
-/// Return last element of array
+/// Returns the last element (by value). Asserts that the array is not empty.
 #define arr$last(a)
 
-/// Versatile array length, works with dynamic (arr$) and static compile time arrays
+/// Returns the number of elements. Works on `arr$`, `hm$`, static C arrays, and pointer+length slices.
 #define arr$len(arr)
 
-/// Array initialization: use arr$(int) arr = arr$new(arr, mem$, .capacity = , ...)
+/// Initializes a dynamic array. Pass the array variable, an `IAllocator`, and optional `.capacity = N`. Returns the new pointer on success, NULL on memory error.
 #define arr$new(a, allocator, kwargs...)
 
-/// Pop element from the end
+/// Pops and returns the last element (by value). Assert-fails on empty array. Decrements length.
 #define arr$pop(a)
 
-/// Push element to the end
+/// Appends a single element to the end. Automatically grows capacity if needed. Returns pointer to the new slot.
 #define arr$push(a, value...)
 
-/// Push another array into a. array can be dynamic or static or pointer+len
+/// Appends all elements from `array` (dynamic, static, or pointer+len) into `a`. `array_len` is optional for pointer+len.
 #define arr$pusha(a, array, array_len...)
 
-/// Push many elements to the end
+/// Appends multiple elements at once: `arr$pushm(arr, 1, 2, 3)`. Uses a compound-literal temporary array.
 #define arr$pushm(a, items...)
 
-/// Set array capacity and resize if needed
+/// Resizes the array capacity to at least `n` elements. No-op if current capacity >= n.
 #define arr$setcap(a, n)
 
-/// Sort array with qsort() libc function
+/// Sorts the array in-place using `qsort()` with the provided comparator.
 #define arr$sort(a, qsort_cmp)
 
 
