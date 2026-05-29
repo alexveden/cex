@@ -2579,6 +2579,29 @@ Simple mode add several project structure constraints:
 3. Simple-mode uses unity build approach, so all your sources have to be included as `#include "src/foo.c"` in `src/myapp.c`.
 4. Simple-mode does not produce object files and does not do extra linking stage. It's intentional, and in my opinion is better for smaller/medium (<100k LOC) projects.
 
+### Fast debug builds
+
+When compiling in debug mode (`cexy$cc_args` without any `-O` flag), simple mode automatically pre-compiles `cex.h` into a shared object file. This avoids re-parsing the ~700 KB header on every build, significantly speeding up incremental `./cex app` and `./cex test` commands.
+
+The workflow:
+
+1. **Hash-based caching** — compiler arguments are hashed to produce a unique `.obj` filename (`build/cex.<hash>.obj`).
+2. **Staleness check** — the cached `.obj` is reused unless `cex.h` has been modified.
+3. **Auto-link** — the precompiled object is linked via `-DCEX_PREBUILT` + the `.obj` path.
+
+```c
+// Example: debug build skips cex.h recompilation on subsequent runs
+./cex app build myapp
+// first run: compiles cex.h -> build/cex.a1b2c3.obj, then links myapp
+// second run (no cex.h change): links directly from cached .obj
+```
+
+Key points:
+
+- Only active in **simple mode** for `./cex app` and `./cex test` commands.
+- Automatically skipped when any optimizer flag (`-O1`, `-O2`, `-O3`, `-Os`) is present — release builds always do a full unity compile.
+- Disable with `#define cexy$disable_cex_precompiling` in your `cex.c`.
+
 ### Project configuration
 `cexy$` is configured via setting constants in header files, which can be directly compiled as C code in your project as well. Use `./cex config` for checking current project configuration. Configuration can optionally be included as `cex_config.h` (or any other name), or directly set in `cex.c` file.
 
@@ -2932,6 +2955,82 @@ cex test clean test/test_file.c          - delete specific test executable
 cex test run tests/test_file.c [--help]  - run test with passing arguments to the test runner program
 
 ```
+
+### Benchmarking
+
+CEX benchmarking integrates directly with the test framework — reuse the same test file structure, setup hooks, and assertion macros. Test cases can be mixed with benchmarks in the same test file.
+
+Define benchmarks with `test$bench(name)`:
+
+```c
+// Global state for benchmark data
+static hash_table_s g_table;
+
+test$setup_case()
+{
+    // Initialize benchmark data once before each bench case
+    // Do NOT init data inside the bench body itself
+    g_table = hash_table_create(1000);
+    for (u32 i = 0; i < 1000; i++) {
+        hash_table_insert(&g_table, i);
+    }
+    return EOK;
+}
+
+test$teardown_case()
+{
+    hash_table_destroy(&g_table);
+    return EOK;
+}
+
+test$bench(my_bench)
+{
+    some_function_of_interest(&g_table);
+    return EOK;
+}
+```
+
+> [!CAUTION]
+>
+> **Keep data initialization in setup hooks, not in the bench body.** The bench function runs with `__attribute__((optimize("O0")))` to prevent dead-code elimination — any significant allocation or setup inside the bench loop would pollute timing measurements. Use `test$setup_case()`/`test$teardown_case()` (or `test$setup_suite()`/`test$teardown_suite()`) with global state instead.
+
+Key points:
+
+- Benchmarks compile with **`-O3`**, not the debug flags used by regular tests.
+- All setup/teardown hooks work identically to regular test cases.
+
+Run benchmarks:
+
+```sh
+./cex test bench tests/my_bench.c
+```
+
+Output shows **cold** (first iteration) and **hot** (subsequent/cached) timings:
+
+```sh
+my_bench................................ cold:  282.000ns  hot:   30.000ns  [PASS]
+```
+
+#### Quick code timing with `os$time_scope()`
+
+For ad-hoc timing without writing a full benchmark, use `os$time_scope()` — it measures a block of code and prints the duration via `log$debug()` on scope exit:
+
+```c
+os$time_scope()
+{
+    expensive_function();
+    another_expensive_call();
+}
+// output: [DEBUG] os$time_scope() took: 1.234s
+```
+
+Useful for:
+
+- Quick performance sanity checks during development
+- Comparing two approaches side-by-side in the same function
+- Instrumenting hot paths without external profilers
+
+The macro is backed by a monotonic high-resolution timer and uses GCC/Clang `cleanup` attribute, so timing is reported even on early `return`, `goto`, or `break` from the scope.
 
 ### Fuzzers
 
