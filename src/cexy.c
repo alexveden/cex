@@ -1788,7 +1788,7 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
         hm$set(cex_ns_map, "./cex.h", "cex");
 
         for$each (src_fn, sources) {
-            log$info("%s\n", src_fn);
+            log$trace("%s\n", src_fn);
             mem$scope(tmem$, _)
             {
                 char* abspath = os.path.abs(src_fn, _);
@@ -1832,7 +1832,8 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
                         if (d->type == CexTkn__macro_const || d->type == CexTkn__macro_func) {
                             isize dollar = str.slice.index_of(d->name, str$s("$"));
                             str_s macro_ns = str.slice.sub(d->name, 0, dollar + 1);
-                            if (dollar > 0 && !hm$getp(names, macro_ns)) {
+                            if (dollar > 0 && !hm$getp(names, macro_ns) &&
+                                !str.slice.starts_with(macro_ns, str$s("_"))) {
                                 hm$set(names, macro_ns, d);
                             }
                         } else if (d->type == CexTkn__typedef ||
