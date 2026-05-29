@@ -1,4 +1,4 @@
-/*
+/**
 # CEX.C - Comprehensively EXtended C Language (cex-c.org)
                                                                 MOCCA - Make Old C Cexy Again!
 
@@ -14,7 +14,7 @@ Visit https://cex-c.org for more information
 (existing project, when cex.c exists in the project root directory)
 ```
 1. > cd project_dir
-2. > gcc/clang ./cex.c -o ./cex     (need only once, then cex will rebuil itself)
+2. > gcc/clang ./cex.c -o ./cex     (need only once, then cex will rebuild itself)
 3. > ./cex --help                   get info about available commands
 ```
 
@@ -48,39 +48,74 @@ app                 App runner
 You may try to get help for commands as well, try `cex process --help`
 Use `cex -DFOO -DBAR config` to set project config flags
 Use `cex -D config` to reset all project config flags to defaults
-
 ```
 */
 
-/*
- *                  GLOBAL CEX VARS / DEFINES
- *
- * NOTE: run `cex config --help` for more information about configuration
- */
+/**
+
+- **GLOBAL CEX VARS / DEFINES / internals**
+
+**NOTE**: run `cex config --help` for more information about configuration
+
+```c
 
 /// disables all asserts and safety checks (fast release mode)
-// #define NDEBUG
+#define NDEBUG
 
 /// custom fprintf() function for asserts/logs/etc
-// #define __cex__fprintf(stream, prefix, filename, line, func, format, ...)
+#define __cex__fprintf(stream, prefix, filename, line, func, format, ...)
 
 /// customize abort() behavior
-// #define __cex__abort()
+#define __cex__abort()
 
-// customize uassert() behavior
-// #define __cex__assert()
+/// customize uassert() behavior
+#define __cex__assert()
 
-// you may override this level to manage log$* verbosity
-// #define CEX_LOG_LVL 5
+/// Log verbosity level: 0=mute, 1=error, 2=warn, 3=info, 4=debug (default), 5=trace
+#define CEX_LOG_LVL 4
 
 /// disable ASAN memory poisoning and mem$asan_poison*
-// #define CEX_DISABLE_POISON 1
+#define CEX_DISABLE_POISON 1
 
 /// size of stack based buffer for small strings
-// #define CEX_SPRINTF_MIN 512
+#define CEX_SPRINTF_MIN 512
 
 /// disables float printing for io.printf/et al functions (code size reduction)
-// #define CEX_SPRINTF_NOFLOAT
+#define CEX_SPRINTF_NOFLOAT
+
+/// max AFL fuzzer input buffer size (default: 1024000)
+#define CEX_FUZZ_MAX_BUF 1024000
+
+/// enables AFL fuzzing mode (instead of libFuzzer)
+#define CEX_FUZZ_AFL
+
+/// max element byte-size for for$each value iteration (default: 64)
+#define CEX_FOREACH_MAX_COPY_SIZE 64
+
+/// temp allocator arena page size in bytes (default: 256 KB)
+#define CEX_ALLOCATOR_TEMP_PAGE_SIZE 1024 * 256
+
+/// max nesting depth for mem$scope() (default: 16)
+#define CEX_ALLOCATOR_MAX_SCOPE_STACK 16
+
+/// build-system mode flag (set automatically by cex.c)
+#define CEX_BUILD
+
+/// unit-test mode flag (enables extra checks and poison patterns)
+#define CEX_TEST
+
+/// new-project scaffolding mode (generates boilerplate)
+#define CEX_NEW
+
+/// single-header implementation mode (expands cex.h contents)
+#define CEX_IMPLEMENTATION
+
+```
+
+*/
+
+#define __cex$
+
 
 #include <assert.h>
 #include <ctype.h>

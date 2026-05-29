@@ -3277,6 +3277,9 @@ Just type:
 ### `arr$`
 {{< include _include/arr.md >}}
 
+### `cex$`
+{{< include _include/cex.md >}}
+
 ### `cexy`
 
 {{< include _include/cexy.md >}}

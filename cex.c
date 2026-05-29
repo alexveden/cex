@@ -279,7 +279,7 @@ cmd_build_docs(int argc, char** argv, void* user_ctx)
     (void)user_ctx;
 
     char* namespaces[] = { "mem", "str",  "test",     "os", "fuzz", "arr",  "hm", "for",
-                           "io",  "sbuf", "argparse", "cg", "e",    "cexy", "log" };
+                           "io",  "sbuf", "argparse", "cg", "e",    "cexy", "log", "cex" };
 
     char* process_args[] = {"process", "src/*.c"};
     e$ret(cexy.cmd.process(arr$len(process_args), process_args, NULL));

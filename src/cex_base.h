@@ -426,7 +426,7 @@ int main(void)
 #endif
 
 #if CEX_LOG_LVL > 4
-/// Log tace (when CEX_LOG_LVL > 4)
+/// Log trace (when CEX_LOG_LVL > 4)
 #    define log$trace(format, ...)                                                                 \
         (__cex__fprintf(                                                                           \
             stdout,                                                                                \
