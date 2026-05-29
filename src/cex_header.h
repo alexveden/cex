@@ -2,7 +2,7 @@
 # CEX.C - Comprehensively EXtended C Language (cex-c.org)
                                                                 MOCCA - Make Old C Cexy Again!
 
->    MIT License 2023-2025 (c) Alex Veden (see license information at the end of this file)
+>    MIT License 2023-2026 (c) Alex Veden (see license information at the end of this file)
 >    https://github.com/alexveden/cex/
 
 CEX is self-contained C language extension, the only dependency is one of gcc/clang compilers.
