@@ -1464,7 +1464,7 @@ test$case(test_hash_random)
     srand(42); // fixed seed for reproducibility
 
     // --- determinism & cross-check with os.hash ---
-    for (usize trial = 0; trial < 500; trial++) {
+    for (usize trial = 0; trial < 5000; trial++) {
         usize len = (usize)(rand() % 1024) + 1;
         u8 buf[1024];
         for (usize i = 0; i < len; i++)
@@ -1492,7 +1492,7 @@ test$case(test_hash_random)
     {
         u64 total_bit_flips = 0;
         u64 total_trials = 0;
-        for (usize trial = 0; trial < 2000; trial++) {
+        for (usize trial = 0; trial < 5000; trial++) {
             usize len = (usize)(rand() % 128) + 1;
             u8 buf[128];
             for (usize i = 0; i < len; i++)
@@ -1524,24 +1524,312 @@ test$case(test_hash_random)
         tassertf(avg > 20.0 && avg < 44.0, "avg bit flips: %g", avg);
     }
 
-    // --- different seeds produce different hashes ---
-    // (rare collisions possible, so we verify statistically)
+    // --- seed diversity ---
     {
         u64 collisions = 0;
         u64 trials = 0;
-        for (usize trial = 0; trial < 500; trial++) {
-            usize len = (usize)(rand() % 64) + 1;
-            u8 buf[64];
+        for (usize trial = 0; trial < 5000; trial++) {
+            char buf[64];
+            usize len = (usize)(rand() % 32) + 1;
             for (usize i = 0; i < len; i++)
                 buf[i] = (u8)(rand() & 0xFF);
+            buf[len] = '\0';
 
-            u64 h0 = _cexds__hash_bytes(buf, len, trial);
-            u64 h1 = _cexds__hash_bytes(buf, len, trial + 1);
+            u64 h0 = _cexds__hash_string(buf, sizeof(buf), trial);
+            u64 h1 = _cexds__hash_string(buf, sizeof(buf), trial + 1);
             if (h0 == h1) { collisions++; }
             trials++;
         }
-        tassertf(collisions < trials / 100, "seed collisions: %lu / %lu",
-                 collisions, trials);
+        tassertf((f64)collisions / (f64)trials < 0.01,
+                 "seed diversity: %.1f%% (%lu / %lu)",
+                 (f64)collisions / (f64)trials * 100.0, collisions, trials);
+    }
+
+    return EOK;
+}
+
+test$case(test_hash_string)
+{
+    // --- empty string ---
+    tassert_eq(_cexds__hash_string("", 0, 0), _cexds__hash_string("", 0, 0));
+    tassert_eq(_cexds__hash_string("", 0, 10), _cexds__hash_string("", 0, 10));
+    tassert_ne(_cexds__hash_string("", 0, 0), _cexds__hash_string("", 0, 1));
+
+    // --- basic known values ---
+    char hello[] = "hello";
+    u64 h_hello = _cexds__hash_string(hello, sizeof(hello), 0);
+    tassert(h_hello != 0);
+    tassert_eq(_cexds__hash_string(hello, sizeof(hello), 0), h_hello);
+
+    // --- str_cap truncation ---
+    {
+        // cap smaller than string: only first N chars hashed
+        u64 h_cap5 = _cexds__hash_string("hello world", 5, 0);
+        u64 h_cap100 = _cexds__hash_string("hello world", 100, 0);
+        tassert_ne(h_cap5, h_cap100);
+        // cap5 should match hashing just "hello" (with its own length)
+        char hello5[] = "hello";
+        tassert_eq(h_cap5, _cexds__hash_string(hello5, sizeof(hello5), 0));
+    }
+
+    // --- non-null-terminated buffer within capacity ---
+    {
+        char buf[5] = { 'h', 'e', 'l', 'l', 'o' };
+        u64 h_nonnull = _cexds__hash_string(buf, 5, 0);
+        tassert(h_nonnull != 0);
+        // must match hashing "hello" with same cap
+        char hello_nt[] = "hello";
+        tassert_eq(_cexds__hash_string(hello_nt, 5, 0), h_nonnull);
+    }
+
+    // --- large cap with early null ---
+    {
+        u64 h_early = _cexds__hash_string("hi", 4096, 0);
+        tassert(h_early != 0);
+        tassert_eq(_cexds__hash_string("hi", 2, 0), h_early);
+        tassert_eq(_cexds__hash_string("hi", 4096, 0), h_early);
+    }
+
+    // --- seed chaining ---
+    {
+        u64 h0 = _cexds__hash_string("hello", 5, 0);
+        u64 h1 = _cexds__hash_string("hello", 5, h0);
+        tassert_ne(h0, h1);
+        tassert_eq(_cexds__hash_string("hello", 5, h0), h1);
+        u64 h2 = _cexds__hash_string("hello", 5, h1);
+        tassert_eq(_cexds__hash_string("hello", 5, h1), h2);
+    }
+
+    // --- single char ---
+    {
+        for (int c = 0; c < 256; c++) {
+            char s[2] = { (char)c, '\0' };
+            u64 h = _cexds__hash_string(s, 2, 0);
+            tassert(h != 0 || c == 0);
+            tassert_eq(_cexds__hash_string(s, 2, 0), h);
+        }
+    }
+
+    // --- short strings length 1..30 ---
+    {
+        char buf[32];
+        for (usize len = 1; len <= 30; len++) {
+            for (usize i = 0; i < len; i++)
+                buf[i] = (u8)('a' + (i % 26));
+            buf[len] = '\0';
+            u64 h = _cexds__hash_string(buf, sizeof(buf), 0);
+            tassert(h != 0);
+            tassert_eq(_cexds__hash_string(buf, sizeof(buf), 0), h);
+        }
+    }
+
+    // --- avalanche: single char change ---
+    {
+        u64 total_bit_flips = 0;
+        u64 total_trials = 0;
+        u64 no_change = 0;
+        for (usize trial = 0; trial < 5000; trial++) {
+            char buf[64];
+            usize len = (usize)(rand() % 32) + 1;
+            for (usize i = 0; i < len; i++)
+                buf[i] = (u8)(rand() & 0xFF);
+            buf[len] = '\0';
+
+            u64 seed = (u64)(rand() & 0xFF);
+            u64 h_orig = _cexds__hash_string(buf, sizeof(buf), seed);
+            usize flip_idx = (usize)(rand() % len);
+            buf[flip_idx] ^= (u8)(1 << (rand() % 8));
+            u64 h_flip = _cexds__hash_string(buf, sizeof(buf), seed);
+
+            if (h_orig == h_flip) { no_change++; continue; }
+
+            u64 diff = h_orig ^ h_flip;
+            u64 bits = 0;
+            while (diff) {
+                bits += diff & 1;
+                diff >>= 1;
+            }
+            total_bit_flips += bits;
+            total_trials++;
+        }
+        u64 total = total_trials + no_change;
+        tassertf((f64)no_change / (f64)total < 0.05,
+                 "avalanche unchanged: %.1f%% (%lu / %lu)",
+                 (f64)no_change / (f64)total * 100.0, no_change, total);
+        if (total_trials > 0) {
+            f64 avg = (f64)total_bit_flips / (f64)total_trials;
+            tassertf(avg > 20.0 && avg < 44.0, "avg bit flips: %g", avg);
+        }
+    }
+
+    // --- different seeds produce different hashes ---
+    {
+        u64 collisions = 0;
+        u64 trials = 0;
+        for (usize trial = 0; trial < 5000; trial++) {
+            char buf[64];
+            usize len = (usize)(rand() % 32) + 1;
+            for (usize i = 0; i < len; i++)
+                buf[i] = (u8)(rand() & 0xFF);
+            buf[len] = '\0';
+
+            u64 h0 = _cexds__hash_string(buf, sizeof(buf), trial);
+            u64 h1 = _cexds__hash_string(buf, sizeof(buf), trial + 1);
+            if (h0 == h1) { collisions++; }
+            trials++;
+        }
+        tassertf((f64)collisions / (f64)trials < 0.01,
+                 "seed diversity: %.1f%% (%lu / %lu)",
+                 (f64)collisions / (f64)trials * 100.0, collisions, trials);
+    }
+
+    // --- randomized determinism ---
+    {
+        for (usize trial = 0; trial < 5000; trial++) {
+            char buf[128];
+            usize len = (usize)(rand() % 64) + 1;
+            for (usize i = 0; i < len; i++)
+                buf[i] = (u8)(rand() & 0xFF);
+            buf[len] = '\0';
+
+            u64 seed = (u64)(rand() & 0xFF);
+            u64 h1 = _cexds__hash_string(buf, sizeof(buf), seed);
+            u64 h2 = _cexds__hash_string(buf, sizeof(buf), seed);
+            tassert_eq(h1, h2);
+        }
+    }
+
+    return EOK;
+}
+
+test$case(test_hash_string_random)
+{
+    srand(42);
+
+    // --- determinism ---
+    for (usize trial = 0; trial < 5000; trial++) {
+        char buf[256];
+        usize len = (usize)(rand() % 255) + 1;
+        for (usize i = 0; i < len; i++)
+            buf[i] = (u8)(rand() & 0xFF);
+        buf[len] = '\0';
+
+        usize cap = (usize)(rand() % 256) + 1;
+        u64 seed = (u64)(rand() & 0xFF);
+        u64 h1 = _cexds__hash_string(buf, cap, seed);
+        u64 h2 = _cexds__hash_string(buf, cap, seed);
+        tassert_eq(h1, h2);
+    }
+
+    // --- cap variation: same string, cap < strlen vs cap > strlen must differ ---
+    {
+        u64 same = 0;
+        u64 trials = 0;
+        for (usize trial = 0; trial < 5000; trial++) {
+            char buf[256];
+            usize len = (usize)(rand() % 200) + 10;
+            for (usize i = 0; i < len; i++)
+                buf[i] = (u8)(rand() & 0xFF);
+            buf[len] = '\0';
+
+            u64 seed = (u64)(rand() & 0xFF);
+            usize cap_small = (usize)(rand() % 5) + 1;
+            usize cap_large = len + (usize)(rand() % 50) + 1;
+
+            u64 h_small = _cexds__hash_string(buf, cap_small, seed);
+            u64 h_large = _cexds__hash_string(buf, cap_large, seed);
+            if (h_small == h_large) { same++; }
+            trials++;
+        }
+        tassertf((f64)same / (f64)trials < 0.02,
+                 "cap variation collisions: %.1f%% (%lu / %lu)",
+                 (f64)same / (f64)trials * 100.0, same, trials);
+    }
+
+    // --- internal null: stop-at-\0 behavior ---
+    for (usize trial = 0; trial < 5000; trial++) {
+        char buf[128];
+        usize len = (usize)(rand() % 63) + 2;
+        for (usize i = 0; i < len; i++)
+            buf[i] = (u8)(rand() & 0xFF);
+        usize null_pos = (usize)(rand() % (len - 1)) + 1;
+        buf[null_pos] = '\0';
+        buf[len] = '\0';
+
+        usize cap = (usize)(rand() % 128) + 1;
+        u64 seed = (u64)(rand() & 0xFF);
+
+        u64 h1 = _cexds__hash_string(buf, cap, seed);
+        u64 h2 = _cexds__hash_string(buf, cap, seed);
+        tassert_eq(h1, h2);
+
+        // must match hashing just the prefix up to null_pos (when cap >= null_pos)
+        if (cap >= null_pos + 1) {
+            u64 h_prefix = _cexds__hash_string(buf, null_pos, seed);
+            tassert_eq(h1, h_prefix);
+        }
+    }
+
+    // --- avalanche ---
+    {
+        u64 total_bit_flips = 0;
+        u64 total_trials = 0;
+        u64 no_change = 0;
+        for (usize trial = 0; trial < 5000; trial++) {
+            char buf[128];
+            usize len = (usize)(rand() % 64) + 1;
+            for (usize i = 0; i < len; i++)
+                buf[i] = (u8)(rand() & 0xFF);
+            buf[len] = '\0';
+
+            u64 seed = (u64)(rand() & 0xFF);
+            usize cap = (usize)(rand() % 128) + 1;
+            u64 h_orig = _cexds__hash_string(buf, cap, seed);
+
+            usize flip_idx = (usize)(rand() % len);
+            buf[flip_idx] ^= (u8)(1 << (rand() % 8));
+            u64 h_flip = _cexds__hash_string(buf, cap, seed);
+
+            if (h_orig == h_flip) { no_change++; continue; }
+
+            u64 diff = h_orig ^ h_flip;
+            u64 bits = 0;
+            while (diff) {
+                bits += diff & 1;
+                diff >>= 1;
+            }
+            total_bit_flips += bits;
+            total_trials++;
+        }
+        u64 total = total_trials + no_change;
+        tassertf((f64)no_change / (f64)total < 0.25,
+                 "avalanche unchanged: %.1f%% (%lu / %lu)",
+                 (f64)no_change / (f64)total * 100.0, no_change, total);
+        if (total_trials > 0) {
+            f64 avg = (f64)total_bit_flips / (f64)total_trials;
+            tassertf(avg > 10.0 && avg < 44.0, "avg bit flips: %g", avg);
+        }
+    }
+
+    // --- seed diversity ---
+    {
+        u64 collisions = 0;
+        u64 trials = 0;
+        for (usize trial = 0; trial < 5000; trial++) {
+            char buf[64];
+            usize len = (usize)(rand() % 32) + 1;
+            for (usize i = 0; i < len; i++)
+                buf[i] = (u8)(rand() & 0xFF);
+            buf[len] = '\0';
+
+            u64 h0 = _cexds__hash_string(buf, sizeof(buf), trial);
+            u64 h1 = _cexds__hash_string(buf, sizeof(buf), trial + 1);
+            if (h0 == h1) { collisions++; }
+            trials++;
+        }
+        tassertf((f64)collisions / (f64)trials < 0.01,
+                 "seed diversity: %.1f%% (%lu / %lu)",
+                 (f64)collisions / (f64)trials * 100.0, collisions, trials);
     }
 
     return EOK;
