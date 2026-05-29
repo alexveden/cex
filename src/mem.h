@@ -2,9 +2,13 @@
 #if !defined(cex$enable_minimal) || defined(cex$enable_mem)
 #include "all.h"
 
+/// Heap allocator block magic marker
 #define CEX_ALLOCATOR_HEAP_MAGIC 0xF00dBa01
+/// Temp allocator block magic marker
 #define CEX_ALLOCATOR_TEMP_MAGIC 0xF00dBeef
+/// Arena allocator block magic marker
 #define CEX_ALLOCATOR_ARENA_MAGIC 0xFeedF001
+/// Default page size (256 KB) for the temp allocator arena
 #define CEX_ALLOCATOR_TEMP_PAGE_SIZE 1024 * 256
 
 
@@ -195,10 +199,10 @@ AllocatorArena.destroy(arena);
 /// Returns 32 for 32-bit platform, or 64 for 64-bit platform
 #define mem$platform() __SIZEOF_SIZE_T__ * 8
 
-/// Gets address of struct member
+/// Gets address of a struct member via a single-element array compound literal
 #define mem$addressof(typevar, value) ((typeof(typevar)[1]){ (value) })
 
-/// Gets offset in bytes of struct member
+/// Gets byte offset of a struct field
 #define mem$offsetof(var, field) ((char*)&(var)->field - (char*)(var))
 
 

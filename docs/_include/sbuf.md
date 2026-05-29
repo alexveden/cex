@@ -59,8 +59,10 @@ sbuf.destroy(&s);
 
 
 ```c
+/// Dynamic string builder type (alias for char*, always null-terminated)
 typedef char* sbuf_c
 
+/// Internal metadata header stored before the string buffer (magic, capacity, length, allocator)
 typedef struct sbuf_head_s
 
 

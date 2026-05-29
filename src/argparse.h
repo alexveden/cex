@@ -7,12 +7,15 @@
 struct argparse_c;
 struct argparse_opt_s;
 
+/// Callback function for custom option handling
 typedef Exception (*argparse_callback_f)(
     struct argparse_c* self,
     struct argparse_opt_s* option,
     void* ctx
 );
+/// Conversion function from string to typed value
 typedef Exception (*argparse_convert_f)(char* s, void* out_val);
+/// Command handler function
 typedef Exception (*argparse_command_f)(int argc, char** argv, void* user_ctx);
 
 /// command line options type (prefer macros)
@@ -39,6 +42,7 @@ typedef struct argparse_cmd_s
     bool is_default;
 } argparse_cmd_s;
 
+/// Option value type enum (boolean, string, i8-u64, f32-f64)
 enum CexArgParseType_e
 {
     CexArgParseType__na,

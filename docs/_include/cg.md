@@ -126,6 +126,7 @@ test$case(test_codegen_test)
 /// Initializes new code generator (uses sbuf instance as backing buffer)
 #define cg$init(out_sbuf)
 
+/// Initializes new code generator within a scope (auto cleanup at scope exit)
 #define cg$init_scope(out_sbuf)
 
 /// false if any cg$ operation failed, use cg$var->error to get Exception type of error

@@ -3,6 +3,7 @@
 #pragma once
 #include "all.h"
 
+/// Code generator state: sbuf backing buffer, current indent level, and error state
 typedef struct cex_codegen_s
 {
     sbuf_c* buf;
@@ -117,6 +118,7 @@ test$case(test_codegen_test)
         cex_codegen_s cex$tmpname(code_gen) = { .buf = (out_sbuf) };                             \
         cex_codegen_s* cg$var = &cex$tmpname(code_gen)
 
+/// Initializes new code generator within a scope (auto cleanup at scope exit)
 #    define cg$init_scope(out_sbuf)                                                                      \
     cex_codegen_s cex$tmpname(code_gen) = { .buf = (out_sbuf) };                             \
     for (cex_codegen_s* cg$var = &cex$tmpname(code_gen), \

@@ -101,7 +101,7 @@ AllocatorArena.destroy(arena);
 /// General purpose heap allocator
 #define mem$
 
-/// Gets address of struct member
+/// Gets address of a struct member via a single-element array compound literal
 #define mem$addressof(typevar, value)
 
 /// Checks if pointer address of `p` is aligned to `alignment`
@@ -141,7 +141,7 @@ AllocatorArena.destroy(arena);
 /// derived from type T
 #define mem$new(allocator, T)
 
-/// Gets offset in bytes of struct member
+/// Gets byte offset of a struct field
 #define mem$offsetof(var, field)
 
 /// Returns 32 for 32-bit platform, or 64 for 64-bit platform

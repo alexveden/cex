@@ -281,6 +281,9 @@ cmd_build_docs(int argc, char** argv, void* user_ctx)
     char* namespaces[] = { "mem", "str",  "test",     "os", "fuzz", "arr",  "hm", "for",
                            "io",  "sbuf", "argparse", "cg", "e",    "cexy", "log" };
 
+    char* process_args[] = {"process", "src/*.c"};
+    e$ret(cexy.cmd.process(arr$len(process_args), process_args, NULL));
+
     for$each (it, namespaces) {
         mem$scope(tmem$, _)
         {

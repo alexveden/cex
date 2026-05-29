@@ -120,7 +120,9 @@ Only works with string literals — not `char*` pointers.
  *  }
  */
 #define unlikely(expr) __builtin_expect(!!(expr), 0)
+/// Branch prediction: likely condition
 #define likely(expr) __builtin_expect(!!(expr), 1)
+/// Compiler fallthrough annotation for switch cases
 #define fallthrough() __attribute__((fallthrough));
 
 /*
@@ -309,6 +311,7 @@ __cex__fprintf_dummy(void)
 #endif
 
 #ifndef _WIN32
+/// Marks a variable as a CEX namespace struct (visibility("hidden") on non-Win32)
 #    define CEX_NAMESPACE __attribute__((visibility("hidden"))) extern const
 #else
 #    define CEX_NAMESPACE extern const

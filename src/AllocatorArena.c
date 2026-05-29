@@ -422,6 +422,7 @@ _cex_allocator_arena__scope_depth(IAllocator allc)
     return self->scope_depth;
 }
 
+/// Creates a new arena allocator with the given page_size, returns an IAllocator
 IAllocator
 AllocatorArena_create(usize page_size)
 {
@@ -463,6 +464,7 @@ AllocatorArena_create(usize page_size)
     return &self->alloc;
 }
 
+/// Validates arena allocator internal state: record headers, poison markers, and page integrity
 bool
 AllocatorArena_sanitize(IAllocator allc)
 {
@@ -522,6 +524,7 @@ AllocatorArena_sanitize(IAllocator allc)
     return true;
 }
 
+/// Destroys arena allocator and frees all allocated pages
 void
 AllocatorArena_destroy(IAllocator self)
 {

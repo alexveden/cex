@@ -3,6 +3,7 @@
 #pragma once
 #include "mem.h"
 
+/// Heap allocator instance: wraps malloc/realloc/calloc/free with allocation tracking stats
 typedef struct
 {
     alignas(64) const Allocator_i alloc;

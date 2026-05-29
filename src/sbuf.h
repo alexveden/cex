@@ -4,8 +4,10 @@
 #include "cex_base.h"
 #include <assert.h>
 
+/// Dynamic string builder type (alias for char*, always null-terminated)
 typedef char* sbuf_c;
 
+/// Internal metadata header stored before the string buffer (magic, capacity, length, allocator)
 typedef struct
 {
     struct

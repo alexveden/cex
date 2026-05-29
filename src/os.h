@@ -52,6 +52,7 @@ typedef struct os_fs_stat_s
 } os_fs_stat_s;
 static_assert(sizeof(os_fs_stat_s) <= sizeof(u64) * 2, "size?");
 
+/// Directory walk callback: receives path, file stats, and user context
 typedef Exception os_fs_dir_walk_f(char* path, os_fs_stat_s ftype, void* user_ctx);
 
 #    define _CexOSPlatformList                                                                     \
@@ -74,6 +75,7 @@ typedef Exception os_fs_dir_walk_f(char* path, os_fs_stat_s ftype, void* user_ct
         X(riscv64)                                                                                 \
         X(xtensa)
 
+/// Known OS platforms (linux, win, macos, wasm, android, freebsd, openbsd)
 #    define X(name) OSPlatform__##name,
 typedef enum OSPlatform_e
 {
@@ -89,6 +91,7 @@ __attribute__((unused)) static const char* OSPlatform_str[] = {
 #    undef X
 };
 
+/// Known CPU architectures (x86_32, x86_64, arm, wasm32, aarch64, riscv32/64, xtensa)
 typedef enum OSArch_e
 {
 #    define X(name) OSArch__##name,
