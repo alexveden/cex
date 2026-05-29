@@ -921,7 +921,7 @@ cexy__cmd__process(int argc, char** argv, void* user_ctx)
     char* ignore_kw = cexy$process_ignore_kw;
     argparse_c cmd_args = {
         .program_name = "./cex",
-        .usage = "process [options] all|path/some_file.c",
+        .usage = "process [options] all|path/*.c|(any|str|match|pattern)*.[ch]|path/some_file.c",
         .description = process_help,
         .epilog = "\nUse `all` for updates, and exact path/some_file.c for creating new\n",
         argparse$opt_list(
@@ -951,6 +951,8 @@ cexy__cmd__process(int argc, char** argv, void* user_ctx)
     bool only_update = true;
     if (str.eq(target, "all")) {
         target = "*.c";
+    } else if (str.ends_with(target, "*.c")) {
+        // Use user passed pattern
     } else {
         if (!os.path.exists(target)) {
             return e$raise(Error.not_found, "Target file not exists: '%s'", target);
