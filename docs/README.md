@@ -2546,6 +2546,34 @@ Now you can launch a sample program or run its unit tests.
 ./cex app run myapp
 ```
 
+### Unity build principles
+
+CEX uses the **unity build** approach — instead of separate compilation and linking, source files are included directly via `#include`. This avoids symbol visibility issues, simplifies build configuration, and enables whole-program optimization.
+
+Each app or test file includes the specific source files it needs:
+
+```c
+// tests/test_foo.c — include internal sources directly
+#include "src/module1.c"
+#include "src/module2.c"
+// #include "src/all.c"   // or include everything at once
+// #include "cex.h"       // or public API only
+```
+
+The key principle: **your app `.c` and test `.c` files are the compilation units**. They `#include` the sources they depend on, and the compiler produces a single executable in one pass. No separate compilation, no linker scripts.
+
+Benefits:
+
+- **No linker errors** from missing symbols or ODR violations
+- **Whole-program optimization** — all code visible to the optimizer at once
+- **Simplified build logic** — no Makefile/CMake for small-to-medium projects
+- **White-box testing** — direct access to `static` functions for mocking and inspection
+- **Mocks are trivial** — `#define` a symbol before including the unit under test to replace it
+- **Isolated unit testing** — include only the specific modules under test rather than the whole project, allowing you to test small, isolated parts of a larger codebase without pulling in unrelated dependencies or side effects
+- **Faster full builds** — a single compiler invocation eliminates object file I/O and linker overhead, making full rebuilds faster than traditional separate-compilation setups for small-to-medium projects
+
+In simple mode, `./cex app build myapp` and `./cex test run tests/test_file.c` handle all the `#include` plumbing automatically — the build system tracks modification times of included files and recompiles only when a dependency has changed. You just follow the convention of placing your app's `main()` in `src/<name>.c` and tests in `tests/test_<name>.c`.
+
 ### Key-features of cexy$ CLI tool
 
 - Main project management CLI: building, running unit tests, fuzzer, stats, etc
