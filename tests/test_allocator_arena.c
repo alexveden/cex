@@ -87,6 +87,46 @@ test$case(test_allocator_arena_40bit_size)
     return EOK;
 }
 
+test$case(test_allocator_arena_oversized)
+{
+    uassert_disable();
+
+    // 1. Estimator returns zero struct for too-large sizes
+    allocator_arena_rec_s r;
+    r = _cex_alloc_estimate_alloc_size(CEX_ARENA_MAX_ALLOC + 1, 0);
+    tassert_eq(r.size_low, 0);
+    tassert_eq(r.size_high, 0);
+
+    r = _cex_alloc_estimate_alloc_size((1ULL << 50), 0);
+    tassert_eq(r.size_low, 0);
+    tassert_eq(r.size_high, 0);
+
+    // 2. malloc returns NULL for too-large size
+    IAllocator arena = AllocatorArena.create(
+        &(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true }
+    );
+    tassert(arena != NULL);
+
+    void* p = mem$malloc(arena, CEX_ARENA_MAX_ALLOC + 1);
+    tassert(p == NULL);
+
+    // 3. calloc returns NULL for too-large nmemb or size
+    p = arena->calloc(arena, CEX_ARENA_MAX_ALLOC + 1, 1, 8);
+    tassert(p == NULL);
+    p = arena->calloc(arena, 1, CEX_ARENA_MAX_ALLOC + 1, 8);
+    tassert(p == NULL);
+
+    // 4. realloc returns NULL for too-large size
+    u8* p2 = mem$malloc(arena, 100);
+    tassert(p2 != NULL);
+    u8* p3 = mem$realloc(arena, p2, CEX_ARENA_MAX_ALLOC + 1);
+    tassert(p3 == NULL);
+
+    AllocatorArena_destroy(arena);
+    uassert_enable();
+    return EOK;
+}
+
 
 test$case(test_allocator_arena_create_destroy)
 {

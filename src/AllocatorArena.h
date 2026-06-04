@@ -70,52 +70,6 @@ typedef struct allocator_arena_rec_s
 static_assert(sizeof(allocator_arena_rec_s) == 8, "size!");
 static_assert(offsetof(allocator_arena_rec_s, ptr_offset) == 7, "ptr_offset must be last");
 
-static inline u64
-_cex_arena_rec_get_size(const allocator_arena_rec_s* r)
-{
-    return ((u64)r->size_high << 32) | r->size_low;
-}
-
-static inline void
-_cex_arena_rec_set_size(allocator_arena_rec_s* r, u64 s)
-{
-    r->size_low  = (u32)(u64)s;
-    r->size_high = (u8)(((u64)s >> 32) & 0xff);
-}
-
-// bits 0-1: align_enc  {0→8, 1→16, 2→32, 3→64}
-static inline u8
-_cex_arena_rec_get_align(const allocator_arena_rec_s* r)
-{
-    return 8 << (r->flags & 0x3);
-}
-
-static inline void
-_cex_arena_rec_set_align(allocator_arena_rec_s* r, u8 alignment)
-{
-    u8 e = (unsigned)__builtin_ctz((unsigned)(alignment)) - 3;
-    r->flags = (r->flags & ~0x3) | e;
-}
-
-// bit 2: is_free
-static inline bool
-_cex_arena_rec_is_free(const allocator_arena_rec_s* r)
-{
-    return (r->flags >> 2) & 1;
-}
-
-static inline void
-_cex_arena_rec_set_free(allocator_arena_rec_s* r)
-{
-    r->flags |= (1 << 2);
-}
-
-static inline void
-_cex_arena_rec_set_used(allocator_arena_rec_s* r)
-{
-    r->flags &= ~(1 << 2);
-}
-
 extern
 #    if !cex$is_freestanding
     _Thread_local
