@@ -6898,7 +6898,7 @@ _cex_allocator_heap__scope_depth(IAllocator self)
 
 
 #define CEX_ARENA_MAX_ALLOC \
-    ((usize)-1 > 0xFFFFFFFF ? ((1ULL << 40) - 1000) : ((usize)-1 - 1000))
+    (mem$platform() > 32 ? ((1ULL << 40) - 1000) : ((usize)-1 - 1000))
 #define CEX_ARENA_MAX_ALIGN 64
 
 

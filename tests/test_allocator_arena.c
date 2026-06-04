@@ -48,7 +48,7 @@ test$case(test_allocator_arena_40bit_size)
     // size just above 32-bit boundary
     allocator_arena_rec_s r;
 
-#if (usize)-1 > 0xFFFFFFFF
+#if mem$platform() > 32
     // (UINT32_MAX + 1) = 0x100000000, 8-aligned → padding = 8
     r = _cex_alloc_estimate_alloc_size((u64)UINT32_MAX + 1, 0);
     tassert_eq(_cex_arena_rec_get_size(&r), (u64)UINT32_MAX + 1);
@@ -99,7 +99,7 @@ test$case(test_allocator_arena_oversized)
     tassert_eq(r.size_low, 0);
     tassert_eq(r.size_high, 0);
 
-#if (usize)-1 > 0xFFFFFFFF
+#if mem$platform() > 32
     r = _cex_alloc_estimate_alloc_size((1ULL << 50), 0);
     tassert_eq(r.size_low, 0);
     tassert_eq(r.size_high, 0);
