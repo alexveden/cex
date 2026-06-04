@@ -98,7 +98,7 @@ test$case(my_test_case){
 
 /// Saves namespace(s) before scope — mock any function pointer inside, auto-restored on exit via
 /// __cleanup__. Accepts 1-8 namespaces.
-#define test$mock_ns(...)
+#define test$mock_scope(...)
 
 /// Attribute for function which disables optimization for test cases or other functions
 #define test$noopt

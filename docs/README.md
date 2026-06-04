@@ -453,7 +453,7 @@ CEX provides several short aliases for primitive types and some extra types for 
 | arr$ | Type-safe, generic, dynamic array |
 | hm$ | Type-safe, generic hashmap |
 | io | Cross-platform IO namespace |
-| test$ | Unit-test namespace: test$case, test$mock_ns, tassert_* assertions |
+| test$ | Unit-test namespace: test$case, test$mock_scope, tassert_* assertions |
 | fuzz$ | Fuzz-test interface |
 | argparse | Command line argument parsing class |
 | cg$ | Code generation namespace |
@@ -2991,8 +2991,9 @@ cex test run tests/test_file.c [--help]  - run test with passing arguments to th
 
 #### Test-Mode Sanity Checks and Side Effects
 
-When compiled with `CEX_TEST` enabled (automatic for `#include "src/all.c"`), the following
+When compiled with `CEX_TEST` enabled (automatic for simple cexy builds), the following
 additional safety mechanisms are activated:
+
 
 | # | Mechanism | What it does |
 |---|-----------|--------------|
@@ -3008,6 +3009,7 @@ additional safety mechanisms are activated:
 | 10 | **Stdout capture** | stdout → temp file; replayed only on test failure with `>>>TEST OUTPUT<<<` markers |
 | 11 | **Breakpoint on assert** | `--breakpoint` (`-b`) triggers debugger on `tassert_*` failure |
 | 12 | **ASAN poison regions** *(recommended)* | Poison padding surrounds every heap & arena allocation — OOB access triggers a `use-after-poison` crash with precise stack trace |
+
 
 **Breakpoint example:**
 ```sh
@@ -3052,9 +3054,9 @@ test$case(my_test_mocking_capabilities) {
 > tests in the same run will use the mock. Use `test$setup_case()` / `test$teardown_case()`
 > hooks to automate save/restore.
 
-#### `test$mock_ns` — Scoped Namespace Mocking
+#### `test$mock_scope` — Scoped Namespace Mocking
 
-`test$mock_ns` is a scope-guard macro that saves the full state of one or more
+`test$mock_scope` is a scope-guard macro that saves the full state of one or more
 CEX namespaces before entering the body, then automatically restores them on
 any exit path (`return`, `break`, `goto`, or normal fallthrough) via
 `__attribute__((cleanup(...)))`. No manual save/restore needed.
@@ -3066,7 +3068,7 @@ exit.
 
 ```c
 test$case(mock_single_ns) {
-    test$mock_ns(os) {
+    test$mock_scope(os) {
         os.timer = my_timer_mock;      // mock timer
         tassert_eq(777888.9, os.timer());
     }
@@ -3076,7 +3078,7 @@ test$case(mock_single_ns) {
 }
 
 test$case(mock_two_ns) {
-    test$mock_ns(os, io) {
+    test$mock_scope(os, io) {
         os.timer = my_timer_mock;
         io.printf = my_printf_mock;
         // ...

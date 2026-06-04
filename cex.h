@@ -4453,19 +4453,19 @@ extern
     }                                                                                              \
     Exception test$noopt cex_test__teardown_case_fn(void)
 
-/// State bundle for test$mock_ns
+/// State bundle for test$mock_scope
 typedef struct _cex_test_mockns_s {
     void* ns_ptr;
     usize ns_size;
     void* orig_ns;
 } _cex_test_mockns_s;
 
-/// Saves namespace state before test$mock_ns scope
+/// Saves namespace state before test$mock_scope scope
 _cex_test_mockns_s _cex_test_ns_save(void* ns, usize ns_size);
-/// Restores namespace state on test$mock_ns scope exit (__cleanup__ callback)
+/// Restores namespace state on test$mock_scope scope exit (__cleanup__ callback)
 void _cex_test_ns_restore(_cex_test_mockns_s* mock);
 
-/* ---- test$mock_ns: namespace mock scope guard ---- */
+/* ---- test$mock_scope: namespace mock scope guard ---- */
 
 #define _test$ns_mock_once(ns)                                                         \
     for (_cex_test_mockns_s cex$tmpname(_ns_save)                                          \
@@ -4491,7 +4491,7 @@ void _cex_test_ns_restore(_cex_test_mockns_s* mock);
 
 /// Saves namespace(s) before scope — mock any function pointer inside, auto-restored on exit via
 /// __cleanup__. Accepts 1-8 namespaces.
-#define test$mock_ns(...)                   _test$ns_mock_CHOOSER(__VA_ARGS__)(__VA_ARGS__)
+#define test$mock_scope(...)                   _test$ns_mock_CHOOSER(__VA_ARGS__)(__VA_ARGS__)
 
 #define _test$tassert_fn(a, b)                                                                     \
     ({                                                                                             \
