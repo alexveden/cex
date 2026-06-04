@@ -310,6 +310,9 @@ __cex__fprintf_dummy(void)
         (__builtin_strrchr(__FILE__, '/') ? __builtin_strrchr(__FILE__, '/') + 1 : __FILE__)
 #endif
 
+
+#if !defined(CEX_TEST)
+
 #ifndef _WIN32
 /// Marks a variable as a CEX namespace struct (visibility("hidden") on non-Win32)
 #    define CEX_NAMESPACE __attribute__((visibility("hidden"))) extern const
@@ -317,6 +320,11 @@ __cex__fprintf_dummy(void)
 #    define CEX_NAMESPACE extern const
 #endif
 
+#    define CEX_NAMESPACE_DEF const
+#else
+#    define CEX_NAMESPACE extern
+#    define CEX_NAMESPACE_DEF
+#endif
 /**
 
 Simple console logging with file:line location prefix.

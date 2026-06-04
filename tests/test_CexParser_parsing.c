@@ -227,7 +227,7 @@ test$case(test_cex_struct_def)
     // clang-format off
     char* code = 
         "CEX_NAMESPACE struct __cex_namespace__io io;\n"
-        "const struct __cex_namespace__io io = { };"
+        "CEX_NAMESPACE_DEF struct __cex_namespace__io io = { };"
         "struct __cex_namespace__io { void            (*fclose)(FILE** file); };\n"
         "";
     CexParser_c lx = CexParser_create(code, 0, true);
@@ -792,7 +792,7 @@ test$case(test_cex_struct_def_decl)
     // clang-format off
     char* code = 
         "CEX_NAMESPACE struct __cex_namespace__io io;\n"
-        "const struct __cex_namespace__io io = { };"
+        "CEX_NAMESPACE_DEF struct __cex_namespace__io io = { };"
         "struct __cex_namespace__io { void            (*fclose)(FILE** file); };\n"
         "";
     CexParser_c lx = CexParser_create(code, 0, true);

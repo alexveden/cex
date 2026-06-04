@@ -70,7 +70,7 @@ test$case(test_src_namespace_gen)
         log$info("Header: \n%s\n", hdr_content);
 
         tassert(str.find(src_content, ".fn_Sub1 = src__subname__fn_Sub1,"));
-        tassert(str.find(src_content, "const struct __cex_namespace__src src = "));
+        tassert(str.find(src_content, "CEX_NAMESPACE_DEF struct __cex_namespace__src src = "));
         tassert(str.find(src_content, "__aubName2__fnsub1(char"));
         tassert(str.find(hdr_content, "CEX_NAMESPACE struct __cex_namespace__src src"));
         tassert(str.find(hdr_content, "struct __cex_namespace__src {"));
