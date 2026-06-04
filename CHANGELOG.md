@@ -11,6 +11,7 @@
   alongside integer `page_size`. Added `disable_scopes` support.
 - `test$alloc` - test case specific allocator, always growing arena with auto-cleanup
 - AllocatorArena - increased max single allocation and page size up to 1TiB on 64 bits
+- `test$mock_scope` -  is a scope-guard macro that saves the full state of one or more CEX namespaces before entering the body, then automatically restores them on any exit path
 
 ### Fixes
 - AllocatorArena - false positive poison, when realloc() shrink then grow.
