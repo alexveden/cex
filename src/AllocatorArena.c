@@ -310,13 +310,15 @@ _cex_allocator_arena__realloc(IAllocator allc, void* old_ptr, usize size, usize 
 
     if (unlikely(size <= rec->size)) {
         if (size == rec->size) { return old_ptr; }
-        // we can't change size/padding of this allocation, because this will break iterating
-        // ptr_padding is only u8 size, we cant store size, change, so we currently poison new size
-        mem$asan_poison((char*)old_ptr + size, rec->size - size);
+        // NOTE: we can't change size/padding of this allocation, because this will break iterating
+        // ptr_padding is only u8 size, we cant store size change.
+        // We must NOT poison the tail here: a later realloc() growth path copies rec->size bytes
+        // from old_ptr via memcpy, and stale poison from a prior shrink would cause use-after-poison.
         return old_ptr;
     }
 
     if (unlikely(self->last_page && self->last_page->last_alloc == old_ptr)) {
+        // Faster path, when last allocation is current item for resizing
         allocator_arena_rec_s nrec = _cex_alloc_estimate_alloc_size(size, alignment);
         if (nrec.size == 0) { goto fail; }
         bool is_created = false;

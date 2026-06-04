@@ -458,8 +458,10 @@ test$case(test_allocator_arena_realloc_shrink)
         tassert(p3 == p2);
         tassert_eq(allc->stats.bytes_alloc, 112);
         tassert_eq(allc->used, 112);
-        // only poisoning, other fields untouched
-        tassert(mem$asan_poison_check(p + 50, rec->size - 50 + rec->ptr_padding));
+        // shrink is no-op — verify tail NOT poisoned after shrink
+        // (regression: old code poisoned bytes [50,104) which caused ASAN use-after-poison
+        //  on subsequent realloc growth that memcpy's rec->size bytes from old_ptr)
+        tassert(!mem$asan_poison_check(p + 50, rec->size - 50 + rec->ptr_padding));
         tassert_eq(rec->size, 100);
         tassert_eq(rec->ptr_padding, 4);
         tassert_eq(rec->is_free, 0);
@@ -467,6 +469,97 @@ test$case(test_allocator_arena_realloc_shrink)
     }
 
     AllocatorArena_destroy(arena);
+    return EOK;
+}
+
+test$case(test_allocator_arena_realloc_shrink_then_grow)
+{
+    // Regression: realloc shrink → grow must NOT trigger ASAN use-after-poison.
+    // Old code poisoned the tail during shrink; a subsequent realloc growth
+    // path would memcpy rec->size bytes from old_ptr, reading stale poison.
+    // This test exercises both growth paths: malloc+copy (non-last-alloc)
+    // and in-place (last-alloc), with disable_scopes=true (matching fuzzer).
+
+    // --- Scenario A: non-last-alloc → malloc+copy growth path ---
+    {
+        IAllocator arena = AllocatorArena.create(
+            &(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true }
+        );
+        tassert(arena != NULL);
+
+        usize N = 100;
+        u8* p = mem$malloc(arena, N);
+        tassert(p != NULL);
+        memset(p, 0xAB, N);
+
+        // blocker so p is NOT last_alloc → realloc growth forces malloc+copy
+        u8* blocker = mem$malloc(arena, 16);
+        tassert(blocker != NULL);
+
+        // shrink (no-op after fix)
+        usize M = 50;
+        u8* shrunk = mem$realloc(arena, p, M);
+        tassert(shrunk == p);
+
+        // verify first M bytes preserved
+        for (u32 i = 0; i < M; i++) { tassert_eq(p[i], 0xAB); }
+
+        // grow — triggers malloc+copy (p is not last_alloc)
+        usize N2 = 150;
+        u8* grown = mem$realloc(arena, p, N2);
+        tassert(grown != NULL);
+        tassert(grown != p); // must have moved
+
+        // verify first M bytes preserved via memcpy
+        for (u32 i = 0; i < M; i++) { tassert_eq(grown[i], 0xAB); }
+
+        // verify entire new allocation writable (no ASAN poison)
+        memset(grown, 0xBA, N2);
+        for (u32 i = 0; i < N2; i++) { tassert_eq(grown[i], 0xBA); }
+
+        AllocatorArena_sanitize(arena);
+        AllocatorArena_destroy(arena);
+    }
+
+    // --- Scenario B: last-alloc → in-place growth path ---
+    {
+        IAllocator arena = AllocatorArena.create(
+            &(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true }
+        );
+        tassert(arena != NULL);
+
+        usize N = 100;
+        u8* p = mem$malloc(arena, N);
+        tassert(p != NULL);
+        memset(p, 0xCD, N); // p IS last_alloc
+
+        // shrink (no-op after fix)
+        usize M = 50;
+        u8* shrunk = mem$realloc(arena, p, M);
+        tassert(shrunk == p);
+
+        // verify first M bytes preserved
+        for (u32 i = 0; i < M; i++) { tassert_eq(p[i], 0xCD); }
+
+        // grow in-place (p IS last_alloc)
+        usize N2 = 150;
+        u8* grown = mem$realloc(arena, p, N2);
+        tassert(grown == p); // same pointer, in-place extension
+
+        // KEY REGRESSION: read bytes [M, N) that old code poisoned during shrink.
+        // In old code, in-place growth unpoisoned only [N, N2), leaving [M, N)
+        // poisoned → ASAN use-after-poison on any read in that range.
+        // After fix, shrink does nothing — all bytes accessible.
+        for (u32 i = M; i < N; i++) { tassert_eq(p[i], 0xCD); }
+
+        // verify entire extended allocation writable
+        memset(grown, 0xDC, N2);
+        for (u32 i = 0; i < N2; i++) { tassert_eq(grown[i], 0xDC); }
+
+        AllocatorArena_sanitize(arena);
+        AllocatorArena_destroy(arena);
+    }
+
     return EOK;
 }
 
