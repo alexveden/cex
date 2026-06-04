@@ -1115,4 +1115,56 @@ test$case(test_allocator_arena_disable_scopes_sanitize)
     return EOK;
 }
 
+test$case(test_allocator_arena_create_zii_page_size)
+{
+    // page_size = 0 (ZII) → should default to CEX_ALLOCATOR_TEMP_PAGE_SIZE
+    IAllocator arena = AllocatorArena.create(
+        &(AllocatorArena_kw){ .page_size = 0 }
+    );
+    tassert(arena != NULL);
+    AllocatorArena_c* allc = (AllocatorArena_c*)arena;
+    tassert_eq(allc->page_size, CEX_ALLOCATOR_TEMP_PAGE_SIZE);
+    tassert(!allc->disable_scopes);
+    tassert_eq(allc->scope_depth, 1);
+
+    u8* p = mem$malloc(arena, 100);
+    tassert(p != NULL);
+    AllocatorArena_destroy(arena);
+    return EOK;
+}
+
+test$case(test_allocator_arena_create_zii_page_size_with_disable_scopes)
+{
+    // page_size = 0 (ZII), disable_scopes = true → page_size should default
+    IAllocator arena = AllocatorArena.create(
+        &(AllocatorArena_kw){ .page_size = 0, .disable_scopes = true }
+    );
+    tassert(arena != NULL);
+    AllocatorArena_c* allc = (AllocatorArena_c*)arena;
+    tassert_eq(allc->page_size, CEX_ALLOCATOR_TEMP_PAGE_SIZE);
+    tassert(allc->disable_scopes);
+    tassert_eq(allc->scope_depth, 0);
+
+    u8* p = mem$malloc(arena, 100);
+    tassert(p != NULL);
+    AllocatorArena_destroy(arena);
+    return EOK;
+}
+
+test$case(test_allocator_arena_create_null_kwargs)
+{
+    // NULL kwargs → all fields should use defaults
+    IAllocator arena = AllocatorArena.create(NULL);
+    tassert(arena != NULL);
+    AllocatorArena_c* allc = (AllocatorArena_c*)arena;
+    tassert_eq(allc->page_size, CEX_ALLOCATOR_TEMP_PAGE_SIZE);
+    tassert(!allc->disable_scopes);
+    tassert_eq(allc->scope_depth, 1);
+
+    u8* p = mem$malloc(arena, 100);
+    tassert(p != NULL);
+    AllocatorArena_destroy(arena);
+    return EOK;
+}
+
 test$main();

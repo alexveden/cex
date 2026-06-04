@@ -500,15 +500,18 @@ _cex_allocator_arena__scope_depth(IAllocator allc)
 IAllocator
 AllocatorArena_create(const AllocatorArena_kw* kwargs)
 {
-    AllocatorArena_kw default_kw = {
+    AllocatorArena_kw kw = {
         .page_size = CEX_ALLOCATOR_TEMP_PAGE_SIZE,
         .disable_scopes = false,
     };
-    if (kwargs == NULL) { kwargs = &default_kw; }
+    if (kwargs != NULL) {
+        if (kwargs->page_size != 0) { kw.page_size = kwargs->page_size; }
+        kw.disable_scopes = kwargs->disable_scopes;
+    }
 
-    if (kwargs->page_size < 1024 || kwargs->page_size >= CEX_ARENA_MAX_ALLOC) {
-        uassert(kwargs->page_size >= 1024 && "page size is too small");
-        uassert(kwargs->page_size < CEX_ARENA_MAX_ALLOC && "page size is too big");
+    if (kw.page_size < 1024 || kw.page_size >= CEX_ARENA_MAX_ALLOC) {
+        uassert(kw.page_size >= 1024 && "page size is too small");
+        uassert(kw.page_size < CEX_ARENA_MAX_ALLOC && "page size is too big");
         return NULL;
     }
 
@@ -527,8 +530,8 @@ AllocatorArena_create(const AllocatorArena_kw* kwargs)
                 .is_temp = false, 
             }
         },
-        .page_size = kwargs->page_size,
-        .disable_scopes = kwargs->disable_scopes,
+        .page_size = kw.page_size,
+        .disable_scopes = kw.disable_scopes,
     };
 
     AllocatorArena_c* self = mem$new(mem$, AllocatorArena_c);
