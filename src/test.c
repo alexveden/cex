@@ -665,6 +665,7 @@ cex_test_main_fn(int argc, char** argv)
         uassert(test$alloc == NULL && "initialized somewhere else?");
         test$alloc = AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 1024 * 1024,
                                                                  .disable_scopes = true });
+        AllocatorArena_c* test_arena = (AllocatorArena_c*)test$alloc;
         uassert(test$alloc != NULL && "Memory error");
 
         AllocatorHeap_c* alloc_heap = (AllocatorHeap_c*)mem$;
@@ -733,7 +734,8 @@ cex_test_main_fn(int argc, char** argv)
         }
 
 
-        if (err == EOK && alloc_heap->stats.n_allocs != alloc_heap->stats.n_free) {
+        if (err == EOK && alloc_heap->stats.n_allocs - test_arena->stats.pages_created !=
+                              alloc_heap->stats.n_free - test_arena->stats.pages_free) {
             if (!ctx->quiet_mode) {
                 fprintf(stderr, "%s", t.test_name);
                 for (u32 i = 0; i < max_name - strlen(t.test_name) + 2; i++) { putc('.', stderr); }
@@ -746,8 +748,8 @@ cex_test_main_fn(int argc, char** argv)
                 ctx->has_ansi ? io$ansi("LEAK", "33") : "LEAK",
                 ctx->suite_file,
                 t.test_line,
-                alloc_heap->stats.n_allocs,
-                alloc_heap->stats.n_free
+                alloc_heap->stats.n_allocs - test_arena->stats.pages_created,
+                alloc_heap->stats.n_free - test_arena->stats.pages_free
             );
             ctx->tests_failed++;
         }
@@ -772,7 +774,8 @@ cex_test_main_fn(int argc, char** argv)
 
     if (!ctx->quiet_mode) {
         fprintf(stderr, "\n--------------------------------------------------\n");
-        fprintf(stderr,
+        fprintf(
+            stderr,
             "Total: %d Passed: %d Skipped: %d Failed: %d (%0.3fs)\n",
             ctx->tests_run,
             ctx->tests_run - ctx->tests_failed,
@@ -800,7 +803,7 @@ cex_test_main_fn(int argc, char** argv)
         fclose(ctx->out_stream);
         ctx->out_stream = NULL;
     }
-    return ctx->tests_run == 0 || ctx->tests_failed > 0;
+    return (ctx->tests_run == 0 && ctx->tests_skipped > 0)|| ctx->tests_failed > 0;
 }
 #    endif // ifdef CEX_TEST
 #endif

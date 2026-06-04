@@ -3,11 +3,17 @@
 test$setup_case()
 {
     tassert(test$alloc != NULL);
+    u8* p2 = mem$malloc(test$alloc, 10);
+    tassert(p2);
+
     return EOK;
 }
 test$teardown_case()
 {
     tassert(test$alloc != NULL);
+    u8* p2 = mem$malloc(test$alloc, 10);
+    tassert(p2);
+
     return EOK;
 }
 test$setup_suite()
@@ -932,6 +938,29 @@ test$case(test_alloc)
     // If this fails you still don't get asan errors about memory leaks, it's for convenience
     // tassert_eq(*p, 0x4b);
 
+
+    return EOK;
+}
+
+test$case(test_alloc_muptiple_pages)
+{
+    // These allocations are not freed, but they don't have to trigger test memory leak error
+    tassert(test$alloc != NULL);
+    AllocatorArena_c* test_arena = (AllocatorArena_c*)test$alloc;
+    // page created by allocation in test$setup_case
+    tassert_eq(test_arena->stats.pages_created, 1);
+
+    u8* p2 = mem$malloc(test$alloc, 10);
+    tassert(p2);
+    tassert_eq(test_arena->stats.pages_created, 1);
+
+    u8* p = mem$malloc(test$alloc, 10 * 1024 * 1024);
+    tassert(p);
+    tassert_eq(test_arena->stats.pages_created, 2);
+
+    // will trigger asan and test leak protection
+    // p = mem$malloc(mem$, 10);
+    tassert(p);
 
     return EOK;
 }
