@@ -1,5 +1,17 @@
 # CEX Release Notes
 
+## 0.20
+2026-06-04
+
+### Changes / improvements
+- Unit Testing mode: added capability of setting any namespace function with mocked one (only in CEX_TEST mode)
+- (breaking) **AllocatorArena**: `create()` now accepts `const AllocatorArena_kw*` kwargs struct
+  with `.page_size` and `.disable_scopes` fields; NULL → ZII defaults.
+- **mem$arena**: Rewrote type dispatch to support `AllocatorArena_kw*` pointer arg
+  alongside integer `page_size`. Added `disable_scopes` support.
+
+### Fixes
+
 ## 0.19.1
 2026-05-28
 ### Fixes

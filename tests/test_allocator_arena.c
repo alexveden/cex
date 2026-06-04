@@ -47,7 +47,7 @@ test$case(test_allocator_arena_alloc_size)
 test$case(test_allocator_arena_create_destroy)
 {
 
-    IAllocator arena = AllocatorArena_create(4096);
+    IAllocator arena = AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 4096 });
     tassert(arena != NULL);
     tassert(arena != tmem$);
     tassert(arena != mem$);
@@ -95,7 +95,7 @@ test$case(test_allocator_arena_create_destroy)
 test$case(test_allocator_arena_malloc)
 {
 
-    IAllocator arena = AllocatorArena_create(4096);
+    IAllocator arena = AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 4096 });
     tassert(arena != NULL);
 
     AllocatorArena_c* allc = (AllocatorArena_c*)arena;
@@ -171,7 +171,7 @@ test$case(test_allocator_arena_malloc)
 test$case(test_allocator_arena_malloc_pointer_alignment)
 {
 
-    IAllocator arena = AllocatorArena_create(4096 * 100);
+    IAllocator arena = AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 4096 * 100 });
     AllocatorArena_c* allc = (AllocatorArena_c*)arena;
     tassert(arena != NULL);
 
@@ -240,7 +240,7 @@ test$case(test_allocator_arena_malloc_pointer_alignment)
 test$case(test_allocator_arena_scope_sanitization)
 {
 
-    IAllocator arena = AllocatorArena_create(4096);
+    IAllocator arena = AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 4096 });
     tassert(arena != NULL);
 
     mem$scope(arena, _)
@@ -292,7 +292,7 @@ test$case(test_allocator_arena_scope_sanitization)
 test$case(test_allocator_arena_realloc)
 {
 
-    IAllocator arena = AllocatorArena_create(4096);
+    IAllocator arena = AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 4096 });
     tassert(arena != NULL);
 
     AllocatorArena_c* allc = (AllocatorArena_c*)arena;
@@ -373,7 +373,7 @@ test$case(test_allocator_arena_page_size)
 test$case(test_allocator_arena_multiple_pages)
 {
 
-    IAllocator arena = AllocatorArena_create(1024);
+    IAllocator arena = AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 1024 });
     AllocatorArena_c* allc = (AllocatorArena_c*)arena;
     tassert(arena != NULL);
     allocator_arena_page_s* page = NULL;
@@ -417,7 +417,7 @@ test$case(test_allocator_arena_multiple_pages)
 test$case(test_allocator_arena_realloc_shrink)
 {
 
-    IAllocator arena = AllocatorArena_create(4096);
+    IAllocator arena = AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 4096 });
     tassert(arena != NULL);
 
     AllocatorArena_c* allc = (AllocatorArena_c*)arena;
@@ -473,7 +473,7 @@ test$case(test_allocator_arena_realloc_shrink)
 test$case(test_allocator_arena_malloc_mem_pattern)
 {
 
-    IAllocator arena = AllocatorArena_create(4096);
+    IAllocator arena = AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 4096 });
     tassert(arena != NULL);
 
     mem$scope(arena, _)
@@ -490,7 +490,7 @@ test$case(test_allocator_arena_malloc_mem_pattern)
 test$case(test_allocator_arena_pointer_lifetime)
 {
 
-    IAllocator arena = AllocatorArena_create(4096);
+    IAllocator arena = AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 4096 });
     tassert(arena != NULL);
     AllocatorArena_c* allc = (AllocatorArena_c*)arena;
 
@@ -529,7 +529,7 @@ test$case(test_allocator_arena_pointer_lifetime)
 test$case(test_allocator_arena_realloc_last_pointer)
 {
 
-    IAllocator arena = AllocatorArena_create(10024);
+    IAllocator arena = AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 10024 });
     tassert(arena != NULL);
 
     mem$scope(arena, _)
@@ -649,6 +649,285 @@ test$case(test_mem_arena_nested_cleanup_assert)
         for$each (c, p2, 10040) { tassert(c == 0xbb); }
         for$each (c, p, 100) { tassert(c == 0xaa); }
     }
+    return EOK;
+}
+
+test$case(test_mem_arena_kw_ptr)
+{
+    mem$arena(&(AllocatorArena_kw){ .page_size = 4096 }, arena)
+    {
+        u8* p = mem$malloc(arena, 100);
+        tassert(p != NULL);
+        memset(p, 0xAB, 100);
+        AllocatorArena_c* allc = (AllocatorArena_c*)arena;
+        tassert_eq(allc->scope_depth, 1);
+        tassert_eq(allc->page_size, 4096);
+        tassert(!allc->disable_scopes);
+    }
+    return EOK;
+}
+
+test$case(test_mem_arena_kw_val)
+{
+    mem$arena((&(AllocatorArena_kw){ .page_size = 8192, .disable_scopes = true }), arena)
+    {
+        u8* p = mem$malloc(arena, 100);
+        tassert(p != NULL);
+        memset(p, 0xCD, 100);
+        AllocatorArena_c* allc = (AllocatorArena_c*)arena;
+        tassert_eq(allc->page_size, 8192);
+        tassert(allc->disable_scopes);
+    }
+    return EOK;
+}
+
+test$case(test_mem_arena_kw_disable_scopes)
+{
+    AllocatorArena_kw kw = { .page_size = 4096, .disable_scopes = true };
+    mem$arena(&kw, arena)
+    {
+        u8* p = mem$malloc(arena, 128);
+        tassert(p != NULL);
+        memset(p, 0xEF, 128);
+        AllocatorArena_c* allc = (AllocatorArena_c*)arena;
+        tassert_eq(allc->scope_depth, 0);
+        tassert(allc->disable_scopes);
+    }
+    return EOK;
+}
+
+test$case(test_allocator_arena_disable_scopes_create_destroy)
+{
+    IAllocator arena = AllocatorArena.create(
+        &(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true }
+    );
+    tassert(arena != NULL);
+    AllocatorArena_c* allc = (AllocatorArena_c*)arena;
+
+    // scope_depth stays at 0 — no implicit scope_enter
+    tassert_eq(allc->scope_depth, 0);
+    tassert_eq(arena->scope_depth(arena), 0);
+
+    // Allocation works without mem$scope()
+    u8* p = mem$malloc(arena, 100);
+    tassert(p != NULL);
+    memset(p, 0xAB, 100);
+    for (u32 i = 0; i < 100; i++) { tassert(p[i] == 0xAB); }
+
+    AllocatorArena_sanitize(arena);
+    AllocatorArena_destroy(arena);
+    return EOK;
+}
+
+test$case(test_allocator_arena_disable_scopes_malloc_free)
+{
+    IAllocator arena = AllocatorArena.create(
+        &(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true }
+    );
+    tassert(arena != NULL);
+    AllocatorArena_c* allc = (AllocatorArena_c*)arena;
+
+    u8* p = mem$malloc(arena, 256);
+    tassert(p != NULL);
+    memset(p, 0xCD, 256);
+    for (u32 i = 0; i < 256; i++) { tassert(p[i] == 0xCD); }
+    usize used_after_alloc = allc->used;
+    tassert(used_after_alloc > 0);
+
+    // free and verify poisoning
+    tassert(arena->free(arena, p) == NULL);
+    tassert(mem$asan_poison_check(p, 256));
+    tassert_eq(allc->used, used_after_alloc); // used counter unchanged (free is a no-op for arena)
+
+    // allocate again — same memory reused or new
+    u8* p2 = mem$malloc(arena, 128);
+    tassert(p2 != NULL);
+    tassert(allc->stats.bytes_alloc > 0);
+
+    AllocatorArena_sanitize(arena);
+    AllocatorArena_destroy(arena);
+    return EOK;
+}
+
+test$case(test_allocator_arena_disable_scopes_realloc)
+{
+    IAllocator arena = AllocatorArena.create(
+        &(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true }
+    );
+    tassert(arena != NULL);
+
+    // alloc + realloc larger (realloc not last pointer → malloc+copy)
+    u8* p = mem$malloc(arena, 16);
+    u8* p_guard = mem$malloc(arena, 16); // p isn't last_alloc
+    tassert(p != NULL && p_guard != NULL);
+
+    u8* p2 = mem$realloc(arena, p, 128);
+    tassert(p2 != NULL);
+    tassert(p2 != p); // new pointer
+    memset(p2, 0xEF, 128);
+
+    // realloc shrink
+    u8* p3 = mem$realloc(arena, p2, 32);
+    tassert(p3 == p2);
+    for (u32 i = 0; i < 32; i++) { tassert(p3[i] == 0xEF); }
+
+    // in-place growth on a fresh last-alloc
+    u8* p4 = mem$malloc(arena, 33);
+    tassert(p4 != NULL);
+    memset(p4, 0xAA, 33);
+    for (usize sz = 33; sz < 200; sz++) {
+        u8* np = mem$realloc(arena, p4, sz + 1);
+        tassert(np == p4);
+        np[sz] = (u8)sz;
+    }
+    for (u32 i = 0; i < 33; i++) { tassert(p4[i] == 0xAA); }
+    for (usize sz = 33; sz < 200; sz++) { tassert(p4[sz] == (u8)sz); }
+
+    AllocatorArena_sanitize(arena);
+    AllocatorArena_destroy(arena);
+    return EOK;
+}
+
+test$case(test_allocator_arena_disable_scopes_scope_noop)
+{
+    IAllocator arena = AllocatorArena.create(
+        &(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true }
+    );
+    tassert(arena != NULL);
+    AllocatorArena_c* allc = (AllocatorArena_c*)arena;
+
+    tassert_eq(allc->scope_depth, 0);
+
+    // scope_enter is a no-op
+    arena->scope_enter(arena);
+    tassert_eq(allc->scope_depth, 0);
+
+    // scope_exit is a no-op
+    arena->scope_exit(arena);
+    tassert_eq(allc->scope_depth, 0);
+
+    // mem$scope wrapper also a no-op (doesn't crash, doesn't free)
+    u8* p = mem$malloc(arena, 64);
+    tassert(p != NULL);
+    memset(p, 0xFF, 64);
+
+    u8* q = NULL;
+
+    mem$scope(arena, _)
+    {
+        q = mem$malloc(_, 64);
+        tassert(q != NULL);
+        memset(q, 0xFE, 64);
+        tassert_eq(allc->scope_depth, 0);
+    }
+
+    // memory still valid after scope_exit (no-op)
+    tassert_eq(allc->scope_depth, 0);
+    for (u32 i = 0; i < 64; i++) { tassert(p[i] == 0xFF); }
+
+    // q is still available after scope exit
+    for (u32 i = 0; i < 64; i++) { tassert(q[i] == 0xFE); }
+
+    AllocatorArena_destroy(arena);
+    return EOK;
+}
+
+test$case(test_allocator_arena_disable_scopes_multiple_pages)
+{
+    IAllocator arena = AllocatorArena.create(
+        &(AllocatorArena_kw){ .page_size = 1024, .disable_scopes = true }
+    );
+    tassert(arena != NULL);
+    AllocatorArena_c* allc = (AllocatorArena_c*)arena;
+
+    // Allocate beyond single-page capacity to exercise multi-page paths.
+    // Page auto-sizing may fit several allocs per page — we just verify
+    // that allocs succeed, pages are created, and data survives.
+    u8* p1 = mem$malloc(arena, 800);
+    tassert(p1 != NULL);
+    u8* p2 = mem$malloc(arena, 800);
+    tassert(p2 != NULL);
+    u8* p3 = mem$malloc(arena, 800);
+    tassert(p3 != NULL);
+
+    tassert(allc->stats.pages_created >= 1);
+
+    memset(p1, 0x11, 800);
+    memset(p2, 0x22, 800);
+    memset(p3, 0x33, 800);
+    for (u32 i = 0; i < 800; i++) {
+        tassert(p1[i] == 0x11);
+        tassert(p2[i] == 0x22);
+        tassert(p3[i] == 0x33);
+    }
+
+    AllocatorArena_sanitize(arena);
+    AllocatorArena_destroy(arena);
+    return EOK;
+}
+
+test$case(test_allocator_arena_disable_scopes_alignment)
+{
+    IAllocator arena = AllocatorArena.create(
+        &(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true }
+    );
+    tassert(arena != NULL);
+
+    u32 alignments[] = { 8, 16, 32, 64 };
+    for$each (align, alignments) {
+        usize sz = align * 2;
+        u8* p = mem$malloc(arena, sz, align);
+        tassert(p != NULL);
+        tassert(((usize)p & (align - 1)) == 0);
+        memset(p, 0xAA, sz);
+
+        // calloc also works
+        u8* q = arena->calloc(arena, 1, sz, align);
+        tassert(q != NULL);
+        tassert(((usize)q & (align - 1)) == 0);
+        for (u32 i = 0; i < sz; i++) { tassert(q[i] == 0); }
+        memset(q, 0xBB, sz);
+    }
+
+    AllocatorArena_sanitize(arena);
+    AllocatorArena_destroy(arena);
+    return EOK;
+}
+
+test$case(test_allocator_arena_disable_scopes_sanitize)
+{
+    IAllocator arena = AllocatorArena.create(
+        &(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true }
+    );
+    tassert(arena != NULL);
+    AllocatorArena_c* allc = (AllocatorArena_c*)arena;
+
+    tassert(AllocatorArena_sanitize(arena));
+
+    // mix of alloc, free, realloc
+    u8* a = mem$malloc(arena, 100);
+    u8* b = mem$malloc(arena, 200);
+    u8* c = mem$malloc(arena, 300);
+    tassert(a && b && c);
+    memset(a, 1, 100);
+    memset(b, 2, 200);
+    memset(c, 3, 300);
+    tassert(AllocatorArena_sanitize(arena));
+
+    arena->free(arena, b);
+    tassert(AllocatorArena_sanitize(arena));
+
+    u8* d = mem$realloc(arena, a, 150);
+    tassert(d != NULL);
+    tassert(AllocatorArena_sanitize(arena));
+
+    u8* e = mem$malloc(arena, 50);
+    tassert(e != NULL);
+    tassert(AllocatorArena_sanitize(arena));
+
+    // destroy at non-zero scope_depth is fine with disable_scopes
+    tassert_eq(allc->scope_depth, 0);
+    AllocatorArena_destroy(arena);
     return EOK;
 }
 

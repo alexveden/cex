@@ -773,7 +773,9 @@ _cexds__hminit(
         }
         table->copy_keys = copy_keys;
         if (kwargs && kwargs->copy_keys_arena_pgsize > 0) {
-            table->key_arena = AllocatorArena.create(kwargs->copy_keys_arena_pgsize);
+            table->key_arena = AllocatorArena.create(
+    &(AllocatorArena_kw){ .page_size = kwargs->copy_keys_arena_pgsize }
+);
         }
     }
 

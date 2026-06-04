@@ -78,26 +78,28 @@ mem$scope(tmem$, _)
 }
 ```
 
-- Arena Scope
+- Arena Scope (two forms)
 
 ```c
+// form 1 — integer page_size
 mem$arena(4096, arena)
 {
-    // This needs extra page
-    u8* p2 = mem$malloc(arena, 10040);
-    mem$scope(arena, tal)
-    {
-        u8* p3 = mem$malloc(tal, 100);
-    }
+    u8* p = mem$malloc(arena, 100);
+}
+
+// form 2 — AllocatorArena_kw pointer
+mem$arena(&(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true }, arena)
+{
+    u8* p = mem$malloc(arena, 100);
 }
 ```
 
 - Arena Instance
 
 ```c
-IAllocator arena = AllocatorArena.create(4096);
+IAllocator arena = AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true });
 
-u8* p = mem$malloc(arena, 100); // direct use allowed
+u8* p = mem$malloc(arena, 100); // direct use allowed (disable_scopes = true)
 
 mem$scope(arena, tal)
 {
@@ -176,12 +178,22 @@ AllocatorArena.destroy(arena);
         cex$tmpname(tallc_cnt) < 1; \
         cex$tmpname(tallc_cnt)++)
 
-/// Creates new ArenaAllocator instance in scope, frees it at scope exit
-#define mem$arena(page_size, allc_var)                                                                                                                                           \
+/// Creates new ArenaAllocator instance in scope, frees it at scope exit.
+/// First argument: integer `page_size` or `const AllocatorArena_kw*` pointer.
+#define _mem$arena_kw_addr(ps) (&(AllocatorArena_kw){ .page_size = (usize)(ps) })
+#define mem$arena(ps, allc_var)                                                                                                                                           \
     u32 cex$tmpname(tallc_cnt) = 0;                                                                                                                                \
     for (IAllocator allc_var  \
         __attribute__ ((__cleanup__(_cex_allocator_arena_cleanup))) =  \
-                                                        AllocatorArena.create(page_size); \
+        ({                                                                                                                   \
+            const AllocatorArena_kw* _mem$arena_kw = _Generic((ps),                                                                                                  \
+                const AllocatorArena_kw*: (ps),                                                                             \
+                AllocatorArena_kw*: (ps),                                                                                   \
+                default: 0                                                                             \
+            );                                                                                                               \
+            if (_mem$arena_kw == NULL) { _mem$arena_kw = _mem$arena_kw_addr(ps); }                                          \
+            AllocatorArena.create(_mem$arena_kw);                                                                            \
+        });                                                                                                                   \
         cex$tmpname(tallc_cnt) < 1; \
         cex$tmpname(tallc_cnt)++)
 // clang-format on

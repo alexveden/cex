@@ -60,26 +60,28 @@ mem$scope(tmem$, _)
 }
 ```
 
-- Arena Scope
+- Arena Scope (two forms)
 
 ```c
+// form 1 — integer page_size
 mem$arena(4096, arena)
 {
-    // This needs extra page
-    u8* p2 = mem$malloc(arena, 10040);
-    mem$scope(arena, tal)
-    {
-        u8* p3 = mem$malloc(tal, 100);
-    }
+    u8* p = mem$malloc(arena, 100);
+}
+
+// form 2 — AllocatorArena_kw pointer
+mem$arena(&(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true }, arena)
+{
+    u8* p = mem$malloc(arena, 100);
 }
 ```
 
 - Arena Instance
 
 ```c
-IAllocator arena = AllocatorArena.create(4096);
+IAllocator arena = AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true });
 
-u8* p = mem$malloc(arena, 100); // direct use allowed
+u8* p = mem$malloc(arena, 100); // direct use allowed (disable_scopes = true)
 
 mem$scope(arena, tal)
 {
@@ -110,8 +112,7 @@ AllocatorArena.destroy(arena);
 /// Rounds `size` to the closest alignment
 #define mem$aligned_round(size, alignment)
 
-/// Creates new ArenaAllocator instance in scope, frees it at scope exit
-#define mem$arena(page_size, allc_var)
+#define mem$arena(ps, allc_var)
 
 /// true - if program was compiled with address sanitizer support
 #define mem$asan_enabled()

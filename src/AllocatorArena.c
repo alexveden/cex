@@ -179,7 +179,10 @@ _cex_allocator_arena__malloc(IAllocator allc, usize size, usize alignment)
 {
     _cex_allocator_arena__validate(allc);
     AllocatorArena_c* self = (AllocatorArena_c*)allc;
-    uassert(self->scope_depth > 0 && "arena allocation must be performed in mem$scope() block!");
+    uassert(
+        (self->disable_scopes || self->scope_depth > 0)
+        && "arena allocation must be performed in mem$scope() block!"
+    );
 
     allocator_arena_rec_s rec = _cex_alloc_estimate_alloc_size(size, alignment);
     if (rec.size == 0) { return NULL; }
@@ -261,9 +264,12 @@ _cex_allocator_arena__free(IAllocator allc, void* ptr)
 
     AllocatorArena_c* self = (AllocatorArena_c*)allc;
     (void)self;
-    uassert(
-        _cex_allocator_arena__check_pointer_valid(self, ptr) && "pointer doesn't belong to arena"
-    );
+    if (!self->disable_scopes) {
+        uassert(
+            _cex_allocator_arena__check_pointer_valid(self, ptr)
+            && "pointer doesn't belong to arena"
+        );
+    }
     allocator_arena_rec_s* rec = _cex_alloc_arena__get_rec(ptr);
     rec->is_free = true;
     mem$asan_poison(ptr, rec->size);
@@ -280,7 +286,10 @@ _cex_allocator_arena__realloc(IAllocator allc, void* old_ptr, usize size, usize 
     uassert(size < CEX_ARENA_MAX_ALLOC);
 
     AllocatorArena_c* self = (AllocatorArena_c*)allc;
-    uassert(self->scope_depth > 0 && "arena allocation must be performed in mem$scope() block!");
+    uassert(
+        (self->disable_scopes || self->scope_depth > 0)
+        && "arena allocation must be performed in mem$scope() block!"
+    );
 
     allocator_arena_rec_s* rec = _cex_alloc_arena__get_rec(old_ptr);
     uassert(!rec->is_free && "trying to realloc() already freed pointer");
@@ -292,10 +301,12 @@ _cex_allocator_arena__realloc(IAllocator allc, void* old_ptr, usize size, usize 
         uassert(((usize)(size) & ((alignment)-1)) == 0 && "size is not aligned as expected");
     }
 
-    uassert(
-        _cex_allocator_arena__check_pointer_valid(self, old_ptr) &&
-        "pointer doesn't belong to arena"
-    );
+    if (!self->disable_scopes) {
+        uassert(
+            _cex_allocator_arena__check_pointer_valid(self, old_ptr) &&
+            "pointer doesn't belong to arena"
+        );
+    }
 
     if (unlikely(size <= rec->size)) {
         if (size == rec->size) { return old_ptr; }
@@ -358,6 +369,7 @@ _cex_allocator_arena__scope_enter(IAllocator allc)
 {
     _cex_allocator_arena__validate(allc);
     AllocatorArena_c* self = (AllocatorArena_c*)allc;
+    if (self->disable_scopes) { return allc; }
     // NOTE: If scope_depth is higher CEX_ALLOCATOR_MAX_SCOPE_STACK, we stop marking
     //  all memory will be released after exiting scope_depth == CEX_ALLOCATOR_MAX_SCOPE_STACK
     if (self->scope_depth < sizeof(self->scope_stack) / sizeof((self->scope_stack)[0])) {
@@ -371,6 +383,7 @@ _cex_allocator_arena__scope_exit(IAllocator allc)
 {
     _cex_allocator_arena__validate(allc);
     AllocatorArena_c* self = (AllocatorArena_c*)allc;
+    if (self->disable_scopes) { return; }
     uassert(self->scope_depth > 0);
 
 #ifdef CEX_TEST
@@ -422,13 +435,19 @@ _cex_allocator_arena__scope_depth(IAllocator allc)
     return self->scope_depth;
 }
 
-/// Creates a new arena allocator with the given page_size, returns an IAllocator
+/// Creates a new arena allocator with keyword args (AllocatorArena_kw), returns an IAllocator
 IAllocator
-AllocatorArena_create(usize page_size)
+AllocatorArena_create(const AllocatorArena_kw* kwargs)
 {
-    if (page_size < 1024 || page_size >= UINT32_MAX) {
-        uassert(page_size >= 1024 && "page size is too small");
-        uassert(page_size < UINT32_MAX && "page size is too big");
+    AllocatorArena_kw default_kw = {
+        .page_size = CEX_ALLOCATOR_TEMP_PAGE_SIZE,
+        .disable_scopes = false,
+    };
+    if (kwargs == NULL) { kwargs = &default_kw; }
+
+    if (kwargs->page_size < 1024 || kwargs->page_size >= UINT32_MAX) {
+        uassert(kwargs->page_size >= 1024 && "page size is too small");
+        uassert(kwargs->page_size < UINT32_MAX && "page size is too big");
         return NULL;
     }
 
@@ -447,7 +466,8 @@ AllocatorArena_create(usize page_size)
                 .is_temp = false, 
             }
         },
-        .page_size = page_size,
+        .page_size = kwargs->page_size,
+        .disable_scopes = kwargs->disable_scopes,
     };
 
     AllocatorArena_c* self = mem$new(mem$, AllocatorArena_c);
@@ -459,7 +479,9 @@ AllocatorArena_create(usize page_size)
     uassert(self->alloc.meta.magic_id == CEX_ALLOCATOR_ARENA_MAGIC);
     uassert(self->alloc.malloc == _cex_allocator_arena__malloc);
 
-    _cex_allocator_arena__scope_enter(&self->alloc);
+    if (!self->disable_scopes) {
+        _cex_allocator_arena__scope_enter(&self->alloc);
+    }
 
     return &self->alloc;
 }
@@ -471,7 +493,7 @@ AllocatorArena_sanitize(IAllocator allc)
     (void)allc;
     _cex_allocator_arena__validate(allc);
     AllocatorArena_c* self = (AllocatorArena_c*)allc;
-    if (self->scope_depth == 0) {
+    if (self->scope_depth == 0 && !self->disable_scopes) {
         uassert(self->stats.bytes_alloc == self->stats.bytes_free && "memory leaks?");
     }
     allocator_arena_page_s* page = self->last_page;
@@ -531,7 +553,9 @@ AllocatorArena_destroy(IAllocator self)
     _cex_allocator_arena__validate(self);
     AllocatorArena_c* allc = (AllocatorArena_c*)self;
 
-    uassert(allc->scope_depth == 1 && "trying to destroy in mem$scope?");
+    if (!allc->disable_scopes) {
+        uassert(allc->scope_depth == 1 && "trying to destroy in mem$scope?");
+    }
     _cex_allocator_arena__scope_exit(self);
 
 #ifdef CEX_TEST

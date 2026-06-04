@@ -1245,7 +1245,7 @@ You shouldn't use allocator interface directly (it's less convenient), so it's b
 
 Allocator scoping:
 
-* `mem$arena(page_size) { ... }` - enters new instance of allocator arena with the `page_size`.
+* `mem$arena(page_size, allc_var) { ... }` - enters new instance of allocator arena with the `page_size`. Also supports `AllocatorArena_kw*` pointer form for `disable_scopes` etc.
 * `mem$scope(arena_or_tmem$, scope_var) { ... }` - opens new memory scope (works only with arena allocators or temp allocator)
 
 
@@ -1260,7 +1260,7 @@ Working with arenas:
 
 ##### Direct initialization
 ```c
-IAllocator arena = AllocatorArena.create(4096); /*<1>*/
+IAllocator arena = AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 4096 }); /*<1>*/
 u8* p = mem$malloc(arena, 100);  /* <2> */
 
 mem$scope(arena, tal) /*<3>*/
@@ -1275,7 +1275,7 @@ mem$scope(arena, tal) /*<3>*/
 
 AllocatorArena.destroy(arena); /*<7>*/
 ```
-1. New arena with 4096 byte page
+1. New arena with 4096 byte page via `AllocatorArena_kw` kwargs struct
 2. Allocating some memory from arena
 3. Entering new memory scope
 4. Allocation size exceeds page size, new page will be allocated then. `p` address remain the same!
