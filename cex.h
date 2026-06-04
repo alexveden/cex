@@ -4469,7 +4469,7 @@ void _cex_test_ns_restore(_cex_test_mockns_s* mock);
 
 #define _test$ns_mock_once(ns)                                                         \
     for (_cex_test_mockns_s cex$tmpname(_ns_save)                                          \
-             __attribute__((__cleanup__(_cex_test_ns_restore))) = _cex_test_ns_save(&(ns), sizeof(ns)),              \
+             __attribute__((__cleanup__(_cex_test_ns_restore))) __attribute__((unused)) = _cex_test_ns_save(&(ns), sizeof(ns)),              \
          *cex$tmpname(_ns_end) = 0;                                                \
          cex$tmpname(_ns_end) == 0;                                                \
          cex$tmpname(_ns_end) = (void*)(uintptr_t)1)
