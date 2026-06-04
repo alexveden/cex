@@ -4453,6 +4453,46 @@ extern
     }                                                                                              \
     Exception test$noopt cex_test__teardown_case_fn(void)
 
+/// State bundle for test$mock_ns
+typedef struct _cex_test_mockns_s {
+    void* ns_ptr;
+    usize ns_size;
+    void* orig_ns;
+} _cex_test_mockns_s;
+
+/// Saves namespace state before test$mock_ns scope
+_cex_test_mockns_s _cex_test_ns_save(void* ns, usize ns_size);
+/// Restores namespace state on test$mock_ns scope exit (__cleanup__ callback)
+void _cex_test_ns_restore(_cex_test_mockns_s* mock);
+
+/* ---- test$mock_ns: namespace mock scope guard ---- */
+
+#define _test$ns_mock_once(ns)                                                         \
+    for (_cex_test_mockns_s cex$tmpname(_ns_save)                                          \
+             __attribute__((__cleanup__(_cex_test_ns_restore))) = _cex_test_ns_save(&(ns), sizeof(ns)),              \
+         *cex$tmpname(_ns_end) = 0;                                                \
+         cex$tmpname(_ns_end) == 0;                                                \
+         cex$tmpname(_ns_end) = (void*)(uintptr_t)1)
+
+#define _test$ns_mock_N(_1,_2,_3,_4,_5,_6,_7,_8,N,...)  _test$ns_mock_map_##N
+
+#define _test$ns_mock_CHOOSER(...) \
+    _test$ns_mock_N(__VA_ARGS__, 8,7,6,5,4,3,2,1,0)
+
+#define _test$ns_mock_map_0()
+#define _test$ns_mock_map_1(ns)                _test$ns_mock_once(ns)
+#define _test$ns_mock_map_2(ns, ...)           _test$ns_mock_once(ns) _test$ns_mock_map_1(__VA_ARGS__)
+#define _test$ns_mock_map_3(ns, ...)           _test$ns_mock_once(ns) _test$ns_mock_map_2(__VA_ARGS__)
+#define _test$ns_mock_map_4(ns, ...)           _test$ns_mock_once(ns) _test$ns_mock_map_3(__VA_ARGS__)
+#define _test$ns_mock_map_5(ns, ...)           _test$ns_mock_once(ns) _test$ns_mock_map_4(__VA_ARGS__)
+#define _test$ns_mock_map_6(ns, ...)           _test$ns_mock_once(ns) _test$ns_mock_map_5(__VA_ARGS__)
+#define _test$ns_mock_map_7(ns, ...)           _test$ns_mock_once(ns) _test$ns_mock_map_6(__VA_ARGS__)
+#define _test$ns_mock_map_8(ns, ...)           _test$ns_mock_once(ns) _test$ns_mock_map_7(__VA_ARGS__)
+
+/// Saves namespace(s) before scope — mock any function pointer inside, auto-restored on exit via
+/// __cleanup__. Accepts 1-8 namespaces.
+#define test$mock_ns(...)                   _test$ns_mock_CHOOSER(__VA_ARGS__)(__VA_ARGS__)
+
 #define _test$tassert_fn(a, b)                                                                     \
     ({                                                                                             \
         _Generic(                                                                                  \
@@ -5116,6 +5156,19 @@ _cex_test_flush_cpu_cache(void)
     }
     free((void*)flush_buffer);
     return Error.ok;
+}
+
+_cex_test_mockns_s _cex_test_ns_save(void* ns, usize ns_size){
+    uassert(ns != NULL);
+    uassert(ns_size > 0);
+    void* orig_ns = mem$malloc(test$alloc, ns_size);
+    uassert(orig_ns);
+    memcpy(orig_ns, ns, ns_size);
+    return (_cex_test_mockns_s){.ns_ptr = ns, .ns_size = ns_size, .orig_ns = orig_ns};
+}
+
+void _cex_test_ns_restore(_cex_test_mockns_s* mock){
+    memcpy(mock->ns_ptr, mock->orig_ns, mock->ns_size);
 }
 
 Exc test$noopt __attribute__((noinline))

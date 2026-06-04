@@ -455,6 +455,19 @@ _cex_test_flush_cpu_cache(void)
     return Error.ok;
 }
 
+_cex_test_mockns_s _cex_test_ns_save(void* ns, usize ns_size){
+    uassert(ns != NULL);
+    uassert(ns_size > 0);
+    void* orig_ns = mem$malloc(test$alloc, ns_size);
+    uassert(orig_ns);
+    memcpy(orig_ns, ns, ns_size);
+    return (_cex_test_mockns_s){.ns_ptr = ns, .ns_size = ns_size, .orig_ns = orig_ns};
+}
+
+void _cex_test_ns_restore(_cex_test_mockns_s* mock){
+    memcpy(mock->ns_ptr, mock->orig_ns, mock->ns_size);
+}
+
 Exc test$noopt __attribute__((noinline))
 _cex_test_bench_call_timer_overhead(void)
 {
