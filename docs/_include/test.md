@@ -96,6 +96,10 @@ test$case(my_test_case){
 /// main() function for test suite, you must place it into test file at the end
 #define test$main()
 
+/// Saves namespace(s) before scope — mock any function pointer inside, auto-restored on exit via
+/// __cleanup__. Accepts 1-8 namespaces.
+#define test$mock_ns(...)
+
 /// Attribute for function which disables optimization for test cases or other functions
 #define test$noopt
 

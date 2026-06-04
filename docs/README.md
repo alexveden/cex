@@ -453,7 +453,7 @@ CEX provides several short aliases for primitive types and some extra types for 
 | arr$ | Type-safe, generic, dynamic array |
 | hm$ | Type-safe, generic hashmap |
 | io | Cross-platform IO namespace |
-| test$ | Unit-test namespace (see tassert_*) |
+| test$ | Unit-test namespace: test$case, test$mock_ns, tassert_* assertions |
 | fuzz$ | Fuzz-test interface |
 | argparse | Command line argument parsing class |
 | cg$ | Code generation namespace |
@@ -3025,7 +3025,7 @@ additional safety mechanisms are activated:
 >
 > If you hit a `use-after-poison` ASAN crash in `tmem$`, temporarily switch to `mem$` to get more precise diagnostics (arena pages are large, making ASAN's default report less specific).
 
-##### Namespace Mutability and Mocks
+#### Namespace Mutability and Mocks
 
 In test mode namespace function pointers become writable, enabling simple mocking:
 
@@ -3052,7 +3052,41 @@ test$case(my_test_mocking_capabilities) {
 > tests in the same run will use the mock. Use `test$setup_case()` / `test$teardown_case()`
 > hooks to automate save/restore.
 
-##### `test$alloc` — Per-Case Arena
+#### `test$mock_ns` — Scoped Namespace Mocking
+
+`test$mock_ns` is a scope-guard macro that saves the full state of one or more
+CEX namespaces before entering the body, then automatically restores them on
+any exit path (`return`, `break`, `goto`, or normal fallthrough) via
+`__attribute__((cleanup(...)))`. No manual save/restore needed.
+
+Works with any CEX namespace — the save/restore is a byte-level `memcpy` of the
+namespace struct, making it fully generic. Accepts 1–8 namespace arguments;
+each is saved before the body executes and restored in reverse order on scope
+exit.
+
+```c
+test$case(mock_single_ns) {
+    test$mock_ns(os) {
+        os.timer = my_timer_mock;      // mock timer
+        tassert_eq(777888.9, os.timer());
+    }
+    // os.timer is auto-restored here
+    tassert_ne(777888.9, os.timer());
+    return EOK;
+}
+
+test$case(mock_two_ns) {
+    test$mock_ns(os, io) {
+        os.timer = my_timer_mock;
+        io.printf = my_printf_mock;
+        // ...
+    }
+    // both restored
+    return EOK;
+}
+```
+
+#### `test$alloc` — Per-Case Arena
 
 `test$alloc` is a dedicated arena created fresh before each test case and destroyed
 afterward:
