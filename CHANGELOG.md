@@ -9,8 +9,11 @@
   with `.page_size` and `.disable_scopes` fields; NULL → ZII defaults.
 - **mem$arena**: Rewrote type dispatch to support `AllocatorArena_kw*` pointer arg
   alongside integer `page_size`. Added `disable_scopes` support.
+- `test$alloc` - test case specific allocator, always growing arena with auto-cleanup
+- AllocatorArena - increased max single allocation and page size up to 1TiB on 64 bits
 
 ### Fixes
+- AllocatorArena - false positive poison, when realloc() shrink then grow.
 
 ## 0.19.1
 2026-05-28
