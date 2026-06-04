@@ -22,6 +22,7 @@ struct _cex_test_context_s
     FILE* out_stream;   // test case captured output
     int tests_run;      // number of tests run
     int tests_failed;   // number of tests failed
+    int tests_skipped;  // number of tests skipped (filtered out)
     bool quiet_mode;    // quiet mode (for run all)
     char* case_name;    // current running case name
     _cex_test_case_f setup_case_fn;

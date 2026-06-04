@@ -4198,6 +4198,7 @@ struct _cex_test_context_s
     FILE* out_stream;   // test case captured output
     int tests_run;      // number of tests run
     int tests_failed;   // number of tests failed
+    int tests_skipped;  // number of tests skipped (filtered out)
     bool quiet_mode;    // quiet mode (for run all)
     char* case_name;    // current running case name
     _cex_test_case_f setup_case_fn;
@@ -5268,9 +5269,9 @@ cex_test_main_fn(int argc, char** argv)
     }
 
     if (!ctx->quiet_mode) {
-        fprintf(stderr, "-------------------------------------\n");
+        fprintf(stderr, "\n--------------------------------------------------\n");
         fprintf(stderr, "Running Tests: %s\n", argv[0]);
-        fprintf(stderr, "-------------------------------------\n\n");
+        fprintf(stderr, "--------------------------------------------------\n\n");
     }
     if (ctx->setup_suite_fn) {
         Exc err = NULL;
@@ -5297,14 +5298,16 @@ cex_test_main_fn(int argc, char** argv)
         );
     }
 
+    f64 t_start = os.timer();
     for$each (t, ctx->test_cases) {
         ctx->case_name = t.test_name;
-        ctx->tests_run++;
         if (ctx->is_benchmark != t.is_benchmark) { continue; }
         if (ctx->case_filter && !(str.match(t.test_name, ctx->case_filter) ||
                                   str.find(t.test_name, ctx->case_filter))) {
+            ctx->tests_skipped++;
             continue;
         }
+        ctx->tests_run++;
 
         if (!ctx->quiet_mode || ctx->is_benchmark) {
             fprintf(stderr, "%s", t.test_name);
@@ -5411,6 +5414,7 @@ cex_test_main_fn(int argc, char** argv)
         AllocatorArena.destroy(test$alloc);
         test$alloc = NULL;
     }
+    f64 t_elapsed = os.timer() - t_start;
 
     if (ctx->teardown_suite_fn) {
         e$except (err, ctx->teardown_suite_fn()) {
@@ -5426,15 +5430,16 @@ cex_test_main_fn(int argc, char** argv)
     }
 
     if (!ctx->quiet_mode) {
-        fprintf(stderr, "\n-------------------------------------\n");
-        fprintf(
-            stderr,
-            "Total: %d Passed: %d Failed: %d\n",
+        fprintf(stderr, "\n--------------------------------------------------\n");
+        fprintf(stderr,
+            "Total: %d Passed: %d Skipped: %d Failed: %d (%0.3fs)\n",
             ctx->tests_run,
             ctx->tests_run - ctx->tests_failed,
-            ctx->tests_failed
+            ctx->tests_skipped,
+            ctx->tests_failed,
+            t_elapsed
         );
-        fprintf(stderr, "-------------------------------------\n");
+        fprintf(stderr, "--------------------------------------------------\n");
     } else {
         fprintf(stderr, "\n");
 
