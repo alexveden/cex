@@ -1,44 +1,88 @@
 #include "src/all.c"
 
-#define alloc_cmp(alloc_size, align, expected_struct...)                                           \
+#define alloc_cmp(alloc_size, align, exp_size, exp_padding, exp_align)                              \
     ({                                                                                             \
-        allocator_arena_rec_s res = _cex_alloc_estimate_alloc_size((alloc_size), (align));         \
-        allocator_arena_rec_s exp = (allocator_arena_rec_s){ expected_struct };                    \
-        int cmp_res = memcmp(&res, &exp, sizeof(allocator_arena_rec_s));                           \
-        if (cmp_res != 0) {                                                                        \
-            printf(                                                                                \
-                "Wrong result: {.size = %d, .ptr_offset=%d, .ptr_padding=%d, .ptr_alignmet=%d}\n", \
-                res.size,                                                                          \
-                res.ptr_offset,                                                                    \
-                res.ptr_padding,                                                                   \
-                res.ptr_alignment                                                                  \
-            );                                                                                     \
+        allocator_arena_rec_s _r = _cex_alloc_estimate_alloc_size((alloc_size), (align));           \
+        u64 _gs = _cex_arena_rec_get_size(&_r);                                                    \
+        u8 _gp = _r.ptr_padding;                                                                   \
+        u8 _ga = _cex_arena_rec_get_align(&_r);                                                    \
+        int _ok = 1;                                                                               \
+        if (_gs != (u64)(exp_size) || _gp != (u8)(exp_padding) || _ga != (u8)(exp_align)) {        \
+            printf("Mismatch: size=%lu padding=%u align=%u (expected %lu %u %u)\n",                \
+                   (unsigned long)_gs, (unsigned)_gp, (unsigned)_ga,                               \
+                   (unsigned long)(u64)(exp_size), (unsigned)(u8)(exp_padding),                     \
+                   (unsigned)(u8)(exp_align));                                                      \
+            _ok = 0;                                                                               \
         }                                                                                          \
-        cmp_res == 0;                                                                              \
+        _ok;                                                                                       \
     })
 
 test$case(test_allocator_arena_alloc_size)
 {
     tassert_eq(sizeof(allocator_arena_rec_s), 8);
 
-    tassert(alloc_cmp(1, 0, .size = 1, .ptr_padding = 7, .ptr_alignment = 8));
-    tassert(alloc_cmp(5, 0, .size = 5, .ptr_padding = 3, .ptr_alignment = 8));
-    tassert(alloc_cmp(8, 0, .size = 8, .ptr_padding = 8, .ptr_alignment = 8));
-    tassert(alloc_cmp(16, 0, .size = 16, .ptr_padding = 8, .ptr_alignment = 8));
-    tassert(alloc_cmp(100, 0, .size = 100, .ptr_padding = 4, .ptr_alignment = 8));
+    tassert(alloc_cmp(1, 0, 1, 7, 8));
+    tassert(alloc_cmp(5, 0, 5, 3, 8));
+    tassert(alloc_cmp(8, 0, 8, 8, 8));
+    tassert(alloc_cmp(16, 0, 16, 8, 8));
+    tassert(alloc_cmp(100, 0, 100, 4, 8));
 
-    tassert(alloc_cmp(8, 8, .size = 8, .ptr_padding = 8, .ptr_alignment = 8));
-    tassert(alloc_cmp(16, 8, .size = 16, .ptr_padding = 8, .ptr_alignment = 8));
+    tassert(alloc_cmp(8, 8, 8, 8, 8));
+    tassert(alloc_cmp(16, 8, 16, 8, 8));
 
-    tassert(alloc_cmp(16, 16, .size = 16, .ptr_padding = 8, .ptr_alignment = 16));
-    tassert(alloc_cmp(32, 16, .size = 32, .ptr_padding = 8, .ptr_alignment = 16));
-    tassert(alloc_cmp(48, 16, .size = 48, .ptr_padding = 8, .ptr_alignment = 16));
-    tassert(alloc_cmp(64, 16, .size = 64, .ptr_padding = 8, .ptr_alignment = 16));
+    tassert(alloc_cmp(16, 16, 16, 8, 16));
+    tassert(alloc_cmp(32, 16, 32, 8, 16));
+    tassert(alloc_cmp(48, 16, 48, 8, 16));
+    tassert(alloc_cmp(64, 16, 64, 8, 16));
 
-    tassert(alloc_cmp(64, 64, .size = 64, .ptr_padding = 8, .ptr_alignment = 64));
-    tassert(alloc_cmp(128, 64, .size = 128, .ptr_padding = 8, .ptr_alignment = 64));
-    tassert(alloc_cmp(192, 64, .size = 192, .ptr_padding = 8, .ptr_alignment = 64));
-    tassert(alloc_cmp(256, 64, .size = 256, .ptr_padding = 8, .ptr_alignment = 64));
+    tassert(alloc_cmp(64, 64, 64, 8, 64));
+    tassert(alloc_cmp(128, 64, 128, 8, 64));
+    tassert(alloc_cmp(192, 64, 192, 8, 64));
+    tassert(alloc_cmp(256, 64, 256, 8, 64));
+
+    return EOK;
+}
+
+test$case(test_allocator_arena_40bit_size)
+{
+    // size just above 32-bit boundary
+    allocator_arena_rec_s r;
+
+    // (UINT32_MAX + 1) = 0x100000000, 8-aligned → padding = 8
+    r = _cex_alloc_estimate_alloc_size((u64)UINT32_MAX + 1, 0);
+    tassert_eq(_cex_arena_rec_get_size(&r), (u64)UINT32_MAX + 1);
+    tassert_eq(r.ptr_padding, 8);
+    tassert_eq(_cex_arena_rec_get_align(&r), 8);
+
+    // (UINT32_MAX + 2) = 0x100000001, not 8-aligned → padding = 7
+    r = _cex_alloc_estimate_alloc_size((u64)UINT32_MAX + 2, 0);
+    tassert_eq(_cex_arena_rec_get_size(&r), (u64)UINT32_MAX + 2);
+    tassert_eq(r.ptr_padding, 7);
+    tassert_eq(_cex_arena_rec_get_align(&r), 8);
+
+    // (UINT32_MAX + 9) = 0x100000008, 8-aligned → padding = 8
+    r = _cex_alloc_estimate_alloc_size((u64)UINT32_MAX + 9, 0);
+    tassert_eq(_cex_arena_rec_get_size(&r), (u64)UINT32_MAX + 9);
+    tassert_eq(r.ptr_padding, 8);
+    tassert_eq(_cex_arena_rec_get_align(&r), 8);
+
+    // (UINT32_MAX + 17) = 0x100000010, 16-aligned → padding = 8
+    r = _cex_alloc_estimate_alloc_size((u64)UINT32_MAX + 17, 16);
+    tassert_eq(_cex_arena_rec_get_size(&r), (u64)UINT32_MAX + 17);
+    tassert_eq(r.ptr_padding, 8);
+    tassert_eq(_cex_arena_rec_get_align(&r), 16);
+
+    r = _cex_alloc_estimate_alloc_size((1ULL << 40) - 1000, 8);
+    tassert_eq(_cex_arena_rec_get_size(&r), (1ULL << 40) - 1000);
+    tassert_eq(r.ptr_padding, 8);
+    tassert_eq(_cex_arena_rec_get_align(&r), 8);
+
+    // round-trip: set/get
+    u64 sizes[] = { 0, 1, UINT32_MAX, (u64)UINT32_MAX + 1, (1ULL << 40) - 1000 };
+    for$each (s, sizes) {
+        _cex_arena_rec_set_size(&r, s);
+        tassert_eq(_cex_arena_rec_get_size(&r), s);
+    }
 
     return EOK;
 }
@@ -203,23 +247,23 @@ test$case(test_allocator_arena_malloc_pointer_alignment)
 
                 uassert(((usize)(ptr_algn) & ((alignment)-1)) == 0);
                 allocator_arena_rec_s* rec = _cex_alloc_arena__get_rec(ptr_algn);
-                tassert_eq(rec->ptr_alignment, alignment);
-                tassert_eq(rec->size, alloc_size);
-                tassert_eq(rec->is_free, 0);
+                tassert_eq(_cex_arena_rec_get_align(rec), alignment);
+                tassert_eq(_cex_arena_rec_get_size(rec), alloc_size);
+                tassert(!_cex_arena_rec_is_free(rec));
 
                 if (i % 2 == 0) {
                     tassert(arena->free(arena, ptr_algn) == NULL);
                     tassert(mem$asan_poison_check(ptr_algn, alloc_size));
-                    tassert_eq(rec->is_free, 1);
+                    tassert(_cex_arena_rec_is_free(rec));
                 } else {
                     usize alloc_size2 = alignment * (i % 4 + 2);
                     tassert(alloc_size2 > alloc_size);
 
                     char* ptr_algn2 = arena->realloc(arena, ptr_algn, alloc_size2, alignment);
                     tassert(ptr_algn2);
-                    tassert_eq(rec->ptr_alignment, alignment);
-                    tassert_eq(rec->size, alloc_size2);
-                    tassert_eq(rec->is_free, 0);
+                    tassert_eq(_cex_arena_rec_get_align(rec), alignment);
+                    tassert_eq(_cex_arena_rec_get_size(rec), alloc_size2);
+                    tassert(!_cex_arena_rec_is_free(rec));
                 }
 
                 AllocatorArena_sanitize(arena);
@@ -268,13 +312,13 @@ test$case(test_allocator_arena_scope_sanitization)
 
                     uassert(((usize)(p) & ((alignment)-1)) == 0);
                     allocator_arena_rec_s* rec = _cex_alloc_arena__get_rec(p);
-                    tassert_eq(rec->ptr_alignment, alignment);
-                    tassert_eq(rec->size, alloc_size);
-                    tassert_eq(rec->is_free, 0);
+                    tassert_eq(_cex_arena_rec_get_align(rec), alignment);
+                    tassert_eq(_cex_arena_rec_get_size(rec), alloc_size);
+                    tassert(!_cex_arena_rec_is_free(rec));
 
                     tassert(arena->free(arena, p) == NULL);
                     tassert(mem$asan_poison_check(p, alloc_size));
-                    tassert_eq(rec->is_free, 1);
+                    tassert(_cex_arena_rec_is_free(rec));
 
                     AllocatorArena_sanitize(arena);
                 }
@@ -323,14 +367,14 @@ test$case(test_allocator_arena_realloc)
         AllocatorArena_sanitize(arena);
 
         allocator_arena_rec_s* rec = _cex_alloc_arena__get_rec(p);
-        tassert_eq(rec->ptr_alignment, 8);
-        tassert_eq(rec->size, 100);
-        tassert_eq(rec->is_free, 1);
+        tassert_eq(_cex_arena_rec_get_align(rec), 8);
+        tassert_eq(_cex_arena_rec_get_size(rec), 100);
+        tassert(_cex_arena_rec_is_free(rec));
 
         rec = _cex_alloc_arena__get_rec(p3);
-        tassert_eq(rec->ptr_alignment, 8);
-        tassert_eq(rec->size, 200);
-        tassert_eq(rec->is_free, 0);
+        tassert_eq(_cex_arena_rec_get_align(rec), 8);
+        tassert_eq(_cex_arena_rec_get_size(rec), 200);
+        tassert(!_cex_arena_rec_is_free(rec));
         tassert(allc->last_page->last_alloc == p3);
 
         // Extending last pointer!
@@ -433,11 +477,12 @@ test$case(test_allocator_arena_realloc_shrink)
         AllocatorArena_sanitize(arena);
 
         allocator_arena_rec_s* rec = _cex_alloc_arena__get_rec(p);
-        tassert_eq(rec->ptr_alignment, 8);
-        tassert_eq(rec->size, 100);
+        tassert_eq(_cex_arena_rec_get_align(rec), 8);
+        u64 rsize = _cex_arena_rec_get_size(rec);
+        tassert_eq(rsize, 100);
         tassert_eq(rec->ptr_padding, 4);
-        tassert_eq(rec->is_free, 0);
-        tassert(mem$asan_poison_check(p + rec->size, rec->ptr_padding));
+        tassert(!_cex_arena_rec_is_free(rec));
+        tassert(mem$asan_poison_check(p + rsize, rec->ptr_padding));
 
         // same size just ignored
         char* p2 = mem$realloc(arena, p, 100);
@@ -445,11 +490,12 @@ test$case(test_allocator_arena_realloc_shrink)
         tassert(p2 == p);
         tassert_eq(allc->stats.bytes_alloc, 112);
         tassert_eq(allc->used, 112);
-        tassert_eq(rec->ptr_alignment, 8);
-        tassert_eq(rec->size, 100);
+        tassert_eq(_cex_arena_rec_get_align(rec), 8);
+        rsize = _cex_arena_rec_get_size(rec);
+        tassert_eq(rsize, 100);
         tassert_eq(rec->ptr_padding, 4);
-        tassert_eq(rec->is_free, 0);
-        tassert(mem$asan_poison_check(p + rec->size, rec->ptr_padding));
+        tassert(!_cex_arena_rec_is_free(rec));
+        tassert(mem$asan_poison_check(p + rsize, rec->ptr_padding));
         AllocatorArena_sanitize(arena);
 
         char* p3 = mem$realloc(arena, p, 50);
@@ -461,10 +507,11 @@ test$case(test_allocator_arena_realloc_shrink)
         // shrink is no-op — verify tail NOT poisoned after shrink
         // (regression: old code poisoned bytes [50,104) which caused ASAN use-after-poison
         //  on subsequent realloc growth that memcpy's rec->size bytes from old_ptr)
-        tassert(!mem$asan_poison_check(p + 50, rec->size - 50 + rec->ptr_padding));
-        tassert_eq(rec->size, 100);
+        rsize = _cex_arena_rec_get_size(rec);
+        tassert(!mem$asan_poison_check(p + 50, rsize - 50 + rec->ptr_padding));
+        tassert_eq(rsize, 100);
         tassert_eq(rec->ptr_padding, 4);
-        tassert_eq(rec->is_free, 0);
+        tassert(!_cex_arena_rec_is_free(rec));
         AllocatorArena_sanitize(arena);
     }
 
@@ -597,7 +644,7 @@ test$case(test_allocator_arena_pointer_lifetime)
             (void*)rec <
             (void*)allc->last_page + sizeof(allocator_arena_page_s) + allc->last_page->capacity
         );
-        tassert_eq(rec->size, 100);
+        tassert_eq(_cex_arena_rec_get_size(rec), 100);
         mem$scope(arena, _)
         {
             u8* p2 = mem$malloc(_, 100);
@@ -608,7 +655,7 @@ test$case(test_allocator_arena_pointer_lifetime)
                 (void*)rec2 <
                 (void*)allc->last_page + sizeof(allocator_arena_page_s) + allc->last_page->capacity
             );
-            tassert_eq(rec2->size, 100);
+            tassert_eq(_cex_arena_rec_get_size(rec2), 100);
             tassert(_cex_allocator_arena__check_pointer_valid(allc, p2));
             uassert_disable();
             tassert(!_cex_allocator_arena__check_pointer_valid(allc, p));
@@ -655,7 +702,7 @@ test$case(test_allocator_mem_scope_exit_oversized_page)
         // allocate some memory
         u8* p = mem$malloc(arena, 128);
         allocator_arena_rec_s* rec = _cex_alloc_arena__get_rec(p);
-        tassert_eq(rec->size, 128);
+        tassert_eq(_cex_arena_rec_get_size(rec), 128);
         memset(p, 0xAA, 128);
         (void)p;
         mem$scope(arena, _)
@@ -666,7 +713,7 @@ test$case(test_allocator_mem_scope_exit_oversized_page)
             memset(p, 0xab, 1);
             (void)p;
             allocator_arena_rec_s* rec = _cex_alloc_arena__get_rec(p);
-            tassert_eq(rec->size, 4096);
+            tassert_eq(_cex_arena_rec_get_size(rec), 4096);
         }
     }
     return EOK;

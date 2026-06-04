@@ -48,27 +48,73 @@ typedef struct allocator_arena_page_s
 {
     alignas(64) allocator_arena_page_s* prev_page;
     usize used_start; // as of AllocatorArena.used field
-    u32 cursor;       // current allocated size of this page
-    u32 capacity;     // max capacity of this page (excluding header)
+    usize cursor;     // current allocated size of this page
+    usize capacity;   // max capacity of this page (excluding header)
     void* last_alloc; // last allocated pointer (viable for realloc)
-    u8 __poison_area[(sizeof(usize) == 8 ? 32 : 44)]; // barrier of sanitizer poison + space reserve
+    u8 __poison_area[(sizeof(usize) == 8 ? 24 : 44)]; // barrier of sanitizer poison + space reserve
     char data[];                                      // trailing chunk of data
 } allocator_arena_page_s;
 static_assert(sizeof(allocator_arena_page_s) == 64, "size!");
 static_assert(alignof(allocator_arena_page_s) == 64, "align");
 static_assert(offsetof(allocator_arena_page_s, data) == 64, "data must be aligned to 64");
 
-/// Allocation record header stored before each allocated block (size, alignment, padding, free flag)
+/// Allocation record header stored before each allocated block (40-bit size, alignment, padding, free flag)
 typedef struct allocator_arena_rec_s
 {
-    u32 size;         // allocation size
-    u8 ptr_padding;   // padding in bytes to next rec (also poisoned!)
-    u8 ptr_alignment; // requested pointer alignment
-    u8 is_free;       // indication that address has been free()'d
-    u8 ptr_offset;    // byte offset for allocated pointer for this item
+    u32 size_low;     // lower 32 bits of allocation size
+    u8  size_high;    // upper 8 bits of allocation size (total: 40-bit, max 1 TiB)
+    u8  flags;        // bits 0-1: align_enc, bit 2: is_free
+    u8  ptr_padding;  // padding in bytes to next rec (also poisoned!)
+    u8  ptr_offset;   // byte offset for allocated pointer for this item
 } allocator_arena_rec_s;
 static_assert(sizeof(allocator_arena_rec_s) == 8, "size!");
 static_assert(offsetof(allocator_arena_rec_s, ptr_offset) == 7, "ptr_offset must be last");
+
+static inline u64
+_cex_arena_rec_get_size(const allocator_arena_rec_s* r)
+{
+    return ((u64)r->size_high << 32) | r->size_low;
+}
+
+static inline void
+_cex_arena_rec_set_size(allocator_arena_rec_s* r, u64 s)
+{
+    r->size_low  = (u32)(u64)s;
+    r->size_high = (u8)(((u64)s >> 32) & 0xff);
+}
+
+// bits 0-1: align_enc  {0→8, 1→16, 2→32, 3→64}
+static inline u8
+_cex_arena_rec_get_align(const allocator_arena_rec_s* r)
+{
+    return 8 << (r->flags & 0x3);
+}
+
+static inline void
+_cex_arena_rec_set_align(allocator_arena_rec_s* r, u8 alignment)
+{
+    u8 e = (unsigned)__builtin_ctz((unsigned)(alignment)) - 3;
+    r->flags = (r->flags & ~0x3) | e;
+}
+
+// bit 2: is_free
+static inline bool
+_cex_arena_rec_is_free(const allocator_arena_rec_s* r)
+{
+    return (r->flags >> 2) & 1;
+}
+
+static inline void
+_cex_arena_rec_set_free(allocator_arena_rec_s* r)
+{
+    r->flags |= (1 << 2);
+}
+
+static inline void
+_cex_arena_rec_set_used(allocator_arena_rec_s* r)
+{
+    r->flags &= ~(1 << 2);
+}
 
 extern
 #    if !cex$is_freestanding
