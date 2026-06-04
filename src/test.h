@@ -141,6 +141,14 @@ test$case(my_test_case){
         }                                                                                          \
     })
 
+extern
+#    if !cex$is_freestanding
+    _Thread_local
+#    endif
+    IAllocator _cex__default_global__allocator_test;
+
+#define test$alloc (_cex__default_global__allocator_test)
+
 
 /// Unit-test test case
 #define test$case(NAME)                                                                             \

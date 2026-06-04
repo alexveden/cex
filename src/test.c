@@ -19,6 +19,11 @@ enum _cex_test_eq_op_e
     _cex_test_eq_op__ge,
 };
 
+#        if !cex$is_freestanding
+_Thread_local
+#        endif
+    IAllocator _cex__default_global__allocator_test = { 0 };
+
 static Exc __attribute__((noinline))
 _check_eq_int(i64 a, i64 b, int line, enum _cex_test_eq_op_e op)
 {
@@ -638,8 +643,10 @@ cex_test_main_fn(int argc, char** argv)
         ctx->case_name = t.test_name;
         ctx->tests_run++;
         if (ctx->is_benchmark != t.is_benchmark) { continue; }
-        if (ctx->case_filter && !(str.match(t.test_name, ctx->case_filter) || str.find(t.test_name, ctx->case_filter))) {
-            continue; }
+        if (ctx->case_filter && !(str.match(t.test_name, ctx->case_filter) ||
+                                  str.find(t.test_name, ctx->case_filter))) {
+            continue;
+        }
 
         if (!ctx->quiet_mode || ctx->is_benchmark) {
             fprintf(stderr, "%s", t.test_name);
@@ -651,6 +658,13 @@ cex_test_main_fn(int argc, char** argv)
         uassert_enable(); // unconditionally enable previously disabled asserts
 #        endif
         Exc err = EOK;
+
+        // NOTE: test$alloc is always growing arena, freed after test end
+        uassert(test$alloc == NULL && "initialized somewhere else?");
+        test$alloc = AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 1024 * 1024,
+                                                                 .disable_scopes = true });
+        uassert(test$alloc != NULL && "Memory error");
+
         AllocatorHeap_c* alloc_heap = (AllocatorHeap_c*)mem$;
         alloc_heap->stats.n_allocs = 0;
         alloc_heap->stats.n_free = 0;
@@ -666,6 +680,7 @@ cex_test_main_fn(int argc, char** argv)
             );
             return 1;
         }
+
 
         if (ctx->is_benchmark) {
             // NOTE: we don't mute bench output because muting uses files on disk,
@@ -714,6 +729,8 @@ cex_test_main_fn(int argc, char** argv)
             );
             return 1;
         }
+
+
         if (err == EOK && alloc_heap->stats.n_allocs != alloc_heap->stats.n_free) {
             if (!ctx->quiet_mode) {
                 fprintf(stderr, "%s", t.test_name);
@@ -732,6 +749,9 @@ cex_test_main_fn(int argc, char** argv)
             );
             ctx->tests_failed++;
         }
+
+        AllocatorArena.destroy(test$alloc);
+        test$alloc = NULL;
     }
 
     if (ctx->teardown_suite_fn) {

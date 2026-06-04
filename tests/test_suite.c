@@ -1,5 +1,27 @@
 #include "src/all.c"
 #include <math.h>
+test$setup_case()
+{
+    tassert(test$alloc != NULL);
+    return EOK;
+}
+test$teardown_case()
+{
+    tassert(test$alloc != NULL);
+    return EOK;
+}
+test$setup_suite()
+{
+    // test$alloc is lives only for cases
+    tassert(test$alloc == NULL);
+    return EOK;
+}
+test$teardown_suite()
+{
+    // test$alloc is lives only for cases
+    tassert(test$alloc == NULL);
+    return EOK;
+}
 
 test$case(test_tassert_i8)
 {
@@ -860,7 +882,7 @@ test$case(test_tassert_eq_string_long_non_multiline)
 
 test$case(test_tassert_eq_string_long_non_multiline_middle)
 {
-    char* s =  "1234567890f0obarbaz12345";
+    char* s = "1234567890f0obarbaz12345";
     char* s2 = "1234567890foobarbaz12345";
     Exc e = _check_eq_str(s, s2, 99, _cex_test_eq_op__eq);
 
@@ -873,7 +895,7 @@ test$case(test_tassert_eq_string_long_non_multiline_middle)
 
 test$case(test_tassert_eq_string_long_non_multiline_start)
 {
-    char* s =  "234567890fobarbaz12345";
+    char* s = "234567890fobarbaz12345";
     char* s2 = "1234567890foobarbaz12345";
     Exc e = _check_eq_str(s, s2, 99, _cex_test_eq_op__eq);
 
@@ -886,7 +908,7 @@ test$case(test_tassert_eq_string_long_non_multiline_start)
 
 test$case(test_tassert_eq_string_not_equal_end_new_line)
 {
-    char* s =  "1234567890foobarbaz12345\n";
+    char* s = "1234567890foobarbaz12345\n";
     char* s2 = "1234567890foobarbaz12345";
     Exc e = _check_eq_str(s, s2, 99, _cex_test_eq_op__eq);
 
@@ -897,5 +919,21 @@ test$case(test_tassert_eq_string_not_equal_end_new_line)
     return EOK;
 }
 
+test$case(test_alloc)
+{
+    tassert(test$alloc != NULL);
+
+    u8* p = mem$malloc(test$alloc, 10);
+    memset(p, 0x4f, 10);
+
+    // NOTE: no need for cleanup, no memory leaks for convenience
+    tassert_eq(*p, 0x4f);
+
+    // If this fails you still don't get asan errors about memory leaks, it's for convenience
+    // tassert_eq(*p, 0x4b);
+
+
+    return EOK;
+}
 
 test$main();
