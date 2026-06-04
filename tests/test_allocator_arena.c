@@ -552,7 +552,9 @@ test$case(test_allocator_arena_realloc_shrink)
         // (regression: old code poisoned bytes [50,104) which caused ASAN use-after-poison
         //  on subsequent realloc growth that memcpy's rec->size bytes from old_ptr)
         rsize = _cex_arena_rec_get_size(rec);
+#if !CEX_DISABLE_POISON
         tassert(!mem$asan_poison_check(p + 50, rsize - 50 + rec->ptr_padding));
+#endif
         tassert_eq(rsize, 100);
         tassert_eq(rec->ptr_padding, 4);
         tassert(!_cex_arena_rec_is_free(rec));
