@@ -112,6 +112,8 @@ AllocatorArena.destroy(arena);
 /// Rounds `size` to the closest alignment
 #define mem$aligned_round(size, alignment)
 
+/// Creates new ArenaAllocator instance in scope, frees it at scope exit.
+/// First argument: integer `page_size` or `const AllocatorArena_kw*` pointer.
 #define mem$arena(ps, allc_var)
 
 /// true - if program was compiled with address sanitizer support

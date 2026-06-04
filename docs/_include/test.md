@@ -84,6 +84,10 @@ test$case(my_test_case){
 
 
 ```c
+/// Dedicated arena created fresh before each test case and destroyed afterward, always growing,
+/// test$alloc is a dedicated arena created fresh before each test case and destroyed afterwards,
+#define test$alloc(_cex__default_global__allocator_test)
+
 #define test$bench(NAME)
 
 /// Unit-test test case

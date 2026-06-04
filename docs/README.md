@@ -1362,6 +1362,11 @@ When run in test mode (or specifically `#ifdef CEX_TEST` is true) the memory all
 3. If Address Sanitizer is available all allocations for arenas and heap will be surrounded by poisoned areas. If you see use-after-poison errors, it's likely a sign of use-after-free or out of bounds access in `tmem$`. Try to switch your code to the `mem$` allocator if possible to triage the exact reason of the error.
 4. Allocators do sanity checks at the end of each unit test case
 
+> [!NOTE]
+>
+> A full reference of all test-mode side effects is available in the
+> [Test-Mode Sanity Checks](#test-mode-sanity-checks-and-side-effects) section.
+
 ##### Be careful with break/continue
 `mem$scope/mem$arena` are macros backed by `for` loop, be careful when you use them inside loops and trying to `break/continue` outer loop.
 ```c
@@ -2982,6 +2987,98 @@ cex test clean all                       - delete all test executables in `cexy$
 cex test clean test/test_file.c          - delete specific test executable
 cex test run tests/test_file.c [--help]  - run test with passing arguments to the test runner program
 
+```
+
+#### Test-Mode Sanity Checks and Side Effects
+
+When compiled with `CEX_TEST` enabled (automatic for `#include "src/all.c"`), the following
+additional safety mechanisms are activated:
+
+| # | Mechanism | What it does |
+|---|-----------|--------------|
+| 1 | **Namespace mutability** | Namespace structs become non-const allowing function-pointer mocking (e.g. `os.timer = my_mock`) |
+| 2 | **`e$except_silent` → loud** | Silent error handlers print tracebacks, aiding debugging of error paths |
+| 3 | **`uassert` disable/enable** | `uassert_disable()` redirects failures to stdout + skips abort, letting the runner capture output |
+| 4 | **`0xf7` memory poison** *(ASAN fallback)* | All `mem$`/arena allocations filled with `0xf7` to expose uninitialized reads. Duplicates ASAN's detection when the sanitizer is unavailable. |
+| 5 | **Heap allocator stats** | `mem$` tracks `n_allocs`, `n_reallocs`, `n_free` for leak detection |
+| 6 | **Post-case leak detection** | Runner compares allocs vs frees after each case, emits `[LEAK]` on mismatch |
+| 7 | **Arena sanitize on scope exit** | Full heap integrity walk at every `mem$scope` exit |
+| 8 | **Arena sanitize on destroy** | Same walk + `bytes_alloc == bytes_free` check before arena destruction |
+| 9 | **Per-case arena isolation** | Each test case gets a fresh `test$alloc` arena, destroyed afterward |
+| 10 | **Stdout capture** | stdout → temp file; replayed only on test failure with `>>>TEST OUTPUT<<<` markers |
+| 11 | **Breakpoint on assert** | `--breakpoint` (`-b`) triggers debugger on `tassert_*` failure |
+| 12 | **ASAN poison regions** *(recommended)* | Poison padding surrounds every heap & arena allocation — OOB access triggers a `use-after-poison` crash with precise stack trace |
+
+**Breakpoint example:**
+```sh
+./cex test run tests/test_file.c -- --breakpoint
+./cex test run tests/test_file.c -- -b
+```
+
+**Memory poisoning and ASAN** work together as a two-layer defense:
+
+- **With ASAN** (the usual/recommended practice): `-fsanitize=address` is enabled by the test runner (`-Wall -Wextra -fsanitize=address`). `__asan_poison_memory_region` is called around every allocation's padding bytes in both heap and arena allocators. Any read/write past the allocation boundaries immediately crashes with a `use-after-poison` error and a precise stack trace. This is the primary tool for catching buffer overruns and use-after-free bugs.
+
+- **Without ASAN** (but `CEX_TEST`): the same padding areas are filled with `0xf7` and verified on every free / arena scope exit. If the `0xf7` pattern is broken, a `uassert` fires — a best-effort approximation of ASAN's detection.
+
+> [!TIP]
+>
+> If you hit a `use-after-poison` ASAN crash in `tmem$`, temporarily switch to `mem$` to get more precise diagnostics (arena pages are large, making ASAN's default report less specific).
+
+##### Namespace Mutability and Mocks
+
+In test mode namespace function pointers become writable, enabling simple mocking:
+
+```c
+f64 timer_mock(void) { return 777888.9; }
+
+test$case(my_test_mocking_capabilities) {
+    f64 orig_time = os.timer();
+
+    os.timer = timer_mock;
+    tassert_eq(777888.9, os.timer());
+
+    os.timer = cex_os_timer;
+    tassert_ne(777888.9, os.timer());
+    tassert_le(os.timer(), orig_time + 1.0);
+
+    return EOK;
+}
+```
+
+> [!WARNING]
+>
+> **Restore or go out of scope**: If you don't restore the original pointer, other
+> tests in the same run will use the mock. Use `test$setup_case()` / `test$teardown_case()`
+> hooks to automate save/restore.
+
+##### `test$alloc` — Per-Case Arena
+
+`test$alloc` is a dedicated arena created fresh before each test case and destroyed
+afterward:
+
+```c
+test$alloc = AllocatorArena.create(&(AllocatorArena_kw){
+    .page_size = 1024 * 1024,
+    .disable_scopes = true,
+});
+```
+
+| Property | Detail |
+|---|---|
+| **Always growing** | Bump allocator — never frees mid-case |
+| **`mem$scope` ignored** | `mem$scope(test$alloc, _)` is a no-op. All allocations survive until the case ends. |
+| **Self-cleanup** | Destroyed after every case (pass or fail), then `test$alloc = NULL`. Next case gets a fresh arena. |
+| **`0xf7` poisoning** | All `test$alloc` allocations filled with `0xf7` in test mode |
+
+Usage:
+
+```c
+test$case(uses_test_alloc) {
+    int* buf = mem$malloc(test$alloc, 256 * sizeof(int));
+    // use buf freely — no manual free needed
+    return EOK;
+}
 ```
 
 ### Benchmarking
