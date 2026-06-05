@@ -30,7 +30,7 @@ _cex_str__index(str_s* s, char* c, u8 clen)
 
     if (!_cex_str__isvalid(s)) { return -1; }
 
-    u8 split_by_idx[UINT8_MAX] = { 0 };
+    u8 split_by_idx[256] = { 0 };
     for (u8 i = 0; i < clen; i++) { split_by_idx[(u8)c[i]] = 1; }
 
     for (usize i = 0; i < s->len; i++) {
