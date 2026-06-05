@@ -1052,6 +1052,72 @@ test$case(test_os_path_normpath_leak)
 }
 
 
+test$case(test_os_path_abs_leak)
+{
+    // Use mem$ (heap) allocator and explicitly free results to verify no memory leaks.
+    // Running under ASAN will report any unfreed allocations.
+    char* r = NULL;
+
+    // NULL/"" → NULL (nothing to free)
+    r = os.path.absolute(NULL, mem$);
+    tassert_eq(r, NULL);
+    mem$free(mem$, r);
+
+    r = os.path.absolute("", mem$);
+    tassert_eq(r, NULL);
+    mem$free(mem$, r);
+
+    // Already absolute (POSIX)
+    if (os.platform.current() != OSPlatform__win) {
+        r = os.path.absolute("/", mem$);
+        tassert_eq(r, "/");
+        mem$free(mem$, r);
+
+        r = os.path.absolute("/a/b/c", mem$);
+        tassert_eq(r, "/a/b/c");
+        mem$free(mem$, r);
+
+        r = os.path.absolute("/a/../b", mem$);
+        tassert_eq(r, "/b");
+        mem$free(mem$, r);
+    }
+
+    // Already absolute (Windows)
+    if (os.platform.current() == OSPlatform__win) {
+        r = os.path.absolute("C:\\", mem$);
+        tassert_eq(r, "C:\\");
+        mem$free(mem$, r);
+
+        r = os.path.absolute("C:\\a\\b\\c", mem$);
+        tassert_eq(r, "C:\\a\\b\\c");
+        mem$free(mem$, r);
+
+        r = os.path.absolute("C:\\a\\..\\b", mem$);
+        tassert_eq(r, "C:\\b");
+        mem$free(mem$, r);
+
+        r = os.path.absolute("\\\\server\\share", mem$);
+        tassert_eq(r, "\\\\server\\share");
+        mem$free(mem$, r);
+    }
+
+    // Relative paths — need CWD to build expected
+    if (os$PATH_SEP == '/') {
+        r = os.path.absolute(".", mem$);
+        tassert(r != NULL);
+        tassert(str.starts_with(r, "/"));
+        mem$free(mem$, r);
+    } else {
+        r = os.path.absolute(".", mem$);
+        tassert(r != NULL);
+        tassert(str.find(r, ":\\"));
+        mem$free(mem$, r);
+    }
+
+    return EOK;
+}
+
+
 test$case(test_os_path_normpath_unicode)
 {
     mem$scope(tmem$, _)
