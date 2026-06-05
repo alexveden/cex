@@ -137,6 +137,7 @@ cex_bundle(void)
         char* bundle[] = {
 
             "src/cex_platform.h",
+            "src/platform_win32.h",
             "src/cex_base.h",
             "src/mem.h",
             "src/AllocatorHeap.h",

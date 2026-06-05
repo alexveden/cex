@@ -110,6 +110,11 @@ Use `cex -D config` to reset all project config flags to defaults
 /// single-header implementation mode (expands cex.h contents)
 #define CEX_IMPLEMENTATION
 
+/// skip CEX's own Win32 type/function declarations; let system <windows.h> provide them instead
+/// use when your project includes <windows.h> (directly or via third-party libs like curl)
+/// to avoid conflicts with CEX's predeclared Win32 types (e.g. _LARGE_INTEGER, _FILETIME)
+#define CEX_NO_WIN32_TYPES
+
 ```
 
 */

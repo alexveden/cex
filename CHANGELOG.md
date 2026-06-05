@@ -16,6 +16,7 @@
 - `./cex test watch` command added - watching for test file and its #includes changes, and automatically re-run the test perpetually
 - test runner - added footer results coloring (red - something failed, green - all passed)
 - (breaking) **mem$arena** renamed to **mem$arena_scope** for clarity and consistency with other scope-based macros
+- Removed `#include <windows.h>` for avoiding namespace pollution + added windows.h conflict resolving
 
 ### Fixes
 - AllocatorArena - false positive poison, when realloc() shrink then grow.
@@ -24,7 +25,7 @@
 2026-05-28
 ### Fixes
 - refactor: for$each removed assert + added for$each() static assertion big struct copy warning
-- fix: _cexds__hash_bytes UB wanings + added some more tests
+- fix: _cexds__hash_bytes UB warnings + added some more tests
 - fix: _cex_ds_hash_bytes() returns 0 if pointer NULL or len=0
 - fix: test --filter syntax
 
@@ -44,7 +45,7 @@
 - feat: added str.hash() str.slice.hash() functions
 - feat: os.hash() added alias of general purpose hash
 - refactor: os.cmd.wait() timeout_sec argument now a floating point (allows fraction of seconds waits)
-- feat: tasssert_eq - added case for uint64 eq checks
+- feat: tassert_eq - added case for uint64 eq checks
 - feat: test$bench output aligned formatting
 - feat(cexy$): implemented cex.h pre-compilation for debug builds for `./cex app` and `./cex test` commands
 
@@ -79,7 +80,7 @@
 ### cexstd - standard lib
 - feat(cexstd) - (breaking) renamed standard lib folder from `lib/` to `cexstd/`
 - feat(json): (breaking) refactored JSON handling API in lib/json/json.h (WIP)
-- example(json): json_config - new json gen (bugs fixes)
+- example(json): json_config - new json gen (bug fixes)
 - feat(json.gen): added .optional serde$$field() + test
 - feat(json.gen): added .skip for serde$$field() + test
 - feat(json.gen): added utf decoding in codegen logic
@@ -124,7 +125,7 @@
 
 
 ### Changes / improvements
-- Added WASM support via emscripten compiler 
+- Added WASM support via Emscripten compiler 
 * Added - `#define cex$enable_minimal` allowing to use only bare minimum on CEX functionality, and selectively re-enable some of the parts. This opens opportunities for CEX embedded portability: [freestanding example](https://github.com/alexveden/cex/tree/master/examples/freestanding).
 - Removed: (breaking) `io.fileno` - removed, it's non-standard and platform specific function
 - Added `cex$is_freestanding` macro
@@ -159,7 +160,7 @@
 
 ### Fixes
 - fix: cexy process fixed multiline docstrings
-- fix: dup() function case on windows in test$ running module
+- fix: dup() function case on Windows in test$ running module
 - fix: sbuf added more NULL resilience checks
 - fix: CexParser - broken CEX_NAMESPACE handling after refactoring + incorrect skipping of private entities with `_`
 - fix: ./cex help --filter - always using default
@@ -195,7 +196,7 @@
 - Examples: new `Building Lua + Lua Module in CEX` example
 - Examples: new `Building SQLite Program From Source` example
 - `e$except_true` added handler when OK state is 0, and other is error
-- (breaking) `os.fm.remove_tree()` - attempt for removing non existing path will lead to `Error.not_found`
+- (breaking) `os.fm.remove_tree()` - attempt for removing non-existent path will lead to `Error.not_found`
 - `cexy app create` - refactored structure of new app (added argparse)
 - `cexy.app.find_app_target_src` - refactored arguments
 - Examples: added building/linking with system libs
@@ -235,8 +236,8 @@
 - `os.timer()` - implemented high-performance timer (cross-platform)
 
 ### Fixes
-- Fixed memleaks after program destruction - hanging tmem$ last page (Valgrind issue)
-- Fixed memleaks for test runner - list of tests were not cleaned up (Valgrind issue)
+- Fixed memory leaks after program destruction - hanging tmem$ last page (Valgrind issue)
+- Fixed memory leaks for test runner - list of tests were not cleaned up (Valgrind issue)
 - `AllocatorArena` - assertion in scope exit with some nested scopes pattern
 - `cex test create` - new tests now include `#define CEX_TEST` + compiler arg removed
 
@@ -251,7 +252,7 @@
 - `cexy.utils.git_hash()` - getting current git hash of the current repo
 - `cex` - added `cex libfetch` command 
 - Added Alpine Linux support (multiarch + libc musl) + CI
-- Added tests for multiple architectures (including big endian): x86_64 (native), x86 (native), aarch64, armhf, armv7, loongarch64, ppc64le, riscv64, and s390x
+- Added tests for multiple architectures (including big-endian): x86_64 (native), x86 (native), aarch64, armhf, armv7, loongarch64, ppc64le, riscv64, and s390x
 - `cexy.utils.pkgconf() / cexy$pkgconf` - system dependency resolving utility function
 - Added automatic timestamp generation in cex version when bundling
 - Removed redundant `cexy$` vars, renamed `cexy$cc_args_test`
@@ -259,7 +260,7 @@
 ### Fixes
 - `str.match()` - fixed `str.match(s, "*(abc|def)")` pattern handling
 - `str.match()` - fixed `str.slice.match(s, "[a-Z]")` when using on slice view
-- `cex.h` - bare project fixed windows specific lock/initialization issue when building new proj
+- `cex.h` - bare project fixed Windows specific lock/initialization issue when building new project
 
 ## 0.10.0 Change list
 2025-04-27
@@ -268,7 +269,7 @@
 - Added 32-bit support + CI tests
 - Added MacOS support + CI tests
 - Added Windows support + CI tests
-- `os.get_last_error()` - unified Win32/POSIX string-line error (CEX Exception format)
+- `os.get_last_error()` - unified Win32/POSIX string-like error (CEX Exception format)
 - CEX `sprintf` family added more resilient error handling for `%s` / `%S`
 - `io.file.size()` - reimplemented, more cross-platform compatibility
 - `hm$` - implemented `char*` key copy mode + arena mode
@@ -285,7 +286,7 @@
 - `os.fs.find()` - recursive file search with pattern matching
 - `io` - fully refactored io namespace (more compatible with C now + added helpers)
 - CEX test engine - fully refactored test suite/generation/runner
-- Refactored dynamic arrays / hashmaps - type safe + generic, based on STB DS + Allocators
+- Refactored dynamic arrays / hashmaps - type-safe + generic, based on STB DS + Allocators
 
 
 ### Fixes

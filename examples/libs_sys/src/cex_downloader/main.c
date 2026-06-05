@@ -1,3 +1,22 @@
+/// On Windows, curl pulls in <windows.h> which defines Win32 types that can
+/// conflict with CEX's own Win32 declarations (in platform_win32.c).
+///
+/// Two ways to avoid the conflict:
+///
+///   A) include <curl/curl.h> (or bare <windows.h>) BEFORE "cex.h" so the
+///      _WINDEF_ guard in platform_win32.c skips CEX's duplicated types:
+///
+///         #include <curl/curl.h>
+///         #include "cex.h"
+///
+///   B) define CEX_NO_WIN32_TYPES before including "cex.h" to opt out
+///      entirely (system headers provide the types):
+///
+///         #define CEX_NO_WIN32_TYPES
+///         #include "cex.h"
+///
+/// This file uses option B.
+#define CEX_NO_WIN32_TYPES
 #define CEX_IMPLEMENTATION
 #include "cex.h"
 #include <curl/curl.h>
