@@ -828,14 +828,39 @@ test$case(test_os_path_abs)
 
         // Already-absolute paths (Windows)
         if (os.platform.current() == OSPlatform__win) {
+            // Drive letter variants
             tassert_eq(os.path.absolute("C:\\", _), "C:\\");
             tassert_eq(os.path.absolute("C\\", _), "C\\");
             tassert_eq(os.path.absolute("C:", _), "C:");
             tassert_eq(os.path.absolute("C:\\a\\b\\c", _), "C:\\a\\b\\c");
             tassert_eq(os.path.absolute("C:/a/b/c", _), "C:\\a\\b\\c");
             tassert_eq(os.path.absolute("C:\\a\\..\\b", _), "C:\\b");
+            // Lowercase and other drive letters
+            tassert_eq(os.path.absolute("c:\\", _), "c:\\");
+            tassert_eq(os.path.absolute("c:\\a\\b", _), "c:\\a\\b");
+            tassert_eq(os.path.absolute("z:\\temp", _), "z:\\temp");
+            // .. beyond drive root (stays at root)
+            tassert_eq(os.path.absolute("C:\\..", _), "C:\\");
+            tassert_eq(os.path.absolute("C:\\a\\..\\..", _), "C:\\");
+            tassert_eq(os.path.absolute("C:\\..\\..\\b", _), "C:\\b");
+            // . at drive root
+            tassert_eq(os.path.absolute("C:\\.", _), "C:\\");
+            tassert_eq(os.path.absolute("C:\\foo\\.\\bar", _), "C:\\foo\\bar");
+            // Multiple separator collapse
+            tassert_eq(os.path.absolute("C:\\\\", _), "C:\\");
+            tassert_eq(os.path.absolute("C:\\\\\\foo", _), "C:\\foo");
+            tassert_eq(os.path.absolute("C:/a//b///c", _), "C:\\a\\b\\c");
+            // UNC path variants
             tassert_eq(os.path.absolute("\\\\server\\share", _), "\\\\server\\share");
             tassert_eq(os.path.absolute("\\\\server\\share\\a\\..\\b", _), "\\\\server\\share\\b");
+            tassert_eq(os.path.absolute("\\\\server\\share\\", _), "\\\\server\\share\\");
+            tassert_eq(os.path.absolute("\\\\server\\share\\..", _), "\\\\server\\share");
+            tassert_eq(os.path.absolute("//server/share/path", _), "\\\\server\\share\\path");
+            tassert_eq(os.path.absolute("\\\\server\\share\\a\\b\\c\\..\\..", _), "\\\\server\\share\\a");
+            // Garbled / non-absolute (not detected as drive letter)
+            tassert_ne(os.path.absolute("1:\\foo", _), NULL);
+            tassert_ne(os.path.absolute(":\\", _), NULL);
+            tassert_ne(os.path.absolute("C::\\foo", _), NULL);
         }
 
         // .. resolves to parent directory
@@ -1079,8 +1104,28 @@ test$case(test_os_path_abs_leak)
         tassert_eq(r, "C:\\b");
         mem$free(mem$, r);
 
+        r = os.path.absolute("C:\\..", mem$);
+        tassert_eq(r, "C:\\");
+        mem$free(mem$, r);
+
+        r = os.path.absolute("c:\\", mem$);
+        tassert_eq(r, "c:\\");
+        mem$free(mem$, r);
+
+        r = os.path.absolute("C:/a//b///c", mem$);
+        tassert_eq(r, "C:\\a\\b\\c");
+        mem$free(mem$, r);
+
         r = os.path.absolute("\\\\server\\share", mem$);
         tassert_eq(r, "\\\\server\\share");
+        mem$free(mem$, r);
+
+        r = os.path.absolute("\\\\server\\share\\..", mem$);
+        tassert_eq(r, "\\\\server\\share");
+        mem$free(mem$, r);
+
+        r = os.path.absolute("//server/share/path", mem$);
+        tassert_eq(r, "\\\\server\\share\\path");
         mem$free(mem$, r);
     }
 
