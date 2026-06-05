@@ -12,6 +12,9 @@
 - `test$alloc` - test case specific allocator, always growing arena with auto-cleanup
 - AllocatorArena - increased max single allocation and page size up to 1TiB on 64 bits
 - `test$mock_scope` -  is a scope-guard macro that saves the full state of one or more CEX namespaces before entering the body, then automatically restores them on any exit path
+- (breaking) `os.sleep(duration)` now accepts duration as floating point seconds, previously integer milliseconds
+- `./cex test watch` command added - watching for test file and its #includes changes, and automatically re-run the test perpetually
+- test runner - added footer results coloring (red - something failed, green - all passed)
 
 ### Fixes
 - AllocatorArena - false positive poison, when realloc() shrink then grow.
