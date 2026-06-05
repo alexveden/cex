@@ -4100,7 +4100,7 @@ struct __cex_namespace__os {
 
     struct {
         /// Returns absolute path from relative (no filesystem access, does not resolve symlinks)
-        char*           (*abs)(char* path, IAllocator allc);
+        char*           (*absolute)(char* path, IAllocator allc);
         /// Get file name of a path
         char*           (*basename)(char* path, IAllocator allc);
         /// Get directory name of a path
@@ -15606,7 +15606,7 @@ cex_os__path__exists(char* file_path)
 
 /// Returns absolute path from relative (no filesystem access, does not resolve symlinks)
 static char*
-cex_os__path__abs(char* path, IAllocator allc)
+cex_os__path__absolute(char* path, IAllocator allc)
 {
     uassert(allc != NULL);
     char* result = NULL;
@@ -16243,7 +16243,7 @@ CEX_NAMESPACE_DEF struct __cex_namespace__os os = {
     },
 
     .path = {
-        .abs = cex_os__path__abs,
+        .absolute = cex_os__path__absolute,
         .basename = cex_os__path__basename,
         .dirname = cex_os__path__dirname,
         .exists = cex_os__path__exists,
@@ -17330,12 +17330,12 @@ cexy__cmd__process(int argc, char** argv, void* user_ctx)
 
     mem$scope(tmem$, _)
     {
-        char* build_path = os.path.abs(cexy$build_dir, _);
-        char* test_path = os.path.abs("./tests/", _);
+        char* build_path = os.path.absolute(cexy$build_dir, _);
+        char* test_path = os.path.absolute("./tests/", _);
 
         for$each (src_fn, os.fs.find(target, true, _)) {
             if (only_update) {
-                char* abspath = os.path.abs(src_fn, _);
+                char* abspath = os.path.absolute(src_fn, _);
                 if (str.starts_with(abspath, build_path) || str.starts_with(abspath, test_path)) {
                     continue;
                 }
@@ -17482,7 +17482,7 @@ cexy__cmd__stats(int argc, char** argv, void* user_ctx)
                 target++;
             }
             for$each (src_fn, os.fs.find(target, true, _)) {
-                char* p = os.path.abs(src_fn, _);
+                char* p = os.path.absolute(src_fn, _);
                 if (is_exclude) {
                     log$trace("Ignoring: %s\n", p);
                     hm$set(excl_files, p, true);
@@ -18147,8 +18147,8 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
         } else {
             query_pattern = str.fmt(arena, "*%s*", query);
         }
-        char* build_path = os.path.abs(cexy$build_dir, arena);
-        char* test_path = os.path.abs("./tests/", arena);
+        char* build_path = os.path.absolute(cexy$build_dir, arena);
+        char* test_path = os.path.absolute("./tests/", arena);
 
         hm$(str_s, cex_decl_s*) names = hm$new(names, arena, .capacity = 1024);
         hm$(char*, char*) cex_ns_map = hm$new(cex_ns_map, arena, .capacity = 256);
@@ -18158,7 +18158,7 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
             log$trace("%s\n", src_fn);
             mem$scope(tmem$, _)
             {
-                char* abspath = os.path.abs(src_fn, _);
+                char* abspath = os.path.absolute(src_fn, _);
                 if (str.starts_with(abspath, build_path) || str.starts_with(abspath, test_path)) {
                     continue;
                 }
@@ -19163,7 +19163,7 @@ cexy__cmd__simple_fuzz(int argc, char** argv, void* user_ctx)
             }
         }
 
-        char* proj_dir = os.path.abs(".", _);
+        char* proj_dir = os.path.absolute(".", _);
         bool is_afl_fuzzer = false;
 
         for$each (src_file, os.fs.find(src, true, _)) {

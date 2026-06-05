@@ -926,7 +926,7 @@ cex_os__path__exists(char* file_path)
 
 /// Returns absolute path from relative (no filesystem access, does not resolve symlinks)
 static char*
-cex_os__path__abs(char* path, IAllocator allc)
+cex_os__path__absolute(char* path, IAllocator allc)
 {
     uassert(allc != NULL);
     char* result = NULL;
@@ -1563,7 +1563,7 @@ CEX_NAMESPACE_DEF struct __cex_namespace__os os = {
     },
 
     .path = {
-        .abs = cex_os__path__abs,
+        .absolute = cex_os__path__absolute,
         .basename = cex_os__path__basename,
         .dirname = cex_os__path__dirname,
         .exists = cex_os__path__exists,

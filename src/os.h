@@ -377,7 +377,7 @@ struct __cex_namespace__os {
 
     struct {
         /// Returns absolute path from relative (no filesystem access, does not resolve symlinks)
-        char*           (*abs)(char* path, IAllocator allc);
+        char*           (*absolute)(char* path, IAllocator allc);
         /// Get file name of a path
         char*           (*basename)(char* path, IAllocator allc);
         /// Get directory name of a path

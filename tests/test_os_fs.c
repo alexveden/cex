@@ -805,8 +805,8 @@ test$case(test_os_copy_tree_sanity_checks)
 
 test$case(test_os_path_abs)
 {
-    tassert_eq(os.path.abs(NULL, mem$), NULL);
-    tassert_eq(os.path.abs("", mem$), NULL);
+    tassert_eq(os.path.absolute(NULL, mem$), NULL);
+    tassert_eq(os.path.absolute("", mem$), NULL);
 
     mem$scope(tmem$, _)
     {
@@ -818,11 +818,11 @@ test$case(test_os_path_abs)
             tassert_eq(true, str.ends_with(p, "cex"));
         }
 
-        auto abs_cwd = os.path.abs(".", _);
+        auto abs_cwd = os.path.absolute(".", _);
         tassert(abs_cwd != NULL);
         tassert(str.starts_with(abs_cwd, p));
 
-        abs_cwd = os.path.abs("tests/..", _);
+        abs_cwd = os.path.absolute("tests/..", _);
         tassert(abs_cwd != NULL);
         tassert(str.starts_with(abs_cwd, p));
         tassert(os.path.exists(abs_cwd));
@@ -838,33 +838,33 @@ test$case(test_os_path_abs)
 
         // Already-absolute paths (POSIX)
         if (os.platform.current() != OSPlatform__win) {
-            tassert_eq(os.path.abs("/", _), "/");
-            tassert_eq(os.path.abs("/a/b/c", _), "/a/b/c");
-            tassert_eq(os.path.abs("/a/../b", _), "/b");
+            tassert_eq(os.path.absolute("/", _), "/");
+            tassert_eq(os.path.absolute("/a/b/c", _), "/a/b/c");
+            tassert_eq(os.path.absolute("/a/../b", _), "/b");
         }
 
         // Already-absolute paths (Windows)
         if (os.platform.current() == OSPlatform__win) {
-            tassert_eq(os.path.abs("C:\\", _), "C:\\");
-            tassert_eq(os.path.abs("C:\\a\\b\\c", _), "C:\\a\\b\\c");
-            tassert_eq(os.path.abs("C:/a/b/c", _), "C:\\a\\b\\c");
-            tassert_eq(os.path.abs("C:\\a\\..\\b", _), "C:\\b");
-            tassert_eq(os.path.abs("\\\\server\\share", _), "\\\\server\\share");
-            tassert_eq(os.path.abs("\\\\server\\share\\a\\..\\b", _), "\\\\server\\share\\b");
+            tassert_eq(os.path.absolute("C:\\", _), "C:\\");
+            tassert_eq(os.path.absolute("C:\\a\\b\\c", _), "C:\\a\\b\\c");
+            tassert_eq(os.path.absolute("C:/a/b/c", _), "C:\\a\\b\\c");
+            tassert_eq(os.path.absolute("C:\\a\\..\\b", _), "C:\\b");
+            tassert_eq(os.path.absolute("\\\\server\\share", _), "\\\\server\\share");
+            tassert_eq(os.path.absolute("\\\\server\\share\\a\\..\\b", _), "\\\\server\\share\\b");
         }
 
         // .. resolves to parent directory
         {
             auto parent = os.path.dirname(p, _);
             tassert(parent != NULL);
-            auto r = os.path.abs("..", _);
+            auto r = os.path.absolute("..", _);
             tassert(r != NULL);
             tassert_eq(r, parent);
         }
 
         // Non-existent path (works without filesystem access now)
         {
-            auto r = os.path.abs("nonexistent_dir", _);
+            auto r = os.path.absolute("nonexistent_dir", _);
             tassert(r != NULL);
             char* expected = os.path.normalize(str.fmt(_, "%s%cnonexistent_dir", p, os$PATH_SEP), _);
             tassert_eq(r, expected);
@@ -872,7 +872,7 @@ test$case(test_os_path_abs)
 
         // Messy relative with . and ..
         {
-            auto r = os.path.abs("./././foo/../bar", _);
+            auto r = os.path.absolute("./././foo/../bar", _);
             tassert(r != NULL);
             char* expected = os.path.normalize(str.fmt(_, "%s%cbar", p, os$PATH_SEP), _);
             tassert_eq(r, expected);
