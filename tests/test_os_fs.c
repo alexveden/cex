@@ -846,6 +846,8 @@ test$case(test_os_path_abs)
         // Already-absolute paths (Windows)
         if (os.platform.current() == OSPlatform__win) {
             tassert_eq(os.path.absolute("C:\\", _), "C:\\");
+            tassert_eq(os.path.absolute("C\\", _), "C\\");
+            tassert_eq(os.path.absolute("C:", _), "C:");
             tassert_eq(os.path.absolute("C:\\a\\b\\c", _), "C:\\a\\b\\c");
             tassert_eq(os.path.absolute("C:/a/b/c", _), "C:\\a\\b\\c");
             tassert_eq(os.path.absolute("C:\\a\\..\\b", _), "C:\\b");
