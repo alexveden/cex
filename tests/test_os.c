@@ -113,4 +113,79 @@ test$case(test_env_executable_path)
     return EOK;
 }
 
+test$case(test_env_home_dir)
+{
+    mem$scope(tmem$, _)
+    {
+        char* home = os.env.home_dir(_);
+        tassert_ne(home, NULL);
+        tassert_gt(str.len(home), 0);
+        if (os$PATH_SEP == '/') {
+            tassert_eq(home[0], '/');
+        } else {
+            tassert(str.find(home, ":\\"));
+        }
+
+        // Set HOME to a known value and verify home_dir returns it
+#    ifdef _WIN32
+        char* saved_up = os.env.get("USERPROFILE", NULL);
+        tassert_er(EOK, os.env.set("USERPROFILE", "C:\\fake_home"));
+        tassert_eq(os.env.home_dir(_), "C:\\fake_home");
+        if (saved_up) { tassert_er(EOK, os.env.set("USERPROFILE", saved_up)); }
+#    else
+        char* saved = os.env.get("HOME", NULL);
+        tassert_er(EOK, os.env.set("HOME", "/tmp/fake_home_dir"));
+        tassert_eq(os.env.home_dir(_), "/tmp/fake_home_dir");
+        if (saved) { tassert_er(EOK, os.env.set("HOME", saved)); }
+#    endif
+        // Confirm it's back to original
+        tassert_ne(os.env.home_dir(_), NULL);
+    }
+    return EOK;
+}
+
+test$case(test_env_home_dir_unset)
+{
+    mem$scope(tmem$, _)
+    {
+#    ifdef _WIN32
+        char* saved_up = os.env.get("USERPROFILE", NULL);
+        char* saved_hd = os.env.get("HOMEDRIVE", NULL);
+        char* saved_hp = os.env.get("HOMEPATH", NULL);
+
+        // When all three env vars are unset, home_dir returns NULL
+        tassert_er(EOK, os.env.unset("USERPROFILE"));
+        tassert_er(EOK, os.env.unset("HOMEDRIVE"));
+        tassert_er(EOK, os.env.unset("HOMEPATH"));
+        tassert_eq(os.env.home_dir(_), NULL);
+
+        // Restore USERPROFILE and verify it works
+        if (saved_up) { tassert_er(EOK, os.env.set("USERPROFILE", saved_up)); }
+        tassert_ne(os.env.home_dir(_), NULL);
+
+        // Unset USERPROFILE but keep HOMEDRIVE+HOMEPATH — should fallback
+        tassert_er(EOK, os.env.unset("USERPROFILE"));
+        if (saved_hd && saved_hp) {
+            tassert_er(EOK, os.env.set("HOMEDRIVE", saved_hd));
+            tassert_er(EOK, os.env.set("HOMEPATH", saved_hp));
+            tassert_ne(os.env.home_dir(_), NULL);
+        }
+
+        // Full restore
+        if (saved_up) { tassert_er(EOK, os.env.set("USERPROFILE", saved_up)); }
+        if (saved_hd) { tassert_er(EOK, os.env.set("HOMEDRIVE", saved_hd)); }
+        if (saved_hp) { tassert_er(EOK, os.env.set("HOMEPATH", saved_hp)); }
+#    else
+        char* saved = os.env.get("HOME", NULL);
+
+        tassert_er(EOK, os.env.unset("HOME"));
+        tassert_eq(os.env.home_dir(_), NULL);
+
+        if (saved) { tassert_er(EOK, os.env.set("HOME", saved)); }
+        tassert_ne(os.env.home_dir(_), NULL);
+#    endif
+    }
+    return EOK;
+}
+
 test$main();

@@ -4072,6 +4072,8 @@ struct __cex_namespace__os {
         char*           (*get)(char* name, char* deflt);
         /// Get current process ID
         i32             (*getpid)(void);
+        /// Get user home directory path
+        char*           (*home_dir)(IAllocator allc);
         /// Set environment variable
         Exception       (*set)(char* name, char* value);
         /// Unset environment variable
@@ -15580,6 +15582,29 @@ cex_os__env__executable_path(IAllocator allc)
 #    endif
 }
 
+/// Get user home directory path
+static char*
+cex_os__env__home_dir(IAllocator allc)
+{
+    uassert(allc != NULL);
+#    ifdef _WIN32
+    char* home = os.env.get("USERPROFILE", NULL);
+    if (home == NULL) {
+        char* drive = os.env.get("HOMEDRIVE", NULL);
+        char* path  = os.env.get("HOMEPATH", NULL);
+        if (drive != NULL && path != NULL) {
+            return str.fmt(allc, "%s%s", drive, path);
+        }
+        return NULL;
+    }
+    return str.clone(home, allc);
+#    else
+    char* home = os.env.get("HOME", NULL);
+    if (home == NULL) return NULL;
+    return str.clone(home, allc);
+#    endif
+}
+
 /// Normalize path, resolves "." and ".." components and collapses "//"
 static char*
 cex_os__path__normalize(char* path, IAllocator allc)
@@ -16290,6 +16315,7 @@ CEX_NAMESPACE_DEF struct __cex_namespace__os os = {
         .executable_path = cex_os__env__executable_path,
         .get = cex_os__env__get,
         .getpid = cex_os__env__getpid,
+        .home_dir = cex_os__env__home_dir,
         .set = cex_os__env__set,
         .unset = cex_os__env__unset,
     },

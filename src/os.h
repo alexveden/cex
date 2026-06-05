@@ -349,6 +349,8 @@ struct __cex_namespace__os {
         char*           (*get)(char* name, char* deflt);
         /// Get current process ID
         i32             (*getpid)(void);
+        /// Get user home directory path
+        char*           (*home_dir)(IAllocator allc);
         /// Set environment variable
         Exception       (*set)(char* name, char* value);
         /// Unset environment variable
