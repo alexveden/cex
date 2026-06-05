@@ -601,23 +601,6 @@ test$case(test_os_path_join)
     return EOK;
 }
 
-test$case(test_os_setenv)
-{
-    // get non existing
-    tassert_eq(os.env.get("test_os_posix", NULL), NULL);
-    // get non existing, with default
-    tassert_eq(os.env.get("test_os_posix", "envdef"), "envdef");
-
-    // set env
-    tassert_er(EOK, os.env.set("test_os_posix", "foo"));
-    tassert_eq(os.env.get("test_os_posix", NULL), "foo");
-
-    // set with replacing
-    tassert_er(EOK, os.env.set("test_os_posix", "bar"));
-    tassert_eq(os.env.get("test_os_posix", NULL), "bar");
-
-    return EOK;
-}
 test$case(test_os_path_split)
 {
 

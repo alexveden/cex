@@ -81,4 +81,21 @@ test$case(test_hash)
     return EOK;
 }
 
+test$case(test_getpid)
+{
+    i32 pid = os.getpid();
+    tassert_gt(pid, 0);
+    return EOK;
+}
+
+test$case(test_env_set_unset)
+{
+    tassert_eq(os.env.get("cex_test_env", NULL), NULL);
+    tassert_er(EOK, os.env.set("cex_test_env", "val"));
+    tassert_eq(os.env.get("cex_test_env", NULL), "val");
+    tassert_er(EOK, os.env.unset("cex_test_env"));
+    tassert_eq(os.env.get("cex_test_env", NULL), NULL);
+    return EOK;
+}
+
 test$main();

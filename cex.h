@@ -4020,6 +4020,8 @@ struct __cex_namespace__os {
     /// Get last system API error as string representation (Exception compatible). Result content may be
     /// affected by OS locale settings.
     Exc             (*get_last_error)(void);
+    /// Get current process ID
+    i32             (*getpid)(void);
     /// Computes generic buffer SIP hash (platform/endiannes stable), seed can be null, or previous hash
     /// value for hash stacking  (null or empty `p` returns 0 hash). (This is the same general hash
     /// function is used in str.hash() and hm$ hashmaps)
@@ -4068,6 +4070,8 @@ struct __cex_namespace__os {
         char*           (*get)(char* name, char* deflt);
         /// Set environment variable
         Exception       (*set)(char* name, char* value);
+        /// Unset environment variable
+        Exception       (*unset)(char* name);
     } env;
 
     struct {
@@ -14887,6 +14891,17 @@ cex_os_cpu_count(void)
 #    endif
 }
 
+/// Get current process ID
+i32
+cex_os_getpid(void)
+{
+#    ifdef _WIN32
+    return (i32)GetCurrentProcessId();
+#    else
+    return (i32)getpid();
+#    endif
+}
+
 /// Get last system API error as string representation (Exception compatible). Result content may be
 /// affected by OS locale settings.
 static Exc
@@ -15514,6 +15529,18 @@ cex_os__env__set(char* name, char* value)
     setenv(name, value, true);
 #    endif
     // TODO: add error reporting
+    return EOK;
+}
+
+/// Unset environment variable
+static Exception
+cex_os__env__unset(char* name)
+{
+#    ifdef _WIN32
+    if (!SetEnvironmentVariable(name, NULL)) { return Error.runtime; }
+#    else
+    if (unsetenv(name) == -1) { return Error.runtime; }
+#    endif
     return EOK;
 }
 
@@ -16202,6 +16229,7 @@ CEX_NAMESPACE_DEF struct __cex_namespace__os os = {
 
     .cpu_count = cex_os_cpu_count,
     .get_last_error = cex_os_get_last_error,
+    .getpid = cex_os_getpid,
     .hash = cex_os_hash,
     .sleep = cex_os_sleep,
     .timer = cex_os_timer,
@@ -16225,6 +16253,7 @@ CEX_NAMESPACE_DEF struct __cex_namespace__os os = {
     .env = {
         .get = cex_os__env__get,
         .set = cex_os__env__set,
+        .unset = cex_os__env__unset,
     },
 
     .fs = {
