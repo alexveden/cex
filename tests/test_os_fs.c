@@ -850,14 +850,25 @@ test$case(test_os_path_normpath_basic)
         tassert_eq(os.path.normalize(".", _), ".");
         tassert_eq(os.path.normalize("..", _), "..");
         tassert_eq(os.path.normalize("/", _), "/");
-        tassert_eq(os.path.normalize("a/b/c", _), "a/b/c");
-        tassert_eq(os.path.normalize("a/./b", _), "a/b");
-        tassert_eq(os.path.normalize("a/b/../c", _), "a/c");
+
+        if (os$PATH_SEP == '/') {
+            tassert_eq(os.path.normalize("a/b/c", _), "a/b/c");
+            tassert_eq(os.path.normalize("a/./b", _), "a/b");
+            tassert_eq(os.path.normalize("a/b/../c", _), "a/c");
+            tassert_eq(os.path.normalize("../../x", _), "../../x");
+            tassert_eq(os.path.normalize("a//b///c", _), "a/b/c");
+            tassert_eq(os.path.normalize("a/../../b", _), "../b");
+        } else {
+            tassert_eq(os.path.normalize("a/b/c", _), "a\\b\\c");
+            tassert_eq(os.path.normalize("a/./b", _), "a\\b");
+            tassert_eq(os.path.normalize("a/b/../c", _), "a\\c");
+            tassert_eq(os.path.normalize("../../x", _), "..\\..\\x");
+            tassert_eq(os.path.normalize("a//b///c", _), "a\\b\\c");
+            tassert_eq(os.path.normalize("a/../../b", _), "..\\b");
+        }
+
         tassert_eq(os.path.normalize("/a/../b", _), "/b");
         tassert_eq(os.path.normalize("/../x", _), "/x");
-        tassert_eq(os.path.normalize("../../x", _), "../../x");
-        tassert_eq(os.path.normalize("a//b///c", _), "a/b/c");
-        tassert_eq(os.path.normalize("a/../../b", _), "../b");
         tassert_eq(os.path.normalize("foo/bar/..", _), "foo");
         tassert_eq(os.path.normalize("a/b/..", _), "a");
         tassert_eq(os.path.normalize("..", _), "..");
@@ -911,17 +922,55 @@ test$case(test_os_path_normpath_leak)
     tassert_eq(r, "/");
     mem$free(mem$, r);
 
-    r = os.path.normalize("a/b/c", mem$);
-    tassert_eq(r, "a/b/c");
-    mem$free(mem$, r);
+    if (os$PATH_SEP == '/') {
+        r = os.path.normalize("a/b/c", mem$);
+        tassert_eq(r, "a/b/c");
+        mem$free(mem$, r);
 
-    r = os.path.normalize("a/./b", mem$);
-    tassert_eq(r, "a/b");
-    mem$free(mem$, r);
+        r = os.path.normalize("a/./b", mem$);
+        tassert_eq(r, "a/b");
+        mem$free(mem$, r);
 
-    r = os.path.normalize("a/b/../c", mem$);
-    tassert_eq(r, "a/c");
-    mem$free(mem$, r);
+        r = os.path.normalize("a/b/../c", mem$);
+        tassert_eq(r, "a/c");
+        mem$free(mem$, r);
+
+        r = os.path.normalize("../../x", mem$);
+        tassert_eq(r, "../../x");
+        mem$free(mem$, r);
+
+        r = os.path.normalize("a//b///c", mem$);
+        tassert_eq(r, "a/b/c");
+        mem$free(mem$, r);
+
+        r = os.path.normalize("a/../../b", mem$);
+        tassert_eq(r, "../b");
+        mem$free(mem$, r);
+    } else {
+        r = os.path.normalize("a/b/c", mem$);
+        tassert_eq(r, "a\\b\\c");
+        mem$free(mem$, r);
+
+        r = os.path.normalize("a/./b", mem$);
+        tassert_eq(r, "a\\b");
+        mem$free(mem$, r);
+
+        r = os.path.normalize("a/b/../c", mem$);
+        tassert_eq(r, "a\\c");
+        mem$free(mem$, r);
+
+        r = os.path.normalize("../../x", mem$);
+        tassert_eq(r, "..\\..\\x");
+        mem$free(mem$, r);
+
+        r = os.path.normalize("a//b///c", mem$);
+        tassert_eq(r, "a\\b\\c");
+        mem$free(mem$, r);
+
+        r = os.path.normalize("a/../../b", mem$);
+        tassert_eq(r, "..\\b");
+        mem$free(mem$, r);
+    }
 
     r = os.path.normalize("/a/../b", mem$);
     tassert_eq(r, "/b");
@@ -931,24 +980,12 @@ test$case(test_os_path_normpath_leak)
     tassert_eq(r, "/x");
     mem$free(mem$, r);
 
-    r = os.path.normalize("../../x", mem$);
-    tassert_eq(r, "../../x");
-    mem$free(mem$, r);
-
-    r = os.path.normalize("a//b///c", mem$);
-    tassert_eq(r, "a/b/c");
-    mem$free(mem$, r);
-
-    r = os.path.normalize("a/../../b", mem$);
-    tassert_eq(r, "../b");
+    r = os.path.normalize("a\\b\\c", mem$);
+    tassert_eq(r, os$PATH_SEP == '/' ? "a/b/c" : "a\\b\\c");
     mem$free(mem$, r);
 
     r = os.path.normalize("foo/bar/..", mem$);
     tassert_eq(r, "foo");
-    mem$free(mem$, r);
-
-    r = os.path.normalize("a\\b\\c", mem$);
-    tassert_eq(r, os$PATH_SEP == '/' ? "a/b/c" : "a\\b\\c");
     mem$free(mem$, r);
 
     r = os.path.normalize(".", mem$);
@@ -975,36 +1012,38 @@ test$case(test_os_path_normpath_unicode)
 {
     mem$scope(tmem$, _)
     {
-        // Basic Cyrillic
-        tassert_eq(os.path.normalize("привет/мир", _), "привет/мир");
-        // Japanese
-        tassert_eq(os.path.normalize("ファイル/ドキュメント", _), "ファイル/ドキュメント");
-        // Unicode with .
-        tassert_eq(os.path.normalize("ファイル/./ドキュメント", _), "ファイル/ドキュメント");
-        // Unicode with ..
+        // Single-component and absolute assertions (platform independent)
         tassert_eq(os.path.normalize("ファイル/../ドキュメント", _), "ドキュメント");
-        // Fullwidth solidus U+FF0F is NOT a path separator
         tassert_eq(os.path.normalize("test／file", _), "test／file");
-        // U+2025 TWO DOT LEADER is NOT ..
-        tassert_eq(os.path.normalize("a/‥/b", _), "a/‥/b");
-        // Unicode // collapsing
-        tassert_eq(os.path.normalize("テスト//ドキュメント", _), "テスト/ドキュメント");
-        // Unicode absolute with ..
         tassert_eq(os.path.normalize("/日本語/a/../b", _), "/日本語/b");
-        // NFD combining character (e + U+0301 combining acute)
-        tassert_eq(os.path.normalize("a/e\xCC\x81/file", _), "a/e\xCC\x81/file");
-        // NFC precomposed character (U+00E9 latin e with acute)
-        tassert_eq(os.path.normalize("\xC3\xA9/file", _), "\xC3\xA9/file");
-        // Combining grave between two dots — must NOT match ..
-        tassert_eq(os.path.normalize("a/.\xCC\x80./b", _), "a/.\xCC\x80./b");
-        // Zero-width space U+200B preserved
-        tassert_eq(os.path.normalize("a/b/\xE2\x80\x8B/c", _), "a/b/\xE2\x80\x8B/c");
-        // Mixed ASCII/unicode with ..
-        tassert_eq(os.path.normalize("a//b/\xC3\xA9/\xC3\xA9/../c", _), "a/b/\xC3\xA9/c");
-        // Combined dot ops in Cyrillic
-        tassert_eq(os.path.normalize("привет/./мир/../test", _), "привет/test");
-        // Absolute path with NFC char
         tassert_eq(os.path.normalize("/a/b/c/\xC3\xA9", _), "/a/b/c/\xC3\xA9");
+
+        // Multi-component assertions (join separator depends on platform)
+        if (os$PATH_SEP == '/') {
+            tassert_eq(os.path.normalize("привет/мир", _), "привет/мир");
+            tassert_eq(os.path.normalize("ファイル/ドキュメント", _), "ファイル/ドキュメント");
+            tassert_eq(os.path.normalize("ファイル/./ドキュメント", _), "ファイル/ドキュメント");
+            tassert_eq(os.path.normalize("a/‥/b", _), "a/‥/b");
+            tassert_eq(os.path.normalize("テスト//ドキュメント", _), "テスト/ドキュメント");
+            tassert_eq(os.path.normalize("a/e\xCC\x81/file", _), "a/e\xCC\x81/file");
+            tassert_eq(os.path.normalize("\xC3\xA9/file", _), "\xC3\xA9/file");
+            tassert_eq(os.path.normalize("a/.\xCC\x80./b", _), "a/.\xCC\x80./b");
+            tassert_eq(os.path.normalize("a/b/\xE2\x80\x8B/c", _), "a/b/\xE2\x80\x8B/c");
+            tassert_eq(os.path.normalize("a//b/\xC3\xA9/\xC3\xA9/../c", _), "a/b/\xC3\xA9/c");
+            tassert_eq(os.path.normalize("привет/./мир/../test", _), "привет/test");
+        } else {
+            tassert_eq(os.path.normalize("привет/мир", _), "привет\\мир");
+            tassert_eq(os.path.normalize("ファイル/ドキュメント", _), "ファイル\\ドキュメント");
+            tassert_eq(os.path.normalize("ファイル/./ドキュメント", _), "ファイル\\ドキュメント");
+            tassert_eq(os.path.normalize("a/‥/b", _), "a\\‥\\b");
+            tassert_eq(os.path.normalize("テスト//ドキュメント", _), "テスト\\ドキュメント");
+            tassert_eq(os.path.normalize("a/e\xCC\x81/file", _), "a\\e\xCC\x81\\file");
+            tassert_eq(os.path.normalize("\xC3\xA9/file", _), "\xC3\xA9\\file");
+            tassert_eq(os.path.normalize("a/.\xCC\x80./b", _), "a\\.\xCC\x80.\\b");
+            tassert_eq(os.path.normalize("a/b/\xE2\x80\x8B/c", _), "a\\b\\\xE2\x80\x8B\\c");
+            tassert_eq(os.path.normalize("a//b/\xC3\xA9/\xC3\xA9/../c", _), "a\\b\\\xC3\xA9\\c");
+            tassert_eq(os.path.normalize("привет/./мир/../test", _), "привет\\test");
+        }
     }
     return EOK;
 }
