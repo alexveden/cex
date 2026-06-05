@@ -7,9 +7,15 @@
 //
 // This header replaces #include <windows.h> for CEX's purposes.
 // It uses explicit A-suffixed API names (no TCHAR macros).
+//
+// NOTE: All definitions are guarded to avoid collisions when
+// user code also includes <windows.h>.  Define CEX_NO_WIN32_TYPES
+// to skip this header entirely and provide your own Win32 types.
 // ============================================================
 
 #include <stddef.h> // size_t
+
+#if !defined(CEX_NO_WIN32_TYPES) && !defined(_WINDEF_)
 
 // ---------------------------------------------------------------------------
 // Basic type aliases (matching Win32 ABI)
@@ -20,14 +26,14 @@ typedef void*               HANDLE;
 typedef long long           LONGLONG;
 
 // ---------------------------------------------------------------------------
-// Structs
+// Structs (tag names match Windows SDK convention for collision safety)
 // ---------------------------------------------------------------------------
-typedef struct FILETIME {
+typedef struct _FILETIME {
     DWORD dwLowDateTime;
     DWORD dwHighDateTime;
 } FILETIME;
 
-typedef struct WIN32_FIND_DATAA {
+typedef struct _WIN32_FIND_DATAA {
     DWORD    dwFileAttributes;
     FILETIME ftCreationTime;
     FILETIME ftLastAccessTime;
@@ -41,11 +47,15 @@ typedef struct WIN32_FIND_DATAA {
 } WIN32_FIND_DATAA;
 typedef WIN32_FIND_DATAA WIN32_FIND_DATA;
 
-typedef union LARGE_INTEGER {
+typedef union _LARGE_INTEGER {
+    struct {
+        DWORD LowPart;
+        long  HighPart;
+    };
     LONGLONG QuadPart;
 } LARGE_INTEGER;
 
-typedef struct SYSTEM_INFO {
+typedef struct _SYSTEM_INFO {
     DWORD  dwOemId;
     DWORD  dwPageSize;
     void*  lpMinimumApplicationAddress;
@@ -58,14 +68,14 @@ typedef struct SYSTEM_INFO {
     unsigned short wProcessorRevision;
 } SYSTEM_INFO;
 
-typedef struct SECURITY_ATTRIBUTES {
+typedef struct _SECURITY_ATTRIBUTES {
     DWORD nLength;
     void* lpSecurityDescriptor;
     BOOL  bInheritHandle;
 } SECURITY_ATTRIBUTES;
 typedef SECURITY_ATTRIBUTES* LPSECURITY_ATTRIBUTES;
 
-typedef struct STARTUPINFOA {
+typedef struct _STARTUPINFOA {
     DWORD  cb;
     char*  lpReserved;
     char*  lpDesktop;
@@ -88,7 +98,7 @@ typedef struct STARTUPINFOA {
 typedef STARTUPINFOA* LPSTARTUPINFOA;
 typedef STARTUPINFOA STARTUPINFO;
 
-typedef struct PROCESS_INFORMATION {
+typedef struct _PROCESS_INFORMATION {
     HANDLE hProcess;
     HANDLE hThread;
     DWORD  dwProcessId;
@@ -96,7 +106,7 @@ typedef struct PROCESS_INFORMATION {
 } PROCESS_INFORMATION;
 typedef PROCESS_INFORMATION* LPPROCESS_INFORMATION;
 
-typedef struct OVERLAPPED {
+typedef struct _OVERLAPPED {
     uintptr_t Internal;
     uintptr_t InternalHigh;
     union {
@@ -113,35 +123,69 @@ typedef OVERLAPPED* LPOVERLAPPED;
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
+#ifndef INVALID_HANDLE_VALUE
 #define INVALID_HANDLE_VALUE ((HANDLE)(~(size_t)0))
+#endif
+#ifndef MAX_PATH
 #define MAX_PATH             260
+#endif
+#ifndef FALSE
 #define FALSE                0
+#endif
+#ifndef TRUE
 #define TRUE                 1
+#endif
 
 // Error codes
+#ifndef ERROR_NO_MORE_FILES
 #define ERROR_NO_MORE_FILES  18L
+#endif
+#ifndef ERROR_FILE_NOT_FOUND
 #define ERROR_FILE_NOT_FOUND 2L
+#endif
+#ifndef ERROR_PATH_NOT_FOUND
 #define ERROR_PATH_NOT_FOUND 3L
+#endif
+#ifndef ERROR_ACCESS_DENIED
 #define ERROR_ACCESS_DENIED  5L
+#endif
+#ifndef ERROR_MR_MID_NOT_FOUND
 #define ERROR_MR_MID_NOT_FOUND 317L
+#endif
 
 // File operations
+#ifndef MOVEFILE_REPLACE_EXISTING
 #define MOVEFILE_REPLACE_EXISTING 1
+#endif
 
 // Process startup
+#ifndef STARTF_USESTDHANDLES
 #define STARTF_USESTDHANDLES 0x00000100
+#endif
 
 // Standard handles
+#ifndef STD_INPUT_HANDLE
 #define STD_INPUT_HANDLE  ((DWORD)-10)
+#endif
+#ifndef STD_OUTPUT_HANDLE
 #define STD_OUTPUT_HANDLE ((DWORD)-11)
+#endif
+#ifndef STD_ERROR_HANDLE
 #define STD_ERROR_HANDLE  ((DWORD)-12)
+#endif
 
 // FormatMessage flags
+#ifndef FORMAT_MESSAGE_FROM_SYSTEM
 #define FORMAT_MESSAGE_FROM_SYSTEM     0x00001000
+#endif
+#ifndef FORMAT_MESSAGE_IGNORE_INSERTS
 #define FORMAT_MESSAGE_IGNORE_INSERTS  0x00000200
+#endif
 
 // Language
+#ifndef LANG_USER_DEFAULT
 #define LANG_USER_DEFAULT 0x0400
+#endif
 
 // PATH_MAX fallback (defined by <limits.h> on MinGW, may be missing on MSVC)
 #ifndef PATH_MAX
@@ -188,5 +232,7 @@ __declspec(dllimport) DWORD    __stdcall FormatMessageA(DWORD, void*, DWORD, DWO
 
 // --- kernel32.dll (debug, test-only) ---
 __declspec(dllimport) BOOL     __stdcall IsBadReadPtr(const void*, size_t);
+
+#endif // !CEX_NO_WIN32_TYPES && !_WINDEF_
 
 #endif // CEX_PLATFORM_WIN32_H
