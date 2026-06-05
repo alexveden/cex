@@ -784,6 +784,13 @@ cex_test_main_fn(int argc, char** argv)
             return 1;
         }
     }
+    if(ctx->has_ansi){
+        if (ctx->tests_failed){
+            fprintf(stderr, "\033[31m");
+        } else {
+            fprintf(stderr, "\033[32m");
+        }
+    }
 
     if (!ctx->quiet_mode) {
         fprintf(stderr, "\n--------------------------------------------------\n");
@@ -798,18 +805,22 @@ cex_test_main_fn(int argc, char** argv)
         );
         fprintf(stderr, "--------------------------------------------------\n");
     } else {
-        fprintf(stderr, "\n");
-
         if (ctx->tests_failed) {
             fprintf(
                 stderr,
                 "\n[%s] %s %d tests failed\n",
-                (ctx->has_ansi ? io$ansi("FAIL", "31") : "FAIL"),
+                "FAIL",
                 ctx->suite_file,
                 ctx->tests_failed
             );
+        } else {
+            fprintf(stderr, " [%s]\n", ctx->has_ansi ? io$ansi("PASS", "32") : "PASS");
         }
-        if (ctx->is_benchmark) { fprintf(stderr, "<<<< %s\n", ctx->suite_file); }
+        if (ctx->is_benchmark) { fprintf(stderr, "\n<<<< %s\n", ctx->suite_file); }
+    }
+
+    if(ctx->has_ansi){
+        fprintf(stderr, "\033[0m");
     }
 
     if (ctx->out_stream) {
