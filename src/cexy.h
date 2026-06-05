@@ -281,6 +281,7 @@ See `cex help str.match` for more information about patter syntax.
         "cex test clean all                       - delete all test executables in `cexy$build_dir`\n"\
         "cex test clean test/test_file.c          - delete specific test executable\n"\
         "cex test run tests/test_file.c [--help]  - run test with passing arguments to the test runner program\n" \
+        "cex test watch tests/test_file.c         - watch test file and its includes' changes with perptual re-run\n" \
         "cex test bench test/test_file.c          - run all test$bench() functions for timing\n"
 
 

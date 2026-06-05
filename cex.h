@@ -158,7 +158,7 @@ Use `cex -D config` to reset all project config flags to defaults
 #define cex$version_major 0
 #define cex$version_minor 20
 #define cex$version_patch 0
-#define cex$version_date "2026-06-04"
+#define cex$version_date "2026-06-05"
 
 
 
@@ -5487,6 +5487,13 @@ cex_test_main_fn(int argc, char** argv)
             return 1;
         }
     }
+    if(ctx->has_ansi){
+        if (ctx->tests_failed){
+            fprintf(stderr, "\033[31m");
+        } else {
+            fprintf(stderr, "\033[32m");
+        }
+    }
 
     if (!ctx->quiet_mode) {
         fprintf(stderr, "\n--------------------------------------------------\n");
@@ -5501,18 +5508,22 @@ cex_test_main_fn(int argc, char** argv)
         );
         fprintf(stderr, "--------------------------------------------------\n");
     } else {
-        fprintf(stderr, "\n");
-
         if (ctx->tests_failed) {
             fprintf(
                 stderr,
                 "\n[%s] %s %d tests failed\n",
-                (ctx->has_ansi ? io$ansi("FAIL", "31") : "FAIL"),
+                "FAIL",
                 ctx->suite_file,
                 ctx->tests_failed
             );
+        } else {
+            fprintf(stderr, " [%s]\n", ctx->has_ansi ? io$ansi("PASS", "32") : "PASS");
         }
-        if (ctx->is_benchmark) { fprintf(stderr, "<<<< %s\n", ctx->suite_file); }
+        if (ctx->is_benchmark) { fprintf(stderr, "\n<<<< %s\n", ctx->suite_file); }
+    }
+
+    if(ctx->has_ansi){
+        fprintf(stderr, "\033[0m");
     }
 
     if (ctx->out_stream) {
@@ -6037,6 +6048,7 @@ See `cex help str.match` for more information about patter syntax.
         "cex test clean all                       - delete all test executables in `cexy$build_dir`\n"\
         "cex test clean test/test_file.c          - delete specific test executable\n"\
         "cex test run tests/test_file.c [--help]  - run test with passing arguments to the test runner program\n" \
+        "cex test watch tests/test_file.c         - watch test file and its includes' changes with perptual re-run\n" \
         "cex test bench test/test_file.c          - run all test$bench() functions for timing\n"
 
 
@@ -16528,7 +16540,7 @@ cexy__test__make_target_pattern(char** target)
 Exception
 cexy__test__run(char* target, char* cmd, int argc, char** argv)
 {
-    if (!str.match(cmd, "(run|debug|bench)")) { return "Unsupported command"; }
+    if (!str.match(cmd, "(run|debug|bench|watch)")) { return "Unsupported command"; }
 
     Exc result = EOK;
     u32 n_tests = 0;
@@ -16562,7 +16574,6 @@ cexy__test__run(char* target, char* cmd, int argc, char** argv)
             arr$pusha(args, argv, argc);
             arr$push(args, NULL);
             if (os$cmda(args)) {
-                log$error("<<<<<<<<<<<<<<<<<< Test failed: %s\n", test_target);
                 n_failed++;
                 result = Error.runtime;
             }
@@ -18247,7 +18258,7 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
     i32 njobs = -1;
     argparse_c cmd_args = {
         .program_name = "./cex",
-        .usage = "test [options] {run,build,create,clean,debug,bench} all|tests/test_file.c [--test-options]",
+        .usage = "test [options] {run,build,create,clean,debug,bench,watch} all|tests/test_file.c [--test-options]",
         .description = _cexy$cmd_test_help,
         .epilog = _cexy$cmd_test_epilog,
         argparse$opt_list(
@@ -18265,7 +18276,7 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
     char* cmd = argparse.next(&cmd_args);
     char* target = argparse.next(&cmd_args);
 
-    if (!str.match(cmd, "(run|build|create|clean|debug|bench)") || target == NULL) {
+    if (!str.match(cmd, "(run|build|create|clean|debug|bench|watch)") || target == NULL) {
         argparse.usage(&cmd_args);
         return e$raise(Error.argsparse, "Invalid command: '%s' or target: '%s'", cmd, target);
     }
@@ -18277,108 +18288,132 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
         e$ret(cexy.test.clean(target));
         return EOK;
     }
-    bool single_test = !str.eq(target, "all");
+    bool single_test = !str.eq(target, "all") && !str.eq(cmd, "watch");
     e$ret(cexy.test.make_target_pattern(&target)); // validation + convert 'all' -> "tests/test_*.c"
 
     log$info("Tests building: %s\n", target);
-    // Build stage
-    u32 n_tests = 0;
-    u32 n_built = 0;
-    f64 timer = os.timer();
 
-    (void)n_tests;
-    (void)n_built;
-    (void)timer;
+    const char spinner[] = "|/-\\";
+    u32 spinner_cnt = 0;
 
-    mem$scope(tmem$, _)
-    {
-        i32 ncpu = os.cpu_count();
-        if (ncpu <= 1) {
-            ncpu = 1;
-            njobs = 1;
-        } else {
-            if (njobs <= 0) {
-                njobs = ncpu - 1;
+    for (;;) {
+        // Build stage
+        u32 n_tests = 0;
+        u32 n_built = 0;
+        f64 timer = os.timer();
+
+        (void)n_tests;
+        (void)n_built;
+        (void)timer;
+
+        mem$scope(tmem$, _)
+        {
+            i32 ncpu = os.cpu_count();
+            if (ncpu <= 1) {
+                ncpu = 1;
+                njobs = 1;
             } else {
-                njobs = ncpu > njobs ? njobs : ncpu;
-            }
-        }
-
-        uassert(njobs > 0);
-
-        arr$(os_cmd_c) jobs = arr$new(jobs, _, .capacity = njobs);
-
-        for$each (test_src, os.fs.find(target, true, _)) {
-            char* test_target = cexy.target_make(test_src, cexy$build_dir, ".test", _);
-            log$trace("Test src: %s -> %s\n", test_src, test_target);
-            fflush(stdout); // typically for CI
-            n_tests++;
-            if (!single_test && !cexy.src_include_changed(test_target, test_src, NULL)) {
-                continue;
-            }
-            arr$(char*) args = arr$new(args, _);
-            arr$pushm(args, cexy$cc, );
-            // NOTE: reconstructing char*[] because some cexy$ variables might be empty
-            char* cc_args_test[] = { cexy$cc_args_test };
-            char* cc_include[] = { cexy$cc_include };
-            char* cc_ld_args[] = { cexy$ld_args };
-            if (!str.eq(cmd, "bench")) {
-                // typical test, use as is
-                arr$pusha(args, cc_args_test);
-            } else {
-                // for bench tests set optimization and exclude sanitizer
-                arr$push(args, "-O3");
-                for$each (it, cc_args_test) {
-                    if (str.starts_with(it, "-fsanitize")) { continue; }
-                    if (str.starts_with(it, "-O")) { continue; }
-                    arr$push(args, it);
+                if (njobs <= 0) {
+                    njobs = ncpu - 1;
+                } else {
+                    njobs = ncpu > njobs ? njobs : ncpu;
                 }
             }
-            arr$pusha(args, cc_include);
 
-            // Handling cex.h -> cex.obj for faster debug builds
-            e$ret(_cexy__add_precompiled_debug_cex_h(&args, _));
+            uassert(njobs > 0);
 
-            arr$push(args, test_src);
-            arr$pusha(args, cc_ld_args);
-            char* pkgconf_libargs[] = { cexy$pkgconf_libs };
-            if (arr$len(pkgconf_libargs)) {
-                e$ret(cexy$pkgconf(_, &args, "--cflags", "--libs", cexy$pkgconf_libs));
+            arr$(os_cmd_c) jobs = arr$new(jobs, _, .capacity = njobs);
+
+            for$each (test_src, os.fs.find(target, true, _)) {
+                char* test_target = cexy.target_make(test_src, cexy$build_dir, ".test", _);
+                log$trace("Test src: %s -> %s\n", test_src, test_target);
+                fflush(stdout); // typically for CI
+                n_tests++;
+                if (!single_test && !cexy.src_include_changed(test_target, test_src, NULL)) {
+                    continue;
+                }
+                arr$(char*) args = arr$new(args, _);
+                arr$pushm(args, cexy$cc, );
+                // NOTE: reconstructing char*[] because some cexy$ variables might be empty
+                char* cc_args_test[] = { cexy$cc_args_test };
+                char* cc_include[] = { cexy$cc_include };
+                char* cc_ld_args[] = { cexy$ld_args };
+                if (!str.eq(cmd, "bench")) {
+                    // typical test, use as is
+                    arr$pusha(args, cc_args_test);
+                } else {
+                    // for bench tests set optimization and exclude sanitizer
+                    arr$push(args, "-O3");
+                    for$each (it, cc_args_test) {
+                        if (str.starts_with(it, "-fsanitize")) { continue; }
+                        if (str.starts_with(it, "-O")) { continue; }
+                        arr$push(args, it);
+                    }
+                }
+                arr$pusha(args, cc_include);
+
+                // Handling cex.h -> cex.obj for faster debug builds
+                e$ret(_cexy__add_precompiled_debug_cex_h(&args, _));
+
+                arr$push(args, test_src);
+                arr$pusha(args, cc_ld_args);
+                char* pkgconf_libargs[] = { cexy$pkgconf_libs };
+                if (arr$len(pkgconf_libargs)) {
+                    e$ret(cexy$pkgconf(_, &args, "--cflags", "--libs", cexy$pkgconf_libs));
+                }
+                arr$pushm(args, "-o", test_target);
+                arr$push(args, NULL);
+
+                // Apply multi-core compilation
+                if (arr$len(jobs) == (usize)njobs) {
+                    e$ret(os.cmd.wait(jobs, arr$len(jobs), 0));
+                    arr$clear(jobs);
+                }
+
+                _os$args_print("CMD:", args, arr$len(args));
+
+                os_cmd_c* c = arr$push(jobs, (os_cmd_c){ 0 });
+                e$ret(os.cmd.run(args, arr$len(args), c));
+                n_built++;
             }
-            arr$pushm(args, "-o", test_target);
-            arr$push(args, NULL);
 
-            // Apply multi-core compilation
-            if (arr$len(jobs) == (usize)njobs) {
+            if (arr$len(jobs) > 0) {
                 e$ret(os.cmd.wait(jobs, arr$len(jobs), 0));
                 arr$clear(jobs);
             }
-
-            _os$args_print("CMD:", args, arr$len(args));
-
-            os_cmd_c* c = arr$push(jobs, (os_cmd_c){ 0 });
-            e$ret(os.cmd.run(args, arr$len(args), c));
-            n_built++;
         }
 
-        if (arr$len(jobs) > 0) {
-            e$ret(os.cmd.wait(jobs, arr$len(jobs), 0));
-            arr$clear(jobs);
+        if (!str.eq(cmd, "watch")) {
+            log$info(
+                "Tests building: %d tests processed, %d tests built in %0.3fsec (%d jobs)\n",
+                n_tests,
+                n_built,
+                os.timer() - timer,
+                njobs
+            );
+        }
+        fflush(stdout);
+
+        if (str.match(cmd, "(run|debug|bench)")) {
+            if (cexy.test.run(target, cmd, cmd_args.argc, cmd_args.argv)) { return Error.runtime; }
+            goto end;
+        } else if (str.eq(cmd, "watch")) {
+            if (!io.isatty(stdout)) {
+                return "watch command is only available in interactive shell";
+            }
+
+            if (n_built > 0) {
+                printf("\n");
+                fflush(stdout);
+                if (cexy.test.run(target, cmd, cmd_args.argc, cmd_args.argv)) {}
+            } else {
+                os.sleep(500);
+                spinner_cnt++;
+                printf("\rWatching [%c]", spinner[spinner_cnt % 4]);
+            }
         }
     }
-
-    log$info(
-        "Tests building: %d tests processed, %d tests built in %0.3fsec (%d jobs)\n",
-        n_tests,
-        n_built,
-        os.timer() - timer,
-        njobs
-    );
-    fflush(stdout);
-
-    if (str.match(cmd, "(run|debug|bench)")) {
-        e$ret(cexy.test.run(target, cmd, cmd_args.argc, cmd_args.argv));
-    }
+end:
     return EOK;
 }
 
