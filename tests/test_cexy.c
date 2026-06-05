@@ -116,7 +116,7 @@ test$case(test_needs_build)
         e$ret(io.file.save(tgt, ""));
         tassert(os.path.exists(tgt));
         tassert_eq(0, cexy.src_changed(tgt, &src_file, 1));
-        os.sleep(1500);
+        os.sleep(1.5);
         tassert_eq(0, cexy.src_changed(tgt, src, arr$len(src)));
         e$ret(io.file.save(src[0], "// world"));
         tassert_eq(1, cexy.src_changed(tgt, src, arr$len(src)));
@@ -155,7 +155,7 @@ test$case(test_needs_build_many_files)
         e$ret(io.file.save(tgt, ""));
         tassert_eq(0, cexy.src_changed(tgt, src, arr$len(src)));
 
-        os.sleep(1500);
+        os.sleep(1.5);
         tassert_eq(0, cexy.src_changed(tgt, src, arr$len(src)));
         e$ret(io.file.save(src[1], "// world again"));
         tassert_eq(1, cexy.src_changed(tgt, src, arr$len(src)));
@@ -183,7 +183,7 @@ test$case(test_src_changed_include_direct_changes)
         e$ret(io.file.save(tgt, ""));
         tassert_eq(0, cexy.src_include_changed(tgt, src, NULL));
 
-        os.sleep(1500);
+        os.sleep(1.5);
         tassert_eq(0, cexy.src_include_changed(tgt, src, NULL));
         e$ret(io.file.save(src, "// world again"));
         tassert_eq(1, cexy.src_include_changed(tgt, src, NULL));
@@ -205,7 +205,7 @@ test$case(test_src_changed_include)
         e$ret(io.file.save(src2, "// I am include"));
         tassert_eq(0, cexy.src_include_changed(tgt, src, NULL));
 
-        os.sleep(1500);
+        os.sleep(1.5);
         tassert_eq(0, cexy.src_include_changed(tgt, src, NULL));
         e$ret(io.file.save(src2, "// I am include again"));
         tassert_eq(1, cexy.src_include_changed(tgt, src, NULL));
@@ -228,7 +228,7 @@ test$case(test_src_changed_include_not_in_include_path)
         e$ret(io.file.save(src2, "// I am include"));
         tassert_eq(0, cexy.src_include_changed(tgt, src, NULL));
 
-        os.sleep(1500);
+        os.sleep(1.5);
         tassert_eq(0, cexy.src_include_changed(tgt, src, NULL));
         e$ret(io.file.save(src2, "// I am include again"));
         tassert_eq(1, cexy.src_include_changed(tgt, src, NULL));
@@ -247,7 +247,7 @@ test$case(test_src_changed_include_skips_system)
     e$ret(io.file.save(src2, "// I am include"));
     tassert_eq(0, cexy.src_include_changed(tgt, src, NULL));
 
-    os.sleep(1500);
+    os.sleep(1.5);
     tassert_eq(0, cexy.src_include_changed(tgt, src, NULL));
     e$ret(io.file.save(src2, "// I am include again"));
     tassert_eq(0, cexy.src_include_changed(tgt, src, NULL));

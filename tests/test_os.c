@@ -20,14 +20,14 @@ test$case(test_timer)
     tassert(t2 >= t);
     tassert_le(t2, 5);
 
-    os.sleep(100);
+    os.sleep(0.1);
     t2 = os.timer();
     f64 tdiff = t2 - t;
     // NOTE: CI timings may be very slow, we estimate order of magnitude
     tassertf(tdiff > 0.1 && tdiff < 0.35, "%g", tdiff);
 
     t = t2;
-    os.sleep(1100);
+    os.sleep(1.1);
     t2 = os.timer();
     tdiff = t2 - t;
     tassertf(tdiff > 1.1 && tdiff < 1.35, "%g", tdiff);
@@ -48,11 +48,11 @@ test$case(test_time_scope)
 {
     os$time_scope()
     {
-        os.sleep(100);
+        os.sleep(0.1);
     }
     os$time_scope()
     {
-        os.sleep(1100);
+        os.sleep(1.1);
     }
     os$time_scope() {}
     os$time_scope()

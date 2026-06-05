@@ -17,7 +17,7 @@ test$bench(my_bench){
 }
 
 test$bench(my_bench2){
-    os.sleep(1);
+    os.sleep(0.001);
 
     return EOK;
 }

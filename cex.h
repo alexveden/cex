@@ -4061,8 +4061,9 @@ struct __cex_namespace__os {
     /// value for hash stacking  (null or empty `p` returns 0 hash). (This is the same general hash
     /// function is used in str.hash() and hm$ hashmaps)
     u64             (*hash)(void* p, usize psize, u64 seed);
-    /// Sleep for `period_millisec` duration
-    void            (*sleep)(u32 period_millisec);
+    /// Sleep for `seconds` duration (f64). On Windows, precision is limited to ~1-2ms
+    /// (Sleep() uses millisecond granularity). Use os.timer() for high-resolution timing.
+    void            (*sleep)(f64 seconds);
     /// Get high performance monotonic timer value in seconds, started from the first call of the
     /// os.timer()
     f64             (*timer)(void);
@@ -14597,14 +14598,20 @@ closedir(DIR* dirp)
 }
 #    endif // _WIN32
 
-/// Sleep for `period_millisec` duration
+/// Sleep for `seconds` duration (f64). On Windows, precision is limited to ~1-2ms
+/// (Sleep() uses millisecond granularity). Use os.timer() for high-resolution timing.
 static void
-cex_os_sleep(u32 period_millisec)
+cex_os_sleep(f64 seconds)
 {
+    if (seconds <= 0) return;
 #    ifdef _WIN32
-    Sleep(period_millisec);
+    Sleep((DWORD)(seconds * 1000.0));
 #    else
-    usleep(period_millisec * 1000);
+    struct timespec ts = {
+        .tv_sec = (time_t)seconds,
+        .tv_nsec = (long)((seconds - (f64)(time_t)seconds) * 1e9),
+    };
+    nanosleep(&ts, NULL);
 #    endif
 }
 
@@ -15487,7 +15494,7 @@ cex_os__cmd__wait(os_cmd_c* procs, usize procs_cnt, f64 timeout_sec)
         for$eachp (it, procs, procs_cnt) { is_all_done &= !cex_os__cmd__is_alive(it); }
 
         if (!is_all_done) {
-            cex_os_sleep(10);
+            cex_os_sleep(0.01);
 
             if (timeout_sec > 0) {
                 f64 duration = cex_os_timer() - timer;
@@ -18407,7 +18414,7 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
                 fflush(stdout);
                 if (cexy.test.run(target, cmd, cmd_args.argc, cmd_args.argv)) {}
             } else {
-                os.sleep(500);
+                os.sleep(0.5);
                 spinner_cnt++;
                 printf("\rWatching [%c]", spinner[spinner_cnt % 4]);
             }
