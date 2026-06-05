@@ -840,4 +840,135 @@ test$case(test_os_path_abs)
     return EOK;
 }
 
+
+test$case(test_os_path_normpath_basic)
+{
+    mem$scope(tmem$, _)
+    {
+        tassert_eq(os.path.normalize(NULL, _), ".");
+        tassert_eq(os.path.normalize("", _), ".");
+        tassert_eq(os.path.normalize(".", _), ".");
+        tassert_eq(os.path.normalize("..", _), "..");
+        tassert_eq(os.path.normalize("/", _), "/");
+        tassert_eq(os.path.normalize("a/b/c", _), "a/b/c");
+        tassert_eq(os.path.normalize("a/./b", _), "a/b");
+        tassert_eq(os.path.normalize("a/b/../c", _), "a/c");
+        tassert_eq(os.path.normalize("/a/../b", _), "/b");
+        tassert_eq(os.path.normalize("/../x", _), "/x");
+        tassert_eq(os.path.normalize("../../x", _), "../../x");
+        tassert_eq(os.path.normalize("a//b///c", _), "a/b/c");
+        tassert_eq(os.path.normalize("a/../../b", _), "../b");
+        tassert_eq(os.path.normalize("foo/bar/..", _), "foo");
+        tassert_eq(os.path.normalize("a/b/..", _), "a");
+        tassert_eq(os.path.normalize("..", _), "..");
+        tassert_eq(os.path.normalize(".", _), ".");
+    }
+    return EOK;
+}
+
+
+test$case(test_os_path_normpath_backslash)
+{
+    mem$scope(tmem$, _)
+    {
+        tassert_eq(os.path.normalize("a\\b\\c", _), os$PATH_SEP == '/' ? "a/b/c" : "a\\b\\c");
+        tassert_eq(os.path.normalize("a\\.\\b", _), os$PATH_SEP == '/' ? "a/b" : "a\\b");
+        tassert_eq(os.path.normalize("a\\b\\..\\c", _), os$PATH_SEP == '/' ? "a/c" : "a\\c");
+    }
+    return EOK;
+}
+
+
+test$case(test_os_path_normpath_edge)
+{
+    mem$scope(tmem$, _)
+    {
+        // Just a leading slash on parts
+        tassert_eq(os.path.normalize("/a/b/../c", _), "/a/c");
+        tassert_eq(os.path.normalize("a/..", _), ".");
+        tassert_eq(os.path.normalize("a/../..", _), "..");
+        tassert_eq(os.path.normalize("/a/../../b", _), "/b");
+    }
+    return EOK;
+}
+
+
+test$case(test_os_path_normpath_leak)
+{
+    // Use mem$ (heap) allocator and explicitly free results to verify no memory leaks.
+    // Running under ASAN will report any unfreed allocations.
+    char* r = NULL;
+
+    r = os.path.normalize(NULL, mem$);
+    tassert_eq(r, ".");
+    mem$free(mem$, r);
+
+    r = os.path.normalize("", mem$);
+    tassert_eq(r, ".");
+    mem$free(mem$, r);
+
+    r = os.path.normalize("/", mem$);
+    tassert_eq(r, "/");
+    mem$free(mem$, r);
+
+    r = os.path.normalize("a/b/c", mem$);
+    tassert_eq(r, "a/b/c");
+    mem$free(mem$, r);
+
+    r = os.path.normalize("a/./b", mem$);
+    tassert_eq(r, "a/b");
+    mem$free(mem$, r);
+
+    r = os.path.normalize("a/b/../c", mem$);
+    tassert_eq(r, "a/c");
+    mem$free(mem$, r);
+
+    r = os.path.normalize("/a/../b", mem$);
+    tassert_eq(r, "/b");
+    mem$free(mem$, r);
+
+    r = os.path.normalize("/../x", mem$);
+    tassert_eq(r, "/x");
+    mem$free(mem$, r);
+
+    r = os.path.normalize("../../x", mem$);
+    tassert_eq(r, "../../x");
+    mem$free(mem$, r);
+
+    r = os.path.normalize("a//b///c", mem$);
+    tassert_eq(r, "a/b/c");
+    mem$free(mem$, r);
+
+    r = os.path.normalize("a/../../b", mem$);
+    tassert_eq(r, "../b");
+    mem$free(mem$, r);
+
+    r = os.path.normalize("foo/bar/..", mem$);
+    tassert_eq(r, "foo");
+    mem$free(mem$, r);
+
+    r = os.path.normalize("a\\b\\c", mem$);
+    tassert_eq(r, os$PATH_SEP == '/' ? "a/b/c" : "a\\b\\c");
+    mem$free(mem$, r);
+
+    r = os.path.normalize(".", mem$);
+    tassert_eq(r, ".");
+    mem$free(mem$, r);
+
+    r = os.path.normalize("..", mem$);
+    tassert_eq(r, "..");
+    mem$free(mem$, r);
+
+    r = os.path.normalize("a/..", mem$);
+    tassert_eq(r, ".");
+    mem$free(mem$, r);
+
+    r = os.path.normalize("/a/../../b", mem$);
+    tassert_eq(r, "/b");
+    mem$free(mem$, r);
+
+    return EOK;
+}
+
+
 test$main();

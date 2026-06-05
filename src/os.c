@@ -837,6 +837,85 @@ cex_os__env__set(char* name, char* value)
     return EOK;
 }
 
+/// Normalize path, resolves "." and ".." components and collapses "//"
+static char*
+cex_os__path__normalize(char* path, IAllocator allc)
+{
+    uassert(allc != NULL);
+    char*      result = NULL;
+    char*      work   = NULL;
+    arr$(char*) parts  = NULL;
+    arr$(char*) stack  = NULL;
+    char*      joined = NULL;
+
+    if (path == NULL || path[0] == '\0') {
+        result = str.clone(".", allc);
+        goto done;
+    }
+
+    usize len = strlen(path);
+    work = mem$malloc(allc, len + 1);
+    if (work == NULL) { goto done; }
+    memcpy(work, path, len + 1);
+    for (char* p = work; *p; p++) { if (*p == '\\') { *p = '/'; } }
+
+    bool is_absolute = (work[0] == '/');
+
+    parts = str.split(work, "/", allc);
+    if (parts == NULL) { goto done; }
+
+    stack = arr$new(stack, allc);
+    if (stack == NULL) { goto done; }
+
+    usize start = is_absolute ? 1 : 0;
+    for (usize i = start; i < arr$len(parts); i++) {
+        char* p = parts[i];
+        if (p[0] == '\0' || str.eq(p, ".")) { continue; }
+        if (str.eq(p, "..")) {
+            if (arr$len(stack) > 0 && !str.eq(arr$last(stack), "..")) {
+                arr$pop(stack);
+            } else if (!is_absolute) {
+                arr$push(stack, p);
+            }
+            continue;
+        }
+        arr$push(stack, p);
+    }
+
+    usize slen = arr$len(stack);
+    if (slen == 0) {
+        result = str.clone(is_absolute ? "/" : ".", allc);
+        goto done;
+    }
+
+    if (is_absolute) {
+        joined = str.join((char**)stack, slen, "/", allc);
+        if (joined == NULL) { goto done; }
+        usize jlen = strlen(joined);
+        result = mem$malloc(allc, jlen + 2);
+        if (result == NULL) { goto done; }
+        result[0] = '/';
+        memcpy(result + 1, joined, jlen + 1);
+        result[jlen + 1] = '\0';
+        goto done;
+    }
+
+    {
+        char sep[2] = { os$PATH_SEP, '\0' };
+        result = str.join((char**)stack, slen, sep, allc);
+    }
+
+done:
+    if (parts) {
+        for$each(p, parts) { mem$free(allc, p); }
+        arr$free(parts);
+    }
+    if (stack) { arr$free(stack); }
+    mem$free(allc, work);
+    mem$free(allc, joined);
+    return result;
+}
+
 /// Check if file/directory path exists
 static bool
 cex_os__path__exists(char* file_path)
@@ -1460,6 +1539,7 @@ CEX_NAMESPACE_DEF struct __cex_namespace__os os = {
         .dirname = cex_os__path__dirname,
         .exists = cex_os__path__exists,
         .join = cex_os__path__join,
+        .normalize = cex_os__path__normalize,
         .split = cex_os__path__split,
     },
 

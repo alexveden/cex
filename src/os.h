@@ -386,6 +386,8 @@ struct __cex_namespace__os {
         bool            (*exists)(char* file_path);
         /// Join path with OS specific path separator
         char*           (*join)(char** parts, u32 parts_len, IAllocator allc);
+        /// Normalize path, resolves "." and ".." components and collapses "//"
+        char*           (*normalize)(char* path, IAllocator allc);
         /// Splits path by `dir` and `file` parts, when return_dir=true - returns `dir` part, otherwise
         /// `file` part
         str_s           (*split)(char* path, bool return_dir);
