@@ -98,4 +98,19 @@ test$case(test_env_set_unset)
     return EOK;
 }
 
+test$case(test_env_executable_path)
+{
+    mem$scope(tmem$, _)
+    {
+        char* exe = os.env.executable_path(_);
+        tassert_ne(exe, NULL);
+        tassert_gt(str.len(exe), 0);
+#    ifdef _WIN32
+        tassert(str.ends_with(exe, ".exe"));
+#    endif
+        tassert(str.find(exe, "test_os"));
+    }
+    return EOK;
+}
+
 test$main();

@@ -4068,6 +4068,8 @@ struct __cex_namespace__os {
     } cmd;
 
     struct {
+        /// Get path to the current executable
+        char*           (*executable_path)(IAllocator allc);
         /// Get environment variable, with `deflt` if not found
         char*           (*get)(char* name, char* deflt);
         /// Set environment variable
@@ -6742,6 +6744,7 @@ __declspec(dllimport) BOOL     __stdcall QueryPerformanceFrequency(LARGE_INTEGER
 __declspec(dllimport) BOOL     __stdcall QueryPerformanceCounter(LARGE_INTEGER*);
 __declspec(dllimport) void     __stdcall GetSystemInfo(SYSTEM_INFO*);
 __declspec(dllimport) DWORD    __stdcall FormatMessageA(DWORD, void*, DWORD, DWORD, char*, DWORD, void*);
+__declspec(dllimport) DWORD    __stdcall GetModuleFileNameA(void*, char*, DWORD);
 
 // --- kernel32.dll (debug, test-only) ---
 __declspec(dllimport) BOOL     __stdcall IsBadReadPtr(const void*, size_t);
@@ -15553,6 +15556,30 @@ cex_os__env__unset(char* name)
     return EOK;
 }
 
+/// Get path to the current executable
+static char*
+cex_os__env__executable_path(IAllocator allc)
+{
+    uassert(allc != NULL);
+#    ifdef _WIN32
+    char buf[MAX_PATH + 2] = { 0 };
+    DWORD len = GetModuleFileNameA(NULL, buf, MAX_PATH + 1);
+    if (len == 0 || len > MAX_PATH) return NULL;
+    return str.clone(buf, allc);
+#    elif defined(__APPLE__)
+    char    buf[PATH_MAX];
+    uint32_t size = sizeof(buf);
+    if (_NSGetExecutablePath(buf, &size) != 0) return NULL;
+    return str.clone(buf, allc);
+#    else
+    char    buf[PATH_MAX + 1] = { 0 };
+    ssize_t len = readlink("/proc/self/exe", buf, PATH_MAX);
+    if (len < 0 || len >= (ssize_t)PATH_MAX) return NULL;
+    buf[len] = '\0';
+    return str.clone(buf, allc);
+#    endif
+}
+
 /// Normalize path, resolves "." and ".." components and collapses "//"
 static char*
 cex_os__path__normalize(char* path, IAllocator allc)
@@ -16261,6 +16288,7 @@ CEX_NAMESPACE_DEF struct __cex_namespace__os os = {
     },
 
     .env = {
+        .executable_path = cex_os__env__executable_path,
         .get = cex_os__env__get,
         .set = cex_os__env__set,
         .unset = cex_os__env__unset,

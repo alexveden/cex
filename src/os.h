@@ -345,6 +345,8 @@ struct __cex_namespace__os {
     } cmd;
 
     struct {
+        /// Get path to the current executable
+        char*           (*executable_path)(IAllocator allc);
         /// Get environment variable, with `deflt` if not found
         char*           (*get)(char* name, char* deflt);
         /// Set environment variable

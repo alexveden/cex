@@ -229,6 +229,7 @@ __declspec(dllimport) BOOL     __stdcall QueryPerformanceFrequency(LARGE_INTEGER
 __declspec(dllimport) BOOL     __stdcall QueryPerformanceCounter(LARGE_INTEGER*);
 __declspec(dllimport) void     __stdcall GetSystemInfo(SYSTEM_INFO*);
 __declspec(dllimport) DWORD    __stdcall FormatMessageA(DWORD, void*, DWORD, DWORD, char*, DWORD, void*);
+__declspec(dllimport) DWORD    __stdcall GetModuleFileNameA(void*, char*, DWORD);
 
 // --- kernel32.dll (debug, test-only) ---
 __declspec(dllimport) BOOL     __stdcall IsBadReadPtr(const void*, size_t);
