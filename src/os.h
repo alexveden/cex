@@ -7,7 +7,6 @@
 #        include <direct.h>
 #        include <limits.h>
 #        include <sys/stat.h>
-#        include "platform_win32.h"
 #    else
 #        include <dirent.h>
 #        include <fcntl.h>

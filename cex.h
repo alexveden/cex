@@ -221,7 +221,7 @@ __attribute__((noinline)) void __cex__panic(void);
 
 
 /*
-*                          src/platform_win32.h
+*                          src/platform_win32.c
 */
 #if !defined(CEX_PLATFORM_WIN32_H) && defined(_WIN32)
 #define CEX_PLATFORM_WIN32_H
@@ -6730,12 +6730,6 @@ CEX_NAMESPACE struct __cex_namespace__fuzz fuzz;
 
 /*
 *                          src/cex_platform.c
-*/
-
-
-
-/*
-*                          src/platform_win32.c
 */
 
 
@@ -14678,6 +14672,8 @@ int subprocess_alive(struct subprocess_s *const process) {
 #    ifndef _WIN32
 #        include <dirent.h>
 #    else // _WIN32
+
+
 // minirent.h HEADER BEGIN
 // Copyright 2021 Alexey Kutepov <reximkut@gmail.com>
 //

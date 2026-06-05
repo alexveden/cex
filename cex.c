@@ -137,7 +137,7 @@ cex_bundle(void)
         char* bundle[] = {
 
             "src/cex_platform.h",
-            "src/platform_win32.h",
+            "src/platform_win32.c",
             "src/cex_base.h",
             "src/mem.h",
             "src/AllocatorHeap.h",
@@ -235,6 +235,7 @@ cex_bundle(void)
         for$each (hdr, bundle) {
             if (str.ends_with(hdr, "test.h")) { continue; }
             if (str.ends_with(hdr, "test.c")) { continue; }
+            if (str.ends_with(hdr, ".c")) { continue; }
 
             char* cfile = str.replace(hdr, ".h", ".c", _);
             cg$pn("\n");

@@ -1,5 +1,6 @@
 #if !defined(cex$enable_minimal) || defined(cex$enable_os)
 
+#        include "platform_win32.c"
 #include "_subprocess.h"
 
 #if defined(__clang__)

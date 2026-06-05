@@ -4,6 +4,9 @@
 #    ifndef _WIN32
 #        include <dirent.h>
 #    else // _WIN32
+
+#        include "platform_win32.c"
+
 // minirent.h HEADER BEGIN
 // Copyright 2021 Alexey Kutepov <reximkut@gmail.com>
 //

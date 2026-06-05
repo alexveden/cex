@@ -239,7 +239,7 @@ subprocess_weak int subprocess_alive(struct subprocess_s *const process);
 
 #if defined(_WIN32)
 
-#include "platform_win32.h"
+#include "platform_win32.c"
 
 #if (_MSC_VER < 1920)
 #ifdef _WIN64
