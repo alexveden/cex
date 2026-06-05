@@ -151,7 +151,7 @@ clock_gettime(clockid_t clockid, struct timespec* tp)
     return 0;
 }
 
-int nanosleep(const struct timespec *req, struct timespec *rem);
+int nanosleep(const struct timespec *req, struct timespec *rem)
 {
     return 0;
 }
