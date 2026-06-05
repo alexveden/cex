@@ -14672,8 +14672,6 @@ int subprocess_alive(struct subprocess_s *const process) {
 #    ifndef _WIN32
 #        include <dirent.h>
 #    else // _WIN32
-
-
 // minirent.h HEADER BEGIN
 // Copyright 2021 Alexey Kutepov <reximkut@gmail.com>
 //
