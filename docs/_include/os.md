@@ -146,8 +146,9 @@ os {
     /// value for hash stacking  (null or empty `p` returns 0 hash). (This is the same general hash
     /// function is used in str.hash() and hm$ hashmaps)
     u64             (*hash)(void* p, usize psize, u64 seed);
-    /// Sleep for `period_millisec` duration
-    void            (*sleep)(u32 period_millisec);
+    /// Sleep for `seconds` duration (f64). On Windows, precision is limited to ~1-2ms
+    /// (Sleep() uses millisecond granularity). Use os.timer() for high-resolution timing.
+    void            (*sleep)(f64 seconds);
     /// Get high performance monotonic timer value in seconds, started from the first call of the
     /// os.timer()
     f64             (*timer)(void);

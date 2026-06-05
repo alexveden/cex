@@ -13,7 +13,7 @@ Memory management hints:
 - `mem$scope()` - automatically free memory at scope exit by any reason (`return`, `goto` out,
 `break`)
 - consider `mem$malloc/mem$calloc/mem$realloc/mem$free/mem$new`
-- You can init arena scope with `mem$arena(page_size, arena_var_name)`
+- You can init arena scope with `mem$arena_scope(page_size, arena_var_name)`
 - AllocatorArena grows dynamically if there is no room in existing page, but be careful when you use
 many `realloc()`, it can grow arenas unexpectedly large.
 - Use temp allocator as `mem$scope(tmem$, _) {}` it's a common CEX pattern, `_` is `tmem$`
@@ -64,13 +64,13 @@ mem$scope(tmem$, _)
 
 ```c
 // form 1 — integer page_size
-mem$arena(4096, arena)
+mem$arena_scope(4096, arena)
 {
     u8* p = mem$malloc(arena, 100);
 }
 
 // form 2 — AllocatorArena_kw pointer
-mem$arena(&(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true }, arena)
+mem$arena_scope(&(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true }, arena)
 {
     u8* p = mem$malloc(arena, 100);
 }
@@ -114,7 +114,7 @@ AllocatorArena.destroy(arena);
 
 /// Creates new ArenaAllocator instance in scope, frees it at scope exit.
 /// First argument: integer `page_size` or `const AllocatorArena_kw*` pointer.
-#define mem$arena(ps, allc_var)
+#define mem$arena_scope(ps, allc_var)
 
 /// true - if program was compiled with address sanitizer support
 #define mem$asan_enabled()

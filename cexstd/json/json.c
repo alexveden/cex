@@ -1785,7 +1785,7 @@ cex_json__gen__process_file(json_gen_c* self, char* path)
 {
     uassert(self);
     uassert(path);
-    mem$arena(256 * 1024, _)
+    mem$arena_scope(256 * 1024, _)
     {
         char* code = io.file.load(path, _);
         if (!code) { return e$raise(Error.io, "Error reading file: %s", path); }

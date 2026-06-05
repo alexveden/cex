@@ -1245,7 +1245,7 @@ You shouldn't use allocator interface directly (it's less convenient), so it's b
 
 Allocator scoping:
 
-* `mem$arena(page_size, allc_var) { ... }` - enters new instance of allocator arena with the `page_size`. Also supports `AllocatorArena_kw*` pointer form for `disable_scopes` etc.
+* `mem$arena_scope(page_size, allc_var) { ... }` - enters new instance of allocator arena with the `page_size`. Also supports `AllocatorArena_kw*` pointer form for `disable_scopes` etc.
 * `mem$scope(arena_or_tmem$, scope_var) { ... }` - opens new memory scope (works only with arena allocators or temp allocator)
 
 
@@ -1285,15 +1285,15 @@ AllocatorArena.destroy(arena); /*<7>*/
 
 ##### Arena scope
 ```c
-mem$arena(4096, arena)
-{
-    // This needs an extra page
-    u8* p2 = mem$malloc(arena, 10040);
-    mem$scope(arena, tal)
+    mem$arena_scope(4096, arena)
     {
-        u8* p3 = mem$malloc(tal, 100);
+        // This needs an extra page
+        u8* p2 = mem$malloc(arena, 10040);
+        mem$scope(arena, tal)
+        {
+            u8* p3 = mem$malloc(tal, 100);
+        }
     }
-}
 ```
 
 ##### Temp allocator
@@ -1368,7 +1368,7 @@ When run in test mode (or specifically `#ifdef CEX_TEST` is true) the memory all
 > [Test-Mode Sanity Checks](#test-mode-sanity-checks-and-side-effects) section.
 
 ##### Be careful with break/continue
-`mem$scope/mem$arena` are macros backed by `for` loop, be careful when you use them inside loops and trying to `break/continue` outer loop.
+`mem$scope/mem$arena_scope` are macros backed by `for` loop, be careful when you use them inside loops and trying to `break/continue` outer loop.
 ```c
 // BAD!
 for(u32 i = 0; i < 10; i++){
@@ -1461,7 +1461,7 @@ uassert(p2 == NULL); // p2 set to NULL by mem$free()
 #### Opening new ArenaAllocator scope
 
 ```c
-mem$arena(4096, arena)
+mem$arena_scope(4096, arena)
 {
     u8* p2 = mem$malloc(arena, 10040);
 }
@@ -1470,7 +1470,7 @@ mem$arena(4096, arena)
 #### Mixing ArenaAllocator and temp allocator
 
 ```c
-mem$arena(4096, arena)
+mem$arena_scope(4096, arena)
 {
     // We will store result in the arena
     u8* result = mem$malloc(arena, 10040);

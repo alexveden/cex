@@ -1002,7 +1002,7 @@ Memory management hints:
 - `mem$scope()` - automatically free memory at scope exit by any reason (`return`, `goto` out,
 `break`)
 - consider `mem$malloc/mem$calloc/mem$realloc/mem$free/mem$new`
-- You can init arena scope with `mem$arena(page_size, arena_var_name)`
+- You can init arena scope with `mem$arena_scope(page_size, arena_var_name)`
 - AllocatorArena grows dynamically if there is no room in existing page, but be careful when you use
 many `realloc()`, it can grow arenas unexpectedly large.
 - Use temp allocator as `mem$scope(tmem$, _) {}` it's a common CEX pattern, `_` is `tmem$`
@@ -1053,13 +1053,13 @@ mem$scope(tmem$, _)
 
 ```c
 // form 1 — integer page_size
-mem$arena(4096, arena)
+mem$arena_scope(4096, arena)
 {
     u8* p = mem$malloc(arena, 100);
 }
 
 // form 2 — AllocatorArena_kw pointer
-mem$arena(&(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true }, arena)
+mem$arena_scope(&(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true }, arena)
 {
     u8* p = mem$malloc(arena, 100);
 }
@@ -1151,7 +1151,7 @@ AllocatorArena.destroy(arena);
 
 /// Creates new ArenaAllocator instance in scope, frees it at scope exit.
 /// First argument: integer `page_size` or `const AllocatorArena_kw*` pointer.
-#define mem$arena(ps, allc_var)                                                                                                                                           \
+#define mem$arena_scope(ps, allc_var)                                                                                                                                           \
     u32 cex$tmpname(tallc_cnt) = 0;                                                                                                                                \
     for (IAllocator allc_var  \
         __attribute__ ((__cleanup__(_cex_allocator_arena_cleanup))) =  \
@@ -16580,7 +16580,9 @@ cexy__test__run(char* target, char* cmd, int argc, char** argv)
 
             arr$pusha(args, argv, argc);
             arr$push(args, NULL);
-            if (os$cmda(args)) {
+
+            os_cmd_c cmd = {0};
+            if (os.cmd.run(args, arr$len(args), &cmd) || os.cmd.wait(&cmd, 1, 0)) {
                 n_failed++;
                 result = Error.runtime;
             }
@@ -17802,7 +17804,7 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
         output = stdout;
     }
 
-    mem$arena(1024 * 100, arena)
+    mem$arena_scope(1024 * 100, arena)
     {
 
         arr$(char*) sources = os.fs.find(filter, true, arena);
@@ -18962,7 +18964,7 @@ cexy__cmd__simple_fuzz(int argc, char** argv, void* user_ctx)
 static char*
 cexy__utils__git_hash(IAllocator allc)
 {
-    mem$arena(1024, _)
+    mem$arena_scope(1024, _)
     {
         if (!os.cmd.exists("git")) {
             log$error("git command not found, not installed or PATH issue\n");
@@ -19076,7 +19078,7 @@ cexy__utils__pkgconf(
 
     os_cmd_c c = { 0 };
 
-    mem$arena(2048, _)
+    mem$arena_scope(2048, _)
     {
         arr$(char*) args = arr$new(args, _);
         char* vcpkg_root = cexy$vcpkg_root;

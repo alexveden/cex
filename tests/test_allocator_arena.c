@@ -743,7 +743,7 @@ test$case(test_allocator_arena_realloc_last_pointer)
 test$case(test_allocator_mem_scope_exit_oversized_page)
 {
 
-    mem$arena(1024, arena)
+    mem$arena_scope(1024, arena)
     {
         // allocate some memory
         u8* p = mem$malloc(arena, 128);
@@ -768,7 +768,7 @@ test$case(test_allocator_mem_scope_exit_oversized_page)
 test$case(test_mem_arena)
 {
 
-    mem$arena(4096, arena)
+    mem$arena_scope(4096, arena)
     {
         u8* p = mem$malloc(arena, 100);
         tassert(p != NULL);
@@ -786,7 +786,7 @@ test$case(test_mem_arena)
 test$case(test_mem_arena_with_return)
 {
 
-    mem$arena(4096, arena)
+    mem$arena_scope(4096, arena)
     {
         u8* p = mem$malloc(arena, 100);
         tassert(p != NULL);
@@ -805,7 +805,7 @@ test$case(test_mem_arena_with_return)
 test$case(test_mem_arena_nested_cleanup_assert)
 {
 
-    mem$arena(4096, arena)
+    mem$arena_scope(4096, arena)
     {
         AllocatorArena_c* allc = (AllocatorArena_c*)arena;
 
@@ -840,7 +840,7 @@ test$case(test_mem_arena_nested_cleanup_assert)
 
 test$case(test_mem_arena_kw_ptr)
 {
-    mem$arena(&(AllocatorArena_kw){ .page_size = 4096 }, arena)
+    mem$arena_scope(&(AllocatorArena_kw){ .page_size = 4096 }, arena)
     {
         u8* p = mem$malloc(arena, 100);
         tassert(p != NULL);
@@ -855,7 +855,7 @@ test$case(test_mem_arena_kw_ptr)
 
 test$case(test_mem_arena_kw_val)
 {
-    mem$arena((&(AllocatorArena_kw){ .page_size = 8192, .disable_scopes = true }), arena)
+    mem$arena_scope((&(AllocatorArena_kw){ .page_size = 8192, .disable_scopes = true }), arena)
     {
         u8* p = mem$malloc(arena, 100);
         tassert(p != NULL);
@@ -870,7 +870,7 @@ test$case(test_mem_arena_kw_val)
 test$case(test_mem_arena_kw_disable_scopes)
 {
     AllocatorArena_kw kw = { .page_size = 4096, .disable_scopes = true };
-    mem$arena(&kw, arena)
+    mem$arena_scope(&kw, arena)
     {
         u8* p = mem$malloc(arena, 128);
         tassert(p != NULL);

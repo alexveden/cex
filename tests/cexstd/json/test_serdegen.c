@@ -209,7 +209,7 @@ test$case(serdegen_myserde_advanced)
 
 test$case(serdegen_json_comments)
 {
-    mem$arena(256 * 1024, _)
+    mem$arena_scope(256 * 1024, _)
     {
         char* code = "json$$struct();\n"
                      "typedef struct App_c {\n"

@@ -526,7 +526,9 @@ cexy__test__run(char* target, char* cmd, int argc, char** argv)
 
             arr$pusha(args, argv, argc);
             arr$push(args, NULL);
-            if (os$cmda(args)) {
+
+            os_cmd_c cmd = {0};
+            if (os.cmd.run(args, arr$len(args), &cmd) || os.cmd.wait(&cmd, 1, 0)) {
                 n_failed++;
                 result = Error.runtime;
             }
@@ -1748,7 +1750,7 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
         output = stdout;
     }
 
-    mem$arena(1024 * 100, arena)
+    mem$arena_scope(1024 * 100, arena)
     {
 
         arr$(char*) sources = os.fs.find(filter, true, arena);
@@ -2908,7 +2910,7 @@ cexy__cmd__simple_fuzz(int argc, char** argv, void* user_ctx)
 static char*
 cexy__utils__git_hash(IAllocator allc)
 {
-    mem$arena(1024, _)
+    mem$arena_scope(1024, _)
     {
         if (!os.cmd.exists("git")) {
             log$error("git command not found, not installed or PATH issue\n");
@@ -3022,7 +3024,7 @@ cexy__utils__pkgconf(
 
     os_cmd_c c = { 0 };
 
-    mem$arena(2048, _)
+    mem$arena_scope(2048, _)
     {
         arr$(char*) args = arr$new(args, _);
         char* vcpkg_root = cexy$vcpkg_root;

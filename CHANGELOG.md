@@ -15,6 +15,7 @@
 - (breaking) `os.sleep(duration)` now accepts duration as floating point seconds, previously integer milliseconds
 - `./cex test watch` command added - watching for test file and its #includes changes, and automatically re-run the test perpetually
 - test runner - added footer results coloring (red - something failed, green - all passed)
+- (breaking) **mem$arena** renamed to **mem$arena_scope** for clarity and consistency with other scope-based macros
 
 ### Fixes
 - AllocatorArena - false positive poison, when realloc() shrink then grow.
