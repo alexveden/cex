@@ -294,6 +294,8 @@ struct __cex_namespace__os {
 
     /// Get available CPU cores on system, or -1 on error
     i32             (*cpu_count)(void);
+    /// Exit process with status code. Does not return.
+    void            (*exit)(i32 code);
     /// Get last system API error as string representation (Exception compatible). Result content may be
     /// affected by OS locale settings.
     Exc             (*get_last_error)(void);

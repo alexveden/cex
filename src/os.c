@@ -138,6 +138,13 @@ cex_os_sleep(f64 seconds)
 #    endif
 }
 
+/// Exit process with status code. Does not return.
+static void
+cex_os_exit(i32 code)
+{
+    exit(code);
+}
+
 /// Get high performance monotonic timer value in seconds, started from the first call of the
 /// os.timer()
 static f64
@@ -1544,6 +1551,7 @@ CEX_NAMESPACE_DEF struct __cex_namespace__os os = {
     // clang-format off
 
     .cpu_count = cex_os_cpu_count,
+    .exit = cex_os_exit,
     .get_last_error = cex_os_get_last_error,
     .getpid = cex_os_getpid,
     .hash = cex_os_hash,
