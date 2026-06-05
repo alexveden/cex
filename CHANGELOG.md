@@ -17,9 +17,14 @@
 - test runner - added footer results coloring (red - something failed, green - all passed)
 - (breaking) **mem$arena** renamed to **mem$arena_scope** for clarity and consistency with other scope-based macros
 - Removed `#include <windows.h>` for avoiding namespace pollution + added windows.h conflict resolving
+- refactor: (breaking) os.path.abs() doesn't follow symlinks and touches file system
+- refactor: renamed os.path.abs() to os.path.absolute() to reduce collisions with common abs() macros
+- feat: os.path.normalize() implemented
+
 
 ### Fixes
 - AllocatorArena - false positive poison, when realloc() shrink then grow.
+- fix: OOB access in str.index()
 
 ## 0.19.1
 2026-05-28
