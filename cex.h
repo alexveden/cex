@@ -4099,7 +4099,7 @@ struct __cex_namespace__os {
     } fs;
 
     struct {
-        /// Returns absolute path from relative
+        /// Returns absolute path from relative (no filesystem access, does not resolve symlinks)
         char*           (*abs)(char* path, IAllocator allc);
         /// Get file name of a path
         char*           (*basename)(char* path, IAllocator allc);
@@ -15604,23 +15604,52 @@ cex_os__path__exists(char* file_path)
     return ftype.is_valid;
 }
 
-/// Returns absolute path from relative
+/// Returns absolute path from relative (no filesystem access, does not resolve symlinks)
 static char*
 cex_os__path__abs(char* path, IAllocator allc)
 {
     uassert(allc != NULL);
-    if (path == NULL || path[0] == '\0') { return NULL; }
+    char* result = NULL;
+    char* cwd    = NULL;
+    char* full   = NULL;
 
-    char buffer[PATH_MAX];
+    if (path == NULL || path[0] == '\0') { goto done; }
+    usize path_len = strlen(path);
 
+    bool is_abs = false;
 #    ifdef _WIN32
-    DWORD result = GetFullPathNameA(path, sizeof(buffer), buffer, NULL);
-    if (result == 0 || result > sizeof(buffer) - 1) { return NULL; }
+    if ((path[0] == '\\' && path[1] == '\\') ||
+        (((path[0] >= 'A' && path[0] <= 'Z') ||
+          (path[0] >= 'a' && path[0] <= 'z')) &&
+         path[1] == ':' && (path[2] == '\\' || path[2] == '/'))) {
+        is_abs = true;
+    }
 #    else
-    if (realpath(path, buffer) == NULL) { return NULL; }
+    if (path[0] == '/') { is_abs = true; }
 #    endif
 
-    return str.clone(buffer, allc);
+    if (is_abs) {
+        result = cex_os__path__normalize(path, allc);
+        goto done;
+    }
+
+    cwd = cex_os__fs__getcwd(allc);
+    if (cwd == NULL) { goto done; }
+
+    usize cwd_len = strlen(cwd);
+    full = mem$malloc(allc, cwd_len + 1 + path_len + 1);
+    if (full == NULL) { goto done; }
+
+    memcpy(full, cwd, cwd_len);
+    full[cwd_len] = os$PATH_SEP;
+    memcpy(full + cwd_len + 1, path, path_len + 1);
+
+    result = cex_os__path__normalize(full, allc);
+
+done:
+    mem$free(allc, cwd);
+    mem$free(allc, full);
+    return result;
 }
 
 /// Join path with OS specific path separator

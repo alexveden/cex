@@ -835,6 +835,48 @@ test$case(test_os_path_abs)
             tassert(str.find(abs_cwd, "/"));
             tassert(!str.find(abs_cwd, "\\"));
         }
+
+        // Already-absolute paths (POSIX)
+        if (os.platform.current() != OSPlatform__win) {
+            tassert_eq(os.path.abs("/", _), "/");
+            tassert_eq(os.path.abs("/a/b/c", _), "/a/b/c");
+            tassert_eq(os.path.abs("/a/../b", _), "/b");
+        }
+
+        // Already-absolute paths (Windows)
+        if (os.platform.current() == OSPlatform__win) {
+            tassert_eq(os.path.abs("C:\\", _), "C:\\");
+            tassert_eq(os.path.abs("C:\\a\\b\\c", _), "C:\\a\\b\\c");
+            tassert_eq(os.path.abs("C:/a/b/c", _), "C:\\a\\b\\c");
+            tassert_eq(os.path.abs("C:\\a\\..\\b", _), "C:\\b");
+            tassert_eq(os.path.abs("\\\\server\\share", _), "\\\\server\\share");
+            tassert_eq(os.path.abs("\\\\server\\share\\a\\..\\b", _), "\\\\server\\share\\b");
+        }
+
+        // .. resolves to parent directory
+        {
+            auto parent = os.path.dirname(p, _);
+            tassert(parent != NULL);
+            auto r = os.path.abs("..", _);
+            tassert(r != NULL);
+            tassert_eq(r, parent);
+        }
+
+        // Non-existent path (works without filesystem access now)
+        {
+            auto r = os.path.abs("nonexistent_dir", _);
+            tassert(r != NULL);
+            char* expected = os.path.normalize(str.fmt(_, "%s%cnonexistent_dir", p, os$PATH_SEP), _);
+            tassert_eq(r, expected);
+        }
+
+        // Messy relative with . and ..
+        {
+            auto r = os.path.abs("./././foo/../bar", _);
+            tassert(r != NULL);
+            char* expected = os.path.normalize(str.fmt(_, "%s%cbar", p, os$PATH_SEP), _);
+            tassert_eq(r, expected);
+        }
     }
 
     return EOK;
