@@ -299,8 +299,6 @@ struct __cex_namespace__os {
     /// Get last system API error as string representation (Exception compatible). Result content may be
     /// affected by OS locale settings.
     Exc             (*get_last_error)(void);
-    /// Get current process ID
-    i32             (*getpid)(void);
     /// Computes generic buffer SIP hash (platform/endiannes stable), seed can be null, or previous hash
     /// value for hash stacking  (null or empty `p` returns 0 hash). (This is the same general hash
     /// function is used in str.hash() and hm$ hashmaps)
@@ -349,6 +347,8 @@ struct __cex_namespace__os {
         char*           (*executable_path)(IAllocator allc);
         /// Get environment variable, with `deflt` if not found
         char*           (*get)(char* name, char* deflt);
+        /// Get current process ID
+        i32             (*getpid)(void);
         /// Set environment variable
         Exception       (*set)(char* name, char* value);
         /// Unset environment variable

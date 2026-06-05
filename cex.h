@@ -4022,8 +4022,6 @@ struct __cex_namespace__os {
     /// Get last system API error as string representation (Exception compatible). Result content may be
     /// affected by OS locale settings.
     Exc             (*get_last_error)(void);
-    /// Get current process ID
-    i32             (*getpid)(void);
     /// Computes generic buffer SIP hash (platform/endiannes stable), seed can be null, or previous hash
     /// value for hash stacking  (null or empty `p` returns 0 hash). (This is the same general hash
     /// function is used in str.hash() and hm$ hashmaps)
@@ -4072,6 +4070,8 @@ struct __cex_namespace__os {
         char*           (*executable_path)(IAllocator allc);
         /// Get environment variable, with `deflt` if not found
         char*           (*get)(char* name, char* deflt);
+        /// Get current process ID
+        i32             (*getpid)(void);
         /// Set environment variable
         Exception       (*set)(char* name, char* value);
         /// Unset environment variable
@@ -14905,7 +14905,7 @@ cex_os_cpu_count(void)
 
 /// Get current process ID
 i32
-cex_os_getpid(void)
+cex_os__env__getpid(void)
 {
 #    ifdef _WIN32
     return (i32)GetCurrentProcessId();
@@ -16266,7 +16266,6 @@ CEX_NAMESPACE_DEF struct __cex_namespace__os os = {
     .cpu_count = cex_os_cpu_count,
     .exit = cex_os_exit,
     .get_last_error = cex_os_get_last_error,
-    .getpid = cex_os_getpid,
     .hash = cex_os_hash,
     .sleep = cex_os_sleep,
     .timer = cex_os_timer,
@@ -16290,6 +16289,7 @@ CEX_NAMESPACE_DEF struct __cex_namespace__os os = {
     .env = {
         .executable_path = cex_os__env__executable_path,
         .get = cex_os__env__get,
+        .getpid = cex_os__env__getpid,
         .set = cex_os__env__set,
         .unset = cex_os__env__unset,
     },
