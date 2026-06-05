@@ -18420,6 +18420,8 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
                 spinner_cnt++;
                 printf("\rWatching [%c]", spinner[spinner_cnt % 4]);
             }
+        } else {
+            goto end;
         }
     }
 end:
