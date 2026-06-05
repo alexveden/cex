@@ -6,10 +6,8 @@
 #include <stdio.h>
 
 #ifdef _WIN32
-#    define WIN32_LEAN_AND_MEAN
 #    include <io.h>
 #    include <sys/stat.h>
-#    include <windows.h>
 #elif cex$is_freestanding
 // does not support unistd.h
 #else

@@ -4,9 +4,10 @@
 
 
 #    ifdef _WIN32
-#        define WIN32_LEAN_AND_MEAN
 #        include <direct.h>
-#        include <windows.h>
+#        include <limits.h>
+#        include <sys/stat.h>
+#        include "platform_win32.h"
 #    else
 #        include <dirent.h>
 #        include <fcntl.h>

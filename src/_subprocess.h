@@ -239,6 +239,8 @@ subprocess_weak int subprocess_alive(struct subprocess_s *const process);
 
 #if defined(_WIN32)
 
+#include "platform_win32.h"
+
 #if (_MSC_VER < 1920)
 #ifdef _WIN64
 typedef __int64 subprocess_intptr_t;
@@ -252,20 +254,6 @@ typedef unsigned int subprocess_size_t;
 
 typedef intptr_t subprocess_intptr_t;
 typedef size_t subprocess_size_t;
-#endif
-
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wreserved-identifier"
-#endif
-
-typedef struct _PROCESS_INFORMATION *LPPROCESS_INFORMATION;
-typedef struct _SECURITY_ATTRIBUTES *LPSECURITY_ATTRIBUTES;
-typedef struct _STARTUPINFOA *LPSTARTUPINFOA;
-typedef struct _OVERLAPPED *LPOVERLAPPED;
-
-#ifdef __clang__
-#pragma clang diagnostic pop
 #endif
 
 #ifdef _MSC_VER
@@ -330,40 +318,6 @@ struct subprocess_overlapped_s {
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
-
-__declspec(dllimport) unsigned long __stdcall GetLastError(void);
-__declspec(dllimport) int __stdcall SetHandleInformation(void *, unsigned long,
-                                                         unsigned long);
-__declspec(dllimport) int __stdcall CreatePipe(void **, void **,
-                                               LPSECURITY_ATTRIBUTES,
-                                               unsigned long);
-__declspec(dllimport) void *__stdcall CreateNamedPipeA(
-    const char *, unsigned long, unsigned long, unsigned long, unsigned long,
-    unsigned long, unsigned long, LPSECURITY_ATTRIBUTES);
-__declspec(dllimport) int __stdcall ReadFile(void *, void *, unsigned long,
-                                             unsigned long *, LPOVERLAPPED);
-__declspec(dllimport) unsigned long __stdcall GetCurrentProcessId(void);
-__declspec(dllimport) unsigned long __stdcall GetCurrentThreadId(void);
-__declspec(dllimport) void *__stdcall CreateFileA(const char *, unsigned long,
-                                                  unsigned long,
-                                                  LPSECURITY_ATTRIBUTES,
-                                                  unsigned long, unsigned long,
-                                                  void *);
-__declspec(dllimport) void *__stdcall CreateEventA(LPSECURITY_ATTRIBUTES, int,
-                                                   int, const char *);
-__declspec(dllimport) int __stdcall CreateProcessA(
-    const char *, char *, LPSECURITY_ATTRIBUTES, LPSECURITY_ATTRIBUTES, int,
-    unsigned long, void *, const char *, LPSTARTUPINFOA, LPPROCESS_INFORMATION);
-__declspec(dllimport) int __stdcall CloseHandle(void *);
-__declspec(dllimport) unsigned long __stdcall WaitForSingleObject(
-    void *, unsigned long);
-__declspec(dllimport) int __stdcall GetExitCodeProcess(
-    void *, unsigned long *lpExitCode);
-__declspec(dllimport) int __stdcall TerminateProcess(void *, unsigned int);
-__declspec(dllimport) unsigned long __stdcall WaitForMultipleObjects(
-    unsigned long, void *const *, int, unsigned long);
-__declspec(dllimport) int __stdcall GetOverlappedResult(void *, LPOVERLAPPED,
-                                                        unsigned long *, int);
 
 #if defined(_DLL)
 #define SUBPROCESS_DLLIMPORT __declspec(dllimport)

@@ -28,9 +28,6 @@
 //
 // ============================================================
 
-#        define WIN32_LEAN_AND_MEAN
-#        include <windows.h>
-
 struct dirent
 {
     char d_name[MAX_PATH + 1];
@@ -62,7 +59,7 @@ opendir(char* dirpath)
     }
     memset(dir, 0, sizeof(DIR));
 
-    dir->hFind = FindFirstFile(buffer, &dir->data);
+    dir->hFind = FindFirstFileA(buffer, &dir->data);
     if (dir->hFind == INVALID_HANDLE_VALUE) {
         // TODO: opendir should set errno accordingly on FindFirstFile fail
         // https://docs.microsoft.com/en-us/windows/win32/api/errhandlingapi/nf-errhandlingapi-getlasterror
@@ -89,7 +86,7 @@ readdir(DIR* dirp)
         }
         memset(dirp->dirent, 0, sizeof(struct dirent));
     } else {
-        if (!FindNextFile(dirp->hFind, &dirp->data)) {
+        if (!FindNextFileA(dirp->hFind, &dirp->data)) {
             if (GetLastError() != ERROR_NO_MORE_FILES) {
                 // TODO: readdir should set errno accordingly on FindNextFile fail
                 // https://docs.microsoft.com/en-us/windows/win32/api/errhandlingapi/nf-errhandlingapi-getlasterror
@@ -287,7 +284,7 @@ cex_os__fs__rename(char* old_path, char* new_path)
     if (new_path == NULL || new_path[0] == '\0') { return Error.argument; }
     if (os.path.exists(new_path)) { return Error.exists; }
 #    ifdef _WIN32
-    if (!MoveFileEx(old_path, new_path, MOVEFILE_REPLACE_EXISTING)) { return os.get_last_error(); }
+    if (!MoveFileExA(old_path, new_path, MOVEFILE_REPLACE_EXISTING)) { return os.get_last_error(); }
     return EOK;
 #    else
     if (rename(old_path, new_path) < 0) { return os.get_last_error(); }
@@ -761,7 +758,7 @@ cex_os__fs__copy(char* src_path, char* dst_path)
     if (os.path.exists(dst_path)) { return Error.exists; }
 
 #    ifdef _WIN32
-    if (!CopyFile(src_path, dst_path, FALSE)) { return os.get_last_error(); }
+    if (!CopyFileA(src_path, dst_path, FALSE)) { return os.get_last_error(); }
     return EOK;
 #    else
     int src_fd = -1;

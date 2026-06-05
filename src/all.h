@@ -8,6 +8,7 @@
 #include "src/cex_base.h"
 #include "src/_sprintf.h"
 #include "src/cex_platform.h"
+#include "src/platform_win32.h"
 #include "src/mem.h"
 #include "src/AllocatorHeap.h"
 #include "src/AllocatorArena.h"
