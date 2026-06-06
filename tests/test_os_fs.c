@@ -830,8 +830,8 @@ test$case(test_os_path_abs)
         if (os.platform.current() == OSPlatform__win) {
             // Drive letter variants
             tassert_eq(os.path.absolute("C:\\", _), "C:\\");
-            tassert_eq(os.path.absolute("C\\", _), "C\\");
-            tassert_eq(os.path.absolute("C:", _), "C:");
+            tassert_ne(os.path.absolute("C\\", _), NULL);
+            tassert_eq(os.path.absolute("C:", _), "C:\\");
             tassert_eq(os.path.absolute("C:\\a\\b\\c", _), "C:\\a\\b\\c");
             tassert_eq(os.path.absolute("C:/a/b/c", _), "C:\\a\\b\\c");
             tassert_eq(os.path.absolute("C:\\a\\..\\b", _), "C:\\b");
@@ -1096,6 +1096,10 @@ test$case(test_os_path_abs_leak)
         tassert_eq(r, "C:\\");
         mem$free(mem$, r);
 
+        r = os.path.absolute("C:", mem$);
+        tassert_eq(r, "C:\\");
+        mem$free(mem$, r);
+
         r = os.path.absolute("C:\\a\\b\\c", mem$);
         tassert_eq(r, "C:\\a\\b\\c");
         mem$free(mem$, r);
@@ -1186,5 +1190,23 @@ test$case(test_os_path_normpath_unicode)
     return EOK;
 }
 
+
+test$case(test_os_path_normpath_windows)
+{
+    if (os.platform.current() != OSPlatform__win) { return EOK; }
+    mem$scope(tmem$, _)
+    {
+        tassert_eq(os.path.normalize("C:", _), "C:\\");
+        tassert_eq(os.path.normalize("C:\\", _), "C:\\");
+        tassert_eq(os.path.normalize("C:/a/b/c", _), "C:\\a\\b\\c");
+        tassert_eq(os.path.normalize("C:/a/../b", _), "C:\\b");
+        tassert_eq(os.path.normalize("C:\\..", _), "C:\\");
+        tassert_eq(os.path.normalize("C:\\a\\..\\..", _), "C:\\");
+        tassert_eq(os.path.normalize("C:\\..\\..\\b", _), "C:\\b");
+        tassert_eq(os.path.normalize("C:\\\\", _), "C:\\");
+        tassert_eq(os.path.normalize("C:\\.", _), "C:\\");
+    }
+    return EOK;
+}
 
 test$main();

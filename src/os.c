@@ -860,7 +860,7 @@ static Exception
 cex_os__env__unset(char* name)
 {
 #    ifdef _WIN32
-    if (!SetEnvironmentVariableA(name, NULL)) { return Error.runtime; }
+    if (_putenv_s(name, "") != 0) { return Error.runtime; }
 #    else
     if (unsetenv(name) == -1) { return Error.runtime; }
 #    endif
@@ -937,6 +937,9 @@ cex_os__path__normalize(char* path, IAllocator allc)
     for (char* p = work; *p; p++) { if (*p == '\\') { *p = '/'; } }
 
     bool is_absolute = (work[0] == '/');
+    bool has_drive   = (len > 1 && work[1] == ':' &&
+                         ((work[0] >= 'A' && work[0] <= 'Z') ||
+                          (work[0] >= 'a' && work[0] <= 'z')));
 
     parts = str.split(work, "/", allc);
     if (parts == NULL) { goto done; }
@@ -950,7 +953,11 @@ cex_os__path__normalize(char* path, IAllocator allc)
         if (p[0] == '\0' || str.eq(p, ".")) { continue; }
         if (str.eq(p, "..")) {
             if (arr$len(stack) > 0 && !str.eq(arr$last(stack), "..")) {
-                arr$pop(stack);
+                // Don't pop above a drive letter root
+                if (!has_drive || str.len(arr$last(stack)) != 2 ||
+                    arr$last(stack)[1] != ':') {
+                    arr$pop(stack);
+                }
             } else if (!is_absolute) {
                 arr$push(stack, p);
             }
@@ -961,6 +968,10 @@ cex_os__path__normalize(char* path, IAllocator allc)
 
     usize slen = arr$len(stack);
     if (slen == 0) {
+        if (has_drive) {
+            result = str.fmt(allc, "%c:%c", work[0], os$PATH_SEP);
+            goto done;
+        }
         result = str.clone(is_absolute ? "/" : ".", allc);
         goto done;
     }
@@ -980,6 +991,13 @@ cex_os__path__normalize(char* path, IAllocator allc)
     {
         char sep[2] = { os$PATH_SEP, '\0' };
         result = str.join((char**)stack, slen, sep, allc);
+    }
+
+    // Drive letter root needs a trailing separator
+    if (result && has_drive && str.len(result) == 2 && result[1] == ':') {
+        char* tmp = str.fmt(allc, "%s%c", result, os$PATH_SEP);
+        mem$free(allc, result);
+        result = tmp;
     }
 
 done:
