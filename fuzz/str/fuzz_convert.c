@@ -11,7 +11,10 @@ fuzz$setup()
 
     uassert(os.path.exists(fuzz$corpus_dir));
     char* corp_seeds[] = { "123", "255",      "123.3", "23e+1",     "nan",
-                           "inf", "infinity", "-inf",  "-infinity", "283e-1" };
+                           "inf", "infinity", "-inf",  "-infinity", "283e-1",
+                           ".9999999999999999992e-349999929999999999999999999999999999999",
+                           "1e999999999999999999999999999999999999999",
+                           "1e+999999999999999999999999999999999999999" };
     mem$scope(tmem$, _)
     {
         for (u32 i = 0; i < arr$len(corp_seeds); i++) {

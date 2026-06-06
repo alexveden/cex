@@ -1675,6 +1675,34 @@ test$case(test_str_to_f64)
     return EOK;
 }
 
+test$case(test_str_to_f64_overflow_regression)
+{
+    f64 num = 0;
+
+    // Regression: exponent digits overflow u32, wrap to small value,
+    // bypass INT32_MAX check, trigger UB in double-to-i32 cast at line 922.
+    // Should return Error.overflow, not crash.
+    char* s =
+        ".9999999999999999992e-349999929999999999999999999999999999999";
+    tassert_er(Error.overflow, str.convert.to_f64(s, &num));
+
+    s = "1e999999999999999999999999999999999999999";
+    tassert_er(Error.overflow, str.convert.to_f64(s, &num));
+
+    s = "1e+999999999999999999999999999999999999999";
+    tassert_er(Error.overflow, str.convert.to_f64(s, &num));
+
+    f32 fnum = 0;
+    s = ".9999999999999999992e-349999929999999999999999999999999999999";
+    tassert_er(Error.overflow, str.convert.to_f32(s, &fnum));
+
+    s = "1.0";
+    tassert_er(EOK, str.convert.to_f64(s, &num));
+    tassert_eq(num, 1.0);
+
+    return EOK;
+}
+
 test$case(test_str_sprintf)
 {
     char buffer[10] = { 0 };

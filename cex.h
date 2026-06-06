@@ -11412,9 +11412,9 @@ cex_str_to_double_(char* self, usize len, double* num, i32 exp_min, i32 exp_max)
 
     if (i < len - 1 && (s[i] == 'e' || s[i] == 'E')) {
         i++;
-        sign = 1;
+        i32 exp_sign = 1;
         if (s[i] == '-') {
-            sign = -1;
+            exp_sign = -1;
             i++;
         } else if (s[i] == '+') {
             i++;
@@ -11430,16 +11430,20 @@ cex_str_to_double_(char* self, usize len, double* num, i32 exp_min, i32 exp_max)
                 break;
             }
 
+            if (unlikely(n > ((u32)INT32_MAX - c) / 10)) {
+                return Error.overflow;
+            }
             n = n * 10 + c;
         }
-        if (unlikely(n > INT32_MAX)) { return Error.overflow; }
 
-        exponent += n * sign;
+        i64 total_exp = (i64)exponent + (i64)(i32)n * exp_sign;
+        if (unlikely(total_exp < exp_min || total_exp > exp_max)) {
+            return Error.overflow;
+        }
+        exponent = (i32)total_exp;
     }
 
     if (num_digits == 0) { return Error.argument; }
-
-    if (unlikely(exponent < exp_min || exponent > exp_max)) { return Error.overflow; }
 
     // Scale the result
     double p10 = 10.;
