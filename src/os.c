@@ -216,7 +216,7 @@ cex_os_cpu_count(void)
 
 /// Get current process ID
 i32
-cex_os__env__getpid(void)
+cex_os__env__pid(void)
 {
 #    ifdef _WIN32
     return (i32)GetCurrentProcessId();
@@ -1776,8 +1776,8 @@ CEX_NAMESPACE_DEF struct __cex_namespace__os os = {
     .env = {
         .executable_path = cex_os__env__executable_path,
         .get = cex_os__env__get,
-        .getpid = cex_os__env__getpid,
         .home_dir = cex_os__env__home_dir,
+        .pid = cex_os__env__pid,
         .set = cex_os__env__set,
         .unset = cex_os__env__unset,
     },

@@ -83,7 +83,7 @@ test$case(test_hash)
 
 test$case(test_getpid)
 {
-    i32 pid = os.env.getpid();
+    i32 pid = os.env.pid();
     tassert_gt(pid, 0);
     return EOK;
 }

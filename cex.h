@@ -3913,7 +3913,7 @@ Cross-platform OS related operations:
 
 - `os.cmd.` - for running commands and interacting with them
 - `os.fs.` - file-system related tasks
-- `os.env.` - getting setting environment variable
+- `os.env.` - working with process and user environment
 - `os.path.` - file path operations
 - `os.platform.` - information about current platform
 - `os.random.` - PCG64 pseudo-random number generator with auto-seed via os.timer(), thread-safe via _Thread_local state
@@ -4071,10 +4071,10 @@ struct __cex_namespace__os {
         char*           (*executable_path)(IAllocator allc);
         /// Get environment variable, with `deflt` if not found
         char*           (*get)(char* name, char* deflt);
-        /// Get current process ID
-        i32             (*getpid)(void);
         /// Get user home directory path
         char*           (*home_dir)(IAllocator allc);
+        /// Get current process ID
+        i32             (*pid)(void);
         /// Set environment variable
         Exception       (*set)(char* name, char* value);
         /// Unset environment variable
@@ -14930,7 +14930,7 @@ cex_os_cpu_count(void)
 
 /// Get current process ID
 i32
-cex_os__env__getpid(void)
+cex_os__env__pid(void)
 {
 #    ifdef _WIN32
     return (i32)GetCurrentProcessId();
@@ -16490,8 +16490,8 @@ CEX_NAMESPACE_DEF struct __cex_namespace__os os = {
     .env = {
         .executable_path = cex_os__env__executable_path,
         .get = cex_os__env__get,
-        .getpid = cex_os__env__getpid,
         .home_dir = cex_os__env__home_dir,
+        .pid = cex_os__env__pid,
         .set = cex_os__env__set,
         .unset = cex_os__env__unset,
     },

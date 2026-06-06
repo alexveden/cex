@@ -348,10 +348,10 @@ struct __cex_namespace__os {
         char*           (*executable_path)(IAllocator allc);
         /// Get environment variable, with `deflt` if not found
         char*           (*get)(char* name, char* deflt);
-        /// Get current process ID
-        i32             (*getpid)(void);
         /// Get user home directory path
         char*           (*home_dir)(IAllocator allc);
+        /// Get current process ID
+        i32             (*pid)(void);
         /// Set environment variable
         Exception       (*set)(char* name, char* value);
         /// Unset environment variable
