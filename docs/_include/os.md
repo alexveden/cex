@@ -7,6 +7,7 @@ Cross-platform OS related operations:
 - `os.env.` - getting setting environment variable
 - `os.path.` - file path operations
 - `os.platform.` - information about current platform
+- `os.random.` - PCG64 pseudo-random number generator with auto-seed via os.timer(), thread-safe via _Thread_local state
 
 
 Examples:
@@ -139,6 +140,8 @@ os {
 
     /// Get available CPU cores on system, or -1 on error
     i32             (*cpu_count)(void);
+    /// Exit process with status code. Does not return.
+    void            (*exit)(i32 code);
     /// Get last system API error as string representation (Exception compatible). Result content may be
     /// affected by OS locale settings.
     Exc             (*get_last_error)(void);
@@ -186,10 +189,18 @@ os {
     } cmd;
 
     struct {
+        /// Get path to the current executable
+        char*           (*executable_path)(IAllocator allc);
         /// Get environment variable, with `deflt` if not found
         char*           (*get)(char* name, char* deflt);
+        /// Get current process ID
+        i32             (*getpid)(void);
+        /// Get user home directory path
+        char*           (*home_dir)(IAllocator allc);
         /// Set environment variable
         Exception       (*set)(char* name, char* value);
+        /// Unset environment variable
+        Exception       (*unset)(char* name);
     } env;
 
     struct {
@@ -222,7 +233,7 @@ os {
 
     struct {
         /// Returns absolute path from relative (no filesystem access, does not resolve symlinks)
-        char*           (*abs)(char* path, IAllocator allc);
+        char*           (*absolute)(char* path, IAllocator allc);
         /// Get file name of a path
         char*           (*basename)(char* path, IAllocator allc);
         /// Get directory name of a path
@@ -253,6 +264,23 @@ os {
         /// Converts platform enum to name
         char*           (*to_str)(OSPlatform_e platform);
     } platform;
+
+    struct {
+        /// Fill `buf` with `buf_len` random bytes. Returns `buf` on success, NULL if `buf` is NULL.
+        void*           (*buf)(void* buf, usize buf_len);
+        /// Random f32 in [0, 1)
+        f32             (*f32)(void);
+        /// Random i32 in [min, max)
+        i32             (*i32)(i32 min, i32 max);
+        /// Auto-seeds from timer if state is zero, returns the next raw u32
+        u32             (*next)(void);
+        /// Random usize in [min, max)
+        usize           (*range)(usize min, usize max);
+        /// Seeds the PRNG with an explicit seed, resets tick counter
+        void            (*seed)(u64 seed);
+        /// Number of random values generated since last seed/auto-seed
+        u64             (*ticks)(void);
+    } random;
 
     // clang-format on
 };

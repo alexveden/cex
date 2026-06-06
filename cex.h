@@ -3916,6 +3916,7 @@ Cross-platform OS related operations:
 - `os.env.` - getting setting environment variable
 - `os.path.` - file path operations
 - `os.platform.` - information about current platform
+- `os.random.` - PCG64 pseudo-random number generator with auto-seed via os.timer(), thread-safe via _Thread_local state
 
 
 Examples:

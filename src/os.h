@@ -190,9 +190,10 @@ Cross-platform OS related operations:
 
 - `os.cmd.` - for running commands and interacting with them
 - `os.fs.` - file-system related tasks
-- `os.env.` - getting setting environment variable
+- `os.env.` - working with process and user environment
 - `os.path.` - file path operations
 - `os.platform.` - information about current platform
+- `os.random.` - PCG64 pseudo-random number generator with auto-seed via os.timer(), thread-safe via _Thread_local state
 
 
 Examples:
