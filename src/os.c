@@ -1609,6 +1609,7 @@ _cex_os_random_pcg_step(u64* s0, u64* s1)
     return (xorshifted >> rot) | (xorshifted << ((-(i32)rot) & 31));
 }
 
+/// Seeds the PRNG with an explicit seed, resets tick counter
 static void
 cex_os__random__seed(u64 seed)
 {
@@ -1622,20 +1623,22 @@ cex_os__random__seed(u64 seed)
     _cex_os_rnd.ticks = 0;
 }
 
+/// Auto-seeds from timer if state is zero, returns the next raw u32
 static u32
 cex_os__random__next(void)
 {
     if (unlikely(_cex_os_rnd.state[0] == 0 && _cex_os_rnd.state[1] == 0)) {
-        os.random.seed((u64)(os.timer() * 1e9));
+        cex_os__random__seed((u64)(os.timer() * 1e9));
     }
     _cex_os_rnd.ticks++;
     return _cex_os_random_pcg_step(&_cex_os_rnd.state[0], &_cex_os_rnd.state[1]);
 }
 
+/// Random f32 in [0, 1)
 static f32
 cex_os__random__f32(void)
 {
-    u32 val = os.random.next();
+    u32 val = cex_os__random__next();
     u32 exponent = 127;
     u32 mantissa = val >> 9;
     u32 result = (exponent << 23) | mantissa;
@@ -1644,40 +1647,46 @@ cex_os__random__f32(void)
     return fresult - 1.0f;
 }
 
+/// Random i32 in [min, max)
 static i32
 cex_os__random__i32(i32 min, i32 max)
 {
     i32 range = max - min;
-    i32 value = (i32)(os.random.f32() * (f32)range);
+    i32 value = (i32)(cex_os__random__f32() * (f32)range);
     return min + value;
 }
 
-
+/// Random usize in [min, max)
 static usize
 cex_os__random__range(usize min, usize max)
 {
     usize range = max - min;
-    usize value = (usize)(os.random.f32() * (f32)range);
+    usize value = (usize)(cex_os__random__f32() * (f32)range);
     return min + value;
 }
 
-static void
+/// Fill `buf` with `buf_len` random bytes. Returns `buf` on success, NULL if `buf` is NULL.
+static void*
 cex_os__random__buf(void* buf, usize buf_len)
 {
+    if (buf == NULL) return NULL;
+    if (buf_len == 0) return buf;
     usize reminder = buf_len % 4;
     usize aligned = buf_len - reminder;
     for (usize i = 0; i < aligned; i += 4) {
-        u32 r = os.random.next();
+        u32 r = cex_os__random__next();
         memcpy((u8*)buf + i, &r, sizeof(u32));
     }
     if (reminder > 0) {
-        u32 r = os.random.next();
+        u32 r = cex_os__random__next();
         for (usize i = 0; i < reminder; i++) {
             ((u8*)buf)[aligned + i] = ((u8*)&r)[i];
         }
     }
+    return buf;
 }
 
+/// Number of random values generated since last seed/auto-seed
 static u64
 cex_os__random__ticks(void)
 {

@@ -20,13 +20,13 @@ test$case(os_random_auto_seed)
     tassert(r2 != r1);
 
     f32 f = os.random.f32();
-    tassert(f >= 0.0f && f <= 1.0f);
+    tassert(f >= 0.0f && f < 1.0f);
 
     usize rr = os.random.range(0, 100);
     tassert(rr < 100);
 
     u8 buf[16];
-    os.random.buf(buf, sizeof(buf));
+    tassert(os.random.buf(buf, sizeof(buf)) == buf);
     bool has_nonzero = false;
     for (u32 i = 0; i < sizeof(buf); i++) {
         if (buf[i] != 0) { has_nonzero = true; break; }
@@ -114,18 +114,18 @@ test$case(os_random_buf)
     os.random.seed(0);
 
     u32 b1 = 0;
-    os.random.buf(&b1, sizeof(b1));
+    tassert(os.random.buf(&b1, sizeof(b1)) == &b1);
 
     os.random.seed(0);
     u32 r2 = os.random.next();
     tassert_eq(b1, r2);
 
     u32 b2[10] = { 0 };
-    os.random.buf(b2, 0);
+    tassert(os.random.buf(b2, 0) == b2);
     for (u32 i = 0; i < arr$len(b2); i++) { tassert(b2[i] == 0); }
 
     os.random.seed(0);
-    os.random.buf(b2, sizeof(b2));
+    tassert(os.random.buf(b2, sizeof(b2)) == b2);
 
     os.random.seed(0);
     for (u32 i = 0; i < arr$len(b2); i++) {
@@ -137,7 +137,7 @@ test$case(os_random_buf)
     uassert(((usize)b3 + 1) % 4 != 0 && "expected unaligned");
 
     os.random.seed(0);
-    os.random.buf(b3 + 1, sizeof(b3) - 1);
+    tassert(os.random.buf(b3 + 1, sizeof(b3) - 1) == b3 + 1);
 
     os.random.seed(0);
     for (u32 i = 0; i < 40; i += 4) {
@@ -150,7 +150,7 @@ test$case(os_random_buf)
     os.random.seed(0);
     for (u32 i = 0; i < 10000; i++) {
         memset(b3, 0, sizeof(b3));
-        os.random.buf(b3, sizeof(b3));
+        tassert(os.random.buf(b3, sizeof(b3)) == b3);
         for$eachp(it, b3, sizeof(b3))
         {
             if (*it != 0) { cnt[it - b3]++; }
@@ -159,6 +159,44 @@ test$case(os_random_buf)
     for$each (it, cnt, arr$len(cnt)) {
         tassert(it > 0);
         tassert(it > 5000);
+    }
+
+    return EOK;
+}
+
+test$case(os_random_buf_null)
+{
+    tassert(os.random.buf(NULL, 0) == NULL);
+    tassert(os.random.buf(NULL, 100) == NULL);
+    return EOK;
+}
+
+test$case(os_random_buf_zero)
+{
+    os.random.seed(42);
+    u32 val = 0xDEADBEEF;
+    tassert(os.random.buf(&val, 0) == &val);
+    tassert_eq(val, 0xDEADBEEF);
+    return EOK;
+}
+
+test$case(os_random_buf_small)
+{
+    os.random.seed(0);
+    u8 dst[3];
+    tassert(os.random.buf(dst, 1) == dst);
+    tassert(dst[0] != 0);
+
+    os.random.seed(0);
+    u32 expected = os.random.next();
+    tassert_eq(dst[0], ((u8*)&expected)[0]);
+
+    os.random.seed(0);
+    u8 dst2[3];
+    tassert(os.random.buf(dst2, 3) == dst2);
+    for (u32 i = 0; i < 3; i++) {
+        tassert(dst2[i] != 0);
+        tassertf(dst2[i] == ((u8*)&expected)[i], "byte %d", i);
     }
 
     return EOK;
@@ -207,7 +245,7 @@ test$case(os_random_ticks)
     tassert_eq(os.random.ticks(), 4);
 
     u8 buf[20];
-    os.random.buf(buf, sizeof(buf));
+    tassert(os.random.buf(buf, sizeof(buf)) == buf);
     tassert_eq(os.random.ticks(), 9);
 
     os.random.seed(42);

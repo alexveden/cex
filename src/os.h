@@ -420,12 +420,19 @@ struct __cex_namespace__os {
     } platform;
 
     struct {
-        void            (*buf)(void* buf, usize buf_len);
+        /// Fill `buf` with `buf_len` random bytes. Returns `buf` on success, NULL if `buf` is NULL.
+        void*           (*buf)(void* buf, usize buf_len);
+        /// Random f32 in [0, 1)
         f32             (*f32)(void);
+        /// Random i32 in [min, max)
         i32             (*i32)(i32 min, i32 max);
+        /// Auto-seeds from timer if state is zero, returns the next raw u32
         u32             (*next)(void);
+        /// Random usize in [min, max)
         usize           (*range)(usize min, usize max);
+        /// Seeds the PRNG with an explicit seed, resets tick counter
         void            (*seed)(u64 seed);
+        /// Number of random values generated since last seed/auto-seed
         u64             (*ticks)(void);
     } random;
 
