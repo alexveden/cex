@@ -20,11 +20,14 @@
 - refactor: (breaking) os.path.abs() doesn't follow symlinks and touches file system
 - refactor: renamed os.path.abs() to os.path.absolute() to reduce collisions with common abs() macros
 - feat: os.path.normalize() implemented
+- feat: os.random. - added random RCG32 into core os namespace
 
 
 ### Fixes
 - AllocatorArena - false positive poison, when realloc() shrink then grow.
 - fix: OOB access in str.index()
+- fix: fuzzer UB/overflow in str_to_double_
+
 
 ## 0.19.1
 2026-05-28
