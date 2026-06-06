@@ -860,7 +860,7 @@ static Exception
 cex_os__env__unset(char* name)
 {
 #    ifdef _WIN32
-    if (!SetEnvironmentVariable(name, NULL)) { return Error.runtime; }
+    if (!SetEnvironmentVariableA(name, NULL)) { return Error.runtime; }
 #    else
     if (unsetenv(name) == -1) { return Error.runtime; }
 #    endif

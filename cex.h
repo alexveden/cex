@@ -163,7 +163,7 @@ Use `cex -D config` to reset all project config flags to defaults
 #define cex$version_major 0
 #define cex$version_minor 20
 #define cex$version_patch 0
-#define cex$version_date "2026-06-05"
+#define cex$version_date "2026-06-06"
 
 
 
@@ -6747,6 +6747,7 @@ __declspec(dllimport) BOOL     __stdcall QueryPerformanceCounter(LARGE_INTEGER*)
 __declspec(dllimport) void     __stdcall GetSystemInfo(SYSTEM_INFO*);
 __declspec(dllimport) DWORD    __stdcall FormatMessageA(DWORD, void*, DWORD, DWORD, char*, DWORD, void*);
 __declspec(dllimport) DWORD    __stdcall GetModuleFileNameA(void*, char*, DWORD);
+__declspec(dllimport) BOOL     __stdcall SetEnvironmentVariableA(const char*, const char*);
 
 // --- kernel32.dll (debug, test-only) ---
 __declspec(dllimport) BOOL     __stdcall IsBadReadPtr(const void*, size_t);
@@ -15551,7 +15552,7 @@ static Exception
 cex_os__env__unset(char* name)
 {
 #    ifdef _WIN32
-    if (!SetEnvironmentVariable(name, NULL)) { return Error.runtime; }
+    if (!SetEnvironmentVariableA(name, NULL)) { return Error.runtime; }
 #    else
     if (unsetenv(name) == -1) { return Error.runtime; }
 #    endif
