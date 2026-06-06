@@ -15737,15 +15737,16 @@ cex_os__path__absolute(char* path, IAllocator allc)
 {
     uassert(allc != NULL);
     char* result = NULL;
-    char* cwd = NULL;
-    char* full = NULL;
+    char* cwd    = NULL;
+    char* full   = NULL;
 
     if (path == NULL || path[0] == '\0') { goto done; }
     usize path_len = strlen(path);
 
     bool is_abs = false;
 #    ifdef _WIN32
-    if (((path[0] == '\\' || path[0] == '/') && (path[1] == '\\' || path[1] == '/')) ||
+    bool is_unc = (path[0] == '\\' || path[0] == '/') && (path[1] == '\\' || path[1] == '/');
+    if (is_unc ||
         (((path[0] >= 'A' && path[0] <= 'Z') || (path[0] >= 'a' && path[0] <= 'z')) &&
          path[1] == ':' && (path[2] == '\\' || path[2] == '/' || path[2] == '\0'))) {
         is_abs = true;
@@ -15760,6 +15761,17 @@ cex_os__path__absolute(char* path, IAllocator allc)
         if (result) {
             for (char* p = result; *p; p++) {
                 if (*p == '/') { *p = '\\'; }
+            }
+            // Restore double backslash prefix for UNC paths (normalize reduces // to /)
+            if (is_unc && result[0] == '\\' && result[1] != '\\') {
+                usize rlen = strlen(result);
+                char* unc_result = mem$malloc(allc, rlen + 2);
+                if (unc_result) {
+                    unc_result[0] = '\\';
+                    memcpy(unc_result + 1, result, rlen + 1);
+                    mem$free(allc, result);
+                    result = unc_result;
+                }
             }
         }
 #    endif
