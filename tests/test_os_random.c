@@ -213,7 +213,6 @@ test$case(os_random_chi_square)
         usize v = os.random.range(0, 100);
         bins[v]++;
         tassert(v < 100);
-        tassert(v >= 0);
     }
 
     f64 expected = (f64)N / 100.0;
