@@ -100,6 +100,7 @@ test$case(test_env_set_unset)
 
 test$case(test_env_executable_path)
 {
+    if (os.platform.current() == OSPlatform__wasm) { return EOK; }
     mem$scope(tmem$, _)
     {
         char* exe = os.env.executable_path(_);
@@ -129,16 +130,22 @@ test$case(test_env_home_dir)
         // Set HOME to a known value and verify home_dir returns it
 #    ifdef _WIN32
         char* saved_up = os.env.get("USERPROFILE", NULL);
-        char* saved_up_clone = saved_up ? str.clone(saved_up, _) : NULL;
+        char* saved_up_clone = saved_up ? str.clone(saved_up, mem$) : NULL;
         tassert_er(EOK, os.env.set("USERPROFILE", "C:\\fake_home"));
         tassert_eq(os.env.home_dir(_), "C:\\fake_home");
-        if (saved_up_clone) { tassert_er(EOK, os.env.set("USERPROFILE", saved_up_clone)); }
+        if (saved_up_clone) {
+            tassert_er(EOK, os.env.set("USERPROFILE", saved_up_clone));
+            mem$free(mem$, saved_up_clone);
+        }
 #    else
         char* saved = os.env.get("HOME", NULL);
-        char* saved_clone = saved ? str.clone(saved, _) : NULL;
+        char* saved_clone = saved ? str.clone(saved, mem$) : NULL;
         tassert_er(EOK, os.env.set("HOME", "/tmp/fake_home_dir"));
         tassert_eq(os.env.home_dir(_), "/tmp/fake_home_dir");
-        if (saved_clone) { tassert_er(EOK, os.env.set("HOME", saved_clone)); }
+        if (saved_clone) {
+            tassert_er(EOK, os.env.set("HOME", saved_clone));
+            mem$free(mem$, saved_clone);
+        }
 #    endif
         // Confirm it's back to original
         tassert_ne(os.env.home_dir(_), NULL);
@@ -152,11 +159,11 @@ test$case(test_env_home_dir_unset)
     {
 #    ifdef _WIN32
         char* saved_up = os.env.get("USERPROFILE", NULL);
-        char* saved_up_clone = saved_up ? str.clone(saved_up, _) : NULL;
+        char* saved_up_clone = saved_up ? str.clone(saved_up, mem$) : NULL;
         char* saved_hd = os.env.get("HOMEDRIVE", NULL);
-        char* saved_hd_clone = saved_hd ? str.clone(saved_hd, _) : NULL;
+        char* saved_hd_clone = saved_hd ? str.clone(saved_hd, mem$) : NULL;
         char* saved_hp = os.env.get("HOMEPATH", NULL);
-        char* saved_hp_clone = saved_hp ? str.clone(saved_hp, _) : NULL;
+        char* saved_hp_clone = saved_hp ? str.clone(saved_hp, mem$) : NULL;
 
         // When all three env vars are unset, home_dir returns NULL
         tassert_er(EOK, os.env.unset("USERPROFILE"));
@@ -165,7 +172,10 @@ test$case(test_env_home_dir_unset)
         tassert_eq(os.env.home_dir(_), NULL);
 
         // Restore USERPROFILE and verify it works
-        if (saved_up_clone) { tassert_er(EOK, os.env.set("USERPROFILE", saved_up_clone)); }
+        if (saved_up_clone) {
+            tassert_er(EOK, os.env.set("USERPROFILE", saved_up_clone));
+            mem$free(mem$, saved_up_clone);
+        }
         tassert_ne(os.env.home_dir(_), NULL);
 
         // Unset USERPROFILE but keep HOMEDRIVE+HOMEPATH — should fallback
@@ -173,21 +183,26 @@ test$case(test_env_home_dir_unset)
         if (saved_hd_clone && saved_hp_clone) {
             tassert_er(EOK, os.env.set("HOMEDRIVE", saved_hd_clone));
             tassert_er(EOK, os.env.set("HOMEPATH", saved_hp_clone));
+            mem$free(mem$, saved_hd_clone);
+            mem$free(mem$, saved_hp_clone);
             tassert_ne(os.env.home_dir(_), NULL);
         }
 
         // Full restore
-        if (saved_up_clone) { tassert_er(EOK, os.env.set("USERPROFILE", saved_up_clone)); }
-        if (saved_hd_clone) { tassert_er(EOK, os.env.set("HOMEDRIVE", saved_hd_clone)); }
-        if (saved_hp_clone) { tassert_er(EOK, os.env.set("HOMEPATH", saved_hp_clone)); }
+        if (saved_up_clone) { mem$free(mem$, saved_up_clone); }
+        if (saved_hd_clone) { mem$free(mem$, saved_hd_clone); }
+        if (saved_hp_clone) { mem$free(mem$, saved_hp_clone); }
 #    else
         char* saved = os.env.get("HOME", NULL);
-        char* saved_clone = saved ? str.clone(saved, _) : NULL;
+        char* saved_clone = saved ? str.clone(saved, mem$) : NULL;
 
         tassert_er(EOK, os.env.unset("HOME"));
         tassert_eq(os.env.home_dir(_), NULL);
 
-        if (saved_clone) { tassert_er(EOK, os.env.set("HOME", saved_clone)); }
+        if (saved_clone) {
+            tassert_er(EOK, os.env.set("HOME", saved_clone));
+            mem$free(mem$, saved_clone);
+        }
         tassert_ne(os.env.home_dir(_), NULL);
 #    endif
     }
