@@ -4142,6 +4142,16 @@ struct __cex_namespace__os {
         char*           (*to_str)(OSPlatform_e platform);
     } platform;
 
+    struct {
+        void            (*buf)(void* buf, usize buf_len);
+        f32             (*f32)(void);
+        i32             (*i32)(i32 min, i32 max);
+        u32             (*next)(void);
+        usize           (*range)(usize min, usize max);
+        void            (*seed)(u64 seed);
+        u64             (*ticks)(void);
+    } random;
+
     // clang-format on
 };
 CEX_NAMESPACE struct __cex_namespace__os os;
@@ -16276,6 +16286,110 @@ cex_os__platform__arch_to_str(OSArch_e platform)
     return (char*)OSArch_str[platform];
 }
 
+typedef struct
+{
+    u64 state[2];
+    u64 ticks;
+} _cex_os_random_s;
+
+static _Thread_local _cex_os_random_s _cex_os_rnd = { 0 };
+
+static inline u64
+_cex_os_random_avalanche(u64 h)
+{
+    h ^= h >> 33;
+    h *= 0xff51afd7ed558ccd;
+    h ^= h >> 33;
+    h *= 0xc4ceb9fe1a85ec53;
+    h ^= h >> 33;
+    return h;
+}
+
+static inline u32
+_cex_os_random_pcg_step(u64* s0, u64* s1)
+{
+    u64 old = *s0;
+    *s0 = old * 0x5851f42d4c957f2dULL + *s1;
+    u32 xorshifted = (u32)(((old >> 18ULL) ^ old) >> 27ULL);
+    u32 rot = (u32)(old >> 59ULL);
+    return (xorshifted >> rot) | (xorshifted << ((-(i32)rot) & 31));
+}
+
+static void
+cex_os__random__seed(u64 seed)
+{
+    u64 value = (seed << 1ULL) | 1ULL;
+    value = _cex_os_random_avalanche(value);
+    _cex_os_rnd.state[0] = 0U;
+    _cex_os_rnd.state[1] = (value << 1ULL) | 1ULL;
+    _cex_os_random_pcg_step(&_cex_os_rnd.state[0], &_cex_os_rnd.state[1]);
+    _cex_os_rnd.state[0] += _cex_os_random_avalanche(value);
+    _cex_os_random_pcg_step(&_cex_os_rnd.state[0], &_cex_os_rnd.state[1]);
+    _cex_os_rnd.ticks = 0;
+}
+
+static u32
+cex_os__random__next(void)
+{
+    if (unlikely(_cex_os_rnd.state[0] == 0 && _cex_os_rnd.state[1] == 0)) {
+        os.random.seed((u64)(os.timer() * 1e9));
+    }
+    _cex_os_rnd.ticks++;
+    return _cex_os_random_pcg_step(&_cex_os_rnd.state[0], &_cex_os_rnd.state[1]);
+}
+
+static f32
+cex_os__random__f32(void)
+{
+    u32 val = os.random.next();
+    u32 exponent = 127;
+    u32 mantissa = val >> 9;
+    u32 result = (exponent << 23) | mantissa;
+    f32 fresult = 0.0f;
+    memcpy(&fresult, &result, sizeof(u32));
+    return fresult - 1.0f;
+}
+
+static i32
+cex_os__random__i32(i32 min, i32 max)
+{
+    i32 range = max - min;
+    i32 value = (i32)(os.random.f32() * (f32)range);
+    return min + value;
+}
+
+
+static usize
+cex_os__random__range(usize min, usize max)
+{
+    usize range = max - min;
+    usize value = (usize)(os.random.f32() * (f32)range);
+    return min + value;
+}
+
+static void
+cex_os__random__buf(void* buf, usize buf_len)
+{
+    usize reminder = buf_len % 4;
+    usize aligned = buf_len - reminder;
+    for (usize i = 0; i < aligned; i += 4) {
+        u32 r = os.random.next();
+        memcpy((u8*)buf + i, &r, sizeof(u32));
+    }
+    if (reminder > 0) {
+        u32 r = os.random.next();
+        for (usize i = 0; i < reminder; i++) {
+            ((u8*)buf)[aligned + i] = ((u8*)&r)[i];
+        }
+    }
+}
+
+static u64
+cex_os__random__ticks(void)
+{
+    return _cex_os_rnd.ticks;
+}
+
 void
 _cex_os_time_scope_cleanup(f64* timer)
 {
@@ -16382,6 +16496,16 @@ CEX_NAMESPACE_DEF struct __cex_namespace__os os = {
         .current_str = cex_os__platform__current_str,
         .from_str = cex_os__platform__from_str,
         .to_str = cex_os__platform__to_str,
+    },
+
+    .random = {
+        .buf = cex_os__random__buf,
+        .f32 = cex_os__random__f32,
+        .i32 = cex_os__random__i32,
+        .next = cex_os__random__next,
+        .range = cex_os__random__range,
+        .seed = cex_os__random__seed,
+        .ticks = cex_os__random__ticks,
     },
 
     // clang-format on
