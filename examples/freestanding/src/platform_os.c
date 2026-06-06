@@ -111,6 +111,13 @@ setenv(const char* name, const char* value, int overwrite)
     return -1;
 }
 
+int
+unsetenv(const char* name)
+{
+    (void)name;
+    return -1;
+}
+
 char*
 getenv(const char* name)
 {
@@ -121,6 +128,21 @@ getenv(const char* name)
 exit(int status)
 {
     __builtin_trap();
+}
+
+pid_t
+getpid(void)
+{
+    return 0;
+}
+
+ssize_t
+readlink(const char* restrict path, char* restrict buf, size_t bufsiz)
+{
+    (void)path;
+    (void)buf;
+    (void)bufsiz;
+    return -1;
 }
 
 int
