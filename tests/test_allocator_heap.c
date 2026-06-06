@@ -117,13 +117,13 @@ test$case(test_allocator_heap_malloc_random_align)
 {
 
     usize align_arr[] = { 0, 1, 2, 4, 8, 16, 32, 64 };
-    srand(20250317);
+    os.random.seed(20250317);
 
     for (u32 i = 0; i < 10000; i++) {
         usize al = align_arr[i % arr$len(align_arr)];
-        usize size = (rand() % 15 + 1) * al;
+        usize size = os.random.range(2, 16) * al;
 
-        if (al <= 1) { size = rand() % 1000 + 1; }
+        if (al <= 1) { size = os.random.range(1, 1001); }
 
         u8* a = mem$->malloc(mem$, size, al);
         tassert(a != NULL);
@@ -148,13 +148,13 @@ test$case(test_allocator_heap_calloc_random_align)
 {
 
     usize align_arr[] = { 0, 1, 2, 4, 8, 16, 32, 64 };
-    srand(20250317);
+    os.random.seed(20250317);
 
     for (u32 i = 0; i < 10000; i++) {
         usize al = align_arr[i % arr$len(align_arr)];
-        usize size = (rand() % 15 + 1) * al;
+        usize size = os.random.range(2, 16) * al;
 
-        if (al <= 1) { size = rand() % 1000 + 1; }
+        if (al <= 1) { size = os.random.range(1, 1001); }
 
         usize nmemb = i % 5 + 1;
 
@@ -245,13 +245,13 @@ test$case(test_allocator_heap_realloc_aligned)
 test$case(test_allocator_heap_realloc_random_align)
 {
     usize align_arr[] = { 0, 1, 2, 4, 8, 16, 32, 64 };
-    srand(20250317);
+    os.random.seed(20250317);
 
     for (u32 i = 0; i < 10000; i++) {
         usize al = align_arr[i % arr$len(align_arr)];
-        usize size = (rand() % 15 + 2) * al;
+        usize size = os.random.range(2, 16) * al;
 
-        if (al <= 1) { size = rand() % 1000 + 11; }
+        if (al <= 1) { size = os.random.range(11, 1011); }
 
         u8* a = mem$->malloc(mem$, size, al);
         u8* b = mem$->malloc(mem$, 1028, 0);

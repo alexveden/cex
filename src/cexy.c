@@ -1574,7 +1574,7 @@ _cexy__display_full_info(
         if (!show_example || ns_struct) { goto end; }
 
         // Looking for a random example
-        srand(time(NULL));
+        os.random.seed((u64)(os.timer() * 1e9));
         io.fprintf(output, "\nSearching for examples of '%S'\n", name);
         arr$(char*) sources = os.fs.find("./*.[hc]", true, _);
 
@@ -1598,7 +1598,7 @@ _cexy__display_full_info(
                     if (d->body.buf == NULL) { continue; }
                     if (str.slice.index_of(d->body, name) != -1) {
                         n_used++;
-                        double dice = (double)rand() / (RAND_MAX + 1.0);
+                        double dice = os.random.f32();
                         if (dice < 0.25) {
                             io.fprintf(output, "\n\nFound at %s:%d\n", src_fn, d->line);
 
