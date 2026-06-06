@@ -15729,10 +15729,10 @@ cex_os__path__absolute(char* path, IAllocator allc)
 
     bool is_abs = false;
 #    ifdef _WIN32
-    if ((path[0] == '\\' && path[1] == '\\') ||
+    if (((path[0] == '\\' || path[0] == '/') && (path[1] == '\\' || path[1] == '/')) ||
         (((path[0] >= 'A' && path[0] <= 'Z') ||
           (path[0] >= 'a' && path[0] <= 'z')) &&
-         path[1] == ':' && (path[2] == '\\' || path[2] == '/'))) {
+         path[1] == ':' && (path[2] == '\\' || path[2] == '/' || path[2] == '\0'))) {
         is_abs = true;
     }
 #    else
@@ -15741,6 +15741,13 @@ cex_os__path__absolute(char* path, IAllocator allc)
 
     if (is_abs) {
         result = cex_os__path__normalize(path, allc);
+#    ifdef _WIN32
+        if (result) {
+            for (char* p = result; *p; p++) {
+                if (*p == '/') { *p = '\\'; }
+            }
+        }
+#    endif
         goto done;
     }
 
