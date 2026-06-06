@@ -3,7 +3,7 @@
 
 #    ifndef _WIN32
 #        include <dirent.h>
-#    else // _WIN32
+#    else  // _WIN32
 // minirent.h HEADER BEGIN
 // Copyright 2021 Alexey Kutepov <reximkut@gmail.com>
 //
@@ -126,7 +126,7 @@ closedir(DIR* dirp)
 static void
 cex_os_sleep(f64 seconds)
 {
-    if (seconds <= 0) return;
+    if (seconds <= 0) { return; }
 #    ifdef _WIN32
     Sleep((DWORD)(seconds * 1000.0));
 #    else
@@ -875,17 +875,17 @@ cex_os__env__executable_path(IAllocator allc)
 #    ifdef _WIN32
     char buf[MAX_PATH + 2] = { 0 };
     DWORD len = GetModuleFileNameA(NULL, buf, MAX_PATH + 1);
-    if (len == 0 || len > MAX_PATH) return NULL;
+    if (len == 0 || len > MAX_PATH) { return NULL; }
     return str.clone(buf, allc);
 #    elif defined(__APPLE__)
-    char    buf[PATH_MAX];
+    char buf[PATH_MAX];
     uint32_t size = sizeof(buf);
-    if (_NSGetExecutablePath(buf, &size) != 0) return NULL;
+    if (_NSGetExecutablePath(buf, &size) != 0) { return NULL; }
     return str.clone(buf, allc);
 #    else
-    char    buf[PATH_MAX + 1] = { 0 };
+    char buf[PATH_MAX + 1] = { 0 };
     ssize_t len = readlink("/proc/self/exe", buf, PATH_MAX);
-    if (len < 0 || len >= (ssize_t)PATH_MAX) return NULL;
+    if (len < 0 || len >= (ssize_t)PATH_MAX) { return NULL; }
     buf[len] = '\0';
     return str.clone(buf, allc);
 #    endif
@@ -900,16 +900,14 @@ cex_os__env__home_dir(IAllocator allc)
     char* home = os.env.get("USERPROFILE", NULL);
     if (home == NULL) {
         char* drive = os.env.get("HOMEDRIVE", NULL);
-        char* path  = os.env.get("HOMEPATH", NULL);
-        if (drive != NULL && path != NULL) {
-            return str.fmt(allc, "%s%s", drive, path);
-        }
+        char* path = os.env.get("HOMEPATH", NULL);
+        if (drive != NULL && path != NULL) { return str.fmt(allc, "%s%s", drive, path); }
         return NULL;
     }
     return str.clone(home, allc);
 #    else
     char* home = os.env.get("HOME", NULL);
-    if (home == NULL) return NULL;
+    if (home == NULL) { return NULL; }
     return str.clone(home, allc);
 #    endif
 }
@@ -919,11 +917,11 @@ static char*
 cex_os__path__normalize(char* path, IAllocator allc)
 {
     uassert(allc != NULL);
-    char*      result = NULL;
-    char*      work   = NULL;
-    arr$(char*) parts  = NULL;
-    arr$(char*) stack  = NULL;
-    char*      joined = NULL;
+    char* result = NULL;
+    char* work = NULL;
+    arr$(char*) parts = NULL;
+    arr$(char*) stack = NULL;
+    char* joined = NULL;
 
     if (path == NULL || path[0] == '\0') {
         result = str.clone(".", allc);
@@ -934,12 +932,14 @@ cex_os__path__normalize(char* path, IAllocator allc)
     work = mem$malloc(allc, len + 1);
     if (work == NULL) { goto done; }
     memcpy(work, path, len + 1);
-    for (char* p = work; *p; p++) { if (*p == '\\') { *p = '/'; } }
+    for (char* p = work; *p; p++) {
+        if (*p == '\\') { *p = '/'; }
+    }
 
     bool is_absolute = (work[0] == '/');
-    bool has_drive   = (len > 1 && work[1] == ':' &&
-                         ((work[0] >= 'A' && work[0] <= 'Z') ||
-                          (work[0] >= 'a' && work[0] <= 'z')));
+    bool has_drive =
+        (len > 1 && work[1] == ':' &&
+         ((work[0] >= 'A' && work[0] <= 'Z') || (work[0] >= 'a' && work[0] <= 'z')));
 
     parts = str.split(work, "/", allc);
     if (parts == NULL) { goto done; }
@@ -954,8 +954,7 @@ cex_os__path__normalize(char* path, IAllocator allc)
         if (str.eq(p, "..")) {
             if (arr$len(stack) > 0 && !str.eq(arr$last(stack), "..")) {
                 // Don't pop above a drive letter root
-                if (!has_drive || str.len(arr$last(stack)) != 2 ||
-                    arr$last(stack)[1] != ':') {
+                if (!has_drive || str.len(arr$last(stack)) != 2 || arr$last(stack)[1] != ':') {
                     arr$pop(stack);
                 }
             } else if (!is_absolute) {
@@ -1002,7 +1001,7 @@ cex_os__path__normalize(char* path, IAllocator allc)
 
 done:
     if (parts) {
-        for$each(p, parts) { mem$free(allc, p); }
+        for$each (p, parts) { mem$free(allc, p); }
         arr$free(parts);
     }
     if (stack) { arr$free(stack); }
@@ -1025,8 +1024,8 @@ cex_os__path__absolute(char* path, IAllocator allc)
 {
     uassert(allc != NULL);
     char* result = NULL;
-    char* cwd    = NULL;
-    char* full   = NULL;
+    char* cwd = NULL;
+    char* full = NULL;
 
     if (path == NULL || path[0] == '\0') { goto done; }
     usize path_len = strlen(path);
@@ -1034,8 +1033,7 @@ cex_os__path__absolute(char* path, IAllocator allc)
     bool is_abs = false;
 #    ifdef _WIN32
     if (((path[0] == '\\' || path[0] == '/') && (path[1] == '\\' || path[1] == '/')) ||
-        (((path[0] >= 'A' && path[0] <= 'Z') ||
-          (path[0] >= 'a' && path[0] <= 'z')) &&
+        (((path[0] >= 'A' && path[0] <= 'Z') || (path[0] >= 'a' && path[0] <= 'z')) &&
          path[1] == ':' && (path[2] == '\\' || path[2] == '/' || path[2] == '\0'))) {
         is_abs = true;
     }
@@ -1669,8 +1667,8 @@ cex_os__random__range(usize min, usize max)
 static void*
 cex_os__random__buf(void* buf, usize buf_len)
 {
-    if (buf == NULL) return NULL;
-    if (buf_len == 0) return buf;
+    if (unlikely(buf == NULL)) { return NULL; }
+    if (unlikely(buf_len == 0)) { return buf; }
     usize reminder = buf_len % 4;
     usize aligned = buf_len - reminder;
     for (usize i = 0; i < aligned; i += 4) {
@@ -1679,9 +1677,7 @@ cex_os__random__buf(void* buf, usize buf_len)
     }
     if (reminder > 0) {
         u32 r = cex_os__random__next();
-        for (usize i = 0; i < reminder; i++) {
-            ((u8*)buf)[aligned + i] = ((u8*)&r)[i];
-        }
+        for (usize i = 0; i < reminder; i++) { ((u8*)buf)[aligned + i] = ((u8*)&r)[i]; }
     }
     return buf;
 }
