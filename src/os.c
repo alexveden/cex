@@ -940,6 +940,7 @@ cex_os__path__normalize(char* path, IAllocator allc)
     bool has_drive =
         (len > 1 && work[1] == ':' &&
          ((work[0] >= 'A' && work[0] <= 'Z') || (work[0] >= 'a' && work[0] <= 'z')));
+    bool is_unc = is_absolute && work[1] == '/';
 
     parts = str.split(work, "/", allc);
     if (parts == NULL) { goto done; }
@@ -953,10 +954,14 @@ cex_os__path__normalize(char* path, IAllocator allc)
         if (p[0] == '\0' || str.eq(p, ".")) { continue; }
         if (str.eq(p, "..")) {
             if (arr$len(stack) > 0 && !str.eq(arr$last(stack), "..")) {
-                // Don't pop above a drive letter root
-                if (!has_drive || str.len(arr$last(stack)) != 2 || arr$last(stack)[1] != ':') {
-                    arr$pop(stack);
+                // Don't pop above a drive letter root or UNC server+share root
+                bool above_root = false;
+                if (has_drive && str.len(arr$last(stack)) == 2 &&
+                    arr$last(stack)[1] == ':') {
+                    above_root = true;
                 }
+                if (is_unc && arr$len(stack) <= 2) { above_root = true; }
+                if (!above_root) { arr$pop(stack); }
             } else if (!is_absolute) {
                 arr$push(stack, p);
             }
@@ -971,7 +976,7 @@ cex_os__path__normalize(char* path, IAllocator allc)
             result = str.fmt(allc, "%c:%c", work[0], os$PATH_SEP);
             goto done;
         }
-        result = str.clone(is_absolute ? "/" : ".", allc);
+        result = str.clone(is_unc ? "//" : (is_absolute ? "/" : "."), allc);
         goto done;
     }
 
@@ -979,11 +984,13 @@ cex_os__path__normalize(char* path, IAllocator allc)
         joined = str.join((char**)stack, slen, "/", allc);
         if (joined == NULL) { goto done; }
         usize jlen = strlen(joined);
-        result = mem$malloc(allc, jlen + 2);
+        usize prefix = is_unc ? 2 : 1;
+        result = mem$malloc(allc, jlen + prefix + 1);
         if (result == NULL) { goto done; }
         result[0] = '/';
-        memcpy(result + 1, joined, jlen + 1);
-        result[jlen + 1] = '\0';
+        if (is_unc) { result[1] = '/'; }
+        memcpy(result + prefix, joined, jlen + 1);
+        result[jlen + prefix] = '\0';
         goto done;
     }
 

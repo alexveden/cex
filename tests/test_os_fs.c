@@ -853,7 +853,7 @@ test$case(test_os_path_abs)
             // UNC path variants
             tassert_eq(os.path.absolute("\\\\server\\share", _), "\\\\server\\share");
             tassert_eq(os.path.absolute("\\\\server\\share\\a\\..\\b", _), "\\\\server\\share\\b");
-            tassert_eq(os.path.absolute("\\\\server\\share\\", _), "\\\\server\\share\\");
+            tassert_eq(os.path.absolute("\\\\server\\share\\", _), "\\\\server\\share");
             tassert_eq(os.path.absolute("\\\\server\\share\\..", _), "\\\\server\\share");
             tassert_eq(os.path.absolute("//server/share/path", _), "\\\\server\\share\\path");
             tassert_eq(os.path.absolute("\\\\server\\share\\a\\b\\c\\..\\..", _), "\\\\server\\share\\a");
