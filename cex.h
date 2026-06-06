@@ -15654,7 +15654,10 @@ cex_os__path__normalize(char* path, IAllocator allc)
     bool has_drive =
         (len > 1 && work[1] == ':' &&
          ((work[0] >= 'A' && work[0] <= 'Z') || (work[0] >= 'a' && work[0] <= 'z')));
-    bool is_unc = is_absolute && work[1] == '/';
+    bool is_unc = false;
+#    ifdef _WIN32
+    is_unc = is_absolute && work[1] == '/';
+#    endif
 
     parts = str.split(work, "/", allc);
     if (parts == NULL) { goto done; }
