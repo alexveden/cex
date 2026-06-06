@@ -419,6 +419,16 @@ struct __cex_namespace__os {
         char*           (*to_str)(OSPlatform_e platform);
     } platform;
 
+    struct {
+        void            (*buf)(void* buf, usize buf_len);
+        f32             (*f32)(void);
+        i32             (*i32)(i32 min, i32 max);
+        u32             (*next)(void);
+        usize           (*range)(usize min, usize max);
+        void            (*seed)(u64 seed);
+        u64             (*ticks)(void);
+    } random;
+
     // clang-format on
 };
 CEX_NAMESPACE struct __cex_namespace__os os;
