@@ -258,4 +258,20 @@ test$case(os_random_ticks_and_initial_seed)
     return EOK;
 }
 
+test$case(os_random_seed_zero_ensure_initialized)
+{
+    _cex_os_rnd = (_cex_os_random_s){0};
+    tassert_eq(_cex_os_rnd.initial_seed, 0);
+    tassert_eq(_cex_os_rnd.state[0], 0);
+    tassert_eq(_cex_os_rnd.state[1], 0);
+
+    os.random.seed(0);
+    tassert_eq(os.random.initial_seed(), 0);
+    tassert_eq(os.random.ticks(), 0);
+    tassert_ne(_cex_os_rnd.state[0], 0);
+    tassert_ne(_cex_os_rnd.state[1], 0);
+
+    return EOK;
+}
+
 test$main();
