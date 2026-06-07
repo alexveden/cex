@@ -1898,4 +1898,27 @@ test$case(test_arr_pop_empty_poc)
     return EOK;
 }
 
+test$case(test_hmput_key_null_hashtable_poc)
+{
+    // POC: _cexds__hmput_key (ds.c:804) accesses table->key_type
+    // before uassert(table != NULL) at line 807.
+    //
+    // Before fix: table->key_type → NULL deref (crash)
+    // After fix:  uassert before deref + NULL guard
+
+    hm$(int, int) intmap = hm$new(intmap, mem$);
+    tassert(intmap != NULL);
+
+    uassert_disable();
+    void* saved_table = _cexds__header(intmap)->_hash_table;
+    _cexds__header(intmap)->_hash_table = NULL;
+
+    hm$set(intmap, 42, 1);  // BEFORE: crash. AFTER: early return.
+
+    _cexds__header(intmap)->_hash_table = saved_table;  // restore for clean free
+    uassert_enable();
+    hm$free(intmap);
+    return EOK;
+}
+
 test$main();

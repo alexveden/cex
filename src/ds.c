@@ -801,10 +801,10 @@ _cexds__hmput_key(
 
     void** out_result = (void**)result;
     _cexds__hash_index* table = (_cexds__hash_index*)_cexds__header(a)->_hash_table;
+    uassert(table != NULL);
+    if (table == NULL) { *out_result = NULL; goto end; }
     enum _CexDsKeyType_e key_type = table->key_type;
     *out_result = NULL;
-
-    uassert(table != NULL);
     if (table->used_count >= table->used_count_threshold) {
 
         usize slot_count = (table == NULL) ? _CEXDS_BUCKET_LENGTH : table->slot_count * 2;
@@ -828,13 +828,7 @@ _cexds__hmput_key(
             goto end;
         }
 
-        if (table) {
-            _cexds__header(a)->allocator->free(_cexds__header(a)->allocator, table);
-        } else {
-            // NEW Table initialization here
-            nt->copy_keys = table->copy_keys;
-            nt->key_arena = table->key_arena;
-        }
+        _cexds__header(a)->allocator->free(_cexds__header(a)->allocator, table);
         _cexds__header(a)->_hash_table = table = nt;
         _CEXDS_STATS(++_cexds__hash_grow);
     }
