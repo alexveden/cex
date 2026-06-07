@@ -613,16 +613,14 @@ test$case(test_sbuf_append_guard_null_with_grow)
     usize cap_before = sbuf.capacity(&s);
     tassert_eq((u8)s[cap_before], 0xff);
 
-    // Fill to capacity (27 non-growing appends)
-    for (int i = 0; i < 27; i++) {
-        char b[2] = { (char)('A' + i % 26), '\0' };
+    // Fill to capacity with non-growing appends
+    for (usize i = 0; i < cap_before; i++) {
+        char b[2] = { (char)('A' + (i % 26)), '\0' };
         tassert_eq(EOK, sbuf.append(&s, b));
     }
-    tassert_eq(sbuf.len(&s), 27);
+    tassert_eq(sbuf.len(&s), cap_before);
 
-    // Guard at original capacity was set by each non-growing append
-    // (though the final append at length=27 writes s[27] which IS the guard
-    //  since len == cap before grow)
+    // Guard at original capacity was maintained through all non-growing appends
     tassert_eq(s[cap_before], '\0');
 
     // Now trigger a grow
