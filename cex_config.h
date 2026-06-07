@@ -83,12 +83,23 @@
 #endif
 
 // Strict sanitizer flags for Clang (catches UB that -fsanitize=undefined misses)
+// -fsanitize=leak is Linux-only (unsupported on macOS/Windows)
 #ifndef cexy$cc_args_sanitizer
-#    ifdef __clang__
-#        define cexy$cc_args_sanitizer                                                              \
-             "-fsanitize-address-use-after-scope", "-fsanitize=address",                            \
-                 "-fsanitize=undefined", "-fsanitize=leak",                                        \
-                 "-fsanitize=implicit-conversion", "-fsanitize=pointer-overflow",                   \
-                 "-fstack-protector-strong"
+#    if defined(_WIN32) || defined(__APPLE__)
+#        ifdef __clang__
+#            define cexy$cc_args_sanitizer                                                              \
+                 "-fsanitize-address-use-after-scope", "-fsanitize=address",                            \
+                     "-fsanitize=undefined",                                                            \
+                     "-fsanitize=implicit-conversion", "-fsanitize=pointer-overflow",                   \
+                     "-fstack-protector-strong"
+#        endif
+#    else
+#        ifdef __clang__
+#            define cexy$cc_args_sanitizer                                                              \
+                 "-fsanitize-address-use-after-scope", "-fsanitize=address",                            \
+                     "-fsanitize=undefined", "-fsanitize=leak",                                        \
+                     "-fsanitize=implicit-conversion", "-fsanitize=pointer-overflow",                   \
+                     "-fstack-protector-strong"
+#        endif
 #    endif
 #endif
