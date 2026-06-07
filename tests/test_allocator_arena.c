@@ -1169,7 +1169,7 @@ test$case(test_allocator_arena_create_null_kwargs)
     return EOK;
 }
 
-test$case(arena_allocator_test_oom_probabilily)
+test$case(arena_allocator_test_oom_probability)
 {
     // page_size = 0 (ZII), disable_scopes = true → page_size should default
     IAllocator arena = AllocatorArena.create(
@@ -1188,12 +1188,17 @@ test$case(arena_allocator_test_oom_probabilily)
     }
 
     // never fail
-    allc->test_oom_probability = 0.0;
     for(u32 i = 0; i < 10000; i++){
+        allc->test_oom_probability = 0.0;
         u8* p = mem$malloc(arena, 10);
         tassert(p != NULL);
         p = mem$calloc(arena, 1, 10);
         tassert(p != NULL);
+
+        // realloc is affected too
+        allc->test_oom_probability = 1.0;
+        p = mem$realloc(arena, p, 10);
+        tassert(p == NULL);
     }
 
     // 50/50% fail
@@ -1211,9 +1216,22 @@ test$case(arena_allocator_test_oom_probabilily)
         u8* p = mem$calloc(arena, 1, 10);
         if (p == NULL) {nfails++;}
     }
-
     tassertf(nfails > 4500 && nfails < 5500, "nfails=%d", nfails);
+
+    nfails = 0;
+    for(u32 i = 0; i < 10000; i++){
+        allc->test_oom_probability = 0.0;
+        u8* p = mem$calloc(arena, 1, 10);
+        tassert(p);
+
+        allc->test_oom_probability = 0.5;
+        p = mem$realloc(arena, p, 10);
+        if (p == NULL) {nfails++;}
+    }
+    tassertf(nfails > 4500 && nfails < 5500, "nfails=%d", nfails);
+
     AllocatorArena_destroy(arena);
     return EOK;
 }
+
 test$main();
