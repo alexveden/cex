@@ -291,6 +291,7 @@ struct _cexds__arr_new_kwargs_s
 /// Checks if array has room for `add_extra` elements, growing if needed. Returns false on memory error.
 #define arr$grow_check(a, add_extra)                                                               \
     ((_cexds__arr_integrity(a, _CEXDS_ARR_MAGIC) &&                                                \
+      (add_extra) <= (usize)-1 - _cexds__header(a)->length &&                                      \
       _cexds__header(a)->length + (add_extra) > _cexds__header(a)->capacity)                       \
          ? (arr$grow(a, add_extra, 0), a != NULL)                                                  \
          : true)

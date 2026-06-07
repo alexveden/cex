@@ -1148,6 +1148,15 @@ AllocatorArena.destroy(arena);
 #define mem$new(allocator, T)                                                                      \
     (typeof(T)*)(allocator)->calloc((allocator), 1, sizeof(T), _Alignof(T))
 
+/// Overflow-checked addition: computes a + b, stores result through *res. Returns true on overflow.
+#define mem$add_overflow(a, b, res) __builtin_add_overflow((a), (b), (res))
+
+/// Overflow-checked subtraction: computes a - b, stores result through *res. Returns true on overflow.
+#define mem$sub_overflow(a, b, res) __builtin_sub_overflow((a), (b), (res))
+
+/// Overflow-checked multiplication: computes a * b, stores result through *res. Returns true on overflow.
+#define mem$mul_overflow(a, b, res) __builtin_mul_overflow((a), (b), (res))
+
 // clang-format off
 
 /// Opens new memory scope using Arena-like allocator, frees all memory after scope exit
@@ -1732,6 +1741,7 @@ struct _cexds__arr_new_kwargs_s
 /// Checks if array has room for `add_extra` elements, growing if needed. Returns false on memory error.
 #define arr$grow_check(a, add_extra)                                                               \
     ((_cexds__arr_integrity(a, _CEXDS_ARR_MAGIC) &&                                                \
+      (add_extra) <= (usize)-1 - _cexds__header(a)->length &&                                      \
       _cexds__header(a)->length + (add_extra) > _cexds__header(a)->capacity)                       \
          ? (arr$grow(a, add_extra, 0), a != NULL)                                                  \
          : true)
@@ -8048,21 +8058,32 @@ _cexds__arrgrowf(
     } else {
         _cexds__arr_integrity(arr, 0);
     }
-    usize min_len = (arr ? _cexds__header(arr)->length : 0) + addlen;
+    usize min_len;
+    {
+        usize cur_len = arr ? _cexds__header(arr)->length : 0;
+        if (mem$add_overflow(cur_len, addlen, &min_len)) { return NULL; }
+    }
 
     // compute the minimum capacity needed
     if (min_len > min_cap) { min_cap = min_len; }
 
     // increase needed capacity to guarantee O(1) amortized
-    if (min_cap < 2 * arr$cap(arr)) {
-        min_cap = 2 * arr$cap(arr);
-    } else if (min_cap < 16) {
-        min_cap = 16;
+    {
+        usize doubled;
+        if (!mem$mul_overflow(arr$cap(arr), (usize)2, &doubled) && min_cap < doubled) {
+            min_cap = doubled;
+        } else if (min_cap < 16) {
+            min_cap = 16;
+        }
     }
     uassert(min_cap < PTRDIFF_MAX && "negative or overflow after processing");
     uassert(addlen > 0 || min_cap > 0);
 
     if (min_cap <= arr$cap(arr)) { return arr; }
+
+    // guard against overflow in elemsize * min_cap
+    usize elem_total;
+    if (mem$mul_overflow(min_cap, elemsize, &elem_total)) { return NULL; }
 
     // General types with alignment <= usize use generic realloc (less mem overhead + realloc faster)
     el_align = (el_align <= alignof(_cexds__array_header)) ? alignof(_cexds__array_header) : 64;
@@ -8071,7 +8092,7 @@ _cexds__arrgrowf(
     if (arr == NULL) {
         new_arr = mem$malloc(
             allc,
-            mem$aligned_round(elemsize * min_cap + sizeof(_cexds__array_header), el_align),
+            mem$aligned_round(elem_total + sizeof(_cexds__array_header), el_align),
             el_align
         );
     } else {
@@ -8086,7 +8107,7 @@ _cexds__arrgrowf(
         new_arr = mem$realloc(
             _cexds__header(arr)->allocator,
             _cexds__base(hdr),
-            mem$aligned_round(elemsize * min_cap + sizeof(_cexds__array_header), el_align),
+            mem$aligned_round(elem_total + sizeof(_cexds__array_header), el_align),
             el_align
         );
     }

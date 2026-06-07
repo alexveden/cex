@@ -1950,4 +1950,26 @@ test$case(test_hminit_oom_poc)
     return EOK;
 }
 
+test$case(test_arr_grow_len_overflow_poc)
+{
+    // POC: _cexds__arrgrowf (ds.c:93) computes length + addlen without
+    // overflow guard. When length is near USIZE_MAX, addlen wraps to 0,
+    // causing min_len to be small → no realloc → OOB write on push.
+    //
+    // Before fix: length + addlen wraps, function proceeds without error
+    // After fix:  overflow guard returns NULL
+
+    arr$(int) arr = arr$new(arr, mem$);
+    tassert(arr != NULL);
+    // Save pointer for cleanup after arr$grow sets arr to NULL
+    void* old_arr = arr;
+    uassert_disable();
+    _cexds__header(arr)->length = (usize)-1;
+    arr$grow(arr, 1, 0);    // BEFORE: wraps, arr unchanged. AFTER: overflow → NULL
+    tassert(arr == NULL);
+    uassert_enable();
+    _cexds__arrfreef(old_arr);    // free the leaked array allocation
+    return EOK;
+}
+
 test$main();
