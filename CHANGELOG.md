@@ -7,9 +7,23 @@
 - feat: AllocatorArena - added test_oom_probability for oom errors in tests
 - feat: added test$alloc_set_oom_probability 
 - feat: os.random.initial_seed() added for debugging random determinism + test reports random init_seed + ticks on failure
+- feat: mem$add|mul|sub_overflow macros for overflow checking
 
 ### Fixes
 
+- fix: sbuf append possible UB check added when s argument is sbuf instance itself
+- fix: sbuf added extra capacity check
+- fix: ds implicit conversions
+- fix: ds possible overflow safety
+- fix: hminit memory failure handling
+- fix: hmput - proper NULL handling
+- fix: arr$pop handling empty arrays with assertion and neg-overflow check
+- fix: test_oom_probability only tosses os.random when set
+- fix: str explicit casts
+- fix: str.fmt fixed assert/UB issue
+- fix: fixed all implicit type conversions
+- fix: UBsan fixed implicit type convertion
+- fix: implicit conversion and pointer math ub in str
 
 ## 0.20
 2026-06-04
