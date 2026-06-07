@@ -122,7 +122,7 @@ int main(void)
 /// Initializes a dynamic array. Pass the array variable, an `IAllocator`, and optional `.capacity = N`. Returns the new pointer on success, NULL on memory error.
 #define arr$new(a, allocator, kwargs...)
 
-/// Pops and returns the last element (by value). Assert-fails on empty array. Decrements length.
+/// Pops and returns the last element (by value), asserts non-empty array
 #define arr$pop(a)
 
 /// Appends a single element to the end. Automatically grows capacity if needed. Returns pointer to the new slot.

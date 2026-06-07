@@ -103,6 +103,9 @@ AllocatorArena.destroy(arena);
 /// General purpose heap allocator
 #define mem$
 
+/// Overflow-checked addition: computes a + b, stores result through *res. Returns true on overflow.
+#define mem$add_overflow(a, b, res)
+
 /// Gets address of a struct member via a single-element array compound literal
 #define mem$addressof(typevar, value)
 
@@ -140,6 +143,9 @@ AllocatorArena.destroy(arena);
 /// Allocate uninitialized chunk of memory using `allocator`
 #define mem$malloc(allocator, size, alignment...)
 
+/// Overflow-checked multiplication: computes a * b, stores result through *res. Returns true on overflow.
+#define mem$mul_overflow(a, b, res)
+
 /// Allocates generic type instance using `allocator`, result is zero filled, size and alignment
 /// derived from type T
 #define mem$new(allocator, T)
@@ -155,6 +161,9 @@ AllocatorArena.destroy(arena);
 
 /// Opens new memory scope using Arena-like allocator, frees all memory after scope exit
 #define mem$scope(allocator, allc_var)
+
+/// Overflow-checked subtraction: computes a - b, stores result through *res. Returns true on overflow.
+#define mem$sub_overflow(a, b, res)
 
 
 
