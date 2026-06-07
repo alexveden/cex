@@ -1921,4 +1921,33 @@ test$case(test_hmput_key_null_hashtable_poc)
     return EOK;
 }
 
+test$case(test_hminit_oom_poc)
+{
+    // Find a seed where the first two os.random.f32() calls under OOM 0.5
+    // produce: array malloc succeeds (r0 >= 0.5), hash table calloc fails (r1 < 0.5).
+    u64 seed = (u64)-1;
+    for (u64 s = 0; s < 10000; s++) {
+        os.random.seed(s);
+        f32 r0 = os.random.f32();
+        f32 r1 = os.random.f32();
+        if (r0 >= 0.5f && r1 < 0.5f) {
+            seed = s;
+            break;
+        }
+    }
+    tassertf(seed != (u64)-1, "no seed found for OOM sequence (0-9999)");
+
+    os.random.seed(seed);
+    test$alloc_set_oom_probability(0.5f);
+
+    hm$(int, int) intmap = hm$new(intmap, test$alloc);
+
+    test$alloc_set_oom_probability(0);
+
+    // Before fix: intmap != NULL (returns success despite NULL _hash_table)
+    // After fix:  intmap == NULL (OOM propagated, array freed)
+    tassert(intmap == NULL);
+    return EOK;
+}
+
 test$main();

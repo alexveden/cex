@@ -756,29 +756,30 @@ _cexds__hminit(
 
     _cexds__header(a)->magic_num = _CEXDS_HM_MAGIC;
 
-    _cexds__hash_index* table = _cexds__header(a)->_hash_table;
-
     // ensure slot counts must be pow of 2
     uassert(mem$is_power_of2(arr$cap(a)));
-    table = _cexds__header(a)->_hash_table = _cexds__make_hash_index(
+    _cexds__hash_index* table = _cexds__make_hash_index(
         arr$cap(a),
         NULL,
         _cexds__header(a)->allocator,
         hm_seed,
         key_type
     );
+    if(unlikely(table == NULL)) {
+        _cexds__arrfreef(a);
+        return NULL;
+    }
+    _cexds__header(a)->_hash_table = table;
 
-    if (table) {
-        // NEW Table initialization here
-        if (copy_keys) {
-            uassert(table->key_type == _CexDsKeyType__charptr && "Only char* keys supported");
-        }
-        table->copy_keys = copy_keys;
-        if (kwargs && kwargs->copy_keys_arena_pgsize > 0) {
-            table->key_arena = AllocatorArena.create(
-    &(AllocatorArena_kw){ .page_size = kwargs->copy_keys_arena_pgsize }
-);
-        }
+    // NEW Table initialization here
+    if (copy_keys) {
+        uassert(table->key_type == _CexDsKeyType__charptr && "Only char* keys supported");
+    }
+    table->copy_keys = copy_keys;
+    if (kwargs && kwargs->copy_keys_arena_pgsize > 0) {
+        table->key_arena = AllocatorArena.create(
+            &(AllocatorArena_kw){ .page_size = kwargs->copy_keys_arena_pgsize }
+        );
     }
 
     return a;
