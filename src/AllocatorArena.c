@@ -236,6 +236,13 @@ _cex_allocator_arena__malloc(IAllocator allc, usize size, usize alignment)
         && "arena allocation must be performed in mem$scope() block!"
     );
 
+    #ifdef CEX_TEST
+    uassert(self->test_oom_probability >= 0 && self->test_oom_probability <= 1.0 && "test$alloc_set_oom_probability out of range"); \
+    if(os.random.f32() < self->test_oom_probability) {
+        return NULL;
+    }
+    #endif
+
     allocator_arena_rec_s rec = _cex_alloc_estimate_alloc_size(size, alignment);
     if (rec.size_low == 0 && rec.size_high == 0) { return NULL; }
 
@@ -347,6 +354,12 @@ _cex_allocator_arena__realloc(IAllocator allc, void* old_ptr, usize size, usize 
         (self->disable_scopes || self->scope_depth > 0)
         && "arena allocation must be performed in mem$scope() block!"
     );
+    #ifdef CEX_TEST
+    uassert(self->test_oom_probability >= 0 && self->test_oom_probability <= 1.0 && "test$alloc_set_oom_probability out of range"); \
+    if(os.random.f32() < self->test_oom_probability) {
+        return NULL;
+    }
+    #endif
 
     allocator_arena_rec_s* rec = _cex_alloc_arena__get_rec(old_ptr);
     uassert(!_cex_arena_rec_is_free(rec) && "trying to realloc() already freed pointer");
@@ -506,7 +519,14 @@ AllocatorArena_create(const AllocatorArena_kw* kwargs)
     };
     if (kwargs != NULL) {
         if (kwargs->page_size != 0) { kw.page_size = kwargs->page_size; }
+        #ifdef CEX_TEST
+        if (kwargs->test_oom_probability > 0) {
+            uassert(kwargs->test_oom_probability > 0 && kwargs->test_oom_probability <= 1.0 && "test$alloc_set_oom_probability out of range"); \
+            kw.test_oom_probability = kwargs->test_oom_probability;
+        }
+        #endif
         kw.disable_scopes = kwargs->disable_scopes;
+
     }
 
     if (kw.page_size < 1024 || kw.page_size >= CEX_ARENA_MAX_ALLOC) {
@@ -532,6 +552,9 @@ AllocatorArena_create(const AllocatorArena_kw* kwargs)
         },
         .page_size = kw.page_size,
         .disable_scopes = kw.disable_scopes,
+    #ifdef CEX_TEST
+        .test_oom_probability = kw.test_oom_probability,
+    #endif
     };
 
     AllocatorArena_c* self = mem$new(mem$, AllocatorArena_c);

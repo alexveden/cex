@@ -153,6 +153,10 @@ extern
 /// test$alloc is a dedicated arena created fresh before each test case and destroyed afterwards, 
 //  no manual free needed
 #define test$alloc (_cex__default_global__allocator_test)
+#define test$alloc_set_oom_probability(prob) ({ \
+    uassert(prob >= 0 && prob <= 1.0 && "test$alloc_set_oom_probability out of range"); \
+    ((AllocatorArena_c*)_cex__default_global__allocator_test)->test_oom_probability = (f32)prob; \
+})
 
 
 /// Unit-test test case

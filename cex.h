@@ -163,7 +163,7 @@ Use `cex -D config` to reset all project config flags to defaults
 #define cex$version_major 0
 #define cex$version_minor 20
 #define cex$version_patch 0
-#define cex$version_date "2026-06-06"
+#define cex$version_date "2026-06-07"
 
 
 
@@ -1343,6 +1343,9 @@ typedef struct
 {
     usize page_size;     ///< Arena page size (default: CEX_ALLOCATOR_TEMP_PAGE_SIZE = 256KB)
     bool disable_scopes; ///< If true, arena works without mem$scope() (manual destroy only)
+    #ifdef CEX_TEST
+    f32 test_oom_probability; /// Probability of memory allocation failures, uses os.random.   
+    #endif
 } AllocatorArena_kw;
 
 /// Arena allocator instance: vtable pointer, page list, scope stack, and allocation stats
@@ -1355,7 +1358,12 @@ typedef struct
 
     usize page_size;
     u32 scope_depth;     // current scope mark, used by mem$scope
-    bool disable_scopes; // if true, scope_enter/scope_exit are no-ops, destroy releases all
+    bool disable_scopes;  // if true - arena becomes always growing, mem$scope is no-op
+
+    #ifdef CEX_TEST
+    f32 test_oom_probability;  // Probability of returned NULL by any arena allocation
+    #endif
+
     struct
     {
         usize bytes_alloc;
@@ -1370,7 +1378,9 @@ typedef struct
 
 } AllocatorArena_c;
 
+#ifndef CEX_TEST
 static_assert(sizeof(AllocatorArena_c) <= 256, "size!");
+#endif
 static_assert(offsetof(AllocatorArena_c, alloc) == 0, "base must be the 1st struct member");
 
 /// A single arena memory page: prev-page link, cursor, capacity, poison barrier, trailing data
@@ -4323,6 +4333,10 @@ extern
 /// test$alloc is a dedicated arena created fresh before each test case and destroyed afterwards, 
 //  no manual free needed
 #define test$alloc (_cex__default_global__allocator_test)
+#define test$alloc_set_oom_probability(prob) ({ \
+    uassert(prob >= 0 && prob <= 1.0 && "test$alloc_set_oom_probability out of range"); \
+    ((AllocatorArena_c*)_cex__default_global__allocator_test)->test_oom_probability = (f32)prob; \
+})
 
 
 /// Unit-test test case
@@ -5155,7 +5169,12 @@ _cex_test_flush_cpu_cache(void)
 _cex_test_mockns_s _cex_test_ns_save(void* ns, usize ns_size){
     uassert(ns != NULL);
     uassert(ns_size > 0);
+
+    AllocatorArena_c* test_arena = (AllocatorArena_c*)test$alloc;
+    test$alloc_set_oom_probability(0.0);
+    f32 prev_oom_prob = test_arena->test_oom_probability;
     void* orig_ns = mem$malloc(test$alloc, ns_size);
+    test$alloc_set_oom_probability(prev_oom_prob);
     uassert(orig_ns);
     memcpy(orig_ns, ns, ns_size);
     return (_cex_test_mockns_s){.ns_ptr = ns, .ns_size = ns_size, .orig_ns = orig_ns};
@@ -5374,7 +5393,8 @@ cex_test_main_fn(int argc, char** argv)
         // NOTE: test$alloc is always growing arena, freed after test end
         uassert(test$alloc == NULL && "initialized somewhere else?");
         test$alloc = AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 1024 * 1024,
-                                                                 .disable_scopes = true });
+                                                                 .disable_scopes = true, 
+                                                                 .test_oom_probability = 0.0 });
         AllocatorArena_c* test_arena = (AllocatorArena_c*)test$alloc;
         uassert(test$alloc != NULL && "Memory error");
 
@@ -5395,6 +5415,7 @@ cex_test_main_fn(int argc, char** argv)
         }
 
 
+        test$alloc_set_oom_probability(0.0);
         if (ctx->is_benchmark) {
             // NOTE: we don't mute bench output because muting uses files on disk,
             //       therefore has huge performance impact
@@ -5408,6 +5429,7 @@ cex_test_main_fn(int argc, char** argv)
             }
             cex_test_unmute(err);
         }
+        test$alloc_set_oom_probability(0.0);
 
         if (err == EOK) {
             if (ctx->quiet_mode) {
@@ -7446,6 +7468,13 @@ _cex_allocator_arena__malloc(IAllocator allc, usize size, usize alignment)
         && "arena allocation must be performed in mem$scope() block!"
     );
 
+    #ifdef CEX_TEST
+    uassert(self->test_oom_probability >= 0 && self->test_oom_probability <= 1.0 && "test$alloc_set_oom_probability out of range"); \
+    if(os.random.f32() < self->test_oom_probability) {
+        return NULL;
+    }
+    #endif
+
     allocator_arena_rec_s rec = _cex_alloc_estimate_alloc_size(size, alignment);
     if (rec.size_low == 0 && rec.size_high == 0) { return NULL; }
 
@@ -7557,6 +7586,12 @@ _cex_allocator_arena__realloc(IAllocator allc, void* old_ptr, usize size, usize 
         (self->disable_scopes || self->scope_depth > 0)
         && "arena allocation must be performed in mem$scope() block!"
     );
+    #ifdef CEX_TEST
+    uassert(self->test_oom_probability >= 0 && self->test_oom_probability <= 1.0 && "test$alloc_set_oom_probability out of range"); \
+    if(os.random.f32() < self->test_oom_probability) {
+        return NULL;
+    }
+    #endif
 
     allocator_arena_rec_s* rec = _cex_alloc_arena__get_rec(old_ptr);
     uassert(!_cex_arena_rec_is_free(rec) && "trying to realloc() already freed pointer");
@@ -7716,7 +7751,14 @@ AllocatorArena_create(const AllocatorArena_kw* kwargs)
     };
     if (kwargs != NULL) {
         if (kwargs->page_size != 0) { kw.page_size = kwargs->page_size; }
+        #ifdef CEX_TEST
+        if (kwargs->test_oom_probability > 0) {
+            uassert(kwargs->test_oom_probability > 0 && kwargs->test_oom_probability <= 1.0 && "test$alloc_set_oom_probability out of range"); \
+            kw.test_oom_probability = kwargs->test_oom_probability;
+        }
+        #endif
         kw.disable_scopes = kwargs->disable_scopes;
+
     }
 
     if (kw.page_size < 1024 || kw.page_size >= CEX_ARENA_MAX_ALLOC) {
@@ -7742,6 +7784,9 @@ AllocatorArena_create(const AllocatorArena_kw* kwargs)
         },
         .page_size = kw.page_size,
         .disable_scopes = kw.disable_scopes,
+    #ifdef CEX_TEST
+        .test_oom_probability = kw.test_oom_probability,
+    #endif
     };
 
     AllocatorArena_c* self = mem$new(mem$, AllocatorArena_c);

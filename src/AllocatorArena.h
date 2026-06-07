@@ -13,6 +13,9 @@ typedef struct
 {
     usize page_size;     ///< Arena page size (default: CEX_ALLOCATOR_TEMP_PAGE_SIZE = 256KB)
     bool disable_scopes; ///< If true, arena works without mem$scope() (manual destroy only)
+    #ifdef CEX_TEST
+    f32 test_oom_probability; /// Probability of memory allocation failures, uses os.random.   
+    #endif
 } AllocatorArena_kw;
 
 /// Arena allocator instance: vtable pointer, page list, scope stack, and allocation stats
@@ -25,7 +28,12 @@ typedef struct
 
     usize page_size;
     u32 scope_depth;     // current scope mark, used by mem$scope
-    bool disable_scopes; // if true, scope_enter/scope_exit are no-ops, destroy releases all
+    bool disable_scopes;  // if true - arena becomes always growing, mem$scope is no-op
+
+    #ifdef CEX_TEST
+    f32 test_oom_probability;  // Probability of returned NULL by any arena allocation
+    #endif
+
     struct
     {
         usize bytes_alloc;
@@ -40,7 +48,9 @@ typedef struct
 
 } AllocatorArena_c;
 
+#ifndef CEX_TEST
 static_assert(sizeof(AllocatorArena_c) <= 256, "size!");
+#endif
 static_assert(offsetof(AllocatorArena_c, alloc) == 0, "base must be the 1st struct member");
 
 /// A single arena memory page: prev-page link, cursor, capacity, poison barrier, trailing data

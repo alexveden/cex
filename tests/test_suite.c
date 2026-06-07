@@ -3,6 +3,10 @@
 test$setup_case()
 {
     tassert(test$alloc != NULL);
+
+    AllocatorArena_c* test_arena = (AllocatorArena_c*)test$alloc;
+    tassert_eq(test_arena->test_oom_probability, 0.0);
+
     u8* p2 = mem$malloc(test$alloc, 10);
     tassert(p2);
 
@@ -11,6 +15,10 @@ test$setup_case()
 test$teardown_case()
 {
     tassert(test$alloc != NULL);
+
+    AllocatorArena_c* test_arena = (AllocatorArena_c*)test$alloc;
+    tassert_eq(test_arena->test_oom_probability, 0.0);
+     
     u8* p2 = mem$malloc(test$alloc, 10);
     tassert(p2);
 
@@ -965,4 +973,45 @@ test$case(test_alloc_muptiple_pages)
     return EOK;
 }
 
+test$case(test_alloc_oom_probability)
+{
+    // These allocations are not freed, but they don't have to trigger test memory leak error
+    tassert(test$alloc != NULL);
+    AllocatorArena_c* test_arena = (AllocatorArena_c*)test$alloc;
+    tassert_eq(test_arena->stats.pages_created, 1);
+    tassert_eq(test_arena->test_oom_probability, 0.0);
+
+    // never fail
+    for(u32 i = 0; i < 10000; i++){
+        u8* p = mem$malloc(test$alloc, 10);
+        tassert(p != NULL);
+    }
+
+    test$alloc_set_oom_probability(1.0);
+
+    for(u32 i = 0; i < 10000; i++){
+        u8* p = mem$malloc(test$alloc, 10);
+        tassert(p == NULL);
+    }
+
+    // 50/50% fail
+    u32 nfails = 0;
+    test$alloc_set_oom_probability(0.5);
+    for(u32 i = 0; i < 10000; i++){
+        u8* p = mem$malloc(test$alloc, 10);
+        if (p == NULL) {nfails++;}
+    }
+    tassertf(nfails > 4500 && nfails < 5500, "nfails=%d", nfails);
+
+    return EOK;
+}
+
+test$case(test_alloc_oom_probability_always_reset)
+{
+    tassert(test$alloc != NULL);
+    AllocatorArena_c* test_arena = (AllocatorArena_c*)test$alloc;
+    tassert_eq(test_arena->stats.pages_created, 1);
+    tassert_eq(test_arena->test_oom_probability, 0.0);
+    return EOK;
+}
 test$main();

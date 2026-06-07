@@ -458,7 +458,12 @@ _cex_test_flush_cpu_cache(void)
 _cex_test_mockns_s _cex_test_ns_save(void* ns, usize ns_size){
     uassert(ns != NULL);
     uassert(ns_size > 0);
+
+    AllocatorArena_c* test_arena = (AllocatorArena_c*)test$alloc;
+    test$alloc_set_oom_probability(0.0);
+    f32 prev_oom_prob = test_arena->test_oom_probability;
     void* orig_ns = mem$malloc(test$alloc, ns_size);
+    test$alloc_set_oom_probability(prev_oom_prob);
     uassert(orig_ns);
     memcpy(orig_ns, ns, ns_size);
     return (_cex_test_mockns_s){.ns_ptr = ns, .ns_size = ns_size, .orig_ns = orig_ns};
@@ -677,7 +682,8 @@ cex_test_main_fn(int argc, char** argv)
         // NOTE: test$alloc is always growing arena, freed after test end
         uassert(test$alloc == NULL && "initialized somewhere else?");
         test$alloc = AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 1024 * 1024,
-                                                                 .disable_scopes = true });
+                                                                 .disable_scopes = true, 
+                                                                 .test_oom_probability = 0.0 });
         AllocatorArena_c* test_arena = (AllocatorArena_c*)test$alloc;
         uassert(test$alloc != NULL && "Memory error");
 
@@ -698,6 +704,7 @@ cex_test_main_fn(int argc, char** argv)
         }
 
 
+        test$alloc_set_oom_probability(0.0);
         if (ctx->is_benchmark) {
             // NOTE: we don't mute bench output because muting uses files on disk,
             //       therefore has huge performance impact
@@ -711,6 +718,7 @@ cex_test_main_fn(int argc, char** argv)
             }
             cex_test_unmute(err);
         }
+        test$alloc_set_oom_probability(0.0);
 
         if (err == EOK) {
             if (ctx->quiet_mode) {

@@ -91,4 +91,21 @@ test$case(test_ns_mock_nested){
     return EOK;
 }
 
+test$case(test_ns_mock_with_oom){
+    tassert(os.timer == cex_os_timer);
+
+    test$alloc_set_oom_probability(1.0);
+    // mock must not be affected
+    test$mock_scope(os) {
+        os.timer = timer_mock;
+        tassert_eq(777888.9, os.timer());
+    }
+
+    /* outer restored — original preserved */
+    tassert(os.timer == cex_os_timer);
+    tassert_ne(777888.9, os.timer());
+
+    return EOK;
+}
+
 test$main();
