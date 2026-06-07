@@ -2906,7 +2906,7 @@ struct __cex_namespace__sbuf {
     /// Append format va (using CEX formatting engine), always null-terminating
     Exc             (*appendfva)(sbuf_c* self, char* format, va_list va);
     /// Returns string capacity from its metadata
-    u32             (*capacity)(sbuf_c* self);
+    usize           (*capacity)(sbuf_c* self);
     /// Clears string
     void            (*clear)(sbuf_c* self);
     /// Creates new dynamic string builder backed by allocator
@@ -2918,7 +2918,7 @@ struct __cex_namespace__sbuf {
     /// Returns false if string invalid
     bool            (*isvalid)(sbuf_c* self);
     /// Returns string length from its metadata
-    u32             (*len)(sbuf_c* self);
+    usize           (*len)(sbuf_c* self);
     /// Sets the length of a string to any value, if new_length greater than capacity, re-allocates more
     /// space, always null-terminating. Newly allocated space is not ZII'ed, you must fill it yourself.
     Exc             (*set_len)(sbuf_c* self, usize new_length);
@@ -12442,7 +12442,7 @@ _sbuf__alloc_capacity(usize capacity)
     }
 }
 static inline Exception
-_sbuf__grow_buffer(sbuf_c* self, u32 length)
+_sbuf__grow_buffer(sbuf_c* self, usize length)
 {
     sbuf_head_s* head = (sbuf_head_s*)(*self - sizeof(sbuf_head_s));
 
@@ -12452,7 +12452,7 @@ _sbuf__grow_buffer(sbuf_c* self, u32 length)
         return Error.overflow;
     }
 
-    u32 new_capacity = _sbuf__alloc_capacity(length);
+    usize new_capacity = _sbuf__alloc_capacity(length);
     head = mem$realloc(head->allocator, head, new_capacity);
     if (unlikely(head == NULL)) {
         *self = NULL;
@@ -12561,7 +12561,7 @@ cex_sbuf_clear(sbuf_c* self)
 }
 
 /// Returns string length from its metadata
-static u32
+static usize
 cex_sbuf_len(sbuf_c* self)
 {
     uassert(self != NULL);
@@ -12572,7 +12572,7 @@ cex_sbuf_len(sbuf_c* self)
 
 
 /// Returns string capacity from its metadata
-static u32
+static usize
 cex_sbuf_capacity(sbuf_c* self)
 {
     uassert(self != NULL);
@@ -12719,9 +12719,9 @@ cex_sbuf_append(sbuf_c* self, char* s)
         return Error.argument;
     }
 
-    u32 length = head->length;
-    u32 capacity = head->capacity;
-    u32 slen = strlen(s);
+    usize length = head->length;
+    usize capacity = head->capacity;
+    usize slen = strlen(s);
 
     // Try resize
     if (length + slen > capacity - 1) {
