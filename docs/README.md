@@ -1319,10 +1319,11 @@ mem$scope(tmem$, _) /* <1> */
 
 #### Standard allocators
 
-There are two general purpose allocators globally available out of the box for CEX:
+There are three general purpose allocators globally available out of the box for CEX:
 
-* `mem$` - is a heap allocator, the same old `malloc/free` type of allocation, with extra alignment support. In unit tests this allocator provides simple memory leak checks even without address sanitizer enabled.
-* `tmem$` - dynamic arena, with 256kb page size, used for short-lived temporary operations, cleans up pages automatically at program exit. Does page allocation only at the first allocation, otherwise remain global static struct instance (about 128 bytes size). Thread safe, uses `thread_local`.
+* `mem$` — heap allocator backed by `malloc`/`free` with extra alignment support. In unit tests this allocator provides simple memory leak checks even without address sanitizer enabled.
+* `tmem$` — dynamic arena with 256 KB page size, used for short-lived temporary operations, cleans up pages automatically at program exit. Does page allocation only at the first allocation, otherwise remains a global static struct instance (about 128 bytes size). Thread safe, uses `thread_local`.
+* `test$alloc` — dedicated per-test-case arena (1 MB page, `disable_scopes=true`). Created fresh before each test case, destroyed afterward with no manual free needed. Supports OOM simulation via `test$alloc_set_oom_probability()` in test mode. Only available in unit tests.
 
 
 #### Caveats
@@ -1361,6 +1362,8 @@ When run in test mode (or specifically `#ifdef CEX_TEST` is true) the memory all
 2. `mem$malloc()` - return uninitialized memory with `0xf7` byte pattern
 3. If Address Sanitizer is available all allocations for arenas and heap will be surrounded by poisoned areas. If you see use-after-poison errors, it's likely a sign of use-after-free or out of bounds access in `tmem$`. Try to switch your code to the `mem$` allocator if possible to triage the exact reason of the error.
 4. Allocators do sanity checks at the end of each unit test case
+5. **OOM (Out-of-Memory) simulation** — `test$alloc` supports synthetic allocation failure via `test$alloc_set_oom_probability(prob)`. Setting `prob` to `1.0` causes subsequent `malloc`/`calloc`/`realloc` calls on `test$alloc` to return `NULL`; `0.0` restores normal behavior. Automatically reset to `0.0` before the next test case.
+6. **Deterministic random values** — `os.random.seed(0)` is called before each test case, ensuring repeatable random sequences. This is essential for OOM simulation and any test using `os.random.*`.
 
 > [!NOTE]
 >
@@ -3009,6 +3012,8 @@ additional safety mechanisms are activated:
 | 10 | **Stdout capture** | stdout → temp file; replayed only on test failure with `>>>TEST OUTPUT<<<` markers |
 | 11 | **Breakpoint on assert** | `--breakpoint` (`-b`) triggers debugger on `tassert_*` failure |
 | 12 | **ASAN poison regions** *(recommended)* | Poison padding surrounds every heap & arena allocation — OOB access triggers a `use-after-poison` crash with precise stack trace |
+| 13 | **OOM simulation** | `test$alloc_set_oom_probability(prob)` injects synthetic allocation failures on `test$alloc`. Automatically reset to `0.0` between test cases. |
+| 14 | **Seeded random** | `os.random.seed(0)` is called before each test case, giving deterministic, repeatable random sequences across runs. |
 
 
 **Breakpoint example:**
@@ -3106,6 +3111,7 @@ test$alloc = AllocatorArena.create(&(AllocatorArena_kw){
 | **`mem$scope` ignored** | `mem$scope(test$alloc, _)` is a no-op. All allocations survive until the case ends. |
 | **Self-cleanup** | Destroyed after every case (pass or fail), then `test$alloc = NULL`. Next case gets a fresh arena. |
 | **`0xf7` poisoning** | All `test$alloc` allocations filled with `0xf7` in test mode |
+| **OOM simulation** | `test$alloc_set_oom_probability(prob)` (0.0–1.0) injects synthetic allocation failures. Reset to `0.0` between cases. |
 
 Usage:
 

@@ -88,6 +88,14 @@ test$case(my_test_case){
 /// test$alloc is a dedicated arena created fresh before each test case and destroyed afterwards,
 #define test$alloc(_cex__default_global__allocator_test)
 
+/// Sets the probability (0.0–1.0) of simulated allocation failures for `test$alloc`:
+/// - 0.0 = never fail (default)
+/// - 1.0 = always fail
+/// - 0.5 = approx 50% failure rate
+/// Use to test OOM paths in test cases. Only available in CEX_TEST mode.
+/// Automatically reset to 0.0 before each test case.
+#define test$alloc_set_oom_probability(prob)
+
 #define test$bench(NAME)
 
 /// Unit-test test case
