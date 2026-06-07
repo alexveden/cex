@@ -12545,6 +12545,7 @@ cex_sbuf_set_len(sbuf_c* self, usize new_length)
         e$except_silent (err, _sbuf__grow_buffer(self, new_length)) { return err; }
         // re-fetch head in case of realloc
         head = (sbuf_head_s*)(*self - sizeof(sbuf_head_s));
+        uassert(head); // clang-tidy false positive, should never happen
     } 
 
     head->length = new_length;
@@ -12712,7 +12713,7 @@ cex_sbuf_append(sbuf_c* self, char* s)
     }
     if (head->err) { return head->err; }
 
-    // s must not point into the sbuf's own buffer
+    // `s` must not point into the sbuf's own buffer
     // (would cause use-after-free on realloc or memcpy overlap)
     if (unlikely(s >= *self && s < *self + head->capacity)) {
         return Error.argument;
@@ -12725,8 +12726,8 @@ cex_sbuf_append(sbuf_c* self, char* s)
     // Try resize
     if (length + slen > capacity - 1) {
         e$except_silent (err, _sbuf__grow_buffer(self, length + slen)) { return err; }
+        uassert(*self); // clang-tidy false positive, should never happen
     }
-    // NOLINTNEXTLINE
     memcpy((*self + length), s, slen);
     length += slen;
 
