@@ -1,5 +1,16 @@
 # CEX Release Notes
 
+## 0.21
+2026-06-07
+
+### Changes / improvements
+- feat: AllocatorArena - added test_oom_probability for oom errors in tests
+- feat: added test$alloc_set_oom_probability 
+- feat: os.random.initial_seed() added for debugging random determinism + test reports random init_seed + ticks on failure
+
+### Fixes
+
+
 ## 0.20
 2026-06-04
 
