@@ -3376,4 +3376,101 @@ test$case(test_hash)
     return EOK;
 }
 
+test$case(test_fmt_pure_literal_poc)
+{
+    // POC: _cex_str__fmt_callback (str.c:1149-1150) checks `len >= CEX_SPRINTF_MIN` (512)
+    // before allocating ctx->buf. Pure-literal output always flushes at 511 bytes,
+    // so ctx->buf is NEVER allocated. For total output >= 512 bytes, ctx->tmp is
+    // overwritten by later flushes. At finalization (str.c:1216):
+    //   uassert(ctx.length <= arr$len(ctx.tmp) - 1)  // 512 <= 511 => ASSERT FAILS
+    //
+    // In release builds (uassert disabled), memcpy(ctx.buf, ctx.tmp, ctx.length)
+    // reads uninitialized stack memory past the 512-byte tmp buffer.
+    //
+    // This test demonstrates the 511-byte boundary works correctly.
+    // Uncomment the 512-byte block to verify the assert failure (debug build) or
+    // garbage output (release build).
+
+    mem$scope(tmem$, _)
+    {
+        // 511-byte pure-literal format string -- works correctly
+        char fmt511[512];
+        memset(fmt511, 'a', 511);
+        fmt511[511] = '\0';
+        char* result = str.fmt(_, fmt511);
+        tassert(result != NULL);
+        tassert_eq(str.len(result), 511);
+
+        // 512-byte pure-literal format string -- works now (was: uassert crash)
+        char fmt512[513];
+        memset(fmt512, 'a', 512);
+        fmt512[512] = '\0';
+        result = str.fmt(_, fmt512);
+        tassert(result != NULL);
+        tassert_eq(str.len(result), 512);
+    }
+
+    return EOK;
+}
+
+test$case(test_slice_sub_signed_overflow_poc)
+{
+    // POC: cex_str__slice__sub (str.c:135) does `start += _len` for negative indices.
+    // Analysis: start/end are isize (64-bit signed), _len = s.len (usize → isize).
+    // Since start < 0 and _len > 0, the sum start + _len always moves toward zero
+    // within [LONG_MIN, LONG_MAX]. Therefore signed overflow is NOT reachable for
+    // any valid input. The function is correct.
+    //
+    // This test verifies correct behavior with ISIZE_MIN-adjacent indices.
+
+    char* s = "hello";
+
+    // Normal negative indexing works fine
+    str_s slice = str.slice.sub(str.sstr(s), -3, 0);
+    tassert(slice.len == 3 && memcmp(slice.buf, "llo", 3) == 0);
+
+    // Pathological: start == ISIZE_MIN causes signed overflow
+    // On 64-bit Linux: ISIZE_MIN = LONG_MIN = -9223372036854775807L - 1
+    // After overflow, start is still negative, clamped to 0 => whole string
+    slice = str.slice.sub(str.sstr(s), (-9223372036854775807L - 1), 0);
+    tassert(slice.len == 5 && memcmp(slice.buf, "hello", 5) == 0);
+
+    // end == ISIZE_MIN: `end += _len` produces a still-negative valid isize (no overflow),
+    // then `end < _len` keeps it, and `start < end` is false => empty slice.
+    slice = str.slice.sub(str.sstr(s), 0, (-9223372036854775807L - 1));
+    tassert(slice.buf == NULL && slice.len == 0);
+
+    // Same for non-zero ISIZE_MIN+1: end stays negative, `start < end` false => empty.
+    slice = str.slice.sub(str.sstr(s), 0, (-9223372036854775807L));
+    tassert(slice.buf == NULL && slice.len == 0);
+
+    // NOTE: signed overflow in start/=end += _len is NOT reachable for any input,
+    // because start/end < 0 and _len = s.len > 0, so start/end + _len always
+    // moves toward zero within [LONG_MIN, LONG_MAX]. The function is correct.
+
+    return EOK;
+}
+
+test$case(test_qscmp_null_ptr_comparison_poc)
+{
+    // POC: qsort comparators at str.c:512,536,1649,1660 use `<`/`>` on NULL or
+    // cross-allocation pointers (UB per C11 6.5.8p5: relational pointer comparison
+    // requires pointers to the same array object).
+
+    mem$scope(tmem$, _)
+    {
+        // char* qscmp with NULL entries
+        arr$(char*) strs = arr$new(strs, _);
+        arr$push(strs, "foo");
+        arr$push(strs, NULL);
+        arr$push(strs, "bar");
+        arr$push(strs, NULL);
+        arr$push(strs, "baz");
+        arr$sort(strs, str.qscmp);
+        tassert(arr$len(strs) == 5);
+    }
+
+    return EOK;
+}
+
 test$main();
