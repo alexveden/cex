@@ -347,12 +347,13 @@ cex_sbuf_append(sbuf_c* self, char* s)
     memcpy((*self + length), s, slen);
     length += slen;
 
-    // always null terminate
-    (*self)[length] = '\0';
-
     // re-fetch head in case of realloc
     head = (sbuf_head_s*)(*self - sizeof(sbuf_head_s));
     head->length = length;
+
+    // always null terminate / also at capacity
+    (*self)[head->capacity] = '\0';
+    (*self)[length] = '\0';
 
     return Error.ok;
 }

@@ -581,6 +581,63 @@ test$case(test_sbuf_set_len_cap_zero_overflow)
     return EOK;
 }
 
+test$case(test_sbuf_append_guard_null_no_grow)
+{
+    sbuf_c s = sbuf.create(100, mem$);
+    tassert(s != NULL);
+
+    // Poison the entire writable area including guard position
+    memset(s, 0xff, sbuf.capacity(&s) + 1);
+    tassert_eq((u8)s[sbuf.capacity(&s)], 0xff);
+    tassert_eq((u8)s[sbuf.len(&s)], 0xff);
+
+    // Non-growing append
+    tassert_eq(EOK, sbuf.append(&s, "ABC"));
+    tassert_eq(sbuf.len(&s), 3);
+
+    // Guard at capacity must be restored
+    tassert_eq(s[sbuf.capacity(&s)], '\0');
+    tassert_eq(s[sbuf.len(&s)], '\0');
+
+    sbuf.destroy(&s);
+    return EOK;
+}
+
+test$case(test_sbuf_append_guard_null_with_grow)
+{
+    sbuf_c s = sbuf.create(5, mem$);
+    tassert(s != NULL);
+
+    // Poison writable area including guard position
+    memset(s, 0xff, sbuf.capacity(&s) + 1);
+    usize cap_before = sbuf.capacity(&s);
+    tassert_eq((u8)s[cap_before], 0xff);
+
+    // Fill to capacity (27 non-growing appends)
+    for (int i = 0; i < 27; i++) {
+        char b[2] = { (char)('A' + i % 26), '\0' };
+        tassert_eq(EOK, sbuf.append(&s, b));
+    }
+    tassert_eq(sbuf.len(&s), 27);
+
+    // Guard at original capacity was set by each non-growing append
+    // (though the final append at length=27 writes s[27] which IS the guard
+    //  since len == cap before grow)
+    tassert_eq(s[cap_before], '\0');
+
+    // Now trigger a grow
+    tassert_eq(EOK, sbuf.append(&s, "ZZZ"));
+    usize cap_after = sbuf.capacity(&s);
+    tassert(cap_after > cap_before);
+
+    // Guard at new capacity must be set
+    tassert_eq(s[cap_after], '\0');
+    tassert_eq(s[sbuf.len(&s)], '\0');
+
+    sbuf.destroy(&s);
+    return EOK;
+}
+
 test$case(test_sbuf_append_self_substring_no_grow)
 {
     sbuf_c s = sbuf.create(100, mem$);
