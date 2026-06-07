@@ -560,4 +560,25 @@ test$case(test_sbuf_append_set_len_grow)
     return EOK;
 }
 
+test$case(test_sbuf_set_len_cap_zero_overflow)
+{
+    sbuf_c s = sbuf.create(20, mem$);
+    tassert(s != NULL);
+
+    // manually corrupt header: capacity=0 without setting err
+    sbuf_head_s* head = _sbuf__head(s);
+    head->capacity = 0;
+    head->length = 0;
+
+    // Before fix: capacity-1 wrapped to SIZE_MAX, bypassed grow,
+    // and (*self)[100] = '\0' wrote past buffer end (ASAN crash).
+    // Now: capacity == 0 triggers grow path, realloc enlarges buffer.
+    tassert_eq(EOK, sbuf.set_len(&s, 100));
+    tassert_eq(sbuf.len(&s), 100);
+    tassert_eq(s[100], '\0');
+
+    sbuf.destroy(&s);
+    return EOK;
+}
+
 test$main();

@@ -157,7 +157,7 @@ cex_sbuf_set_len(sbuf_c* self, usize new_length)
     if (unlikely(!head)) { return Error.runtime; }
     if (unlikely(head->err)) { return head->err; }
     
-    if (unlikely(new_length > head->capacity  - 1)) {
+    if (unlikely(head->capacity == 0 || new_length > head->capacity - 1)) {
         e$except_silent (err, _sbuf__grow_buffer(self, new_length)) { return err; }
         // re-fetch head in case of realloc
         head = (sbuf_head_s*)(*self - sizeof(sbuf_head_s));
