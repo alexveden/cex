@@ -743,9 +743,9 @@ cex_test_main_fn(int argc, char** argv)
                 if (os.random.ticks() > 0) {
                     fprintf(
                         stderr,
-                        " (os.random used initial_seed: %lu ticks: %lu)",
-                        os.random.initial_seed(),
-                        os.random.ticks()
+                        " (os.random used initial_seed: %llu ticks: %llu)",
+                        (unsigned long long)os.random.initial_seed(),
+                        (unsigned long long)os.random.ticks()
                     );
                 }
                 fprintf(stderr, "\n");

@@ -13,7 +13,7 @@ test$case(os_platform_to_str)
     tassert_eq(os.platform.to_str(0), NULL);
     tassert_eq(os.platform.to_str(OSPlatform__count), NULL);
     tassert_eq(os.platform.to_str(120398), NULL);
-    tassert_eq(os.platform.to_str(-1), NULL);
+    tassert_eq(os.platform.to_str((OSPlatform_e)(-1)), NULL);
     tassert_eq("android", os.platform.to_str(OSPlatform__android));
     tassert_eq("win", os.platform.to_str(OSPlatform__win));
     tassert_eq("macos", os.platform.to_str(OSPlatform__macos));
@@ -44,7 +44,7 @@ test$case(os_arch_to_str)
     tassert_eq(1, OSArch__x86_32);
 
     tassert_eq(os.platform.arch_to_str(0), NULL);
-    tassert_eq(os.platform.arch_to_str(-1), NULL);
+    tassert_eq(os.platform.arch_to_str((OSArch_e)(-1)), NULL);
     tassert_eq(os.platform.arch_to_str(OSArch__count), NULL);
     tassert_eq(os.platform.arch_to_str(10928301), NULL);
 

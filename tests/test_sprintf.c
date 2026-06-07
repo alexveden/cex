@@ -322,8 +322,8 @@ test$case(stb_sprintf_size_t)
         tassert_eq("9223372036854775807", str.fmt(_, "%zd", _i64));
         tassert_eq("9223372036854775807", str.fmt(_, "%zu", _u64));
 
-        _i64 = INT64_MIN;
-        _u64 = UINT64_MAX;
+        _i64 = (usize)INT64_MIN;
+        _u64 = (isize)UINT64_MAX;
         tassert_eq("-9223372036854775808", str.fmt(_, "%zd", _i64));
         tassert_eq("18446744073709551615", str.fmt(_, "%zu", _u64));
         tassert_eq("-1", str.fmt(_, "%zd", _u64));

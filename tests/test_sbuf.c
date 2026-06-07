@@ -9,7 +9,7 @@ append_to_cap(sbuf_c* s)
     char c[2] = { 'A', '\0' };
 
     for (usize i = sbuf.len(s); i < sbuf.capacity(s); i++) {
-        c[0] = 'A' + i;
+        c[0] = (char)('A' + i);
         e$ret(sbuf.append(s, c));
     }
 

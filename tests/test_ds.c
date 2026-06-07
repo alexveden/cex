@@ -867,7 +867,7 @@ test$case(test_hashmap_struct_full_setget)
     tassert_eq(r->key, 2);
     tassert_eq(r->fooa, 200);
 
-    tassert(hm$gets(smap, -1) == NULL);
+    tassert(hm$gets(smap, (usize)-1) == NULL);
 
     tassert(hm$del(smap, 2));
     tassert(hm$gets(smap, 1) != NULL);
@@ -1532,7 +1532,7 @@ test$case(test_hash_random)
             char buf[64];
             usize len = os.random.range(1, 33);
             for (usize i = 0; i < len; i++)
-                buf[i] = (u8)os.random.next();
+                buf[i] = (char)(u8)os.random.next();
             buf[len] = '\0';
 
             u64 h0 = _cexds__hash_string(buf, sizeof(buf), trial);
@@ -1615,7 +1615,7 @@ test$case(test_hash_string)
         char buf[32];
         for (usize len = 1; len <= 30; len++) {
             for (usize i = 0; i < len; i++)
-                buf[i] = (u8)('a' + (i % 26));
+                buf[i] = (char)(u8)('a' + (i % 26));
             buf[len] = '\0';
             u64 h = _cexds__hash_string(buf, sizeof(buf), 0);
             tassert(h != 0);
@@ -1632,13 +1632,13 @@ test$case(test_hash_string)
             char buf[64];
             usize len = (usize)(rand() % 32) + 1;
             for (usize i = 0; i < len; i++)
-                buf[i] = (u8)(rand() & 0xFF);
+                buf[i] = (char)(u8)(rand() & 0xFF);
             buf[len] = '\0';
 
             u64 seed = (u64)(rand() & 0xFF);
             u64 h_orig = _cexds__hash_string(buf, sizeof(buf), seed);
             usize flip_idx = (usize)(rand() % len);
-            buf[flip_idx] ^= (u8)(1 << (rand() % 8));
+            buf[flip_idx] ^= (char)(u8)(1 << (rand() % 8));
             u64 h_flip = _cexds__hash_string(buf, sizeof(buf), seed);
 
             if (h_orig == h_flip) { no_change++; continue; }
@@ -1670,7 +1670,7 @@ test$case(test_hash_string)
             char buf[64];
             usize len = (usize)(rand() % 32) + 1;
             for (usize i = 0; i < len; i++)
-                buf[i] = (u8)(rand() & 0xFF);
+                buf[i] = (char)(u8)(rand() & 0xFF);
             buf[len] = '\0';
 
             u64 h0 = _cexds__hash_string(buf, sizeof(buf), trial);
@@ -1689,7 +1689,7 @@ test$case(test_hash_string)
             char buf[128];
             usize len = (usize)(rand() % 64) + 1;
             for (usize i = 0; i < len; i++)
-                buf[i] = (u8)(rand() & 0xFF);
+                buf[i] = (char)(u8)(rand() & 0xFF);
             buf[len] = '\0';
 
             u64 seed = (u64)(rand() & 0xFF);
@@ -1711,7 +1711,7 @@ test$case(test_hash_string_random)
         char buf[256];
         usize len = os.random.range(1, 256);
         for (usize i = 0; i < len; i++)
-            buf[i] = (u8)os.random.next();
+            buf[i] = (char)(u8)os.random.next();
         buf[len] = '\0';
 
         usize cap = os.random.range(1, 257);
@@ -1729,7 +1729,7 @@ test$case(test_hash_string_random)
             char buf[256];
             usize len = os.random.range(10, 210);
             for (usize i = 0; i < len; i++)
-                buf[i] = (u8)os.random.next();
+                buf[i] = (char)(u8)os.random.next();
             buf[len] = '\0';
 
             u64 seed = (u8)os.random.next();
@@ -1751,7 +1751,7 @@ test$case(test_hash_string_random)
         char buf[128];
         usize len = os.random.range(2, 65);
         for (usize i = 0; i < len; i++)
-            buf[i] = (u8)os.random.next();
+            buf[i] = (char)(u8)os.random.next();
         usize null_pos = os.random.range(1, len);
         buf[null_pos] = '\0';
         buf[len] = '\0';
@@ -1779,7 +1779,7 @@ test$case(test_hash_string_random)
             char buf[128];
             usize len = os.random.range(1, 65);
             for (usize i = 0; i < len; i++)
-                buf[i] = (u8)os.random.next();
+                buf[i] = (char)(u8)os.random.next();
             buf[len] = '\0';
 
             u64 seed = (u8)os.random.next();
@@ -1787,7 +1787,7 @@ test$case(test_hash_string_random)
             u64 h_orig = _cexds__hash_string(buf, cap, seed);
 
             usize flip_idx = os.random.range(0, len);
-            buf[flip_idx] ^= (u8)(1 << os.random.range(0, 8));
+            buf[flip_idx] ^= (char)(u8)(1 << os.random.range(0, 8));
             u64 h_flip = _cexds__hash_string(buf, cap, seed);
 
             if (h_orig == h_flip) { no_change++; continue; }
@@ -1819,7 +1819,7 @@ test$case(test_hash_string_random)
             char buf[64];
             usize len = os.random.range(1, 33);
             for (usize i = 0; i < len; i++)
-                buf[i] = (u8)os.random.next();
+                buf[i] = (char)(u8)os.random.next();
             buf[len] = '\0';
 
             u64 h0 = _cexds__hash_string(buf, sizeof(buf), trial);

@@ -16,7 +16,7 @@ test$setup_suite()
 {
     g_buf = mem$malloc(mem$, G_BUF_LEN);
     uassert(g_buf);
-    for (u32 i = 0; i < G_BUF_LEN; i++) { g_buf[i] = i % 254; }
+    for (u32 i = 0; i < G_BUF_LEN; i++) { g_buf[i] = (char)(i % 254); }
 
     g_words = arr$new(g_words, mem$, .capacity = G_WORDS_LEN);
     g_nums = arr$new(g_nums, mem$, .capacity = G_WORDS_LEN);
@@ -25,15 +25,15 @@ test$setup_suite()
         usize wlen = i % 4 * 4 + 4;
         char* w = mem$malloc(mem$, wlen + 1);
 
-        char c = i % 254;
+        char c = (char)(i % 254);
         if (c == 0) c = 1;
         if ((usize)c + wlen > 254) {
-            c -= wlen;
+            c = (char)((i32)c - (i32)wlen);
         }
 
         for(u32 j = 0; j < wlen; j++){
             w[j] = c;
-            c++;
+            c = (char)(c + 1);
         }
         w[wlen] = '\0';
         arr$push(g_words, (str_s){.buf = w, .len = wlen});

@@ -193,7 +193,7 @@ cex_json__rd__str_unescape_inplace(str_s value_str, char* out_buf, usize* in_out
     while (i < len) {
         if (input[i] != '\\') {
             // Normal character
-            out_buf[j++] = input[i++];
+            out_buf[j++] = (char)input[i++];
         } else {
             // backslash (\) char
             i++; // Skip backslash
@@ -259,8 +259,8 @@ cex_json__rd__str_unescape_inplace(str_s value_str, char* out_buf, usize* in_out
                         out_buf[j++] = (char)codepoint;
                     } else if (codepoint <= 0x7FF) {
                         // 2 bytes UTF-8
-                        out_buf[j++] = 0xC0 | (codepoint >> 6);
-                        out_buf[j++] = 0x80 | (codepoint & 0x3F);
+                        out_buf[j++] = (char)(0xC0 | (codepoint >> 6));
+                        out_buf[j++] = (char)(0x80 | (codepoint & 0x3F));
                     } else if (codepoint >= 0xD800 && codepoint <= 0xDBFF) {
                         // high is a first unicode value \uXXXX
                         // low is a second part value unicode \uYYYY
@@ -279,15 +279,15 @@ cex_json__rd__str_unescape_inplace(str_s value_str, char* out_buf, usize* in_out
                         if (unlikely(!(low >= 0xDC00 && low <= 0xDFFF))) { goto fail; }
 
                         codepoint = 0x10000 + ((high - 0xD800) << 10) + (low - 0xDC00);
-                        out_buf[j++] = (u8)(0xF0 | (codepoint >> 18));
-                        out_buf[j++] = (u8)(0x80 | ((codepoint >> 12) & 0x3F));
-                        out_buf[j++] = (u8)(0x80 | ((codepoint >> 6) & 0x3F));
-                        out_buf[j++] = (u8)(0x80 | (codepoint & 0x3F));
+                        out_buf[j++] = (char)(u8)(0xF0 | (codepoint >> 18));
+                        out_buf[j++] = (char)(u8)(0x80 | ((codepoint >> 12) & 0x3F));
+                        out_buf[j++] = (char)(u8)(0x80 | ((codepoint >> 6) & 0x3F));
+                        out_buf[j++] = (char)(u8)(0x80 | (codepoint & 0x3F));
                     } else {
                         // 3 bytes UTF-8 (most common for \uXXXX)
-                        out_buf[j++] = 0xE0 | (codepoint >> 12);
-                        out_buf[j++] = 0x80 | ((codepoint >> 6) & 0x3F);
-                        out_buf[j++] = 0x80 | (codepoint & 0x3F);
+                        out_buf[j++] = (char)(0xE0 | (codepoint >> 12));
+                        out_buf[j++] = (char)(0x80 | ((codepoint >> 6) & 0x3F));
+                        out_buf[j++] = (char)(0x80 | (codepoint & 0x3F));
                     }
                     break;
                 }
@@ -295,7 +295,7 @@ cex_json__rd__str_unescape_inplace(str_s value_str, char* out_buf, usize* in_out
                 default:
                     // Unknown escape, copy both characters
                     out_buf[j++] = '\\';
-                    out_buf[j++] = input[i++];
+                    out_buf[j++] = (char)input[i++];
                     break;
             }
         }
@@ -741,7 +741,7 @@ cex_json__wr__print_str_escaped(json_wr_c* jw, char* s, usize slen, bool add_quo
     buf[cnt++] = hex_digits[(_byte32) & 0x0F];         /* 1st hex digit */
 
     for (usize i = 0; i < slen; i++) {
-        u32 c = s[i];
+        u32 c = (u8)s[i];
         if (unlikely(cnt > sizeof(buf) - 20)) {
             buf[cnt++] = '\0';
             if (jw->buf) {
@@ -821,7 +821,7 @@ cex_json__wr__print_str_escaped(json_wr_c* jw, char* s, usize slen, bool add_quo
                             codepoint = c & (0xFF >> (seq_len + 1));
                             if (i + seq_len <= slen) {
                                 for (u32 k = 1; k < seq_len && s[i + k]; k++) {
-                                    u8 next = s[i + k];
+                                    u8 next = (u8)s[i + k];
                                     if ((next & 0xC0) != 0x80) {
                                         break; // Invalid
                                     }

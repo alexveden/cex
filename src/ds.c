@@ -177,7 +177,7 @@ _cexds__arrfreef(void* a)
 
 #define _CEXDS_BUCKET_LENGTH 8
 #define _CEXDS_BUCKET_SHIFT (_CEXDS_BUCKET_LENGTH == 8 ? 3 : 2)
-#define _CEXDS_BUCKET_MASK (_CEXDS_BUCKET_LENGTH - 1)
+#define _CEXDS_BUCKET_MASK ((usize)(_CEXDS_BUCKET_LENGTH - 1))
 #define _CEXDS_CACHE_LINE_SIZE 64
 
 #define _cexds__hash_table(a) ((_cexds__hash_index*)_cexds__header(a)->_hash_table)

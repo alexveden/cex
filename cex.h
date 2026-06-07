@@ -5462,9 +5462,9 @@ cex_test_main_fn(int argc, char** argv)
                 if (os.random.ticks() > 0) {
                     fprintf(
                         stderr,
-                        " (os.random used initial_seed: %lu ticks: %lu)",
-                        os.random.initial_seed(),
-                        os.random.ticks()
+                        " (os.random used initial_seed: %llu ticks: %llu)",
+                        (unsigned long long)os.random.initial_seed(),
+                        (unsigned long long)os.random.ticks()
                     );
                 }
                 fprintf(stderr, "\n");
@@ -8134,7 +8134,7 @@ _cexds__arrfreef(void* a)
 
 #define _CEXDS_BUCKET_LENGTH 8
 #define _CEXDS_BUCKET_SHIFT (_CEXDS_BUCKET_LENGTH == 8 ? 3 : 2)
-#define _CEXDS_BUCKET_MASK (_CEXDS_BUCKET_LENGTH - 1)
+#define _CEXDS_BUCKET_MASK ((usize)(_CEXDS_BUCKET_LENGTH - 1))
 #define _CEXDS_CACHE_LINE_SIZE 64
 
 #define _cexds__hash_table(a) ((_cexds__hash_index*)_cexds__header(a)->_hash_table)
@@ -9243,7 +9243,7 @@ cexsp__vsprintfcb(cexsp_callback_f* callback, void* user, char* buf, char const*
         if (f[0] == '.') {
             ++f;
             if (f[0] == '*') {
-                pr = va_arg(va, u32);
+                pr = (i32)va_arg(va, u32);
                 ++f;
             } else {
                 pr = 0;
@@ -9793,7 +9793,7 @@ cexsp__vsprintfcb(cexsp_callback_f* callback, void* user, char* buf, char const*
                     if (fl & CEXSP__TRIPLET_COMMA) {
                         ++l;
                         if ((l & 15) == ((l >> 4) & 15)) {
-                            l &= ~15;
+                            l &= (u32)~15;
                             *--s = cexsp__comma;
                         }
                     }
@@ -9813,14 +9813,14 @@ cexsp__vsprintfcb(cexsp_callback_f* callback, void* user, char* buf, char const*
                     i64 _i64 = va_arg(va, i64);
                     n64 = (u64)_i64;
                     if ((f[0] != 'u') && (_i64 < 0)) {
-                        n64 = (_i64 != INT64_MIN) ? (u64)-_i64 : INT64_MIN;
+                        n64 = (_i64 != INT64_MIN) ? (u64)-_i64 : (u64)INT64_MIN;
                         fl |= CEXSP__NEGATIVE;
                     }
                 } else {
                     i32 i = va_arg(va, i32);
                     n64 = (u32)i;
                     if ((f[0] != 'u') && (i < 0)) {
-                        n64 = (i != INT32_MIN) ? (u32)-i : INT32_MIN;
+                        n64 = (i != INT32_MIN) ? (u32)-i : (u64)(u32)INT32_MIN;
                         fl |= CEXSP__NEGATIVE;
                     }
                 }
@@ -10244,7 +10244,7 @@ cexsp__real_to_parts(i64* bits, i32* expo, double value)
 
     CEXSP__COPYFP(b, d);
 
-    *bits = b & ((((u64)1) << 52) - 1);
+    *bits = (i64)((u64)b & ((((u64)1) << 52) - 1));
     *expo = (i32)(((b >> 52) & 2047) - 1023);
 
     return (i32)((u64)b >> 63);
@@ -10468,7 +10468,7 @@ cexsp__real_to_str(
     if (expo == 2047) // is nan or inf?
     {
         // CEX: lower case nan/inf
-        *start = (bits & ((((u64)1) << 52) - 1)) ? "nan" : "inf";
+        *start = ((u64)bits & ((((u64)1) << 52) - 1)) ? "nan" : "inf";
         *decimal_pos = CEXSP__SPECIAL;
         *len = 3;
         return ng;
@@ -10515,7 +10515,7 @@ cexsp__real_to_str(
 
     // now do the rounding in integer land
     frac_digits = (frac_digits & 0x80000000) ? ((frac_digits & 0x7ffffff) + 1)
-                                             : (tens + frac_digits);
+                                             : (u32)(tens + (i32)frac_digits);
     if ((frac_digits < 24)) {
         u32 dg = 1;
         if ((u64)bits >= cexsp__powten[9]) { dg = 10; }
