@@ -884,7 +884,7 @@ cexsp__vsprintfcb(cexsp_callback_f* callback, void* user, char* buf, char const*
                         pr = (fw > pr) ? fw : pr;
                         fw = 0;
                     } else {
-                        fl &= ~CEXSP__TRIPLET_COMMA; // if no leading zeros, then no commas
+                        fl &= (u32)~CEXSP__TRIPLET_COMMA; // if no leading zeros, then no commas
                     }
                 }
 

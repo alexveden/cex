@@ -7659,7 +7659,12 @@ _cex_allocator_arena__realloc(IAllocator allc, void* old_ptr, usize size, usize 
 #ifdef CEX_TEST
             memset((char*)old_ptr + rec_size, 0xf7, extra_bytes);
 #endif
-            extra_bytes += (nrec.ptr_padding - rec->ptr_padding);
+            i32 pad_diff = (i32)nrec.ptr_padding - (i32)rec->ptr_padding;
+            if (pad_diff >= 0) {
+                extra_bytes += (u64)pad_diff;
+            } else {
+                extra_bytes -= (u64)(-pad_diff);
+            }
             page->cursor += extra_bytes;
             self->used += extra_bytes;
             self->stats.bytes_alloc += extra_bytes;
@@ -9906,7 +9911,7 @@ cexsp__vsprintfcb(cexsp_callback_f* callback, void* user, char* buf, char const*
                         pr = (fw > pr) ? fw : pr;
                         fw = 0;
                     } else {
-                        fl &= ~CEXSP__TRIPLET_COMMA; // if no leading zeros, then no commas
+                        fl &= (u32)~CEXSP__TRIPLET_COMMA; // if no leading zeros, then no commas
                     }
                 }
 
@@ -11256,9 +11261,9 @@ cex_str_to_signed_num_(char* self, usize len, i64* num, i64 num_min, i64 num_max
     for (; i < len && s[i] == ' '; i++) {}
     if (unlikely(i >= len)) { return Error.argument; }
 
-    u64 neg = 1;
+    bool negative = false;
     if (s[i] == '-') {
-        neg = -1;
+        negative = true;
         i++;
     } else if (unlikely(s[i] == '+')) {
         i++;
@@ -11276,7 +11281,7 @@ cex_str_to_signed_num_(char* self, usize len, i64* num, i64 num_min, i64 num_max
         }
     }
 
-    u64 cutoff = (u64)(neg == 1 ? (u64)num_max : (u64)-num_min);
+    u64 cutoff = negative ? (u64)-num_min : (u64)num_max;
     u64 cutlim = cutoff % (u64)base;
     cutoff /= (u64)base;
 
@@ -11310,7 +11315,7 @@ cex_str_to_signed_num_(char* self, usize len, i64* num, i64 num_min, i64 num_max
         if (s[i] != ' ') { return Error.argument; }
     }
 
-    *num = (i64)acc * neg;
+    *num = negative ? -(i64)acc : (i64)acc;
 
     return Error.ok;
 }
@@ -11486,7 +11491,7 @@ cex_str_to_double_(char* self, usize len, double* num, i32 exp_min, i32 exp_max)
             num_decimals++;
             num_digits++;
         }
-        exponent -= num_decimals;
+        exponent -= (i32)num_decimals;
     }
 
 

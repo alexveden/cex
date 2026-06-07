@@ -658,9 +658,9 @@ cex_str_to_signed_num_(char* self, usize len, i64* num, i64 num_min, i64 num_max
     for (; i < len && s[i] == ' '; i++) {}
     if (unlikely(i >= len)) { return Error.argument; }
 
-    u64 neg = 1;
+    bool negative = false;
     if (s[i] == '-') {
-        neg = -1;
+        negative = true;
         i++;
     } else if (unlikely(s[i] == '+')) {
         i++;
@@ -678,7 +678,7 @@ cex_str_to_signed_num_(char* self, usize len, i64* num, i64 num_min, i64 num_max
         }
     }
 
-    u64 cutoff = (u64)(neg == 1 ? (u64)num_max : (u64)-num_min);
+    u64 cutoff = negative ? (u64)-num_min : (u64)num_max;
     u64 cutlim = cutoff % (u64)base;
     cutoff /= (u64)base;
 
@@ -712,7 +712,7 @@ cex_str_to_signed_num_(char* self, usize len, i64* num, i64 num_min, i64 num_max
         if (s[i] != ' ') { return Error.argument; }
     }
 
-    *num = (i64)acc * neg;
+    *num = negative ? -(i64)acc : (i64)acc;
 
     return Error.ok;
 }
@@ -888,7 +888,7 @@ cex_str_to_double_(char* self, usize len, double* num, i32 exp_min, i32 exp_max)
             num_decimals++;
             num_digits++;
         }
-        exponent -= num_decimals;
+        exponent -= (i32)num_decimals;
     }
 
 

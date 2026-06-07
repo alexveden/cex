@@ -407,7 +407,12 @@ _cex_allocator_arena__realloc(IAllocator allc, void* old_ptr, usize size, usize 
 #ifdef CEX_TEST
             memset((char*)old_ptr + rec_size, 0xf7, extra_bytes);
 #endif
-            extra_bytes += (nrec.ptr_padding - rec->ptr_padding);
+            i32 pad_diff = (i32)nrec.ptr_padding - (i32)rec->ptr_padding;
+            if (pad_diff >= 0) {
+                extra_bytes += (u64)pad_diff;
+            } else {
+                extra_bytes -= (u64)(-pad_diff);
+            }
             page->cursor += extra_bytes;
             self->used += extra_bytes;
             self->stats.bytes_alloc += extra_bytes;
