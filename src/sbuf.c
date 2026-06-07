@@ -49,7 +49,7 @@ _sbuf__alloc_capacity(usize capacity)
     capacity += sizeof(sbuf_head_s) + 1; // also +1 for nullterm
 
     if (capacity >= 512) {
-        return capacity * 1.2;
+        return capacity + capacity / 5;
     } else {
         // Round up to closest pow*2 int
         u64 p = 64;
