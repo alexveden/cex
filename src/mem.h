@@ -167,6 +167,15 @@ AllocatorArena.destroy(arena);
 #define mem$new(allocator, T)                                                                      \
     (typeof(T)*)(allocator)->calloc((allocator), 1, sizeof(T), _Alignof(T))
 
+/// Overflow-checked addition: computes a + b, stores result through *res. Returns true on overflow.
+#define mem$add_overflow(a, b, res) __builtin_add_overflow((a), (b), (res))
+
+/// Overflow-checked subtraction: computes a - b, stores result through *res. Returns true on overflow.
+#define mem$sub_overflow(a, b, res) __builtin_sub_overflow((a), (b), (res))
+
+/// Overflow-checked multiplication: computes a * b, stores result through *res. Returns true on overflow.
+#define mem$mul_overflow(a, b, res) __builtin_mul_overflow((a), (b), (res))
+
 // clang-format off
 
 /// Opens new memory scope using Arena-like allocator, frees all memory after scope exit
