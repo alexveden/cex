@@ -581,4 +581,82 @@ test$case(test_sbuf_set_len_cap_zero_overflow)
     return EOK;
 }
 
+test$case(test_sbuf_append_self_substring_no_grow)
+{
+    sbuf_c s = sbuf.create(100, mem$);
+    tassert(s != NULL);
+    tassert_eq(EOK, sbuf.append(&s, "ABCDEFGHIJ"));
+    tassert_eq(sbuf.len(&s), 10);
+
+    // s+4 is inside sbuf buffer → should be rejected
+    tassert_eq(Error.argument, sbuf.append(&s, s + 4));
+    // sbuf unchanged
+    tassert_eq(sbuf.len(&s), 10);
+    tassert_eq(strcmp(s, "ABCDEFGHIJ"), 0);
+
+    sbuf.destroy(&s);
+    return EOK;
+}
+
+test$case(test_sbuf_append_self_substring_with_grow)
+{
+    // Fill to capacity — self-append would trigger realloc + UAF before the fix
+    sbuf_c s = sbuf.create(5, mem$);
+    tassert(s != NULL);
+    for (int i = 0; i < 27; i++) {
+        char b[2] = { (char)('A' + i % 26), '\0' };
+        tassert_eq(EOK, sbuf.append(&s, b));
+    }
+    tassert_eq(sbuf.len(&s), 27);
+
+    // s+4 is in the buffer → rejected before strlen/memcpy
+    tassert_eq(Error.argument, sbuf.append(&s, s + 4));
+    tassert_eq(sbuf.len(&s), 27);
+
+    sbuf.destroy(&s);
+    return EOK;
+}
+
+test$case(test_sbuf_append_self_at_start)
+{
+    sbuf_c s = sbuf.create(50, mem$);
+    tassert(s != NULL);
+    tassert_eq(EOK, sbuf.append(&s, "ABCDE"));
+
+    // s == *self → rejected
+    tassert_eq(Error.argument, sbuf.append(&s, s));
+
+    sbuf.destroy(&s);
+    return EOK;
+}
+
+test$case(test_sbuf_append_self_at_end_of_buffer)
+{
+    sbuf_c s = sbuf.create(50, mem$);
+    tassert(s != NULL);
+    tassert_eq(EOK, sbuf.append(&s, "ABCDE"));
+
+    // s + capacity points at the guard null, just past the writable range
+    // Our check excludes this (s < *self + head->capacity), so strlen=0, no-op
+    tassert_eq(EOK, sbuf.append(&s, s + sbuf.capacity(&s)));
+
+    sbuf.destroy(&s);
+    return EOK;
+}
+
+test$case(test_sbuf_append_external_pointer)
+{
+    // Negative control: same content from a different address should work
+    sbuf_c s = sbuf.create(50, mem$);
+    tassert(s != NULL);
+    tassert_eq(EOK, sbuf.append(&s, "ABC"));
+
+    char external[] = "ABC";
+    tassert_eq(EOK, sbuf.append(&s, external));
+    tassert_eq(strcmp(s, "ABCABC"), 0);
+
+    sbuf.destroy(&s);
+    return EOK;
+}
+
 test$main();

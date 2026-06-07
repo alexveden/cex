@@ -328,11 +328,15 @@ cex_sbuf_append(sbuf_c* self, char* s)
     }
     if (head->err) { return head->err; }
 
+    // `s` must not point into the sbuf's own buffer
+    // (would cause use-after-free on realloc or memcpy overlap)
+    if (unlikely(s >= *self && s < *self + head->capacity)) {
+        return Error.argument;
+    }
+
     u32 length = head->length;
     u32 capacity = head->capacity;
     u32 slen = strlen(s);
-
-    uassert(*self != s && "buffer overlap");
 
     // Try resize
     if (length + slen > capacity - 1) {
