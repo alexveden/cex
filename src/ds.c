@@ -21,7 +21,7 @@ usize _cexds__rehash_items;
 // _cexds__arr implementation
 //
 
-#define _cexds__item_ptr(t, i, elemsize) ((char*)a + elemsize * i)
+#define _cexds__item_ptr(t, i, elemsize) ((char*)(t) + elemsize * (i))
 
 static inline void*
 _cexds__base(_cexds__array_header* hdr)
@@ -77,8 +77,8 @@ _cexds__arrgrowf(
     IAllocator allc
 )
 {
-    uassert(addlen < PTRDIFF_MAX && "negative or overflow");
-    uassert(min_cap < PTRDIFF_MAX && "negative or overflow");
+    uassert(addlen < (usize)PTRDIFF_MAX && "negative or overflow");
+    uassert(min_cap < (usize)PTRDIFF_MAX && "negative or overflow");
     uassert(el_align <= 64 && "alignment is too high");
 
     if (arr == NULL) {
@@ -108,7 +108,7 @@ _cexds__arrgrowf(
             min_cap = 16;
         }
     }
-    uassert(min_cap < PTRDIFF_MAX && "negative or overflow after processing");
+    uassert(min_cap < (usize)PTRDIFF_MAX && "negative or overflow after processing");
     uassert(addlen > 0 || min_cap > 0);
 
     if (min_cap <= arr$cap(arr)) { return arr; }
@@ -998,7 +998,7 @@ _cexds__hmdel_key(void* a, usize elemsize, void* key, usize keysize, usize keyof
     if (slot < 0) { return false; }
 
     _cexds__hash_bucket* b = &table->storage[slot >> _CEXDS_BUCKET_SHIFT];
-    int i = slot & _CEXDS_BUCKET_MASK;
+    usize i = (usize)slot & _CEXDS_BUCKET_MASK;
     ptrdiff_t old_index = b->index[i];
     ptrdiff_t final_index = (ptrdiff_t)_cexds__header(a)->length - 1;
     uassert(slot < (ptrdiff_t)table->slot_count);
