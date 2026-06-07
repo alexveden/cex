@@ -1295,6 +1295,26 @@ test$case(str_to__unsigned_num)
     return EOK;
 }
 
+test$case(test_findr_ub_poc)
+{
+    // POC: cex_str_findr loops with `ptr >= haystack; ptr--`
+    // When needle is not found past position 0, ptr goes to haystack-1 (UB)
+    // Under -fsanitize=pointer-overflow this traps at runtime.
+    char* s = "a";
+    tassert(str.findr(s, "b") == NULL);
+
+    s = "ab";
+    tassert(str.findr(s, "c") == NULL);
+
+    // Needle longer than haystack returns NULL early (no UB)
+    tassert(str.findr(s, "abc") == NULL);
+
+    // Match only found at position 0 — no UB since we return before ptr--
+    s = "a";
+    tassert(str.findr(s, "a") == &s[0]);
+
+    return EOK;
+}
 
 test$case(test_str_to_u8)
 {
@@ -1402,6 +1422,31 @@ test$case(test_str_to_u64)
     tassert_er(Error.ok, str.convert.to_u64(s, &num));
     tassert_eq(num, 0);
 
+
+    return EOK;
+}
+
+test$case(test_to_u64_impl_def_cast_poc)
+{
+    u64 num;
+    // POC: cex_str_to_unsigned_num_ does `*num = (i64)acc` at line 791
+    // When acc > INT64_MAX, this cast is implementation-defined per C standard.
+    // Under -fsanitize=undefined (implicit-conversion) this may trap.
+
+    // UINT32_MAX fits in i64, no issue:
+    num = 0;
+    tassert_er(Error.ok, cex_str_to_unsigned_num_("4294967295", 0, &num, UINT32_MAX));
+    tassert_eq(num, UINT32_MAX);
+
+    // UINT64_MAX > INT64_MAX — triggers implementation-defined (i64) cast:
+    num = 0;
+    tassert_er(Error.ok, cex_str_to_unsigned_num_("18446744073709551615", 0, &num, UINT64_MAX));
+    tassert(num == UINT64_MAX);
+
+    // Same via public API:
+    num = 0;
+    tassert_er(Error.ok, str.convert.to_u64("18446744073709551615", &num));
+    tassert(num == UINT64_MAX);
 
     return EOK;
 }
@@ -2241,6 +2286,7 @@ test$case(test_str_match)
 {
     uassert_disable();
     tassert(str.match("test", "*"));
+    // DESIGN: empty string never matches any pattern (including "" or "*")
     tassert(!str.match("", "*"));
     tassert(!str.match(NULL, "*"));
     tassert(str.match("----fo1---bar---foo.txt", "*(foo|bar)*.txt"));

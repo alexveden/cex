@@ -297,11 +297,10 @@ cex_str_findr(char* haystack, char* needle)
     usize haystack_len = strlen(haystack);
     usize needle_len = strlen(needle);
     if (unlikely(needle_len > haystack_len)) { return NULL; }
-    for (char* ptr = haystack + haystack_len - needle_len; ptr >= haystack; ptr--) {
-        if (unlikely(strncmp(ptr, needle, needle_len) == 0)) {
-            uassert(ptr >= haystack);
-            uassert(ptr <= haystack + haystack_len);
-            return (char*)ptr;
+    isize i = (isize)(haystack_len - needle_len);
+    for (; i >= 0; i--) {
+        if (unlikely(strncmp(&haystack[i], needle, needle_len) == 0)) {
+            return &haystack[i];
         }
     }
     return NULL;
@@ -788,7 +787,7 @@ cex_str_to_unsigned_num_(char* s, usize len, u64* num, u64 num_max)
         if (s[i] != ' ') { return Error.argument; }
     }
 
-    *num = (i64)acc;
+    *num = acc;
 
     return Error.ok;
 }
@@ -1384,6 +1383,9 @@ cex_str_join(char** str_arr, usize str_arr_len, char* join_by, IAllocator allc)
 }
 
 
+/// NOTE: empty strings (str_len <= 0) intentionally never match any pattern,
+///       including "" or "*". This is a design decision — NULL and empty inputs
+///       are treated as non-matching uniformly.
 static bool
 _cex_str_match(char* str, isize str_len, char* pattern, isize* matched_till_star)
 {
