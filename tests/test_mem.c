@@ -54,7 +54,11 @@ test$case(test_mem_add_overflow)
     tassert_eq(r, 0);
 
     isize sr;
+#if mem$platform() > 32
     tassert(mem$add_overflow((isize)9223372036854775807, (isize)1, &sr));
+#else
+    tassert(mem$add_overflow((isize)2147483647, (isize)1, &sr));
+#endif
 
     u32 ur;
     tassert(!mem$add_overflow((u32)4000000000, (u32)1, &ur));
@@ -71,7 +75,11 @@ test$case(test_mem_sub_overflow)
     tassert_eq(r, (usize)-1);
 
     isize sr;
+#if mem$platform() > 32
     tassert(mem$sub_overflow((isize)(-9223372036854775807 - 1), (isize)1, &sr));
+#else
+    tassert(mem$sub_overflow((isize)(-2147483647 - 1), (isize)1, &sr));
+#endif
     return EOK;
 }
 
