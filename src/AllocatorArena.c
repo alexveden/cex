@@ -238,7 +238,7 @@ _cex_allocator_arena__malloc(IAllocator allc, usize size, usize alignment)
 
     #ifdef CEX_TEST
     uassert(self->test_oom_probability >= 0 && self->test_oom_probability <= 1.0 && "test$alloc_set_oom_probability out of range"); \
-    if(os.random.f32() < self->test_oom_probability) {
+    if(self->test_oom_probability > 0 && os.random.f32() < self->test_oom_probability) {
         return NULL;
     }
     #endif
@@ -356,7 +356,7 @@ _cex_allocator_arena__realloc(IAllocator allc, void* old_ptr, usize size, usize 
     );
     #ifdef CEX_TEST
     uassert(self->test_oom_probability >= 0 && self->test_oom_probability <= 1.0 && "test$alloc_set_oom_probability out of range"); \
-    if(os.random.f32() < self->test_oom_probability) {
+    if(self->test_oom_probability > 0 && os.random.f32() < self->test_oom_probability) {
         return NULL;
     }
     #endif
