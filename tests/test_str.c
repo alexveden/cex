@@ -3429,19 +3429,30 @@ test$case(test_slice_sub_signed_overflow_poc)
     str_s slice = str.slice.sub(str.sstr(s), -3, 0);
     tassert(slice.len == 3 && memcmp(slice.buf, "llo", 3) == 0);
 
-    // Pathological: start == ISIZE_MIN causes signed overflow
-    // On 64-bit Linux: ISIZE_MIN = LONG_MIN = -9223372036854775807L - 1
+    // Pathological: start == ISIZE_MIN — signed overflow guarded at compile-time
     // After overflow, start is still negative, clamped to 0 => whole string
+#if mem$platform() > 32
     slice = str.slice.sub(str.sstr(s), (-9223372036854775807L - 1), 0);
+#else
+    slice = str.slice.sub(str.sstr(s), (-2147483647 - 1), 0);
+#endif
     tassert(slice.len == 5 && memcmp(slice.buf, "hello", 5) == 0);
 
-    // end == ISIZE_MIN: `end += _len` produces a still-negative valid isize (no overflow),
+    // end == ISIZE_MIN: `end += _len` produces a still-negative valid isize,
     // then `end < _len` keeps it, and `start < end` is false => empty slice.
+#if mem$platform() > 32
     slice = str.slice.sub(str.sstr(s), 0, (-9223372036854775807L - 1));
+#else
+    slice = str.slice.sub(str.sstr(s), 0, (-2147483647 - 1));
+#endif
     tassert(slice.buf == NULL && slice.len == 0);
 
-    // Same for non-zero ISIZE_MIN+1: end stays negative, `start < end` false => empty.
+    // Same for ISIZE_MIN+1: end stays negative, `start < end` false => empty.
+#if mem$platform() > 32
     slice = str.slice.sub(str.sstr(s), 0, (-9223372036854775807L));
+#else
+    slice = str.slice.sub(str.sstr(s), 0, (-2147483647));
+#endif
     tassert(slice.buf == NULL && slice.len == 0);
 
     // NOTE: signed overflow in start/=end += _len is NOT reachable for any input,
