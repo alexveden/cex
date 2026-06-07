@@ -1835,4 +1835,67 @@ test$case(test_hash_string_random)
     return EOK;
 }
 
+test$case(test_hmfree_null_hashtable_poc)
+{
+    // POC: _cexds__hmfree_func (line 640) dereferences h->_hash_table->key_arena
+    // without NULL check. If _hash_table is NULL (e.g. zero-init or partial OOM),
+    // this crashes.
+    //
+    // Before fix: h->_hash_table->key_arena → NULL deref
+    // After fix:  guard with if (h->_hash_table)
+    //
+    // We simulate a hashmap with NULL _hash_table by creating a valid one
+    // then clearing the pointer. Save the old pointer for cleanup.
+
+    hm$(int, int) intmap = hm$new(intmap, mem$);
+    tassert(intmap != NULL);
+
+    // Save the hash table pointer so we can free it after the test
+    void* saved_table = _cexds__header(intmap)->_hash_table;
+
+    uassert_disable();
+    _cexds__header(intmap)->_hash_table = NULL;
+    hm$free(intmap);
+    uassert_enable();
+
+    // Without the fix, we never reach here (crashes on line 640).
+    // Free the leaked hash table allocation manually.
+    mem$free(mem$, saved_table);
+
+    return EOK;
+}
+
+test$case(test_arr_pop_empty_poc)
+{
+    // POC: arr$pop on empty array wraps length to USIZE_MAX and reads
+    // a[USIZE_MAX] (OOB read / segfault). No guard exists in ds.h.
+    //
+    // Before fix: length-- wraps 0→USIZE_MAX, then a[USIZE_MAX] → OOB crash
+    // After fix:  uassert + if(length>0) guard prevent the wrap
+
+    arr$(int) arr = arr$new(arr, mem$);
+    tassert(arr != NULL);
+    tassert_eq(arr$len(arr), 0);
+
+    // Normal pop: push then pop — works correctly
+    arr$push(arr, 42);
+    tassert_eq(arr$len(arr), 1);
+    int val = arr$pop(arr);
+    tassert_eq(val, 42);
+    tassert_eq(arr$len(arr), 0);
+
+    // Pop from empty array with asserts suppressed.
+    // Before fix: length-- wraps 0→USIZE_MAX, a[USIZE_MAX] is OOB crash.
+    // After fix:  length>0 is false → no decrement, reads a[0] (safe).
+    uassert_disable();
+    val = arr$pop(arr);
+    (void)val;
+    tassert_eq(arr$len(arr), 0);  // BEFORE FIX: never reached (crash)
+                                  // AFTER FIX:  passes (length unchanged)
+    uassert_enable();
+    arr$free(arr);
+
+    return EOK;
+}
+
 test$main();

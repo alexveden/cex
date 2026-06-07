@@ -1661,11 +1661,12 @@ struct _cexds__arr_new_kwargs_s
         (a)[i];                                                                                    \
     })
 
-/// Pops and returns the last element (by value). Assert-fails on empty array. Decrements length.
+/// Pops and returns the last element (by value). Decrements (length) only when length > 0.
 #define arr$pop(a)                                                                                 \
     ({                                                                                             \
         _cexds__arr_integrity(a, _CEXDS_ARR_MAGIC);                                                \
-        _cexds__header(a)->length--;                                                               \
+        uassert(_cexds__header(a)->length > 0 && "empty array");                                   \
+        if (_cexds__header(a)->length > 0) { _cexds__header(a)->length--; }                        \
         (a)[_cexds__header(a)->length];                                                            \
     })
 
@@ -7490,7 +7491,7 @@ _cex_allocator_arena__malloc(IAllocator allc, usize size, usize alignment)
 
     #ifdef CEX_TEST
     uassert(self->test_oom_probability >= 0 && self->test_oom_probability <= 1.0 && "test$alloc_set_oom_probability out of range"); \
-    if(os.random.f32() < self->test_oom_probability) {
+    if(self->test_oom_probability > 0 && os.random.f32() < self->test_oom_probability) {
         return NULL;
     }
     #endif
@@ -7608,7 +7609,7 @@ _cex_allocator_arena__realloc(IAllocator allc, void* old_ptr, usize size, usize 
     );
     #ifdef CEX_TEST
     uassert(self->test_oom_probability >= 0 && self->test_oom_probability <= 1.0 && "test$alloc_set_oom_probability out of range"); \
-    if(os.random.f32() < self->test_oom_probability) {
+    if(self->test_oom_probability > 0 && os.random.f32() < self->test_oom_probability) {
         return NULL;
     }
     #endif
@@ -8594,8 +8595,10 @@ _cexds__hmfree_func(void* a, usize elemsize, usize keyoffset)
 
     _cexds__array_header* h = _cexds__header(a);
     _cexds__hmfree_keys_func(a, elemsize, keyoffset);
-    if (h->_hash_table->key_arena) { AllocatorArena.destroy(h->_hash_table->key_arena); }
-    h->allocator->free(h->allocator, h->_hash_table);
+    if (h->_hash_table) {
+        if (h->_hash_table->key_arena) { AllocatorArena.destroy(h->_hash_table->key_arena); }
+        h->allocator->free(h->allocator, h->_hash_table);
+    }
     h->allocator->free(h->allocator, _cexds__base(h));
 }
 

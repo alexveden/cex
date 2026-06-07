@@ -220,11 +220,12 @@ struct _cexds__arr_new_kwargs_s
         (a)[i];                                                                                    \
     })
 
-/// Pops and returns the last element (by value). Assert-fails on empty array. Decrements length.
+/// Pops and returns the last element (by value), asserts non-empty array
 #define arr$pop(a)                                                                                 \
     ({                                                                                             \
         _cexds__arr_integrity(a, _CEXDS_ARR_MAGIC);                                                \
-        _cexds__header(a)->length--;                                                               \
+        uassert(_cexds__header(a)->length > 0 && "empty array");                                   \
+        if (_cexds__header(a)->length > 0) { _cexds__header(a)->length--; }                        \
         (a)[_cexds__header(a)->length];                                                            \
     })
 

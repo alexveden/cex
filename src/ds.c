@@ -637,8 +637,10 @@ _cexds__hmfree_func(void* a, usize elemsize, usize keyoffset)
 
     _cexds__array_header* h = _cexds__header(a);
     _cexds__hmfree_keys_func(a, elemsize, keyoffset);
-    if (h->_hash_table->key_arena) { AllocatorArena.destroy(h->_hash_table->key_arena); }
-    h->allocator->free(h->allocator, h->_hash_table);
+    if (h->_hash_table) {
+        if (h->_hash_table->key_arena) { AllocatorArena.destroy(h->_hash_table->key_arena); }
+        h->allocator->free(h->allocator, h->_hash_table);
+    }
     h->allocator->free(h->allocator, _cexds__base(h));
 }
 
