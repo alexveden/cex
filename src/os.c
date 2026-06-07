@@ -1604,6 +1604,7 @@ typedef struct
 {
     u64 state[2];
     u64 ticks;
+    u64 initial_seed;
 } _cex_os_random_s;
 
 static _Thread_local _cex_os_random_s _cex_os_rnd = { 0 };
@@ -1633,6 +1634,7 @@ _cex_os_random_pcg_step(u64* s0, u64* s1)
 static void
 cex_os__random__seed(u64 seed)
 {
+    _cex_os_rnd.initial_seed = seed;
     u64 value = (seed << 1ULL) | 1ULL;
     value = _cex_os_random_avalanche(value);
     _cex_os_rnd.state[0] = 0U;
@@ -1709,6 +1711,13 @@ static u64
 cex_os__random__ticks(void)
 {
     return _cex_os_rnd.ticks;
+}
+
+/// Initial random generator seed at last os.random.seed() call
+static u64
+cex_os__random__initial_seed(void)
+{
+    return _cex_os_rnd.initial_seed;
 }
 
 void
@@ -1823,6 +1832,7 @@ CEX_NAMESPACE_DEF struct __cex_namespace__os os = {
         .buf = cex_os__random__buf,
         .f32 = cex_os__random__f32,
         .i32 = cex_os__random__i32,
+        .initial_seed = cex_os__random__initial_seed,
         .next = cex_os__random__next,
         .range = cex_os__random__range,
         .seed = cex_os__random__seed,

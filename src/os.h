@@ -427,6 +427,8 @@ struct __cex_namespace__os {
         f32             (*f32)(void);
         /// Random i32 in [min, max)
         i32             (*i32)(i32 min, i32 max);
+        /// Initial random generator seed at last os.random.seed() call
+        u64             (*initial_seed)(void);
         /// Auto-seeds from timer if state is zero, returns the next raw u32
         u32             (*next)(void);
         /// Random usize in [min, max)

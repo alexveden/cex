@@ -4160,6 +4160,8 @@ struct __cex_namespace__os {
         f32             (*f32)(void);
         /// Random i32 in [min, max)
         i32             (*i32)(i32 min, i32 max);
+        /// Initial random generator seed at last os.random.seed() call
+        u64             (*initial_seed)(void);
         /// Auto-seeds from timer if state is zero, returns the next raw u32
         u32             (*next)(void);
         /// Random usize in [min, max)
@@ -5398,6 +5400,9 @@ cex_test_main_fn(int argc, char** argv)
         AllocatorArena_c* test_arena = (AllocatorArena_c*)test$alloc;
         uassert(test$alloc != NULL && "Memory error");
 
+        // Always set random generator to 0 seed, for reproducible tests
+        os.random.seed(0);
+
         AllocatorHeap_c* alloc_heap = (AllocatorHeap_c*)mem$;
         alloc_heap->stats.n_allocs = 0;
         alloc_heap->stats.n_free = 0;
@@ -5443,11 +5448,20 @@ cex_test_main_fn(int argc, char** argv)
             if (!ctx->quiet_mode) {
                 fprintf(
                     stderr,
-                    "[%s] %s (%s)\n",
+                    "[%s] %s (%s)",
                     ctx->has_ansi ? io$ansi("FAIL", "31") : "FAIL",
                     err,
                     t.test_name
                 );
+                if (os.random.ticks() > 0) {
+                    fprintf(
+                        stderr,
+                        " (os.random used initial_seed: %lu ticks: %lu)",
+                        os.random.initial_seed(),
+                        os.random.ticks()
+                    );
+                }
+                fprintf(stderr, "\n");
             } else {
                 fprintf(stderr, "F");
                 if (ctx->is_benchmark) { fprintf(stderr, "\n"); }
@@ -16363,6 +16377,7 @@ typedef struct
 {
     u64 state[2];
     u64 ticks;
+    u64 initial_seed;
 } _cex_os_random_s;
 
 static _Thread_local _cex_os_random_s _cex_os_rnd = { 0 };
@@ -16392,6 +16407,7 @@ _cex_os_random_pcg_step(u64* s0, u64* s1)
 static void
 cex_os__random__seed(u64 seed)
 {
+    _cex_os_rnd.initial_seed = seed;
     u64 value = (seed << 1ULL) | 1ULL;
     value = _cex_os_random_avalanche(value);
     _cex_os_rnd.state[0] = 0U;
@@ -16468,6 +16484,13 @@ static u64
 cex_os__random__ticks(void)
 {
     return _cex_os_rnd.ticks;
+}
+
+/// Initial random generator seed at last os.random.seed() call
+static u64
+cex_os__random__initial_seed(void)
+{
+    return _cex_os_rnd.initial_seed;
 }
 
 void
@@ -16582,6 +16605,7 @@ CEX_NAMESPACE_DEF struct __cex_namespace__os os = {
         .buf = cex_os__random__buf,
         .f32 = cex_os__random__f32,
         .i32 = cex_os__random__i32,
+        .initial_seed = cex_os__random__initial_seed,
         .next = cex_os__random__next,
         .range = cex_os__random__range,
         .seed = cex_os__random__seed,

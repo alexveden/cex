@@ -687,6 +687,9 @@ cex_test_main_fn(int argc, char** argv)
         AllocatorArena_c* test_arena = (AllocatorArena_c*)test$alloc;
         uassert(test$alloc != NULL && "Memory error");
 
+        // Always set random generator to 0 seed, for reproducible tests
+        os.random.seed(0);
+
         AllocatorHeap_c* alloc_heap = (AllocatorHeap_c*)mem$;
         alloc_heap->stats.n_allocs = 0;
         alloc_heap->stats.n_free = 0;
@@ -732,11 +735,20 @@ cex_test_main_fn(int argc, char** argv)
             if (!ctx->quiet_mode) {
                 fprintf(
                     stderr,
-                    "[%s] %s (%s)\n",
+                    "[%s] %s (%s)",
                     ctx->has_ansi ? io$ansi("FAIL", "31") : "FAIL",
                     err,
                     t.test_name
                 );
+                if (os.random.ticks() > 0) {
+                    fprintf(
+                        stderr,
+                        " (os.random used initial_seed: %lu ticks: %lu)",
+                        os.random.initial_seed(),
+                        os.random.ticks()
+                    );
+                }
+                fprintf(stderr, "\n");
             } else {
                 fprintf(stderr, "F");
                 if (ctx->is_benchmark) { fprintf(stderr, "\n"); }

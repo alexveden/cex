@@ -226,18 +226,21 @@ test$case(os_random_chi_square)
     return EOK;
 }
 
-test$case(os_random_ticks)
+test$case(os_random_ticks_and_initial_seed)
 {
     os.random.seed(42);
+    tassert_eq(os.random.initial_seed(), 42);
     tassert_eq(os.random.ticks(), 0);
 
     os.random.next();
+    tassert_eq(os.random.initial_seed(), 42);
     tassert_eq(os.random.ticks(), 1);
 
     os.random.next();
     tassert_eq(os.random.ticks(), 2);
 
     os.random.f32();
+    tassert_eq(os.random.initial_seed(), 42);
     tassert_eq(os.random.ticks(), 3);
 
     os.random.range(0, 10);
@@ -247,8 +250,10 @@ test$case(os_random_ticks)
     tassert(os.random.buf(buf, sizeof(buf)) == buf);
     tassert_eq(os.random.ticks(), 9);
 
-    os.random.seed(42);
+    os.random.seed(420);
+    tassert_eq(os.random.initial_seed(), 420);
     tassert_eq(os.random.ticks(), 0);
+
 
     return EOK;
 }
