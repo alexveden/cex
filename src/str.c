@@ -509,7 +509,9 @@ cex_str__slice__qscmp(const void* a, const void* b)
     str_s self = *(str_s*)a;
     str_s other = *(str_s*)b;
     if (unlikely(self.buf == NULL || other.buf == NULL)) {
-        return (self.buf < other.buf) - (self.buf > other.buf);
+        usize a = (usize)(void*)self.buf;
+        usize b = (usize)(void*)other.buf;
+        return (a < b) - (a > b);
     }
 
     usize min_len = self.len < other.len ? self.len : other.len;
@@ -533,7 +535,9 @@ cex_str__slice__qscmpi(const void* a, const void* b)
     str_s other = *(str_s*)b;
 
     if (unlikely(self.buf == NULL || other.buf == NULL)) {
-        return (self.buf < other.buf) - (self.buf > other.buf);
+        usize a = (usize)(void*)self.buf;
+        usize b = (usize)(void*)other.buf;
+        return (a < b) - (a > b);
     }
 
     usize min_len = self.len < other.len ? self.len : other.len;
@@ -994,7 +998,7 @@ cex_str__convert__to_i8s(str_s s, i8* num)
     if (unlikely(!num)) { return Error.argument; }
     i64 res = 0;
     Exc r = cex_str_to_signed_num_(s.buf, s.len, &res, INT8_MIN, INT8_MAX);
-    *num = res;
+    *num = (i8)res;
     return r;
 }
 
@@ -1004,7 +1008,7 @@ cex_str__convert__to_i16s(str_s s, i16* num)
     if (unlikely(!num)) { return Error.argument; }
     i64 res = 0;
     auto r = cex_str_to_signed_num_(s.buf, s.len, &res, INT16_MIN, INT16_MAX);
-    *num = res;
+    *num = (i16)res;
     return r;
 }
 
@@ -1014,7 +1018,7 @@ cex_str__convert__to_i32s(str_s s, i32* num)
     if (unlikely(!num)) { return Error.argument; }
     i64 res = 0;
     auto r = cex_str_to_signed_num_(s.buf, s.len, &res, INT32_MIN, INT32_MAX);
-    *num = res;
+    *num = (i32)res;
     return r;
 }
 
@@ -1036,7 +1040,7 @@ cex_str__convert__to_u8s(str_s s, u8* num)
     if (unlikely(!num)) { return Error.argument; }
     u64 res = 0;
     Exc r = cex_str_to_unsigned_num_(s.buf, s.len, &res, UINT8_MAX);
-    *num = res;
+    *num = (u8)res;
     return r;
 }
 
@@ -1046,7 +1050,7 @@ cex_str__convert__to_u16s(str_s s, u16* num)
     if (unlikely(!num)) { return Error.argument; }
     u64 res = 0;
     Exc r = cex_str_to_unsigned_num_(s.buf, s.len, &res, UINT16_MAX);
-    *num = res;
+    *num = (u16)res;
     return r;
 }
 
@@ -1056,7 +1060,7 @@ cex_str__convert__to_u32s(str_s s, u32* num)
     if (unlikely(!num)) { return Error.argument; }
     u64 res = 0;
     Exc r = cex_str_to_unsigned_num_(s.buf, s.len, &res, UINT32_MAX);
-    *num = res;
+    *num = (u32)res;
     return r;
 }
 
@@ -1644,7 +1648,11 @@ cex_str_qscmp(const void* a, const void* b)
     const char* _a = *(const char**)a;
     const char* _b = *(const char**)b;
 
-    if (_a == NULL || _b == NULL) { return (_a < _b) - (_a > _b); }
+    if (_a == NULL || _b == NULL) {
+        usize a = (usize)(void*)_a;
+        usize b = (usize)(void*)_b;
+        return (a < b) - (a > b);
+    }
     return strcmp(_a, _b);
 }
 
@@ -1655,7 +1663,11 @@ cex_str_qscmpi(const void* a, const void* b)
     const char* _a = *(const char**)a;
     const char* _b = *(const char**)b;
 
-    if (_a == NULL || _b == NULL) { return (_a < _b) - (_a > _b); }
+    if (_a == NULL || _b == NULL) {
+        usize a = (usize)(void*)_a;
+        usize b = (usize)(void*)_b;
+        return (a < b) - (a > b);
+    }
 
     while (*_a && *_b) {
         int diff = _cex_str__tolower((unsigned char)*_a) - _cex_str__tolower((unsigned char)*_b);
