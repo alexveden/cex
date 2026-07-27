@@ -251,6 +251,7 @@ jobs:
         shell: alpine.sh --root {0}
         run: |
           cat /etc/alpine-release
+          apk add build-base
           apk add clang
           apk add musl-dev
           apk add git
