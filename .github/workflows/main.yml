@@ -259,7 +259,7 @@ jobs:
           apk add zlib-dev
           apk add compiler-rt
           echo "Replacing: cc to clang"
-          rm /usr/bin/cc
+          rm /usr/bin/cc || true
           ln -s /usr/bin/clang /usr/bin/cc 
 
       - name: Environment
