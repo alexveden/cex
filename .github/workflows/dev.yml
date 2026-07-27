@@ -329,9 +329,8 @@ jobs:
 
       - name: Install filcc
         run: |
-          sudo mkdir -p /usr/local/lib/filc
-          sudo tar -xJf /tmp/filc.tar.xz -C /usr/local/lib/filc
-          sudo ln -sf /usr/local/lib/filc/build/bin/filcc /usr/local/bin/filcc
+          sudo tar -xJf /tmp/filc.tar.xz -C /usr/local/ \
+            --wildcards --strip-components=2 'filc-*-linux-x86_64/build/'
           filcc --version
 
       - name: Configure CEX for Fil-C
