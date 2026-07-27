@@ -311,3 +311,41 @@ jobs:
         run: |
           clang-tidy tests/cexstd/json/advanced/serdegen.c
           clang-tidy tests/cexstd/json/basic/serdegen.c
+
+  test-filc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y xz-utils curl
+
+      - name: Download latest Fil-C release
+        run: |
+          TAG=$(curl -sL https://api.github.com/repos/pizlonator/fil-c/releases/latest |
+            python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'])")
+          curl -sL "https://github.com/pizlonator/fil-c/releases/download/$TAG/filc-${TAG#v}-linux-x86_64.tar.xz" \
+            -o /tmp/filc.tar.xz
+
+      - name: Install filcc
+        run: |
+          sudo mkdir -p /usr/local/lib/filc
+          sudo tar -xJf /tmp/filc.tar.xz -C /usr/local/lib/filc
+          sudo ln -sf /usr/local/lib/filc/build/bin/filcc /usr/local/bin/filcc
+          filcc --version
+
+      - name: Configure CEX for Fil-C
+        run: |
+          cat > cex_config.h << 'EOF'
+          #pragma once
+          #define cexy$cc "filcc"
+          #define cexy$cc_args_sanitizer "-fstack-protector-strong"
+          #define CEX_LOG_LVL 4
+          EOF
+
+      - name: Bootstrap ./cex
+        run: cc -g ./cex.c -o ./cex
+
+      - name: Clean and run full test suite
+        run: ./cex test clean all && ./cex test run all
+
