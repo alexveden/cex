@@ -329,8 +329,10 @@ jobs:
 
       - name: Install filcc
         run: |
-          sudo tar -xJf /tmp/filc.tar.xz -C /usr/local/ \
-            --wildcards --strip-components=2 'filc-*-linux-x86_64/build/'
+          sudo tar -xJf /tmp/filc.tar.xz -C /opt/
+          DISTDIR=$(ls -d /opt/filc-*-linux-x86_64)
+          cd "$DISTDIR" && sudo bash setup.sh
+          sudo ln -sf "$DISTDIR/build/bin/filcc" /usr/local/bin/filcc
           filcc --version
 
       - name: Configure CEX for Fil-C
@@ -338,12 +340,13 @@ jobs:
           cat > cex_config.h << 'EOF'
           #pragma once
           #define cexy$cc "filcc"
+          #define cexy$cex_self_cc "filcc"
           #define cexy$cc_args_sanitizer "-fstack-protector-strong"
           #define CEX_LOG_LVL 4
           EOF
 
-      - name: Bootstrap ./cex
-        run: cc -g ./cex.c -o ./cex
+      - name: Bootstrap ./cex with filcc
+        run: filcc -g ./cex.c -o ./cex
 
       - name: Clean and run full test suite
         run: ./cex test clean all && ./cex test run all
