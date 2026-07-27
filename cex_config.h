@@ -37,6 +37,12 @@
 #    define cexy$cc_args "-O0", "-Wall", "-Wextra", "-Werror", "-g", "-std=gnu23"
 #endif
 
+#ifdef CEX_FILC
+#    define cexy$cc "/home/ubertrader/filc/build/bin/clang"
+#    define cexy$cc_args_sanitizer "-fstack-protector-strong"
+#endif
+
+
 #ifdef CEX_VALGRIND
 #    define cexy$cc_args_sanitizer "-fstack-protector-strong"
 #    define cexy$cc_args "-O0", "-Wall", "-Wextra", "-Werror", "-gdwarf-4", "-DCEX_VALGRIND"

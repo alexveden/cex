@@ -12,19 +12,18 @@ typedef struct
 {
     struct
     {
-        u32 magic : 16;   // used for sanity checks
-        u32 elsize : 8;   // maybe multibyte strings in the future?
-        u32 nullterm : 8; // always zero to prevent usage of direct buffer
+        u64 magic : 32;   // used for sanity checks
+        u64 elsize : 8;   // maybe multibyte strings in the future?
+        u64 nullterm : 8; // always zero to prevent usage of direct buffer
     } header;
     Exc err;
     const Allocator_i* allocator;
     usize capacity;
     usize length;
-} __attribute__((packed)) sbuf_head_s;
+} sbuf_head_s;
 
-static_assert(alignof(sbuf_head_s) == 1, "align");
-static_assert(alignof(sbuf_head_s) == alignof(char), "align");
-//static_assert(sizeof(sbuf_head_s) == 36, "size");
+static_assert(alignof(sbuf_head_s) == alignof(u64), "align");
+
 /**
 
 Dynamic string builder class

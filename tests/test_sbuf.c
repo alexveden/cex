@@ -2,6 +2,8 @@
 #include "src/sbuf.c"
 #include "src/test.h"
 
+#define SBUF_MAGIC 0xf00efeed
+
 Exception
 append_to_cap(sbuf_c* s)
 {
@@ -39,7 +41,7 @@ test$case(test_sbuf_new)
     tassert_eq(head->length, 0);
     tassert_eq(head->capacity, 64 - sizeof(sbuf_head_s) - 1);
     tassert_eq(head->header.elsize, 1);
-    tassert_eq(head->header.magic, 0xf00e);
+    tassert_eq(head->header.magic, SBUF_MAGIC);
     tassert_eq(head->header.nullterm, 0);
     tassert(head->allocator == mem$);
     tassert_eq(s, "");
@@ -64,7 +66,7 @@ test$case(test_sbuf_static)
     tassert_eq(head->capacity, arr$len(buf) - sizeof(sbuf_head_s) - 1);
     tassert_eq(head->header.elsize, 1);
     tassert(head->allocator == NULL);
-    tassert_eq(head->header.magic, 0xf00e);
+    tassert_eq(head->header.magic, SBUF_MAGIC);
     tassert_eq(head->header.nullterm, 0);
     tassert_eq(s[0], 0);
     tassert_eq(s[head->capacity], 0);

@@ -34,7 +34,9 @@ test$case(test_sysfunc)
     errno = 777;
     u32 nit = 0;
     e$except_errno (ret = sys_func(-1)) {
-        printf("Except: ret=%d errno=%d\n", ret, errno);
+        if (ret != -1 || errno != 999){
+            printf("Except: ret=%d errno=%d\n", ret, errno);
+        }
         tassert_eq(errno, 999);
         tassert_eq(ret, -1);
         nit++;
