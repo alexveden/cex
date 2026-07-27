@@ -172,6 +172,7 @@ cmd_custom_test(u32 argc, char** argv, void* user_ctx)
 ### Tested compilers / Libc support
 - GCC - 10, 11, 12, 13, 14, 15, 16
 - Clang - 13, 14, 15, 16, 17, 18, 19, 20, 21, 22
+- Fil-C - [Fil-C](https://fil-c.org/) memory safe C/C++ compiler (Clang based, experimental support)
 - MSVC - unsupported, probably never will be
 - LibC tested - glibc (linux), musl (linux), ucrt/mingw (windows), macos
 - Emscripten - for wasm
