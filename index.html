@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cex.C - Comprehensively EXtended C Language</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            scroll-behavior: smooth;
+        }
+        code, pre {
+            font-family: 'Fira Code', monospace;
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+        }
+        .gradient-text {
+            background: linear-gradient(90deg, #4299e1, #9f7aea);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .terminal-window {
+            background: #1a202c;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        .terminal-header {
+            background: #2d3748;
+            border-top-left-radius: 0.5rem;
+            border-top-right-radius: 0.5rem;
+            padding: 0.75rem 1rem;
+            display: flex;
+            align-items: center;
+        }
+        .terminal-button {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+        .terminal-content {
+            padding: 1.5rem;
+            overflow-x: auto;
+        }
+        .command::before {
+            content: '$ ';
+            color: #4299e1;
+            font-weight: bold;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200">
+    <!-- Sticky Navbar -->
+    <nav class="sticky top-0 z-50 gradient-bg shadow-lg">
+        <div class="container mx-auto px-4 py-3">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <div class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center">
+                        <i class="fas fa-code text-white"></i>
+                    </div>
+                    <span class="text-xl font-bold gradient-text">Cex.C</span>
+                </div>
+                
+                <div class="hidden md:flex space-x-8">
+                    <a href="#install" class="hover:text-indigo-400 transition-colors">Install</a>
+                    <a href="#features" class="hover:text-indigo-400 transition-colors">Features</a>
+                    <a href="docs.html" class="hover:text-indigo-400 transition-colors">Documentation</a>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <a href="cex.zip" class="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-md font-medium transition-colors">Download</a>
+                    <a href="https://github.com/alexveden/cex" class="text-2xl hover:text-indigo-400 transition-colors">
+                        <i class="fab fa-github"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="py-20 bg-gradient-to-b from-gray-800 to-gray-900">
+        <div class="container mx-auto px-6 text-left">
+            <h1 class="text-2xl md:text-3xl font-bold mb-6">C<span class="text-blue-400">ex</span>.C - Comprehensively <span class="text-blue-400">Ex</span>tended C Language</h1>
+            <p class="text-1xl md:text-1xl text-gray-400 mb-6 text-center">No dependency, cross-platform, single header C language extension. Making old C c<span class="text-blue-400">ex</span>y again!
+            </p>
+            <div class="flex flex-col sm:flex-row justify-end space-y-4 sm:space-y-0 sm:space-x-4">
+                <a href="#install" class="bg-indigo-600 hover:bg-indigo-700 px-6 py-3 rounded-md font-medium text-lg transition-colors flex items-center justify-center">
+                    <i class="fas fa-download mr-2"></i> Install Now
+                </a>
+                <a href="docs.html" class="border border-gray-600 hover:border-indigo-500 px-6 py-3 rounded-md font-medium text-lg transition-colors flex items-center justify-center">
+                    <i class="fas fa-book mr-2"></i> Documentation
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="py-20 bg-gray-900">
+        <div class="container mx-auto px-6">
+            <h2 class="text-3xl md:text-4xl font-bold text-center mb-16">Features</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Feature Card 1 -->
+                <div class="bg-gray-800 p-6 rounded-lg shadow-lg hover:shadow-xl transition">
+                    <div class="text-blue-500 mb-4">
+                        <i class="fa-solid fa-c text-3xl"></i>   
+                    </div>
+                    <h3 class="text-xl font-semibold mb-3">Single header C file</h3>
+                    <p class="text-gray-400">Still C source code, clang or gcc is all you need. No other dependencies.</p>
+                </div>
+                
+                <!-- Feature Card 2 -->
+                <div class="bg-gray-800 p-6 rounded-lg shadow-lg hover:shadow-xl transition">
+                    <div class="text-green-500 mb-4">
+                        <i class="fa-solid fa-trowel-bricks text-3xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-3">Integrated build system</h3>
+                    <p class="text-gray-400">Write build logic in C, cross-platform build system. No more CMake pain.</p>
+                </div>
+                
+                <!-- Feature Card 3 -->
+                <div class="bg-gray-800 p-6 rounded-lg shadow-lg hover:shadow-xl transition">
+                    <div class="text-purple-500 mb-4">
+                        <i class="fas fa-cogs text-3xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-3">Better C experience</h3>
+                    <p class="text-gray-400">Type safe and generic data structures, better strings, better IO, new memory management.</p>
+                </div>
+                
+                <!-- Feature Card 4 -->
+                <div class="bg-gray-800 p-6 rounded-lg shadow-lg hover:shadow-xl transition">
+                    <div class="text-yellow-500 mb-4">
+                        <i class="fas fa-code text-3xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-3">Developer Friendly</h3>
+                    <p class="text-gray-400">Easy to start, easy to debug, LSP friendly. Tools for making your project cexy.</p>
+                </div>
+                
+                <!-- Feature Card 5 -->
+                <div class="bg-gray-800 p-6 rounded-lg shadow-lg hover:shadow-xl transition">
+                    <div class="text-red-500 mb-4">
+                        <i class="fa-solid fa-ranking-star text-3xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-3">Code quality tools</h3>
+                    <p class="text-gray-400">Unit test engine, sanitizers and fuzzer support out of the box.</p>
+                </div>
+                
+                <!-- Feature Card 6 -->
+                <div class="bg-gray-800 p-6 rounded-lg shadow-lg hover:shadow-xl transition">
+                    <div class="text-pink-500 mb-4">
+                        <i class="fa-solid fa-code-branch text-3xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-3">New way of doing C</h3>
+                    <p class="text-gray-400">Introducing modern practices: error handling, namespaces, type system, memory allocators, and more...</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+<!-- C vs CEX Section -->
+<section id="examples" class="py-20 bg-gray-800">
+    <div class="container mx-auto px-6">
+        <h2 class="text-3xl md:text-4xl font-bold text-center mb-16">C vs Cex.C</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            <!-- C Column -->
+            <div class="bg-gray-700 p-6 rounded-lg">
+                <h3 class="text-2xl font-semibold mb-4 text-blue-400">C</h3>
+                <ul class="space-y-3 text-gray-300">
+                    <li class="flex items-start">
+                        <span class="text-blue-400 mr-2">•</span>
+                        <span>Bare-bone language with DIY nature</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="text-blue-400 mr-2">•</span>
+                        <span>Bug prone manual memory management</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="text-blue-400 mr-2">•</span>
+                        <span>Overcomplicated 3rd party build systems</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="text-blue-400 mr-2">•</span>
+                        <span>Loose error handling and no tracebacks</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="text-blue-400 mr-2">•</span>
+                        <span>Opt-in code quality tools</span>
+                    </li>
+                </ul>
+            </div>
+            
+            <!-- CEX Column -->
+            <div class="bg-gray-700 p-6 rounded-lg">
+                <h3 class="text-2xl font-semibold mb-4 text-green-400">Cex.C</h3>
+                <ul class="space-y-3 text-gray-300">
+                    <li class="flex items-start">
+                        <span class="text-green-400 mr-2">•</span>
+                        <span>Type safe data structures, strings, IO</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="text-green-400 mr-2">•</span>
+                        <span>Allocator driven memory management with scoping</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="text-green-400 mr-2">•</span>
+                        <span>Builds itself, no dependencies, cross-platform builds</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="text-green-400 mr-2">•</span>
+                        <span>Convenient error handling with tracebacks</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="text-green-400 mr-2">•</span>
+                        <span>Unit tests, sanitizers and fuzzer included</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Philosophy Section -->
+<section id="philosophy" class="py-20 bg-gray-900">
+    <div class="container mx-auto px-6">
+        <h2 class="text-3xl md:text-4xl font-bold text-center mb-16">C<span class="text-blue-400">ex</span>.C Philosophy</h2>
+        
+        <div class="max-w-3xl mx-auto">
+            <ul class="space-y-6 text-gray-300">
+                <li class="flex items-start">
+                    <span class="text-blue-400 mr-3 text-xl">•</span>
+                    <div>
+                        <h3 class="text-xl font-semibold text-white mb-1">Never depends</h3>
+                        <p class="text-gray-400">Dependencies is a curse for a long-term longevity of a project. With Cex all is you need to start is a modern C compiler (gcc/clang) and cex.h file.</p>
+                    </div>
+                </li>
+                
+                <li class="flex items-start">
+                    <span class="text-blue-400 mr-3 text-xl">•</span>
+                    <div>
+                        <h3 class="text-xl font-semibold text-white mb-1">Simplicity is a virtue</h3>
+                        <p class="text-gray-400">Cex tries to make old C better, but without reinventing new compiler and tool chain. </p>
+                    </div>
+                </li>
+                
+                <li class="flex items-start">
+                    <span class="text-blue-400 mr-3 text-xl">•</span>
+                    <div>
+                        <h3 class="text-xl font-semibold text-white mb-1">Developer experience first</h3>
+                        <p class="text-gray-400">Cex maintains tool-set which helping you in building, testing and maintaining your project seamlessly.</p>
+                    </div>
+                </li>
+                
+                <li class="flex items-start">
+                    <span class="text-blue-400 mr-3 text-xl">•</span>
+                    <div>
+                        <h3 class="text-xl font-semibold text-white mb-1">Long-term conservatism</h3>
+                        <p class="text-gray-400">Projects built with Cex should be compilable out of the box after 10 years they were released.</p>
+                    </div>
+                </li>
+                
+                <li class="flex items-start">
+                    <span class="text-blue-400 mr-3 text-xl">•</span>
+                    <div>
+                        <h3 class="text-xl font-semibold text-white mb-1">80/20 Principle</h3>
+                        <p class="text-gray-400">Cex is focusing on smooth coding experience with solving 80% of generic problems. If you need something too fast, too small, too specialized - do it yourself, tailor other 20% for your specific needs.</p>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+    <!-- Install Section -->
+    <section id="install" class="py-20 bg-gray-800">
+        <div class="container mx-auto px-4">
+            <h2 class="text-3xl md:text-4xl font-bold text-center mb-12">Install <span class="gradient-text">Cex.C</span></h2>
+            
+            <div class="max-w-3xl mx-auto mb-16">
+                <h3 class="text-xl font-semibold mb-4">Quick new CEX project</h3>
+                <div class="terminal-window">
+                    <div class="terminal-header">
+                        <div class="terminal-button bg-red-500"></div>
+                        <div class="terminal-button bg-yellow-500"></div>
+                        <div class="terminal-button bg-green-500"></div>
+                    </div>
+                    <div class="terminal-content space-y-4">
+                        <div>
+                            <p class="text-gray-400 mb-1"># 1. Make new project directory</p>
+                            <pre class="command text-green-400">mkdir myproj && cd myproj</pre>
+                        </div>
+                        <div>
+                            <p class="text-gray-400 mb-1"># 2. Run automatic project initialization</p>
+                            <pre class="command text-green-400">curl -fsSL https://cex-c.org/install.sh | bash</pre>
+                            <p class="text-gray-400 mb-1"># or</p>
+                            <pre class="command text-green-400">wget https://cex-c.org/install.sh -O - | bash</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="max-w-3xl mx-auto">
+                <h3 class="text-xl font-semibold mb-4">Manual Installation</h3>
+                <div class="terminal-window">
+                    <div class="terminal-header">
+                        <div class="terminal-button bg-red-500"></div>
+                        <div class="terminal-button bg-yellow-500"></div>
+                        <div class="terminal-button bg-green-500"></div>
+                    </div>
+                    <div class="terminal-content space-y-4">
+                        <div>
+                            <p class="text-gray-400 mb-1"># 1. Make new project directory</p>
+                            <pre class="command text-green-400">mkdir myproj && cd myproj</pre>
+                        </div>
+                        <div>
+                            <p class="text-gray-400 mb-1"># 2. Download CEX</p>
+                            <pre class="command text-green-400">curl -O https://cex-c.org/cex.h</pre>
+                            <p class="text-gray-400 mb-1"># or</p>
+                            <pre class="command text-green-400">wget https://cex-c.org/cex.h</pre>
+                        </div>
+                        <div>
+                            <p class="text-gray-400 mb-1"># 3. Prime build system</p>
+                            <pre class="command text-green-400">gcc -D CEX_NEW -x c ./cex.h -o cex</pre>
+                            <p class="text-gray-400 mb-1"># or</p>
+                            <pre class="command text-green-400">clang -D CEX_NEW -x c ./cex.h -o cex</pre>
+                        </div>
+                        <div>
+                            <p class="text-gray-400 mb-1"># 4. Create boilerplate project</p>
+                            <pre class="command text-green-400">./cex</pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 py-10">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-6 md:mb-0">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center">
+                            <i class="fas fa-code text-white"></i>
+                        </div>
+                        <span class="text-xl font-bold gradient-text">Cex.C - Comprehensively EXtended C Language</span>
+                    </div>
+                </div>
+                
+                <div class="flex space-x-6">
+                    <a href="https://github.com/alexveden/cex" class="text-2xl hover:text-indigo-400 transition-colors">
+                        <i class="fab fa-github"></i>
+                    </a>
+                    <!-- <a href="#" class="text-2xl hover:text-indigo-400 transition-colors"> -->
+                    <!--     <i class="fab fa-discord"></i> -->
+                    <!-- </a> -->
+                    <!-- <a href="#" class="text-2xl hover:text-indigo-400 transition-colors"> -->
+                    <!--     <i class="fab fa-twitter"></i> -->
+                    <!-- </a> -->
+                    <!-- <a href="#" class="text-2xl hover:text-indigo-400 transition-colors"> -->
+                    <!--     <i class="fab fa-linkedin"></i> -->
+                    <!-- </a> -->
+                </div>
+            </div>
+            
+            <div class="border-t border-gray-700 mt-8 pt-8 text-center text-gray-400">
+                <p>© 2024-2025 Alex Veden. MIT License.</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
