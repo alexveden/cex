@@ -31,14 +31,15 @@ const struct _CEX_Error_struct Error = {
 #    define CEX_TRACEBACK_MAX_FRAMES 64
 #endif
 
-#if !cex$is_freestanding && (defined(__linux__) || defined(__APPLE__) || defined(__MINGW32__))
+#if !cex$is_freestanding && (defined(__linux__) || defined(__APPLE__) || defined(__MINGW32__)) && \
+    (!defined(cex$enable_minimal) || defined(cex$enable_str))
 #    define _cex__unwind 1
 #    include <unwind.h>
 #else
 #    define _cex__unwind 0
 #endif
 
-#if !cex$is_freestanding && (defined(__linux__) || defined(__APPLE__))
+#if _cex__unwind && (defined(__linux__) || defined(__APPLE__))
 #    define _cex__posix 1
 #    include <signal.h>
 #    include <unistd.h>
@@ -56,9 +57,9 @@ const struct _CEX_Error_struct Error = {
 #    define _cex__win32 0
 #endif
 
-static int _cex__in_panic;
-
 #if _cex__unwind
+
+static int _cex__in_panic;
 
 #if _cex__posix
 static void
@@ -87,42 +88,6 @@ _cex__fd_write(int fd, const char* s, usize n)
     fwrite(s, 1, n, stderr);
 }
 #endif
-
-static void
-_cex__put(int fd, const char* s)
-{
-    usize n = 0;
-    while (s[n] != '\0') { n++; }
-    _cex__fd_write(fd, s, n);
-}
-
-static void
-_cex__put_hex(int fd, uintptr_t v)
-{
-    static const char hex[] = "0123456789abcdef";
-    char buf[2 + sizeof(uintptr_t) * 2];
-    int digits = (int)(sizeof(uintptr_t) * 2);
-    buf[0] = '0';
-    buf[1] = 'x';
-    for (int i = 0; i < digits; i++) { buf[2 + i] = hex[(v >> ((digits - 1 - i) * 4)) & 0xf]; }
-    _cex__fd_write(fd, buf, sizeof(buf));
-}
-
-static void
-_cex__put_dec(int fd, long v)
-{
-    char buf[24];
-    int i = (int)sizeof(buf);
-    bool neg = v < 0;
-    unsigned long u = neg ? (unsigned long)(-v) : (unsigned long)v;
-    if (u == 0) { buf[--i] = '0'; }
-    while (u > 0) {
-        buf[--i] = (char)('0' + (u % 10));
-        u /= 10;
-    }
-    if (neg) { buf[--i] = '-'; }
-    _cex__fd_write(fd, &buf[i], sizeof(buf) - (usize)i);
-}
 
 struct _cex__unwind_s {
     void* frames[CEX_TRACEBACK_MAX_FRAMES];
@@ -219,51 +184,38 @@ __attribute__((noinline)) static void
 _cex__report(const char* reason, int sig, uintptr_t fault_addr, int skip)
 {
     void* frames[CEX_TRACEBACK_MAX_FRAMES];
-    int fd = 2;
+    static alignas(8) char buf[256 + CEX_TRACEBACK_MAX_FRAMES * 64];
 
     if (__atomic_exchange_n(&_cex__in_panic, 1, __ATOMIC_RELAXED) != 0) { return; }
     int n = _cex__capture_frames(frames, skip);
 
-    _cex__put(fd, "\n=== CEX CRASH REPORT v1 ===\n");
-    _cex__put(fd, "reason: ");
-    _cex__put(fd, reason);
-    _cex__put(fd, "\n");
+    sbuf_c s = sbuf.create_static(buf, sizeof(buf));
+
+    sbuf.appendf(&s, "\n=== CEX CRASH REPORT v1 ===\nreason: %s\n", reason);
     if (sig != 0) {
 #if _cex__win32
-        _cex__put(fd, "exception: ");
-        _cex__put_hex(fd, (uintptr_t)(u32)sig);
+        sbuf.appendf(&s, "exception: %p\n", (void*)(uintptr_t)(u32)sig);
 #else
-        _cex__put(fd, "signal: ");
-        _cex__put_dec(fd, sig);
+        sbuf.appendf(&s, "signal: %d\n", sig);
 #endif
-        _cex__put(fd, "\n");
     }
-    if (fault_addr != 0) {
-        _cex__put(fd, "fault_addr: ");
-        _cex__put_hex(fd, fault_addr);
-        _cex__put(fd, "\n");
-    }
+    if (fault_addr != 0) { sbuf.appendf(&s, "fault_addr: %p\n", (void*)fault_addr); }
 #if _cex__posix || _cex__win32
-    _cex__put(fd, "exe_base: ");
-    _cex__put_hex(fd, _cex__exe_lo);
-    _cex__put(fd, "\n");
+    sbuf.appendf(&s, "exe_base: %p\n", (void*)_cex__exe_lo);
 #endif
-    _cex__put(fd, "frame_count: ");
-    _cex__put_dec(fd, n);
-    _cex__put(fd, "\n");
+    sbuf.appendf(&s, "frame_count: %d\n", n);
     for (int i = 0; i < n; i++) {
         uintptr_t ip = (uintptr_t)frames[i];
-        _cex__put(fd, "frame: ");
-        _cex__put_hex(fd, ip);
         if (_cex__is_app_addr(ip)) {
-            _cex__put(fd, "  app +");
-            _cex__put_hex(fd, ip - _cex__exe_lo);
+            uintptr_t off = ip - _cex__exe_lo;
+            sbuf.appendf(&s, "frame: %p  app +%p\n", (void*)ip, (void*)off);
         } else {
-            _cex__put(fd, "  other");
+            sbuf.appendf(&s, "frame: %p  other\n", (void*)ip);
         }
-        _cex__put(fd, "\n");
     }
-    _cex__put(fd, "=== END ===\n");
+    sbuf.appendf(&s, "=== END ===\n");
+
+    _cex__fd_write(2, s, sbuf.len(&s));
 }
 
 #else // _cex__unwind

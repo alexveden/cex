@@ -517,8 +517,9 @@ Crash report:
 
 - On hard failure, POSIX crash signals and Windows unhandled exceptions CEX
   prints an address-only `=== CEX CRASH REPORT v1 ===` block to stderr.
-- The report is async-signal-safe: it writes with `write()` / `WriteFile()` only
-  and unwinds via `_Unwind_Backtrace`, so it can run inside a signal handler.
+- The report is async-signal-safe: it unwinds via `_Unwind_Backtrace`, is
+  formatted into a static `sbuf` (`sbuf.appendf`, no allocation) and emitted
+  with a single `write()` / `WriteFile()` call, so it can run inside a handler.
 - An atomic guard serializes reporting: only the first crash in the process is
   reported, later ones re-raise/continue without a report.
 - Each frame is a raw instruction pointer tagged `app` (inside the executable)
