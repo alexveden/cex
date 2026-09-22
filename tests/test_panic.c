@@ -1,195 +1,105 @@
 #include "src/all.c"
 
-#if defined(__linux__) || defined(__APPLE__)
-#    include <sys/wait.h>
-#    include <unistd.h>
-
-static int
-_run_child(void (*fn)(void), char* out, usize out_cap, int* out_sig)
+/// Path to the prebuilt crash fixture (see cex.c:cmd_custom_test), e.g.
+/// `build/tests/os_test/panic.c.linux`
+static char*
+_panic_app(IAllocator allc)
 {
-    int fds[2];
-    if (pipe(fds) != 0) { return -1; }
-    pid_t pid = fork();
-    if (pid < 0) {
-        close(fds[0]);
-        close(fds[1]);
-        return -1;
-    }
-    if (pid == 0) {
-        close(fds[0]);
-        dup2(fds[1], 2);
-        close(fds[1]);
-        fn();
-        _exit(0);
-    }
-    close(fds[1]);
-    usize n = 0;
-    ssize_t r = 0;
-    while (n + 1 < out_cap && (r = read(fds[0], out + n, out_cap - 1 - n)) > 0) { n += (usize)r; }
-    out[n] = '\0';
-    close(fds[0]);
-    int status = 0;
-    waitpid(pid, &status, 0);
-    *out_sig = WIFSIGNALED(status) ? WTERMSIG(status) : 0;
-    return 0;
+    return cexy.target_make(
+        "tests/os_test/panic.c",
+        cexy$build_dir,
+        str.fmt(allc, ".%s", os.platform.to_str(os.platform.current())),
+        allc
+    );
 }
 
-static void
-_child_report(void)
+/// Runs the fixture with `mode` and returns its combined stdout+stderr (on `allc`).
+/// Returns NULL if the fixture is missing or exits successfully (it must crash).
+static char*
+_run_panic(char* mode, IAllocator allc)
 {
-    _cex__report("assert", 0, 0, 1);
-}
-
-static void
-_child_uassert(void)
-{
-    uassert(false && "test_panic_uassert");
-}
-
-static void
-_child_signal(void)
-{
-    __cex__catch_signals();
-    raise(SIGSEGV);
-}
-#endif
-
-#ifdef _WIN32
-static int
-_run_child_win32(const char* mode, char* out, usize out_cap, DWORD* out_code)
-{
-    SECURITY_ATTRIBUTES sa = { .nLength = sizeof(sa), .bInheritHandle = TRUE };
-    HANDLE rd = NULL;
-    HANDLE wr = NULL;
-    if (!CreatePipe(&rd, &wr, &sa, 0)) { return -1; }
-    SetHandleInformation(rd, HANDLE_FLAG_INHERIT, 0);
-
-    STARTUPINFOA si = { 0 };
-    si.cb = sizeof(si);
-    si.dwFlags = STARTF_USESTDHANDLES;
-    si.hStdError = wr;
-    si.hStdOutput = wr;
-    si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
-
-    PROCESS_INFORMATION pi = { 0 };
-    char exe[MAX_PATH] = { 0 };
-    if (GetModuleFileNameA(NULL, exe, sizeof(exe)) == 0) {
-        CloseHandle(rd);
-        CloseHandle(wr);
-        return -1;
+    char* app = _panic_app(allc);
+    if (app == NULL || !os.path.exists(app)) {
+        log$error("panic fixture not built: %s\n", app ? app : "(null)");
+        return NULL;
     }
 
-    SetEnvironmentVariableA("CEX_PANIC_CHILD", mode);
-    char cmd[MAX_PATH + 4] = { 0 };
-    usize elen = strlen(exe);
-    cmd[0] = '"';
-    memcpy(cmd + 1, exe, elen);
-    cmd[elen + 1] = '"';
-    BOOL ok = CreateProcessA(exe, cmd, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi);
-    SetEnvironmentVariableA("CEX_PANIC_CHILD", NULL);
-    CloseHandle(wr);
-    if (!ok) {
-        CloseHandle(rd);
-        return -1;
-    }
+    char* args[] = { app, mode, NULL };
+    os_cmd_c c = { 0 };
+    os_cmd_flags_s flags = { .combine_stdouterr = 1, .no_window = 1 };
+    if (os.cmd.create(&c, args, arr$len(args), &flags) != EOK) { return NULL; }
 
-    usize n = 0;
-    DWORD r = 0;
-    while (n + 1 < out_cap && ReadFile(rd, out + n, (DWORD)(out_cap - 1 - n), &r, NULL) && r > 0) {
-        n += r;
-    }
-    out[n] = '\0';
-    CloseHandle(rd);
-
-    WaitForSingleObject(pi.hProcess, INFINITE);
-    DWORD code = 0;
-    GetExitCodeProcess(pi.hProcess, &code);
-    CloseHandle(pi.hThread);
-    CloseHandle(pi.hProcess);
-    *out_code = code;
-    return 0;
+    char* out = os.cmd.read_all(&c, allc);
+    if (os.cmd.wait(&c, 1, 0) == EOK) { return NULL; } // expected to crash
+    return out;
 }
-#endif
 
-test$setup_suite()
+// NOTE: tassert() returns from the enclosing test$case, so shared assertions live in a macro
+#define _panic$assert_common(out)                                                                  \
+    do {                                                                                           \
+        tassert(out != NULL);                                                                      \
+        tassert(str.find(out, "=== CEX CRASH REPORT v1 ===") != NULL);                             \
+        tassert(str.find(out, "exe_base: 0x") != NULL);                                            \
+        tassert(str.find(out, "frame_count: ") != NULL);                                           \
+        tassert(str.find(out, "frame: 0x") != NULL);                                               \
+        tassert(str.find(out, "  app +0x") != NULL);                                               \
+        tassert(str.find(out, "=== END ===") != NULL);                                             \
+    } while (0)
+
+test$case(test_panic_assert)
 {
-#ifdef _WIN32
-    const char* mode = getenv("CEX_PANIC_CHILD");
-    if (mode != NULL) {
-        if (strcmp(mode, "report") == 0) {
-            _cex__report("assert", 0, 0, 1);
-        } else if (strcmp(mode, "segv") == 0) {
-            __cex__catch_signals();
-            volatile int* p = NULL;
-            *p = 1;
-        }
-        exit(0);
+    mem$scope(tmem$, _)
+    {
+        char* out = _run_panic("assert", _);
+        _panic$assert_common(out);
+        tassert(str.find(out, "reason: assert") != NULL);
     }
-#endif
     return EOK;
 }
 
-test$case(test_panic_report_format)
+test$case(test_panic_segv)
 {
+    mem$scope(tmem$, _)
+    {
+        char* out = _run_panic("segv", _);
+        _panic$assert_common(out);
 #if defined(__linux__) || defined(__APPLE__)
-    char out[8192];
-    int sig = 0;
-    tassert_eq(_run_child(_child_report, out, sizeof(out), &sig), 0);
-    tassert(sig == 0);
+        tassert(str.find(out, "reason: signal") != NULL);
+        tassert(str.find(out, "signal: 11") != NULL);
 #elif defined(_WIN32)
-    char out[8192];
-    DWORD code = 0;
-    tassert_eq(_run_child_win32("report", out, sizeof(out), &code), 0);
-    tassert(code == 0);
-#else
-    return EOK;
+        tassert(str.find(out, "reason: exception") != NULL);
+        tassert(str.find(out, "exception: 0x") != NULL);
 #endif
-    tassert(str.find(out, "=== CEX CRASH REPORT v1 ===") != NULL);
-    tassert(str.find(out, "reason: assert") != NULL);
-    tassert(str.find(out, "exe_base: 0x") != NULL);
-    tassert(str.find(out, "frame_count: ") != NULL);
-    tassert(str.find(out, "frame: 0x") != NULL);
-    tassert(str.find(out, "  app +0x") != NULL);
-    tassert(str.find(out, "=== END ===") != NULL);
+    }
     return EOK;
 }
 
-test$case(test_panic_uassert_crashes)
+test$case(test_panic_fpe)
+{
+    mem$scope(tmem$, _)
+    {
+        char* out = _run_panic("fpe", _);
+        _panic$assert_common(out);
+#if defined(__linux__) || defined(__APPLE__)
+        tassert(str.find(out, "signal: 8") != NULL);
+#endif
+    }
+    return EOK;
+}
+
+test$case(test_panic_abort)
 {
 #if defined(__linux__) || defined(__APPLE__)
-    char out[8192];
-    int sig = 0;
-    tassert_eq(_run_child(_child_uassert, out, sizeof(out), &sig), 0);
-    tassert(sig != 0);
-#else
-    return EOK;
+    mem$scope(tmem$, _)
+    {
+        char* out = _run_panic("abort", _);
+        _panic$assert_common(out);
+        tassert(str.find(out, "signal: 6") != NULL);
+    }
 #endif
     return EOK;
 }
 
-test$case(test_panic_signal_report)
-{
-#if defined(__linux__) || defined(__APPLE__)
-    char out[8192];
-    int sig = 0;
-    tassert_eq(_run_child(_child_signal, out, sizeof(out), &sig), 0);
-    tassert(str.find(out, "=== CEX CRASH REPORT v1 ===") != NULL);
-    tassert(str.find(out, "reason: signal") != NULL);
-    tassert(str.find(out, "signal: 11") != NULL);
-    tassert(sig == SIGSEGV);
-#elif defined(_WIN32) && !mem$asan_enabled()
-    char out[8192];
-    DWORD code = 0;
-    tassert_eq(_run_child_win32("segv", out, sizeof(out), &code), 0);
-    tassert(str.find(out, "=== CEX CRASH REPORT v1 ===") != NULL);
-    tassert(str.find(out, "reason: exception") != NULL);
-    tassert(str.find(out, "exception: 0x") != NULL);
-    tassert(str.find(out, "  app +0x") != NULL);
-    tassert(code != 0);
-#else
-    return EOK;
-#endif
-    return EOK;
-}
+#undef _panic$assert_common
 
 test$main();
