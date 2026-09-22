@@ -1,0 +1,114 @@
+name: TracebackExperiments
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ experiments, dev* ]
+  pull_request:
+    branches: [ experiments, dev* ]
+
+
+jobs:
+  traceback-linux:
+    name: ${{ matrix.compiler }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      # Don't abort runners if a single one fails
+      fail-fast: false
+      matrix:
+        compiler: ["gcc", "clang"]
+
+    steps:
+      - name: Checkout cex
+        uses: actions/checkout@v4
+
+      - name: compiler setup
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ${{ matrix.compiler }}
+          ${{ matrix.compiler }} --version
+
+      - uses: ./.github/actions/cex_traceback
+        name: traceback experiments
+        with:
+          shell: bash
+        env:
+          CC: ${{ matrix.compiler }}
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: traceback-linux-${{ matrix.compiler }}
+          path: examples/traceback/build/traceback_out/
+
+
+  traceback-windows:
+    name: windows-${{ matrix.msys }}
+    runs-on: windows-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        msys:
+          - mingw64
+          - clang64
+
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.msys }}
+          update: true
+          install: >-
+            git
+          pacboy: >-
+            toolchain:p
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/cex_traceback
+        name: traceback experiments
+        with:
+          shell: 'msys2 {0}'
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: traceback-windows-${{ matrix.msys }}
+          path: examples/traceback/build/traceback_out/
+
+
+  traceback-macos:
+    name: ${{ matrix.runs-on }}
+    runs-on: ${{ matrix.runs-on }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        runs-on:
+          - macos-15-intel
+          - macos-latest
+
+    steps:
+      - name: Checkout cex
+        uses: actions/checkout@v4
+
+      - name: cc version
+        run: cc --version
+
+      - uses: ./.github/actions/cex_traceback
+        name: traceback experiments
+        with:
+          shell: bash
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: traceback-${{ matrix.runs-on }}
+          path: examples/traceback/build/traceback_out/

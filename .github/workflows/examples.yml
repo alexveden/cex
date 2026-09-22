@@ -67,6 +67,9 @@ jobs:
       - uses: ./.github/actions/cex_examples
         name: cex examples suite
 
+      - uses: ./.github/actions/cex_traceback
+        name: traceback experiments
+
 
 
   tests-windows:
@@ -139,6 +142,11 @@ jobs:
         with:
           shell: 'msys2 {0}'
 
+      - uses: ./.github/actions/cex_traceback
+        name: traceback experiments
+        with:
+          shell: 'msys2 {0}'
+
   tests-macos:
     name: ${{ matrix.runs-on }}-${{ matrix.cex_preset }}
     runs-on: ${{ matrix.runs-on }}
@@ -172,4 +180,7 @@ jobs:
 
       - uses: ./.github/actions/cex_examples
         name: cex examples suite
+
+      - uses: ./.github/actions/cex_traceback
+        name: traceback experiments
 
