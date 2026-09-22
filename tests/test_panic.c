@@ -1,6 +1,7 @@
 #include "src/all.c"
 
-#if !defined(__EMSCRIPTEN__)
+// Fil-C owns the crash path (like ASAN), so the address-only report is not emitted; skip
+#if !defined(__EMSCRIPTEN__) && !defined(__FILC__)
 
 /// Path to the prebuilt crash fixture (see cex.c:cmd_custom_test), e.g.
 /// `build/tests/os_test/panic.c.linux`
@@ -111,6 +112,6 @@ test$case(test_panic_abort)
 
 #undef _panic$assert_common
 
-#endif // #if !defined(__EMSCRIPTEN__)
+#endif // #if !defined(__EMSCRIPTEN__) && !defined(__FILC__)
 
 test$main();

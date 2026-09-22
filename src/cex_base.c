@@ -122,7 +122,7 @@ _cex__capture_frames(void** out, int skip)
 __attribute__((noinline)) static int
 _cex__capture_frames(void** out, int skip)
 {
-    return (int)CaptureStackBackTrace((DWORD)skip, (DWORD)CEX_TRACEBACK_MAX_FRAMES, out, NULL);
+    return (int)RtlCaptureStackBackTrace((DWORD)skip, (DWORD)CEX_TRACEBACK_MAX_FRAMES, out, NULL);
 }
 #endif
 

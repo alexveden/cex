@@ -6882,7 +6882,7 @@ __declspec(dllimport) BOOL     __stdcall SetEnvironmentVariableA(const char*, co
 __declspec(dllimport) void*    __stdcall GetModuleHandleA(const char*);
 __declspec(dllimport) LPTOP_LEVEL_EXCEPTION_FILTER __stdcall SetUnhandledExceptionFilter(LPTOP_LEVEL_EXCEPTION_FILTER);
 __declspec(dllimport) DWORD    __stdcall SetErrorMode(DWORD);
-__declspec(dllimport) unsigned short __stdcall CaptureStackBackTrace(DWORD, DWORD, void**, DWORD*);
+__declspec(dllimport) unsigned short __stdcall RtlCaptureStackBackTrace(DWORD, DWORD, void**, DWORD*);
 
 // --- kernel32.dll (debug, test-only) ---
 __declspec(dllimport) BOOL     __stdcall IsBadReadPtr(const void*, size_t);
@@ -7018,7 +7018,7 @@ _cex__capture_frames(void** out, int skip)
 __attribute__((noinline)) static int
 _cex__capture_frames(void** out, int skip)
 {
-    return (int)CaptureStackBackTrace((DWORD)skip, (DWORD)CEX_TRACEBACK_MAX_FRAMES, out, NULL);
+    return (int)RtlCaptureStackBackTrace((DWORD)skip, (DWORD)CEX_TRACEBACK_MAX_FRAMES, out, NULL);
 }
 #endif
 
