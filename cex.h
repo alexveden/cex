@@ -6819,6 +6819,11 @@ typedef long (__stdcall* LPTOP_LEVEL_EXCEPTION_FILTER)(EXCEPTION_POINTERS*);
 #define INFINITE                  0xFFFFFFFF
 #endif
 
+// Exception code
+#ifndef EXCEPTION_INT_DIVIDE_BY_ZERO
+#define EXCEPTION_INT_DIVIDE_BY_ZERO 0xC0000094
+#endif
+
 // FormatMessage flags
 #ifndef FORMAT_MESSAGE_FROM_SYSTEM
 #define FORMAT_MESSAGE_FROM_SYSTEM     0x00001000
@@ -6883,6 +6888,7 @@ __declspec(dllimport) void*    __stdcall GetModuleHandleA(const char*);
 __declspec(dllimport) LPTOP_LEVEL_EXCEPTION_FILTER __stdcall SetUnhandledExceptionFilter(LPTOP_LEVEL_EXCEPTION_FILTER);
 __declspec(dllimport) DWORD    __stdcall SetErrorMode(DWORD);
 __declspec(dllimport) unsigned short __stdcall RtlCaptureStackBackTrace(DWORD, DWORD, void**, DWORD*);
+__declspec(dllimport) void   __stdcall RaiseException(DWORD, DWORD, DWORD, const uintptr_t*);
 
 // --- kernel32.dll (debug, test-only) ---
 __declspec(dllimport) BOOL     __stdcall IsBadReadPtr(const void*, size_t);

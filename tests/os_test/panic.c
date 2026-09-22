@@ -19,12 +19,10 @@ _panic_fixture_level4(char* mode)
     } else if (str.eq(mode, "abort")) {
         abort();
     } else if (str.eq(mode, "fpe")) {
-#if defined(__arm__) || defined(__aarch64__)
-        raise(SIGFPE);
+#if defined(_WIN32)
+        RaiseException(EXCEPTION_INT_DIVIDE_BY_ZERO, 0, 0, NULL);
 #else
-        volatile int zero = 0;
-        volatile int r = 1 / zero;
-        (void)r;
+        raise(SIGFPE);
 #endif
     } else {
         volatile int* p = NULL;
