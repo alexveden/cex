@@ -234,7 +234,7 @@ struct _cexds__arr_new_kwargs_s
     ({                                                                                             \
         if (unlikely(!arr$grow_check(a, 1))) {                                                     \
             uassert(false && "arr$push memory error");                                             \
-            abort();                                                                               \
+            cex$platform_panic();                                                                  \
         }                                                                                          \
         (a)[_cexds__header(a)->length++] = (value);                                                \
         &(a)[_cexds__header(a)->length-1];                                                         \
@@ -261,7 +261,7 @@ struct _cexds__arr_new_kwargs_s
         uassert(arr_len < PTRDIFF_MAX && "negative length or overflow");                           \
         if (unlikely(!arr$grow_check(a, arr_len))) {                                               \
             uassert(false && "arr$pusha memory error");                                            \
-            abort();                                                                               \
+            cex$platform_panic();                                                                  \
         }                                                                                          \
         for (usize i = 0; i < arr_len; i++) { (a)[_cexds__header(a)->length++] = ((array)[i]); }   \
         /* NOLINTEND */                                                                            \
@@ -280,7 +280,7 @@ struct _cexds__arr_new_kwargs_s
     do {                                                                                           \
         if (unlikely(!arr$grow_check(a, 1))) {                                                     \
             uassert(false && "arr$ins memory error");                                              \
-            abort();                                                                               \
+            cex$platform_panic();                                                                  \
         }                                                                                          \
         _cexds__header(a)->length++;                                                               \
         uassert((usize)i < _cexds__header(a)->length && "i out of bounds");                        \

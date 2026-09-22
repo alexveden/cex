@@ -509,9 +509,24 @@ Assertion macros, ASAN detection, and stack-trace helpers.
 
 - `mem$asan_enabled()` — compile-time check for Address Sanitizer
 - `sanitizer_stack_trace()` — prints ASAN stack trace when available
-- `uassert(A)` — hard assertion, prints file:line:func + traceback, then aborts
+- `uassert(A)` — hard assertion, prints file:line:func + crash report, then aborts
 - `uassertf(A, format, ...)` — assertion with formatted message
 - `uassert_disable()` / `uassert_enable()` — suppress assertions in test mode
+
+Crash report:
+
+- On hard failure, POSIX crash signals and Windows unhandled exceptions CEX
+  prints an address-only `=== CEX CRASH REPORT v1 ===` block to stderr.
+- The report is async-signal-safe: it writes with `write()` / `WriteFile()` only
+  and unwinds via `_Unwind_Backtrace`, so it can run inside a signal handler.
+- Each frame is a raw instruction pointer tagged `app` (inside the executable)
+  or `other`. Offsets survive symbol stripping; symbolize offline with
+  `addr2line -i -f -C -e <app> <ip - exe_base>` (or `llvm-symbolizer` / `atos`).
+- `app` detection uses the executable address range: ELF linker symbols, `_dyld`
+  on macOS, PE image range on Windows. On non-PIE builds use the absolute pointer
+  as the vaddr; on Windows `ip - exe_base` is the RVA.
+- Disable crash handlers with `#define CEX_DISABLE_SIGNAL_PANIC`.
+- `CEX_TRACEBACK_MAX_FRAMES` caps captured frames (default 64).
 
 */
 #ifndef mem$asan_enabled

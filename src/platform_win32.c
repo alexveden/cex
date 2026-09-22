@@ -120,6 +120,23 @@ typedef struct _OVERLAPPED {
 } OVERLAPPED;
 typedef OVERLAPPED* LPOVERLAPPED;
 
+// Crash-report support (exception filter + PE image range)
+typedef struct _EXCEPTION_RECORD {
+    DWORD ExceptionCode;
+    DWORD ExceptionFlags;
+    struct _EXCEPTION_RECORD* ExceptionRecord;
+    void* ExceptionAddress;
+    DWORD NumberParameters;
+    uintptr_t ExceptionInformation[15];
+} EXCEPTION_RECORD;
+
+typedef struct _EXCEPTION_POINTERS {
+    EXCEPTION_RECORD* ExceptionRecord;
+    void* ContextRecord;
+} EXCEPTION_POINTERS;
+
+typedef long (__stdcall* LPTOP_LEVEL_EXCEPTION_FILTER)(EXCEPTION_POINTERS*);
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -174,6 +191,20 @@ typedef OVERLAPPED* LPOVERLAPPED;
 #define STD_ERROR_HANDLE  ((DWORD)-12)
 #endif
 
+// Crash-report support
+#ifndef EXCEPTION_CONTINUE_SEARCH
+#define EXCEPTION_CONTINUE_SEARCH 0
+#endif
+#ifndef SEM_NOGPFAULTERRORBOX
+#define SEM_NOGPFAULTERRORBOX     0x0002
+#endif
+#ifndef HANDLE_FLAG_INHERIT
+#define HANDLE_FLAG_INHERIT       0x00000001
+#endif
+#ifndef INFINITE
+#define INFINITE                  0xFFFFFFFF
+#endif
+
 // FormatMessage flags
 #ifndef FORMAT_MESSAGE_FROM_SYSTEM
 #define FORMAT_MESSAGE_FROM_SYSTEM     0x00001000
@@ -204,6 +235,7 @@ __declspec(dllimport) DWORD    __stdcall GetCurrentThreadId(void);
 __declspec(dllimport) HANDLE   __stdcall GetStdHandle(DWORD nStdHandle);
 __declspec(dllimport) BOOL     __stdcall CloseHandle(HANDLE hObject);
 __declspec(dllimport) BOOL     __stdcall ReadFile(HANDLE, void*, DWORD, DWORD*, LPOVERLAPPED);
+__declspec(dllimport) BOOL     __stdcall WriteFile(HANDLE, const void*, DWORD, DWORD*, LPOVERLAPPED);
 __declspec(dllimport) BOOL     __stdcall CreatePipe(HANDLE*, HANDLE*, LPSECURITY_ATTRIBUTES, DWORD);
 __declspec(dllimport) HANDLE   __stdcall CreateNamedPipeA(const char*, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD, LPSECURITY_ATTRIBUTES);
 __declspec(dllimport) HANDLE   __stdcall CreateFileA(const char*, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE);
@@ -231,6 +263,11 @@ __declspec(dllimport) void     __stdcall GetSystemInfo(SYSTEM_INFO*);
 __declspec(dllimport) DWORD    __stdcall FormatMessageA(DWORD, void*, DWORD, DWORD, char*, DWORD, void*);
 __declspec(dllimport) DWORD    __stdcall GetModuleFileNameA(void*, char*, DWORD);
 __declspec(dllimport) BOOL     __stdcall SetEnvironmentVariableA(const char*, const char*);
+
+// --- crash report support ---
+__declspec(dllimport) void*    __stdcall GetModuleHandleA(const char*);
+__declspec(dllimport) LPTOP_LEVEL_EXCEPTION_FILTER __stdcall SetUnhandledExceptionFilter(LPTOP_LEVEL_EXCEPTION_FILTER);
+__declspec(dllimport) DWORD    __stdcall SetErrorMode(DWORD);
 
 // --- kernel32.dll (debug, test-only) ---
 __declspec(dllimport) BOOL     __stdcall IsBadReadPtr(const void*, size_t);

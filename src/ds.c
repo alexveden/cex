@@ -84,8 +84,8 @@ _cexds__arrgrowf(
     if (arr == NULL) {
         if (allc == NULL) {
             uassert(allc != NULL && "using uninitialized arr/hm or out-of-mem error");
-            // unconditionally abort even in production
-            abort();
+            // unconditionally panic even in production
+            cex$platform_panic();
         }
     } else {
         _cexds__arr_integrity(arr, 0);
@@ -553,7 +553,7 @@ _cexds__hash(enum _CexDsKeyType_e key_type, const void* key, usize key_size, u64
         }
     }
     uassert(false && "unexpected key type");
-    abort();
+    cex$platform_panic();
 }
 
 static bool
@@ -586,7 +586,7 @@ _cexds__is_key_equal(
         }
     }
     uassert(false && "unexpected key type");
-    abort();
+    cex$platform_panic();
 }
 
 static inline void*

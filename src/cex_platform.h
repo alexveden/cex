@@ -24,8 +24,11 @@
 ///  Macro for redefining panic function (used in assertions, and other CEX stuff)
 #    define cex$platform_panic __cex__panic
 #    define _cex$platform_panic_builtin
-__attribute__((noinline)) void __cex__panic(void);
+__attribute__((noinline, noreturn)) void __cex__panic(void);
 #endif
+
+/// Internal: installs crash signal handlers (POSIX/Windows), no-op where unsupported
+void __cex__catch_signals(void);
 
 #ifdef cex$enable_minimal
 #    undef cex$enable_minimal

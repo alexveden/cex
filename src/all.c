@@ -5,10 +5,10 @@
 #pragma once
 #include "all.h"
 #include "cex_header.c"
+#include "src/platform_win32.c"
 #include "cex_base.c"
 #include "sbuf.c"
 #include "mem.c"
-#include "src/platform_win32.c"
 #include "AllocatorHeap.c"
 #include "AllocatorArena.c"
 #include "_sprintf.c"

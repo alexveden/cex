@@ -320,7 +320,7 @@ _cex_allocator_heap__scope_enter(IAllocator self)
 {
     _cex_allocator_heap__validate(self);
     uassert(false && "this only supported by arenas");
-    abort();
+    cex$platform_panic();
 }
 
 static void
@@ -328,7 +328,7 @@ _cex_allocator_heap__scope_exit(IAllocator self)
 {
     _cex_allocator_heap__validate(self);
     uassert(false && "this only supported by arenas");
-    abort();
+    cex$platform_panic();
 }
 
 static u32

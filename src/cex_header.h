@@ -77,6 +77,12 @@ Use `cex -D config` to reset all project config flags to defaults
 /// disable ASAN memory poisoning and mem$asan_poison*
 #define CEX_DISABLE_POISON 1
 
+/// disable automatic crash-signal handlers (SIGSEGV/SIGABRT/SIGFPE/SIGILL/SIGBUS)
+#define CEX_DISABLE_SIGNAL_PANIC 1
+
+/// max stack frames captured in the crash report (default: 64)
+#define CEX_TRACEBACK_MAX_FRAMES 64
+
 /// size of stack based buffer for small strings
 #define CEX_SPRINTF_MIN 512
 
