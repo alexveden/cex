@@ -81,7 +81,7 @@ cmd_custom_test(int argc, char** argv, void* user_ctx)
 
             if (!cexy.src_include_changed(target, src, NULL)) { continue; }
 
-            e$ret(os$cmd(cexy$cc, "-g", "-Wall", "-Wextra", "-I.", "-o", target, src));
+            e$ret(os$cmd(cexy$cc, "-g", "-O0", "-Wall", "-Wextra", "-I.", "-o", target, src));
         }
     }
 

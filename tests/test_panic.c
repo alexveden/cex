@@ -1,5 +1,7 @@
 #include "src/all.c"
 
+#if !defined(__EMSCRIPTEN__)
+
 /// Path to the prebuilt crash fixture (see cex.c:cmd_custom_test), e.g.
 /// `build/tests/os_test/panic.c.linux`
 static char*
@@ -30,7 +32,10 @@ _run_panic(char* mode, IAllocator allc)
     if (os.cmd.create(&c, args, arr$len(args), &flags) != EOK) { return NULL; }
 
     char* out = os.cmd.read_all(&c, allc);
-    if (os.cmd.wait(&c, 1, 0) == EOK) { return NULL; } // expected to crash
+    if (os.cmd.wait(&c, 1, 0) == EOK) {
+        log$error("panic fixture did not crash: mode=%s ret_code=%d\n", mode, os.cmd.ret_code(&c));
+        return NULL;
+    }
     return out;
 }
 
@@ -89,7 +94,11 @@ test$case(test_panic_fpe)
 
 test$case(test_panic_abort)
 {
-#if defined(__linux__) || defined(__APPLE__)
+#if defined(__linux__) && !defined(__GLIBC__)
+    // musl and other non-glibc libcs lack unwind tables in abort()/raise(), so the
+    // report cannot cross those frames and has no app frames; skip.
+    return EOK;
+#elif defined(__linux__) || defined(__APPLE__)
     mem$scope(tmem$, _)
     {
         char* out = _run_panic("abort", _);
@@ -101,5 +110,7 @@ test$case(test_panic_abort)
 }
 
 #undef _panic$assert_common
+
+#endif // #if !defined(__EMSCRIPTEN__)
 
 test$main();

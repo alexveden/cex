@@ -6882,6 +6882,7 @@ __declspec(dllimport) BOOL     __stdcall SetEnvironmentVariableA(const char*, co
 __declspec(dllimport) void*    __stdcall GetModuleHandleA(const char*);
 __declspec(dllimport) LPTOP_LEVEL_EXCEPTION_FILTER __stdcall SetUnhandledExceptionFilter(LPTOP_LEVEL_EXCEPTION_FILTER);
 __declspec(dllimport) DWORD    __stdcall SetErrorMode(DWORD);
+__declspec(dllimport) unsigned short __stdcall CaptureStackBackTrace(DWORD, DWORD, void**, DWORD*);
 
 // --- kernel32.dll (debug, test-only) ---
 __declspec(dllimport) BOOL     __stdcall IsBadReadPtr(const void*, size_t);
@@ -6926,16 +6927,17 @@ const struct _CEX_Error_struct Error = {
 #    define CEX_TRACEBACK_MAX_FRAMES 64
 #endif
 
-#if !cex$is_freestanding && (defined(__linux__) || defined(__APPLE__) || defined(__MINGW32__)) && \
+#if !cex$is_freestanding &&                                                                        \
+    (defined(__linux__) || defined(__APPLE__) || defined(_WIN32)) &&                               \
     (!defined(cex$enable_minimal) || defined(cex$enable_str))
 #    define _cex__unwind 1
-#    include <unwind.h>
 #else
 #    define _cex__unwind 0
 #endif
 
 #if _cex__unwind && (defined(__linux__) || defined(__APPLE__))
 #    define _cex__posix 1
+#    include <unwind.h>
 #    include <signal.h>
 #    include <unistd.h>
 #    if defined(__APPLE__)
@@ -6946,7 +6948,7 @@ const struct _CEX_Error_struct Error = {
 #    define _cex__posix 0
 #endif
 
-#if _cex__unwind && defined(_WIN32) && !defined(CEX_NO_WIN32_TYPES)
+#if _cex__unwind && defined(_WIN32)
 #    define _cex__win32 1
 #else
 #    define _cex__win32 0
@@ -6984,6 +6986,7 @@ _cex__fd_write(int fd, const char* s, usize n)
 }
 #endif
 
+#if _cex__posix
 struct _cex__unwind_s {
     void* frames[CEX_TRACEBACK_MAX_FRAMES];
     int n;
@@ -7011,6 +7014,13 @@ _cex__capture_frames(void** out, int skip)
     for (int i = 0; i < u.n; i++) { out[i] = u.frames[i]; }
     return u.n;
 }
+#elif _cex__win32
+__attribute__((noinline)) static int
+_cex__capture_frames(void** out, int skip)
+{
+    return (int)CaptureStackBackTrace((DWORD)skip, (DWORD)CEX_TRACEBACK_MAX_FRAMES, out, NULL);
+}
+#endif
 
 static uintptr_t _cex__exe_lo;
 static uintptr_t _cex__exe_hi;

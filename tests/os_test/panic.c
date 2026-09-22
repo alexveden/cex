@@ -19,9 +19,13 @@ _panic_fixture_level4(char* mode)
     } else if (str.eq(mode, "abort")) {
         abort();
     } else if (str.eq(mode, "fpe")) {
+#if defined(_WIN32)
         volatile int zero = 0;
         volatile int r = 1 / zero;
         (void)r;
+#else
+        raise(SIGFPE);
+#endif
     } else {
         volatile int* p = NULL;
         *p = 1;
