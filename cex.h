@@ -82,6 +82,12 @@ Use `cex -D config` to reset all project config flags to defaults
 /// disable ASAN memory poisoning and mem$asan_poison*
 #define CEX_DISABLE_POISON 1
 
+/// disable automatic crash-signal handlers (SIGSEGV/SIGABRT/SIGFPE/SIGILL/SIGBUS)
+#define CEX_DISABLE_SIGNAL_PANIC 1
+
+/// max stack frames captured in the crash report (default: 64)
+#define CEX_TRACEBACK_MAX_FRAMES 64
+
 /// size of stack based buffer for small strings
 #define CEX_SPRINTF_MIN 512
 
@@ -161,9 +167,9 @@ Use `cex -D config` to reset all project config flags to defaults
 #endif
 
 #define cex$version_major 0
-#define cex$version_minor 21
+#define cex$version_minor 22
 #define cex$version_patch 0
-#define cex$version_date "2026-07-27"
+#define cex$version_date "2026-09-22"
 
 
 
@@ -196,8 +202,11 @@ Use `cex -D config` to reset all project config flags to defaults
 ///  Macro for redefining panic function (used in assertions, and other CEX stuff)
 #    define cex$platform_panic __cex__panic
 #    define _cex$platform_panic_builtin
-__attribute__((noinline)) void __cex__panic(void);
+__attribute__((noinline, noreturn)) void __cex__panic(void);
 #endif
+
+/// Internal: installs crash signal handlers (POSIX/Windows), no-op where unsupported
+void __cex__catch_signals(void);
 
 #ifdef cex$enable_minimal
 #    undef cex$enable_minimal
@@ -742,9 +751,27 @@ Assertion macros, ASAN detection, and stack-trace helpers.
 
 - `mem$asan_enabled()` — compile-time check for Address Sanitizer
 - `sanitizer_stack_trace()` — prints ASAN stack trace when available
-- `uassert(A)` — hard assertion, prints file:line:func + traceback, then aborts
+- `uassert(A)` — hard assertion, prints file:line:func + crash report, then aborts
 - `uassertf(A, format, ...)` — assertion with formatted message
 - `uassert_disable()` / `uassert_enable()` — suppress assertions in test mode
+
+Crash report:
+
+- On hard failure, POSIX crash signals and Windows unhandled exceptions CEX
+  prints an address-only `=== CEX CRASH REPORT v1 ===` block to stderr.
+- The report is async-signal-safe: it unwinds via `_Unwind_Backtrace`, is
+  formatted into a static `sbuf` (`sbuf.appendf`, no allocation) and emitted
+  with a single `write()` / `WriteFile()` call, so it can run inside a handler.
+- An atomic guard serializes reporting: only the first crash in the process is
+  reported, later ones re-raise/continue without a report.
+- Each frame is a raw instruction pointer tagged `app` (inside the executable)
+  or `other`. Offsets survive symbol stripping; symbolize offline with
+  `addr2line -i -f -C -e <app> <ip - exe_base>` (or `llvm-symbolizer` / `atos`).
+- `app` detection uses the executable address range: ELF linker symbols, `_dyld`
+  on macOS, PE image range on Windows. On non-PIE builds use the absolute pointer
+  as the vaddr; on Windows `ip - exe_base` is the RVA.
+- Disable crash handlers with `#define CEX_DISABLE_SIGNAL_PANIC`.
+- `CEX_TRACEBACK_MAX_FRAMES` caps captured frames (default 64).
 
 */
 #ifndef mem$asan_enabled
@@ -1684,7 +1711,7 @@ struct _cexds__arr_new_kwargs_s
     ({                                                                                             \
         if (unlikely(!arr$grow_check(a, 1))) {                                                     \
             uassert(false && "arr$push memory error");                                             \
-            abort();                                                                               \
+            cex$platform_panic();                                                                  \
         }                                                                                          \
         (a)[_cexds__header(a)->length++] = (value);                                                \
         &(a)[_cexds__header(a)->length-1];                                                         \
@@ -1711,7 +1738,7 @@ struct _cexds__arr_new_kwargs_s
         uassert(arr_len < PTRDIFF_MAX && "negative length or overflow");                           \
         if (unlikely(!arr$grow_check(a, arr_len))) {                                               \
             uassert(false && "arr$pusha memory error");                                            \
-            abort();                                                                               \
+            cex$platform_panic();                                                                  \
         }                                                                                          \
         for (usize i = 0; i < arr_len; i++) { (a)[_cexds__header(a)->length++] = ((array)[i]); }   \
         /* NOLINTEND */                                                                            \
@@ -1730,7 +1757,7 @@ struct _cexds__arr_new_kwargs_s
     do {                                                                                           \
         if (unlikely(!arr$grow_check(a, 1))) {                                                     \
             uassert(false && "arr$ins memory error");                                              \
-            abort();                                                                               \
+            cex$platform_panic();                                                                  \
         }                                                                                          \
         _cexds__header(a)->length++;                                                               \
         uassert((usize)i < _cexds__header(a)->length && "i out of bounds");                        \
@@ -6707,6 +6734,23 @@ typedef struct _OVERLAPPED {
 } OVERLAPPED;
 typedef OVERLAPPED* LPOVERLAPPED;
 
+// Crash-report support (exception filter + PE image range)
+typedef struct _EXCEPTION_RECORD {
+    DWORD ExceptionCode;
+    DWORD ExceptionFlags;
+    struct _EXCEPTION_RECORD* ExceptionRecord;
+    void* ExceptionAddress;
+    DWORD NumberParameters;
+    uintptr_t ExceptionInformation[15];
+} EXCEPTION_RECORD;
+
+typedef struct _EXCEPTION_POINTERS {
+    EXCEPTION_RECORD* ExceptionRecord;
+    void* ContextRecord;
+} EXCEPTION_POINTERS;
+
+typedef long (__stdcall* LPTOP_LEVEL_EXCEPTION_FILTER)(EXCEPTION_POINTERS*);
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -6761,6 +6805,20 @@ typedef OVERLAPPED* LPOVERLAPPED;
 #define STD_ERROR_HANDLE  ((DWORD)-12)
 #endif
 
+// Crash-report support
+#ifndef EXCEPTION_CONTINUE_SEARCH
+#define EXCEPTION_CONTINUE_SEARCH 0
+#endif
+#ifndef SEM_NOGPFAULTERRORBOX
+#define SEM_NOGPFAULTERRORBOX     0x0002
+#endif
+#ifndef HANDLE_FLAG_INHERIT
+#define HANDLE_FLAG_INHERIT       0x00000001
+#endif
+#ifndef INFINITE
+#define INFINITE                  0xFFFFFFFF
+#endif
+
 // FormatMessage flags
 #ifndef FORMAT_MESSAGE_FROM_SYSTEM
 #define FORMAT_MESSAGE_FROM_SYSTEM     0x00001000
@@ -6791,6 +6849,7 @@ __declspec(dllimport) DWORD    __stdcall GetCurrentThreadId(void);
 __declspec(dllimport) HANDLE   __stdcall GetStdHandle(DWORD nStdHandle);
 __declspec(dllimport) BOOL     __stdcall CloseHandle(HANDLE hObject);
 __declspec(dllimport) BOOL     __stdcall ReadFile(HANDLE, void*, DWORD, DWORD*, LPOVERLAPPED);
+__declspec(dllimport) BOOL     __stdcall WriteFile(HANDLE, const void*, DWORD, DWORD*, LPOVERLAPPED);
 __declspec(dllimport) BOOL     __stdcall CreatePipe(HANDLE*, HANDLE*, LPSECURITY_ATTRIBUTES, DWORD);
 __declspec(dllimport) HANDLE   __stdcall CreateNamedPipeA(const char*, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD, LPSECURITY_ATTRIBUTES);
 __declspec(dllimport) HANDLE   __stdcall CreateFileA(const char*, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE);
@@ -6818,6 +6877,11 @@ __declspec(dllimport) void     __stdcall GetSystemInfo(SYSTEM_INFO*);
 __declspec(dllimport) DWORD    __stdcall FormatMessageA(DWORD, void*, DWORD, DWORD, char*, DWORD, void*);
 __declspec(dllimport) DWORD    __stdcall GetModuleFileNameA(void*, char*, DWORD);
 __declspec(dllimport) BOOL     __stdcall SetEnvironmentVariableA(const char*, const char*);
+
+// --- crash report support ---
+__declspec(dllimport) void*    __stdcall GetModuleHandleA(const char*);
+__declspec(dllimport) LPTOP_LEVEL_EXCEPTION_FILTER __stdcall SetUnhandledExceptionFilter(LPTOP_LEVEL_EXCEPTION_FILTER);
+__declspec(dllimport) DWORD    __stdcall SetErrorMode(DWORD);
 
 // --- kernel32.dll (debug, test-only) ---
 __declspec(dllimport) BOOL     __stdcall IsBadReadPtr(const void*, size_t);
@@ -6856,6 +6920,210 @@ const struct _CEX_Error_struct Error = {
 
 #ifdef _cex$platform_panic_builtin
 
+// Crash report: async-signal-safe, address-only traceback that survives symbol stripping.
+// Frames are tagged `app` (inside the executable) or `other`; symbolize offline with addr2line.
+#ifndef CEX_TRACEBACK_MAX_FRAMES
+#    define CEX_TRACEBACK_MAX_FRAMES 64
+#endif
+
+#if !cex$is_freestanding && (defined(__linux__) || defined(__APPLE__) || defined(__MINGW32__)) && \
+    (!defined(cex$enable_minimal) || defined(cex$enable_str))
+#    define _cex__unwind 1
+#    include <unwind.h>
+#else
+#    define _cex__unwind 0
+#endif
+
+#if _cex__unwind && (defined(__linux__) || defined(__APPLE__))
+#    define _cex__posix 1
+#    include <signal.h>
+#    include <unistd.h>
+#    if defined(__APPLE__)
+#        include <mach-o/dyld.h>
+#        include <mach-o/loader.h>
+#    endif
+#else
+#    define _cex__posix 0
+#endif
+
+#if _cex__unwind && defined(_WIN32) && !defined(CEX_NO_WIN32_TYPES)
+#    define _cex__win32 1
+#else
+#    define _cex__win32 0
+#endif
+
+#if _cex__unwind
+
+static int _cex__in_panic;
+
+#if _cex__posix
+static void
+_cex__fd_write(int fd, const char* s, usize n)
+{
+    while (n > 0) {
+        ssize_t w = write(fd, s, n);
+        if (w <= 0) { return; }
+        s += w;
+        n -= (usize)w;
+    }
+}
+#elif _cex__win32
+static void
+_cex__fd_write(int fd, const char* s, usize n)
+{
+    (void)fd;
+    DWORD written = 0;
+    WriteFile(GetStdHandle(STD_ERROR_HANDLE), s, (DWORD)n, &written, NULL);
+}
+#else
+static void
+_cex__fd_write(int fd, const char* s, usize n)
+{
+    (void)fd;
+    fwrite(s, 1, n, stderr);
+}
+#endif
+
+struct _cex__unwind_s {
+    void* frames[CEX_TRACEBACK_MAX_FRAMES];
+    int n;
+    int skip;
+};
+
+static _Unwind_Reason_Code
+_cex__unwind_cb(struct _Unwind_Context* ctx, void* arg)
+{
+    struct _cex__unwind_s* u = arg;
+    uintptr_t ip = (uintptr_t)_Unwind_GetIP(ctx);
+    if (u->skip > 0) {
+        u->skip--;
+        return _URC_NO_REASON;
+    }
+    if (ip != 0 && u->n < CEX_TRACEBACK_MAX_FRAMES) { u->frames[u->n++] = (void*)ip; }
+    return u->n < CEX_TRACEBACK_MAX_FRAMES ? _URC_NO_REASON : _URC_END_OF_STACK;
+}
+
+__attribute__((noinline)) static int
+_cex__capture_frames(void** out, int skip)
+{
+    struct _cex__unwind_s u = { .n = 0, .skip = skip };
+    _Unwind_Backtrace(_cex__unwind_cb, &u);
+    for (int i = 0; i < u.n; i++) { out[i] = u.frames[i]; }
+    return u.n;
+}
+
+static uintptr_t _cex__exe_lo;
+static uintptr_t _cex__exe_hi;
+
+static bool
+_cex__is_app_addr(uintptr_t ip)
+{
+    return _cex__exe_lo != 0 && ip >= _cex__exe_lo && ip < _cex__exe_hi;
+}
+
+#if _cex__posix
+#    if defined(__linux__)
+extern char __ehdr_start[] __attribute__((weak));
+extern char __executable_start[] __attribute__((weak));
+extern char _end[] __attribute__((weak));
+static void
+_cex__init_app_range(void)
+{
+    uintptr_t lo = (uintptr_t)__ehdr_start;
+    if (lo == 0) { lo = (uintptr_t)__executable_start; }
+    _cex__exe_lo = lo;
+    _cex__exe_hi = (uintptr_t)_end;
+}
+#    else // __APPLE__
+static void
+_cex__init_app_range(void)
+{
+    const struct mach_header_64* h = (const struct mach_header_64*)_dyld_get_image_header(0);
+    if (h == NULL) { return; }
+    intptr_t slide = _dyld_get_image_vmaddr_slide(0);
+    _cex__exe_lo = (uintptr_t)h;
+    uintptr_t hi = _cex__exe_lo;
+    const unsigned char* p = (const unsigned char*)h + sizeof(struct mach_header_64);
+    for (uint32_t i = 0; i < h->ncmds; i++) {
+        const struct load_command* lc = (const struct load_command*)p;
+        if (lc->cmdsize == 0) { break; }
+        if (lc->cmd == LC_SEGMENT_64) {
+            const struct segment_command_64* sg = (const struct segment_command_64*)lc;
+            uintptr_t end = (uintptr_t)(sg->vmaddr + (uint64_t)slide + sg->vmsize);
+            if (end > hi) { hi = end; }
+        }
+        p += lc->cmdsize;
+    }
+    _cex__exe_hi = hi;
+}
+#    endif
+#elif _cex__win32
+static void
+_cex__init_app_range(void)
+{
+    const unsigned char* base = (const unsigned char*)GetModuleHandleA(NULL);
+    if (base == NULL) { return; }
+    u32 e_lfanew = 0;
+    memcpy(&e_lfanew, base + 0x3c, 4);
+    if (e_lfanew < 0x40 || e_lfanew > 0x1000) { return; }
+    // optional header starts at signature (4) + COFF header (20); SizeOfImage at +56
+    u32 size_of_image = 0;
+    memcpy(&size_of_image, base + e_lfanew + 24 + 56, 4);
+    if (size_of_image == 0) { return; }
+    _cex__exe_lo = (uintptr_t)base;
+    _cex__exe_hi = _cex__exe_lo + size_of_image;
+}
+#endif // _cex__posix || _cex__win32
+
+__attribute__((noinline)) static void
+_cex__report(const char* reason, int sig, uintptr_t fault_addr, int skip)
+{
+    void* frames[CEX_TRACEBACK_MAX_FRAMES];
+    static alignas(8) char buf[256 + CEX_TRACEBACK_MAX_FRAMES * 64];
+
+    if (__atomic_exchange_n(&_cex__in_panic, 1, __ATOMIC_RELAXED) != 0) { return; }
+    int n = _cex__capture_frames(frames, skip);
+
+    sbuf_c s = sbuf.create_static(buf, sizeof(buf));
+
+    sbuf.appendf(&s, "\n=== CEX CRASH REPORT v1 ===\nreason: %s\n", reason);
+    if (sig != 0) {
+#if _cex__win32
+        sbuf.appendf(&s, "exception: %p\n", (void*)(uintptr_t)(u32)sig);
+#else
+        sbuf.appendf(&s, "signal: %d\n", sig);
+#endif
+    }
+    if (fault_addr != 0) { sbuf.appendf(&s, "fault_addr: %p\n", (void*)fault_addr); }
+#if _cex__posix || _cex__win32
+    sbuf.appendf(&s, "exe_base: %p\n", (void*)_cex__exe_lo);
+#endif
+    sbuf.appendf(&s, "frame_count: %d\n", n);
+    for (int i = 0; i < n; i++) {
+        uintptr_t ip = (uintptr_t)frames[i];
+        if (_cex__is_app_addr(ip)) {
+            uintptr_t off = ip - _cex__exe_lo;
+            sbuf.appendf(&s, "frame: %p  app +%p\n", (void*)ip, (void*)off);
+        } else {
+            sbuf.appendf(&s, "frame: %p  other\n", (void*)ip);
+        }
+    }
+    sbuf.appendf(&s, "=== END ===\n");
+
+    _cex__fd_write(2, s, sbuf.len(&s));
+}
+
+#else // _cex__unwind
+__attribute__((noinline)) static void
+_cex__report(const char* reason, int sig, uintptr_t fault_addr, int skip)
+{
+    (void)reason;
+    (void)sig;
+    (void)fault_addr;
+    (void)skip;
+}
+#endif // _cex__unwind
+
 void
 __cex__panic(void)
 {
@@ -6863,15 +7131,85 @@ __cex__panic(void)
     fflush(stderr);
     sanitizer_stack_trace();
 
+    if (!mem$asan_enabled()) { _cex__report("assert", 0, 0, 3); }
+
 #    ifdef CEX_TEST
     breakpoint();
-#    else
-    abort();
 #    endif
-    return;
+    abort();
 }
 
+#if _cex__posix
+static void
+_cex__reraise_signal(int sig)
+{
+    sigset_t set;
+    sigemptyset(&set);
+    sigaddset(&set, sig);
+    sigprocmask(SIG_UNBLOCK, &set, NULL);
+    signal(sig, SIG_DFL);
+    raise(sig);
+    _exit(128 + sig);
+}
+
+static void
+_cex__signal_handler(int sig, siginfo_t* info, void* ucontext)
+{
+    (void)ucontext;
+    uintptr_t fault = (info != NULL) ? (uintptr_t)info->si_addr : 0;
+    _cex__report("signal", sig, fault, 3);
+    _cex__reraise_signal(sig);
+}
+
+void
+__cex__catch_signals(void)
+{
+    static const int sigs[] = { SIGSEGV, SIGABRT, SIGFPE, SIGILL, SIGBUS };
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_sigaction = _cex__signal_handler;
+    sa.sa_flags = SA_SIGINFO;
+    sigemptyset(&sa.sa_mask);
+    for (usize i = 0; i < sizeof(sigs) / sizeof(sigs[0]); i++) { sigaction(sigs[i], &sa, NULL); }
+}
+#elif _cex__win32
+static long __stdcall
+_cex__win32_exception_filter(EXCEPTION_POINTERS* ep)
+{
+    int code = 0;
+    uintptr_t fault = 0;
+    if (ep != NULL && ep->ExceptionRecord != NULL) {
+        code = (int)ep->ExceptionRecord->ExceptionCode;
+        fault = (uintptr_t)ep->ExceptionRecord->ExceptionAddress;
+    }
+    _cex__report("exception", code, fault, 3);
+    return EXCEPTION_CONTINUE_SEARCH;
+}
+
+void
+__cex__catch_signals(void)
+{
+    SetUnhandledExceptionFilter(_cex__win32_exception_filter);
+}
+#endif // _cex__posix / _cex__win32
+
+#if _cex__posix || _cex__win32
+__attribute__((constructor)) static void
+_cex__crash_init(void)
+{
+    _cex__init_app_range();
+#    ifndef CEX_DISABLE_SIGNAL_PANIC
+    if (!mem$asan_enabled()) {
+        __cex__catch_signals();
+#        if _cex__win32
+        SetErrorMode(SEM_NOGPFAULTERRORBOX);
+#        endif
+    }
+#    endif
+}
 #endif
+
+#endif // _cex$platform_panic_builtin
 
 
 
@@ -7236,7 +7574,7 @@ _cex_allocator_heap__scope_enter(IAllocator self)
 {
     _cex_allocator_heap__validate(self);
     uassert(false && "this only supported by arenas");
-    abort();
+    cex$platform_panic();
 }
 
 static void
@@ -7244,7 +7582,7 @@ _cex_allocator_heap__scope_exit(IAllocator self)
 {
     _cex_allocator_heap__validate(self);
     uassert(false && "this only supported by arenas");
-    abort();
+    cex$platform_panic();
 }
 
 static u32
@@ -8051,8 +8389,8 @@ _cexds__arrgrowf(
     if (arr == NULL) {
         if (allc == NULL) {
             uassert(allc != NULL && "using uninitialized arr/hm or out-of-mem error");
-            // unconditionally abort even in production
-            abort();
+            // unconditionally panic even in production
+            cex$platform_panic();
         }
     } else {
         _cexds__arr_integrity(arr, 0);
@@ -8520,7 +8858,7 @@ _cexds__hash(enum _CexDsKeyType_e key_type, const void* key, usize key_size, u64
         }
     }
     uassert(false && "unexpected key type");
-    abort();
+    cex$platform_panic();
 }
 
 static bool
@@ -8553,7 +8891,7 @@ _cexds__is_key_equal(
         }
     }
     uassert(false && "unexpected key type");
-    abort();
+    cex$platform_panic();
 }
 
 static inline void*
