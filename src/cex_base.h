@@ -519,6 +519,8 @@ Crash report:
   prints an address-only `=== CEX CRASH REPORT v1 ===` block to stderr.
 - The report is async-signal-safe: it writes with `write()` / `WriteFile()` only
   and unwinds via `_Unwind_Backtrace`, so it can run inside a signal handler.
+- An atomic guard serializes reporting: only the first crash in the process is
+  reported, later ones re-raise/continue without a report.
 - Each frame is a raw instruction pointer tagged `app` (inside the executable)
   or `other`. Offsets survive symbol stripping; symbolize offline with
   `addr2line -i -f -C -e <app> <ip - exe_base>` (or `llvm-symbolizer` / `atos`).

@@ -56,7 +56,7 @@ const struct _CEX_Error_struct Error = {
 #    define _cex__win32 0
 #endif
 
-static volatile int _cex__in_panic;
+static int _cex__in_panic;
 
 #if _cex__unwind
 
@@ -219,8 +219,10 @@ __attribute__((noinline)) static void
 _cex__report(const char* reason, int sig, uintptr_t fault_addr, int skip)
 {
     void* frames[CEX_TRACEBACK_MAX_FRAMES];
-    int n = _cex__capture_frames(frames, skip);
     int fd = 2;
+
+    if (__atomic_exchange_n(&_cex__in_panic, 1, __ATOMIC_RELAXED) != 0) { return; }
+    int n = _cex__capture_frames(frames, skip);
 
     _cex__put(fd, "\n=== CEX CRASH REPORT v1 ===\n");
     _cex__put(fd, "reason: ");
@@ -282,10 +284,7 @@ __cex__panic(void)
     fflush(stderr);
     sanitizer_stack_trace();
 
-    if (!mem$asan_enabled() && _cex__in_panic == 0) {
-        _cex__in_panic = 1;
-        _cex__report("assert", 0, 0, 3);
-    }
+    if (!mem$asan_enabled()) { _cex__report("assert", 0, 0, 3); }
 
 #    ifdef CEX_TEST
     breakpoint();
@@ -310,8 +309,6 @@ static void
 _cex__signal_handler(int sig, siginfo_t* info, void* ucontext)
 {
     (void)ucontext;
-    if (_cex__in_panic != 0) { _cex__reraise_signal(sig); }
-    _cex__in_panic = 1;
     uintptr_t fault = (info != NULL) ? (uintptr_t)info->si_addr : 0;
     _cex__report("signal", sig, fault, 3);
     _cex__reraise_signal(sig);
@@ -332,8 +329,6 @@ __cex__catch_signals(void)
 static long __stdcall
 _cex__win32_exception_filter(EXCEPTION_POINTERS* ep)
 {
-    if (_cex__in_panic != 0) { return EXCEPTION_CONTINUE_SEARCH; }
-    _cex__in_panic = 1;
     int code = 0;
     uintptr_t fault = 0;
     if (ep != NULL && ep->ExceptionRecord != NULL) {
