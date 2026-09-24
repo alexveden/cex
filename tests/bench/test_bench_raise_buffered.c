@@ -16,29 +16,19 @@ typedef struct {
     u32 line;
     const char* func;
     const char* msg;
-} __attribute__((aligned(64))) _bench_err_s;
-
-static_assert(sizeof(_bench_err_s) == 64, "full buffered error record is one cache line");
-static_assert(alignof(_bench_err_s) == 64, "full buffered error record is cache line aligned");
+} _bench_err_s;
 #else
 typedef struct {
     Exc err;
     const char* file;
     u32 line;
-} __attribute__((aligned(32))) _bench_err_s;
-
-static_assert(sizeof(_bench_err_s) == 32, "short buffered error record is 32 bytes");
-static_assert(alignof(_bench_err_s) == 32, "short buffered error record is 32-byte aligned");
+} _bench_err_s;
 #endif
 
 typedef struct {
     u32 len;
     _bench_err_s items[BENCH_RAISE_ERRS_CAP];
 } _bench_errs_s;
-
-#if CEX_ERR_LVL >= 2
-static_assert(offsetof(_bench_errs_s, items) == 64, "items start on the next cache line");
-#endif
 
 _Thread_local static _bench_errs_s g_buffered;
 
@@ -71,9 +61,16 @@ static volatile u64 g_sink;
 
 #if CEX_ERR_LVL >= 1
 #define e$raise_alt_msg(return_uerr, error_msg)                                                    \
-    (g_buffered.len = 0,                                                                           \
-     e$push_err_msg((return_uerr), __FILE_NAME__, __LINE__, __func__, error_msg),                  \
-     (return_uerr))
+    ({                                                                                             \
+        static_assert(                                                                             \
+            !__builtin_types_compatible_p(typeof(error_msg), typeof(&(error_msg)[0])),             \
+            "error_msg must be a string literal, not a pointer"                                    \
+        );                                                                                         \
+        /* "" error_msg compiles only for string literals (adjacent-literal concatenation) */      \
+        g_buffered.len = 0;                                                                        \
+        e$push_err_msg((return_uerr), __FILE_NAME__, __LINE__, __func__, ("" error_msg));          \
+        (return_uerr);                                                                             \
+    })
 #else
 #define e$raise_alt_msg(return_uerr, error_msg) ((return_uerr))
 #endif
