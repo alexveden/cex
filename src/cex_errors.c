@@ -52,7 +52,20 @@ _cex_errors_traceback_print(FILE* stream)
 
 #undef _cex_traceback_fmt
 
-#if !defined(NDEBUG) && !defined(__clang_analyzer__)
+#if !defined(NDEBUG) && !defined(__clang_analyzer__) &&                                            \
+    (CEX_TRACEBACK_LVL == 1 || CEX_TRACEBACK_LVL == 2)
+
+#if CEX_TRACEBACK_LVL == 1
+/// Private: emit the panic line (L1 records only file:line)
+#    define _cex_errors_report(_stream)                                                            \
+        cexsp__fprintf((_stream), "%s ( %s:%u )\n", prefix, file, line)
+#else
+/// Private: emit the panic line (L2 records file:line, func and message)
+#    define _cex_errors_report(_stream)                                                            \
+        ((msg) ? __cex__fprintf((_stream), prefix, file, line, func, "%s\n", msg)                  \
+               : __cex__fprintf((_stream), prefix, file, line, func, "\n"))
+#endif
+
 __attribute__((cold, noinline))
 #    ifndef CEX_TEST
 __attribute__((noreturn))
@@ -60,18 +73,18 @@ __attribute__((noreturn))
 void
 _cex_errors_fail(const char* prefix, const char* file, u32 line, const char* func, const char* msg)
 {
+#    if CEX_TRACEBACK_LVL == 1
+    (void)func;
+    (void)msg;
+#    endif
 
 #    ifdef CEX_TEST
     if (!uassert_is_enabled() && strcmp(prefix, _cex_errors_assert_prefix) == 0) {
-        __cex__fprintf(stdout, prefix, file, line, func, "%s\n", msg);
+        _cex_errors_report(stdout);
         return;
     }
 #    endif
-    if (msg) {
-        __cex__fprintf(stderr, prefix, file, line, func, "%s\n", msg);
-    } else {
-        __cex__fprintf(stderr, prefix, file, line, func, "\n");
-    }
+    _cex_errors_report(stderr);
     fflush(stdout);
     fflush(stderr);
     sanitizer_stack_trace();
@@ -80,4 +93,6 @@ _cex_errors_fail(const char* prefix, const char* file, u32 line, const char* fun
 #    endif
     abort();
 }
+
+#    undef _cex_errors_report
 #endif

@@ -13,6 +13,26 @@
 #    define tassert_frames(_n) tassert_eq(e$traceback_len, 0)
 #endif
 
+#ifndef _WIN32
+/// Fork a child that runs the panic; true when it terminated abnormally (signal or nonzero exit)
+test$noopt bool
+is_panic_fatal_in_child(bool use_unreachable)
+{
+    pid_t pid = fork();
+    if (pid < 0) { return false; }
+    if (pid == 0) {
+        (void)freopen("/dev/null", "w", stdout);
+        (void)freopen("/dev/null", "w", stderr);
+        if (use_unreachable) { unreachable(); }
+        else { uassert(false); }
+        _exit(0);
+    }
+    int status = 0;
+    if (waitpid(pid, &status, 0) != pid) { return false; }
+    return !(WIFEXITED(status) && WEXITSTATUS(status) == 0);
+}
+#endif
+
 /// Error.io when `i` is non-zero, else EOK; records nothing
 test$noopt Exception
 raw_err(int i)
@@ -242,6 +262,7 @@ test$case(assert_ok)
     return EOK;
 }
 
+#if CEX_TRACEBACK_LVL >= 1
 test$case(uassert_disabled_returns)
 {
     uassert_disable();
@@ -249,6 +270,32 @@ test$case(uassert_disabled_returns)
     uassert_enable();
     return EOK;
 }
+#endif
+
+#ifndef _WIN32
+test$case(uassert_fatal)
+{
+    tassert(is_panic_fatal_in_child(false));
+    return EOK;
+}
+
+test$case(unreachable_fatal)
+{
+    tassert(is_panic_fatal_in_child(true));
+    return EOK;
+}
+
+#if CEX_TRACEBACK_LVL >= 1
+test$case(unreachable_fatal_when_disabled)
+{
+    uassert_disable();
+    bool fatal = is_panic_fatal_in_child(true);
+    uassert_enable();
+    tassert(fatal);
+    return EOK;
+}
+#endif
+#endif
 
 test$case(ret_error)
 {

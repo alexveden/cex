@@ -54,6 +54,45 @@ static_assert(
 #undef unreachable
 #undef cex$platform_panic
 
+/* Stock-equivalent baseline (this header owns the macros from here on).
+ * NDEBUG matches cex_base.h (no-op / __builtin_unreachable); otherwise the
+ * stock inline print + panic. The level overrides further below replace
+ * these for CEX_TRACEBACK_LVL 0..2. */
+#ifdef _cex$platform_panic_builtin
+#    define cex$platform_panic __cex__panic
+#endif
+
+#if defined(__clang_analyzer__)
+#    define uassert(A) assert(A)
+#    define unreachable() __builtin_unreachable()
+#elif defined(NDEBUG)
+#    define uassert(A) ((void)(0))
+#    define unreachable() __builtin_unreachable()
+#else
+#    define uassert(A)                                                                             \
+        ({                                                                                         \
+            if (unlikely(!((A)))) {                                                                \
+                __cex__fprintf(                                                                    \
+                    (uassert_is_enabled() ? stderr : stdout),                                      \
+                    _cex_errors_assert_prefix,                                                     \
+                    __FILE_NAME__,                                                                 \
+                    __LINE__,                                                                      \
+                    __func__,                                                                      \
+                    "%s\n",                                                                        \
+                    #A                                                                             \
+                );                                                                                 \
+                if (uassert_is_enabled()) { cex$platform_panic(); }                                \
+            }                                                                                      \
+        })
+
+#    define unreachable()                                                                          \
+        ({                                                                                         \
+            __cex__fprintf(stderr, "[UNREACHABLE] ", __FILE_NAME__, __LINE__, __func__, "\n");     \
+            cex$platform_panic();                                                                  \
+            __builtin_unreachable();                                                               \
+        })
+#endif
+
 #if CEX_TRACEBACK_LVL == 1
 typedef struct
 {
@@ -302,19 +341,49 @@ void _cex_errors_fail(
     const char* msg
 );
 
-#ifdef _cex$platform_panic_builtin
+#if !defined(NDEBUG) && CEX_TRACEBACK_LVL == 0
+
+#    undef uassert
+#    undef unreachable
+#    define uassert(A)                                                                             \
+        ({                                                                                         \
+            if (unlikely(!((A)))) { __builtin_trap(); }                                            \
+        })
+#    define unreachable() __builtin_trap()
+
+#elif !defined(NDEBUG) && CEX_TRACEBACK_LVL <= 2
+
+#    undef uassert
+#    undef unreachable
 #    undef cex$platform_panic
 #    define cex$platform_panic _cex_errors_fail
+
+#    if CEX_TRACEBACK_LVL == 1
+#        define uassert(A)                                                                         \
+            ({                                                                                     \
+                if (unlikely(!((A)))) {                                                            \
+                    cex$platform_panic(                                                            \
+                        _cex_errors_assert_prefix, __FILE_NAME__, __LINE__, NULL, NULL             \
+                    );                                                                             \
+                }                                                                                  \
+            })
+#        define unreachable()                                                                      \
+            cex$platform_panic("[UNREACHABLE] ", __FILE_NAME__, __LINE__, NULL, NULL)
+#    else
+#        define uassert(A)                                                                         \
+            ({                                                                                     \
+                if (unlikely(!((A)))) {                                                            \
+                    cex$platform_panic(                                                            \
+                        _cex_errors_assert_prefix, __FILE_NAME__, __LINE__, __func__, #A           \
+                    );                                                                             \
+                }                                                                                  \
+            })
+#        define unreachable()                                                                      \
+            cex$platform_panic("[UNREACHABLE] ", __FILE_NAME__, __LINE__, __func__, NULL)
+#    endif
+
 #endif
-
-#define uassert(A)                                                                                 \
-    ({                                                                                             \
-        if (unlikely(!((A)))) {                                                                    \
-            cex$platform_panic(_cex_errors_assert_prefix, __FILE_NAME__, __LINE__, __func__, #A);  \
-        }                                                                                          \
-    })
-
-#define unreachable() cex$platform_panic("[UNREACHABLE] ", __FILE_NAME__, __LINE__, __func__, NULL)
+/* CEX_TRACEBACK_LVL == 3 keeps the stock baseline defined above */
 
 /* Traceback read-back (buffered levels fill the ring; 0/3 stay empty) */
 
