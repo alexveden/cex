@@ -147,6 +147,7 @@ cex_bundle(void)
             "src/str.h",
             "src/sbuf.h",
             "src/io.h",
+            "src/cex_errors.h",
             "src/argparse.h",
             "src/_subprocess.h",
             "src/os.h",

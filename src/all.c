@@ -14,6 +14,7 @@
 #include "_sprintf.c"
 #include "str.c"
 #include "io.c"
+#include "cex_errors.c"
 #include "ds.c"
 #include "_subprocess.c"
 #include "os.c"

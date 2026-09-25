@@ -15,6 +15,7 @@
 #include "src/sbuf.h"
 #include "src/str.h"
 #include "src/io.h"
+#include "src/cex_errors.h"
 #include "src/test.h"
 #include "src/argparse.h"
 #include "src/_subprocess.h"
