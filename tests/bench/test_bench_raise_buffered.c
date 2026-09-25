@@ -13,9 +13,9 @@ static_assert(CEX_ERR_LVL >= 0 && CEX_ERR_LVL <= 2, "CEX_ERR_LVL must be 0, 1, o
 typedef struct {
     Exc err;
     const char* file;
-    u32 line;
     const char* func;
     const char* msg;
+    u32 line;
 } _bench_err_s;
 #else
 typedef struct {
@@ -27,6 +27,7 @@ typedef struct {
 
 typedef struct {
     u32 len;
+    u32 _pad[3];
     _bench_err_s items[BENCH_RAISE_ERRS_CAP];
 } _bench_errs_s;
 
@@ -60,7 +61,7 @@ static volatile u64 g_sink;
 #endif
 
 #if CEX_ERR_LVL >= 1
-#define e$raise_alt_msg(return_uerr, error_msg)                                                    \
+#define e$raise_alt(return_uerr, error_msg)                                                        \
     ({                                                                                             \
         static_assert(                                                                             \
             !__builtin_types_compatible_p(typeof(error_msg), typeof(&(error_msg)[0])),             \
@@ -72,15 +73,49 @@ static volatile u64 g_sink;
         (return_uerr);                                                                             \
     })
 #else
-#define e$raise_alt_msg(return_uerr, error_msg) ((return_uerr))
+#define e$raise_alt(return_uerr, error_msg) ((return_uerr))
+#endif
+
+#if CEX_ERR_LVL >= 1
+#define e$ret_alt(_func)                                                                           \
+    for (Exc cex$tmpname(__cex_err_traceback_) = _func; unlikely(                                  \
+             (cex$tmpname(__cex_err_traceback_) != EOK) &&                                         \
+             (e$push_err_msg(cex$tmpname(__cex_err_traceback_), __FILE_NAME__, __LINE__,           \
+                             __func__, #_func),                                                    \
+              1)                                                                                   \
+         );                                                                                        \
+         cex$tmpname(__cex_err_traceback_) = EOK)                                                  \
+    return cex$tmpname(__cex_err_traceback_)
+
+#define e$goto_alt(_func, _label)                                                                  \
+    for (Exc cex$tmpname(__cex_err_traceback_) = _func; unlikely(                                  \
+             (cex$tmpname(__cex_err_traceback_) != EOK) &&                                         \
+             (e$push_err_msg(cex$tmpname(__cex_err_traceback_), __FILE_NAME__, __LINE__,           \
+                             __func__, #_func),                                                    \
+              1)                                                                                   \
+         );                                                                                        \
+         cex$tmpname(__cex_err_traceback_) = EOK)                                                  \
+    goto _label
+#else
+#define e$ret_alt(_func)                                                                           \
+    for (Exc cex$tmpname(__cex_err_traceback_) = _func;                                            \
+         unlikely(cex$tmpname(__cex_err_traceback_) != EOK);                                       \
+         cex$tmpname(__cex_err_traceback_) = EOK)                                                  \
+    return cex$tmpname(__cex_err_traceback_)
+
+#define e$goto_alt(_func, _label)                                                                  \
+    for (Exc cex$tmpname(__cex_err_traceback_) = _func;                                            \
+         unlikely(cex$tmpname(__cex_err_traceback_) != EOK);                                       \
+         cex$tmpname(__cex_err_traceback_) = EOK)                                                  \
+    goto _label
 #endif
 
 __attribute__((used, noinline)) Exc
 raise_buffered(int i)
 {
-    if (i == 1) { return e$raise_alt_msg(Error.io, "raise io"); }
-    if (i == 2) { return e$raise_alt_msg(Error.memory, "raise memory"); }
-    if (i == 3) { return e$raise_alt_msg(Error.argument, "raise argument"); }
+    if (i == 1) { return e$raise_alt(Error.io, "raise io"); }
+    if (i == 2) { return e$raise_alt(Error.memory, "raise memory"); }
+    if (i == 3) { return e$raise_alt(Error.argument, "raise argument"); }
     return EOK;
 }
 
@@ -91,6 +126,26 @@ raise_plain(int i)
     if (i == 2) { return Error.memory; }
     if (i == 3) { return Error.argument; }
     return EOK;
+}
+
+__attribute__((used, noinline)) Exc
+ret_buffered(int i)
+{
+    if (i == 1) { e$ret_alt(raise_plain(1)); }
+    if (i == 2) { e$ret_alt(raise_plain(2)); }
+    if (i == 3) { e$ret_alt(raise_plain(3)); }
+    return EOK;
+}
+
+__attribute__((used, noinline)) Exc
+goto_buffered(int i)
+{
+    Exc err = EOK;
+    if (i == 1) { e$goto_alt(err = raise_plain(1), _done); }
+    if (i == 2) { e$goto_alt(err = raise_plain(2), _done); }
+    if (i == 3) { e$goto_alt(err = raise_plain(3), _done); }
+_done:
+    return err;
 }
 
 test$setup_case()
@@ -128,6 +183,22 @@ test$bench(raise_plain)
     if (raise_plain(1) == EOK) { return Error.runtime; }
     if (raise_plain(2) == EOK) { return Error.runtime; }
     if (raise_plain(3) == EOK) { return Error.runtime; }
+    return EOK;
+}
+
+test$bench(ret_buffered)
+{
+    if (ret_buffered(1) == EOK) { return Error.runtime; }
+    if (ret_buffered(2) == EOK) { return Error.runtime; }
+    if (ret_buffered(3) == EOK) { return Error.runtime; }
+    return EOK;
+}
+
+test$bench(goto_buffered)
+{
+    if (goto_buffered(1) == EOK) { return Error.runtime; }
+    if (goto_buffered(2) == EOK) { return Error.runtime; }
+    if (goto_buffered(3) == EOK) { return Error.runtime; }
     return EOK;
 }
 
