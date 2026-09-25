@@ -9,7 +9,7 @@
  *   2 - buffered full:    {err, file, func, msg, line} per frame  [default]
  *   3 - immediate print:  stock CEX behavior (log$error + traceback)
  *
- * Buffered frames live in a _Thread_local ring (CEX_ERR_CAP entries) and are read
+ * Buffered frames live in a _Thread_local ring (CEX_TRACEBACK_CAP entries) and are read
  * back as a plain array:
  *
  *   for$each(it, e$traceback_arr, e$traceback_len) { ... }
@@ -32,9 +32,13 @@ static_assert(
 );
 
 /// Max recorded traceback frames (buffered levels)
-#define CEX_ERR_CAP 32
+#ifndef CEX_TRACEBACK_CAP
+#    define CEX_TRACEBACK_CAP 32
+#endif
 
 #undef e$raise
+#undef e$assert
+#undef e$assertf
 #undef e$except
 #undef e$except_silent
 #undef e$except_errno
@@ -65,7 +69,7 @@ typedef struct
 {
     u32 len;
     u32 _pad[3];
-    _cex_errors_traceback_s items[CEX_ERR_CAP];
+    _cex_errors_traceback_s items[CEX_TRACEBACK_CAP];
 } _cex_errors_traceback_data_s;
 
 #if CEX_TRACEBACK_LVL >= 1 && CEX_TRACEBACK_LVL <= 2
@@ -73,10 +77,10 @@ typedef struct
 extern _Thread_local _cex_errors_traceback_data_s _cex_errors_traceback_data_array;
 
 #if CEX_TRACEBACK_LVL == 2
-/// Private: append one frame to the ring (clamped at CEX_ERR_CAP)
+/// Private: append one frame to the ring (clamped at CEX_TRACEBACK_CAP)
 #define _e$push_frame(_err, _file, _line, _func, _msg)                                             \
     ({                                                                                             \
-        if (_cex_errors_traceback_data_array.len < CEX_ERR_CAP) {                                  \
+        if (_cex_errors_traceback_data_array.len < CEX_TRACEBACK_CAP) {                            \
             _cex_errors_traceback_data_array.items[_cex_errors_traceback_data_array.len++] =       \
                 (_cex_errors_traceback_s){ .err = (_err),                                          \
                                            .file = (_file),                                        \
@@ -86,10 +90,10 @@ extern _Thread_local _cex_errors_traceback_data_s _cex_errors_traceback_data_arr
         }                                                                                          \
     })
 #else
-/// Private: append one frame to the ring (clamped at CEX_ERR_CAP)
+/// Private: append one frame to the ring (clamped at CEX_TRACEBACK_CAP)
 #define _e$push_frame(_err, _file, _line, _func, _msg)                                             \
     ({                                                                                             \
-        if (_cex_errors_traceback_data_array.len < CEX_ERR_CAP) {                                  \
+        if (_cex_errors_traceback_data_array.len < CEX_TRACEBACK_CAP) {                            \
             _cex_errors_traceback_data_array.items[_cex_errors_traceback_data_array.len++] =       \
                 (_cex_errors_traceback_s){ .err = (_err), .file = (_file), .line = (_line) };      \
         }                                                                                          \
@@ -107,6 +111,11 @@ extern _Thread_local _cex_errors_traceback_data_s _cex_errors_traceback_data_arr
 #if CEX_TRACEBACK_LVL == 0
 
 #define e$raise(return_uerr, error_msg, ...) ((return_uerr))
+
+#define e$assert(A)                                                                                \
+    ({                                                                                             \
+        if (unlikely(!((A)))) { return Error.assert; }                                             \
+    })
 
 #define e$except(_var_name, _func)                                                                 \
     for (Exc _var_name = _func; unlikely(_var_name != EOK); _var_name = EOK)
@@ -142,6 +151,14 @@ extern _Thread_local _cex_errors_traceback_data_s _cex_errors_traceback_data_arr
     ({                                                                                             \
         _e$push_origin((return_uerr), __FILE_NAME__, __LINE__, __func__, ("" error_msg));          \
         (return_uerr);                                                                             \
+    })
+
+#define e$assert(A)                                                                                \
+    ({                                                                                             \
+        if (unlikely(!((A)))) {                                                                    \
+            _e$push_origin(Error.assert, __FILE_NAME__, __LINE__, __func__, #A);                   \
+            return Error.assert;                                                                   \
+        }                                                                                          \
     })
 
 #define e$except(_var_name, _func)                                                                 \
@@ -209,6 +226,21 @@ extern _Thread_local _cex_errors_traceback_data_s _cex_errors_traceback_data_arr
 
 #define e$raise(return_uerr, error_msg, ...)                                                       \
     (log$error("[%s] " error_msg "\n", return_uerr, ##__VA_ARGS__), (return_uerr))
+
+#if CEX_LOG_LVL > 0
+#    define e$assert(A)                                                                            \
+        ({                                                                                         \
+            if (unlikely(!((A)))) {                                                                \
+                __cex__fprintf(stdout, "[ASSERT] ", __FILE_NAME__, __LINE__, __func__, "%s\n", #A);\
+                return Error.assert;                                                               \
+            }                                                                                      \
+        })
+#else
+#    define e$assert(A)                                                                            \
+        ({                                                                                         \
+            if (unlikely(!((A)))) { return Error.assert; }                                         \
+        })
+#endif
 
 #define e$except(_var_name, _func)                                                                 \
     for (Exc _var_name = _func;                                                                    \
