@@ -1,10 +1,11 @@
 #pragma once
-/* Shared helpers and cases for test_cex_errors_lvl{0,1,2,3}.c and test_cex_errors_cap4.c.
+/* Shared helpers and cases for test_cex_errors_lvl{0,1,2,3}.c, test_cex_errors_cap4.c and
+ * test_cex_errors_mixed.c.
  *
  * Include AFTER src/cex_errors.h (uses the e$* macros and the level knobs).
  */
 
-#if CEX_TRACEBACK_LVL >= 1 && CEX_TRACEBACK_LVL <= 2
+#if CEX_TRACEBACK_VERBOSITY >= 1 && CEX_TRACEBACK_VERBOSITY <= 2
 #    define TB_RECORDS 1
 /// Expect _n recorded frames when buffering, otherwise the ring must stay empty
 #    define tassert_frames(_n) tassert_eq(e$traceback_len, (u32)(_n))
@@ -206,7 +207,7 @@ test$case(raise_error)
     tassert_eq(e$traceback_arr[0].err, Error.io);
     tassert(e$traceback_arr[0].file != NULL);
 #endif
-#if CEX_TRACEBACK_LVL == 2
+#if CEX_TRACEBACK_VERBOSITY == 2
     tassert_eq((char*)e$traceback_arr[0].msg, "raise io");
     tassert(e$traceback_arr[0].func != NULL);
 #endif
@@ -229,7 +230,7 @@ test$case(assert_error)
 #if TB_RECORDS
     tassert_eq(e$traceback_arr[0].err, Error.assert);
 #endif
-#if CEX_TRACEBACK_LVL == 2
+#if CEX_TRACEBACK_VERBOSITY == 2
     tassert_eq((char*)e$traceback_arr[0].msg, "i");
 #endif
     return EOK;
@@ -243,7 +244,7 @@ test$case(assert_ok)
     return EOK;
 }
 
-#if CEX_TRACEBACK_LVL >= 1
+#if CEX_PANIC_VERBOSITY >= 1
 test$case(uassert_disabled_returns)
 {
     uassert_disable();
@@ -266,7 +267,7 @@ test$case(unreachable_fatal)
     return EOK;
 }
 
-#if CEX_TRACEBACK_LVL >= 1
+#if CEX_PANIC_VERBOSITY >= 1
 test$case(unreachable_fatal_when_disabled)
 {
     uassert_disable();
@@ -283,7 +284,7 @@ test$case(ret_error)
     Exc e = err_ret(1);
     tassert_eq(e, Error.io);
     tassert_frames(2);
-#if CEX_TRACEBACK_LVL == 2
+#if CEX_TRACEBACK_VERBOSITY == 2
     tassert_eq((char*)e$traceback_arr[0].msg, "raise io");
     tassert(str.find((char*)e$traceback_arr[1].msg, "err_raise") != NULL);
 #endif
@@ -303,7 +304,7 @@ test$case(goto_error)
     Exc e = err_goto(1);
     tassert_eq(e, Error.runtime);
     tassert_frames(1);
-#if CEX_TRACEBACK_LVL == 2
+#if CEX_TRACEBACK_VERBOSITY == 2
     tassert(str.find((char*)e$traceback_arr[0].msg, "raw_err") != NULL);
 #endif
     return EOK;
@@ -322,7 +323,7 @@ test$case(except_error)
     int n = err_except(1);
     tassert_eq(n, 1);
     tassert_frames(1);
-#if CEX_TRACEBACK_LVL == 2
+#if CEX_TRACEBACK_VERBOSITY == 2
     tassert_eq((char*)e$traceback_arr[0].msg, "raw_err(i)");
 #endif
     return EOK;
@@ -347,7 +348,7 @@ test$case(except_errno_error)
 #if TB_RECORDS
     tassert_eq(e$traceback_arr[0].err, strerror(ENOENT));
 #endif
-#if CEX_TRACEBACK_LVL == 2
+#if CEX_TRACEBACK_VERBOSITY == 2
     tassert_eq((char*)e$traceback_arr[0].msg, "sys_rc(i)");
 #endif
     return EOK;
@@ -382,7 +383,7 @@ test$case(except_errno_keeps_raised_errno)
 #if TB_RECORDS
     tassert_eq(e$traceback_arr[0].err, strerror(EAGAIN));
 #endif
-#if CEX_TRACEBACK_LVL == 2
+#if CEX_TRACEBACK_VERBOSITY == 2
     tassert_eq((char*)e$traceback_arr[0].msg, "sys_rc_keep_errno(i)");
 #endif
     return EOK;
@@ -396,7 +397,7 @@ test$case(except_null_error)
 #if TB_RECORDS
     tassert_eq(e$traceback_arr[0].err, Error.null_or_empty);
 #endif
-#if CEX_TRACEBACK_LVL == 2
+#if CEX_TRACEBACK_VERBOSITY == 2
     tassert_eq((char*)e$traceback_arr[0].msg, "maybe_null(i)");
 #endif
     return EOK;
@@ -415,14 +416,14 @@ test$case(except_null_zero_and_false)
     int nz = err_except_null_zero();
     tassert_eq(nz, 1);
     tassert_frames(1);
-#if CEX_TRACEBACK_LVL == 2
+#if CEX_TRACEBACK_VERBOSITY == 2
     tassert_eq((char*)e$traceback_arr[0].msg, "0");
 #endif
 
     int nf = err_except_null_false();
     tassert_eq(nf, 1);
     tassert_frames(1);
-#if CEX_TRACEBACK_LVL == 2
+#if CEX_TRACEBACK_VERBOSITY == 2
     tassert_eq((char*)e$traceback_arr[0].msg, "false");
 #endif
     return EOK;
@@ -436,7 +437,7 @@ test$case(except_true_error)
 #if TB_RECORDS
     tassert_eq(e$traceback_arr[0].err, Error.runtime);
 #endif
-#if CEX_TRACEBACK_LVL == 2
+#if CEX_TRACEBACK_VERBOSITY == 2
     tassert_eq((char*)e$traceback_arr[0].msg, "maybe_true(i)");
 #endif
     return EOK;
@@ -460,7 +461,7 @@ test$case(frames_order)
     tassert_eq(e$traceback_arr[0].err, Error.io);
     tassert_eq(e$traceback_arr[1].err, Error.io);
     tassert_eq(e$traceback_arr[2].err, Error.io);
-#if CEX_TRACEBACK_LVL == 2
+#if CEX_TRACEBACK_VERBOSITY == 2
     tassert_eq((char*)e$traceback_arr[0].msg, "ladder bottom");
     tassert_eq((char*)e$traceback_arr[1].msg, "ladder_raise()");
     tassert_eq((char*)e$traceback_arr[2].msg, "ladder_ret1()");
@@ -479,7 +480,7 @@ test$case(frames_many)
     tassert_eq(e$traceback_len, 9);
     tassert_eq(e$traceback_arr[0].err, Error.io);
     tassert_eq(e$traceback_arr[8].err, Error.io);
-#if CEX_TRACEBACK_LVL == 2
+#if CEX_TRACEBACK_VERBOSITY == 2
     tassert_eq((char*)e$traceback_arr[0].msg, "chain bottom");
     tassert_eq((char*)e$traceback_arr[8].msg, "chain(depth - 1)");
 #endif
@@ -494,7 +495,7 @@ test$case(frames_overflow)
     tassert_eq(e$traceback_len, CEX_TRACEBACK_CAP);
     tassert_eq(e$traceback_arr[0].err, Error.io);
     tassert_eq(e$traceback_arr[CEX_TRACEBACK_CAP - 1].err, Error.io);
-#if CEX_TRACEBACK_LVL == 2
+#if CEX_TRACEBACK_VERBOSITY == 2
     tassert_eq((char*)e$traceback_arr[0].msg, "chain bottom");
     tassert_eq((char*)e$traceback_arr[CEX_TRACEBACK_CAP - 1].msg, "chain(depth - 1)");
 #endif
@@ -512,7 +513,7 @@ test$case(traceback_fmt_nonempty)
     tassert(str.find(s, "#1") != NULL);
     tassert(str.find(s, "#2") != NULL);
     tassert(str.find(s, __FILE_NAME__) != NULL);
-#if CEX_TRACEBACK_LVL == 2
+#if CEX_TRACEBACK_VERBOSITY == 2
     tassert(str.find(s, "ladder bottom") != NULL);
     tassert(str.find(s, "ladder_raise()") != NULL);
     tassert(str.find(s, "ladder_ret1()") != NULL);

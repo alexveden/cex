@@ -1,12 +1,41 @@
 #pragma once
 
-#ifndef CEX_TRACEBACK_LVL
-#    define CEX_TRACEBACK_LVL 2
+/**
+Compile-time verbosity knobs for CEX error handling.
+
+- `CEX_TRACEBACK_VERBOSITY` (0..3, default 2) — controls `e$raise`/`e$assert`/`e$except`/
+  `e$ret`/`e$goto` and the recorded traceback ring:
+
+    * 0 - no tracebacks, ring disabled (`e$traceback_len == 0`)
+    * 1 - ring records `{err, file, line}`
+    * 2 - ring records `{err, file, func, msg}`
+    * 3 - stock immediate logging, no ring
+
+- `CEX_PANIC_VERBOSITY` (0..3, default 1) — controls `uassert()` and `unreachable()`:
+
+    * 0 - `__builtin_trap()`
+    * 1 - `_cex_errors_fail()` prints `file:line`
+    * 2 - `_cex_errors_fail()` prints `file:line:func` + the failed expression
+    * 3 - stock `__cex__fprintf()` + `cex$platform_panic()`
+
+*/
+
+#ifndef CEX_TRACEBACK_VERBOSITY
+#    define CEX_TRACEBACK_VERBOSITY 2
+#endif
+
+#ifndef CEX_PANIC_VERBOSITY
+#    define CEX_PANIC_VERBOSITY 1
 #endif
 
 static_assert(
-    CEX_TRACEBACK_LVL >= 0 && CEX_TRACEBACK_LVL <= 3,
-    "CEX_TRACEBACK_LVL must be 0, 1, 2, or 3"
+    CEX_TRACEBACK_VERBOSITY >= 0 && CEX_TRACEBACK_VERBOSITY <= 3,
+    "CEX_TRACEBACK_VERBOSITY must be 0, 1, 2, or 3"
+);
+
+static_assert(
+    CEX_PANIC_VERBOSITY >= 0 && CEX_PANIC_VERBOSITY <= 3,
+    "CEX_PANIC_VERBOSITY must be 0, 1, 2, or 3"
 );
 
 /// Max recorded traceback frames (buffered levels)
@@ -59,7 +88,7 @@ static_assert(
         })
 #endif
 
-#if CEX_TRACEBACK_LVL == 1
+#if CEX_TRACEBACK_VERBOSITY == 1
 typedef struct
 {
     Exc err;
@@ -84,11 +113,11 @@ typedef struct
     _cex_errors_traceback_s items[CEX_TRACEBACK_CAP];
 } _cex_errors_traceback_data_s;
 
-#if CEX_TRACEBACK_LVL >= 1 && CEX_TRACEBACK_LVL <= 2
+#if CEX_TRACEBACK_VERBOSITY >= 1 && CEX_TRACEBACK_VERBOSITY <= 2
 /// Shared traceback ring (defined in cex_errors.c)
 extern _Thread_local _cex_errors_traceback_data_s _cex_errors_traceback_data_array;
 
-#    if CEX_TRACEBACK_LVL == 2
+#    if CEX_TRACEBACK_VERBOSITY == 2
 /// Private: append one frame to the ring (clamped at CEX_TRACEBACK_CAP)
 #        define _e$push_frame(_err, _file, _line, _func, _msg)                                      \
             ({                                                                                      \
@@ -124,9 +153,9 @@ extern _Thread_local _cex_errors_traceback_data_s _cex_errors_traceback_data_arr
             _cex_errors_traceback_data_array.len = 0;                                              \
             _e$push_frame(_err, _file, _line, _func, _msg);                                        \
         })
-#endif // CEX_TRACEBACK_LVL >= 1 && <= 2
+#endif // CEX_TRACEBACK_VERBOSITY >= 1 && <= 2
 
-#if CEX_TRACEBACK_LVL == 0
+#if CEX_TRACEBACK_VERBOSITY == 0
 
 #    define e$raise(return_uerr, error_msg) ((return_uerr))
 
@@ -161,7 +190,7 @@ extern _Thread_local _cex_errors_traceback_data_s _cex_errors_traceback_data_arr
              cex$tmpname(__cex_err_traceback_) = EOK)                                              \
         goto _label
 
-#elif CEX_TRACEBACK_LVL <= 2
+#elif CEX_TRACEBACK_VERBOSITY <= 2
 
 #    define e$raise(return_uerr, error_msg)                                                        \
         ({                                                                                         \
@@ -248,7 +277,7 @@ extern _Thread_local _cex_errors_traceback_data_s _cex_errors_traceback_data_arr
              cex$tmpname(__cex_err_traceback_) = EOK)                                              \
         goto _label
 
-#else // CEX_TRACEBACK_LVL == 3
+#else // CEX_TRACEBACK_VERBOSITY == 3
 
 #    define e$raise(return_uerr, error_msg)                                                        \
         (log$error("[%s] " error_msg "\n", return_uerr), (return_uerr))
@@ -319,7 +348,7 @@ extern _Thread_local _cex_errors_traceback_data_s _cex_errors_traceback_data_arr
              cex$tmpname(__cex_err_traceback_) = EOK)                                              \
         goto _label
 
-#endif // CEX_TRACEBACK_LVL
+#endif // CEX_TRACEBACK_VERBOSITY
 
 /* Hard-fail panic (asserts + unreachable), prototype-scoped replacement for __cex__panic */
 
@@ -331,7 +360,7 @@ __attribute__((noreturn))
 void
 _cex_errors_fail(const char* prefix, const char* file, u32 line, const char* func, const char* msg);
 
-#if !defined(NDEBUG) && CEX_TRACEBACK_LVL == 0
+#if !defined(NDEBUG) && !defined(__clang_analyzer__) && CEX_PANIC_VERBOSITY == 0
 
 #    undef uassert
 #    undef unreachable
@@ -341,12 +370,12 @@ _cex_errors_fail(const char* prefix, const char* file, u32 line, const char* fun
         })
 #    define unreachable() __builtin_trap()
 
-#elif !defined(NDEBUG) && CEX_TRACEBACK_LVL <= 2
+#elif !defined(NDEBUG) && !defined(__clang_analyzer__) && CEX_PANIC_VERBOSITY <= 2
 
 #    undef uassert
 #    undef unreachable
 
-#    if CEX_TRACEBACK_LVL == 1
+#    if CEX_PANIC_VERBOSITY == 1
 #        define uassert(A)                                                                         \
             ({                                                                                     \
                 if (unlikely(!((A)))) {                                                            \
@@ -379,7 +408,7 @@ _cex_errors_fail(const char* prefix, const char* file, u32 line, const char* fun
 #    endif
 
 #endif
-/* CEX_TRACEBACK_LVL == 3 keeps the stock baseline defined above */
+/* CEX_PANIC_VERBOSITY == 3 keeps the stock baseline defined above */
 
 /* Traceback read-back (buffered levels fill the ring; 0/3 stay empty) */
 
@@ -395,7 +424,7 @@ void _cex_errors_traceback_print(FILE* stream);
 /// Print the whole traceback to a FILE*
 #define e$traceback_print(_stream) _cex_errors_traceback_print(_stream)
 
-#if CEX_TRACEBACK_LVL >= 1 && CEX_TRACEBACK_LVL <= 2
+#if CEX_TRACEBACK_VERBOSITY >= 1 && CEX_TRACEBACK_VERBOSITY <= 2
 /// Recorded frames array, use with for$each/for$eachp
 #    define e$traceback_arr (_cex_errors_traceback_data_array.items)
 /// Number of recorded frames
