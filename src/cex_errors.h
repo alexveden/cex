@@ -427,18 +427,20 @@ extern _Thread_local _cex_errors_traceback_data_s _cex_errors_traceback_data_arr
 
 /* ==== 4. Traceback read-back (buffered levels fill the ring; 0/3 stay empty) ==== */
 
-
-/// Format the recorded traceback into an owned `sbuf_c` (free with sbuf.destroy(&s))
-sbuf_c _cex_errors_traceback_fmt(IAllocator allc);
+#if !defined(cex$enable_minimal) || defined(cex$enable_io)
 
 /// Print the recorded traceback to a stream (no allocation)
 void _cex_errors_traceback_print(FILE* stream);
 
-/// Format the whole traceback into an owned `sbuf_c`
-#define e$traceback_fmt(_allc) _cex_errors_traceback_fmt(_allc)
-
 /// Print the whole traceback to a FILE*
 #define e$traceback_print(_stream) _cex_errors_traceback_print(_stream)
+
+#else
+
+/// Print the whole traceback to a FILE* (no-op without `cex$enable_io`)
+#define e$traceback_print(_stream) ((void)0)
+
+#endif // !defined(cex$enable_minimal) || defined(cex$enable_io)
 
 #if CEX_TRACEBACK_VERBOSITY >= 1 && CEX_TRACEBACK_VERBOSITY <= 2
 /// Recorded frames array, use with for$each/for$eachp

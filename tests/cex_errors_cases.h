@@ -502,27 +502,6 @@ test$case(frames_overflow)
     return EOK;
 }
 
-test$case(traceback_fmt_nonempty)
-{
-    Exc e = ladder_ret2();
-    tassert_eq(e, Error.io);
-    tassert_eq(e$traceback_len, 3);
-
-    char* s = e$traceback_fmt(mem$);
-    tassert(str.find(s, "#0") != NULL);
-    tassert(str.find(s, "#1") != NULL);
-    tassert(str.find(s, "#2") != NULL);
-    tassert(str.find(s, __FILE_NAME__) != NULL);
-#if CEX_TRACEBACK_VERBOSITY == 2
-    tassert(str.find(s, "ladder bottom") != NULL);
-    tassert(str.find(s, "ladder_raise()") != NULL);
-    tassert(str.find(s, "ladder_ret1()") != NULL);
-    tassert(str.find(s, "ladder_ret2()") != NULL);
-#endif
-    sbuf.destroy(&s);
-    return EOK;
-}
-
 test$case(traceback_print_nonempty)
 {
     Exc e = ladder_ret2();
@@ -543,10 +522,13 @@ test$case(traceback_print_nonempty)
     tassert(rd > 0);
     tassert(str.find(buf, "#0") != NULL);
     tassert(str.find(buf, "#2") != NULL);
-
-    char* s = e$traceback_fmt(mem$);
-    tassert_eq(buf, s);
-    sbuf.destroy(&s);
+    tassert(str.find(buf, __FILE_NAME__) != NULL);
+#if CEX_TRACEBACK_VERBOSITY == 2
+    tassert(str.find(buf, "ladder bottom") != NULL);
+    tassert(str.find(buf, "ladder_raise()") != NULL);
+    tassert(str.find(buf, "ladder_ret1()") != NULL);
+    tassert(str.find(buf, "ladder_ret2()") != NULL);
+#endif
 
     io.fclose(&f);
     return EOK;
@@ -562,14 +544,6 @@ test$case(traceback_reset_drops)
 
     e$traceback_reset();
     tassert_frames(0);
-    return EOK;
-}
-
-test$case(traceback_fmt_empty)
-{
-    char* s = e$traceback_fmt(mem$);
-    tassert_eq(s, "");
-    sbuf.destroy(&s);
     return EOK;
 }
 

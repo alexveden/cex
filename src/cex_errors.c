@@ -3,54 +3,37 @@
 
 #if CEX_TRACEBACK_VERBOSITY >= 1 && CEX_TRACEBACK_VERBOSITY <= 2
 _Thread_local _cex_errors_traceback_data_s _cex_errors_traceback_data_array;
-
-/// Private: emit one recorded frame to `_sink` using the printf-like `_write`
-#    if CEX_TRACEBACK_VERBOSITY == 2
-#        define _cex_traceback_fmt(_sink, _write, _idx, _r)                                        \
-            (_write)(                                                                              \
-                (_sink),                                                                           \
-                "#%u (%s:%u %s()) [%s] %s\n",                                                      \
-                (u32)(_idx),                                                                       \
-                (_r)->file,                                                                        \
-                (_r)->line,                                                                        \
-                (_r)->func,                                                                        \
-                (_r)->err,                                                                         \
-                (_r)->msg                                                                          \
-            )
-#    else
-#        define _cex_traceback_fmt(_sink, _write, _idx, _r)                                        \
-            (_write)((_sink), "#%u (%s:%u) [%s]\n", (u32)(_idx), (_r)->file, (_r)->line, (_r)->err)
-#    endif
 #endif // CEX_TRACEBACK_VERBOSITY >= 1 && <= 2
 
-sbuf_c
-_cex_errors_traceback_fmt(IAllocator allc)
-{
-#if CEX_TRACEBACK_VERBOSITY >= 1 && CEX_TRACEBACK_VERBOSITY <= 2
-    sbuf_c b = sbuf.create(256, allc);
-    if (b == NULL) { return NULL; }
-    for (u32 i = 0; i < _cex_errors_traceback_data_array.len; i++) {
-        (void)_cex_traceback_fmt(&b, sbuf.appendf, i, &_cex_errors_traceback_data_array.items[i]);
-    }
-    return b;
-#else
-    return sbuf.create(1, allc);
-#endif
-}
+#if !defined(cex$enable_minimal) || defined(cex$enable_io)
 
 void
 _cex_errors_traceback_print(FILE* stream)
 {
 #if CEX_TRACEBACK_VERBOSITY >= 1 && CEX_TRACEBACK_VERBOSITY <= 2
     for (u32 i = 0; i < _cex_errors_traceback_data_array.len; i++) {
-        (void)_cex_traceback_fmt(stream, io.fprintf, i, &_cex_errors_traceback_data_array.items[i]);
+        const _cex_errors_traceback_s* _r = &_cex_errors_traceback_data_array.items[i];
+#    if CEX_TRACEBACK_VERBOSITY == 2
+        (void)io.fprintf(
+            stream,
+            "#%u (%s:%u %s()) [%s] %s\n",
+            (u32)i,
+            _r->file,
+            _r->line,
+            _r->func,
+            _r->err,
+            _r->msg
+        );
+#    else
+        (void)io.fprintf(stream, "#%u (%s:%u) [%s]\n", (u32)i, _r->file, _r->line, _r->err);
+#    endif
     }
 #else
     (void)stream;
 #endif
 }
 
-#undef _cex_traceback_fmt
+#endif // !defined(cex$enable_minimal) || defined(cex$enable_io)
 
 #if !defined(NDEBUG) && !defined(__clang_analyzer__) &&                                            \
     CEX_PANIC_VERBOSITY >= 1

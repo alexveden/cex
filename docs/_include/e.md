@@ -142,13 +142,10 @@ Caveats:
 /// Recorded frames array (always empty when buffering is disabled)
 #define e$traceback_arr((_cex_errors_traceback_s*)NULL)
 
-/// Format the whole traceback into an owned `sbuf_c`
-#define e$traceback_fmt(_allc)
-
 /// Number of recorded frames (always 0 when buffering is disabled)
 #define e$traceback_len
 
-/// Print the whole traceback to a FILE*
+/// Print the whole traceback to a FILE* (no-op without `cex$enable_io`)
 #define e$traceback_print(_stream)
 
 /// Drop all recorded frames (no-op when buffering is disabled)
