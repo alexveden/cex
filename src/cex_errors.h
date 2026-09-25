@@ -11,12 +11,11 @@ Compile-time verbosity knobs for CEX error handling.
     * 2 - ring records `{err, file, func, msg}`
     * 3 - stock immediate logging, no ring
 
-- `CEX_PANIC_VERBOSITY` (0..3, default 1) — controls `uassert()` and `unreachable()`:
+- `CEX_PANIC_VERBOSITY` (0..2, default 1) — controls `uassert()` and `unreachable()`:
 
     * 0 - `__builtin_trap()`
     * 1 - `_cex_errors_fail()` prints `file:line`
     * 2 - `_cex_errors_fail()` prints `file:line:func` + the failed expression
-    * 3 - stock `__cex__fprintf()` + `cex$platform_panic()`
 
 */
 
@@ -34,8 +33,8 @@ static_assert(
 );
 
 static_assert(
-    CEX_PANIC_VERBOSITY >= 0 && CEX_PANIC_VERBOSITY <= 3,
-    "CEX_PANIC_VERBOSITY must be 0, 1, 2, or 3"
+    CEX_PANIC_VERBOSITY >= 0 && CEX_PANIC_VERBOSITY <= 2,
+    "CEX_PANIC_VERBOSITY must be 0, 1, or 2"
 );
 
 /// Max recorded traceback frames (buffered levels)
@@ -63,29 +62,6 @@ static_assert(
 #elif defined(NDEBUG)
 #    define uassert(A) ((void)(0))
 #    define unreachable() __builtin_unreachable()
-#else
-#    define uassert(A)                                                                             \
-        ({                                                                                         \
-            if (unlikely(!((A)))) {                                                                \
-                __cex__fprintf(                                                                    \
-                    (uassert_is_enabled() ? stderr : stdout),                                      \
-                    _cex_errors_assert_prefix,                                                     \
-                    __FILE_NAME__,                                                                 \
-                    __LINE__,                                                                      \
-                    __func__,                                                                      \
-                    "%s\n",                                                                        \
-                    #A                                                                             \
-                );                                                                                 \
-                if (uassert_is_enabled()) { cex$platform_panic(); }                                \
-            }                                                                                      \
-        })
-
-#    define unreachable()                                                                          \
-        ({                                                                                         \
-            __cex__fprintf(stderr, "[UNREACHABLE] ", __FILE_NAME__, __LINE__, __func__, "\n");     \
-            cex$platform_panic();                                                                  \
-            __builtin_unreachable();                                                               \
-        })
 #endif
 
 #if CEX_TRACEBACK_VERBOSITY == 1
@@ -370,7 +346,7 @@ _cex_errors_fail(const char* prefix, const char* file, u32 line, const char* fun
         })
 #    define unreachable() __builtin_trap()
 
-#elif !defined(NDEBUG) && !defined(__clang_analyzer__) && CEX_PANIC_VERBOSITY <= 2
+#elif !defined(NDEBUG) && !defined(__clang_analyzer__)
 
 #    undef uassert
 #    undef unreachable
@@ -408,7 +384,6 @@ _cex_errors_fail(const char* prefix, const char* file, u32 line, const char* fun
 #    endif
 
 #endif
-/* CEX_PANIC_VERBOSITY == 3 keeps the stock baseline defined above */
 
 /* Traceback read-back (buffered levels fill the ring; 0/3 stay empty) */
 

@@ -53,7 +53,7 @@ _cex_errors_traceback_print(FILE* stream)
 #undef _cex_traceback_fmt
 
 #if !defined(NDEBUG) && !defined(__clang_analyzer__) &&                                            \
-    (CEX_PANIC_VERBOSITY == 1 || CEX_PANIC_VERBOSITY == 2)
+    CEX_PANIC_VERBOSITY >= 1
 
 #if CEX_PANIC_VERBOSITY == 1
 /// Private: emit the panic line (L1 records only file:line)
