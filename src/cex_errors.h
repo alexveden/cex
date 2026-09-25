@@ -1,26 +1,4 @@
 #pragma once
-/* cex_errors.h - traceback prototype (interface; impl in cex_errors.c).
- *
- * Include CEX first (cex.h or src/all.c). This header #undef's the stock e$*
- * macros and redefines them, gated by CEX_TRACEBACK_LVL:
- *
- *   0 - silent: propagate only, nothing recorded or printed
- *   1 - buffered minimal: {err, file, line} per frame
- *   2 - buffered full:    {err, file, func, msg, line} per frame  [default]
- *   3 - immediate print:  stock CEX behavior (log$error + traceback)
- *
- * Buffered frames live in a _Thread_local ring (CEX_TRACEBACK_CAP entries) and are read
- * back as a plain array:
- *
- *   for$each(it, e$traceback_arr, e$traceback_len) { ... }
- *   char* s = e$traceback_fmt(mem$);   // owned sbuf_c, sbuf.destroy(&s)
- *   e$traceback_print(stdout);
- *
- * Origins (e$raise, e$except_errno, e$except_null, e$except_true) reset the ring
- * before appending; propagation (e$ret, e$goto, e$except) appends.
- *
- * NOTE: CEX_TRACEBACK_LVL must match between this header and cex_errors.c.
- */
 
 #ifndef CEX_TRACEBACK_LVL
 #define CEX_TRACEBACK_LVL 2
