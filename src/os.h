@@ -1,5 +1,18 @@
 #pragma once
 #if !defined(cex$enable_minimal) || defined(cex$enable_os)
+
+#if defined(cex$enable_minimal)
+#    if !defined(cex$enable_mem)
+#error "CEX os namespace depends on `#define cex$enable_mem`"
+#    elif !defined(cex$enable_ds)
+#error "CEX os namespace depends on `#define cex$enable_ds`"
+#    elif !defined(cex$enable_str)
+#error "CEX os namespace depends on `#define cex$enable_str`"
+#    elif !defined(cex$enable_io)
+#error "CEX os namespace depends on `#define cex$enable_io`"
+#    endif
+#endif
+
 #    include "all.h"
 
 

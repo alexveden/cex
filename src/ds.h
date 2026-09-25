@@ -1,5 +1,10 @@
 #pragma once
 #if !defined(cex$enable_minimal) || defined(cex$enable_ds)
+
+#if defined(cex$enable_minimal) && !defined(cex$enable_mem)
+#error "CEX ds namespace depends on `#define cex$enable_mem`"
+#endif
+
 #include "cex_base.h"
 
 /**

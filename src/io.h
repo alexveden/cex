@@ -1,5 +1,10 @@
 #pragma once
 #if !defined(cex$enable_minimal) || defined(cex$enable_io)
+
+#if defined(cex$enable_minimal) && !defined(cex$enable_mem)
+#error "CEX io namespace depends on `#define cex$enable_mem`"
+#endif
+
 #include "all.h"
 
 /// Makes string literal with ansi colored test

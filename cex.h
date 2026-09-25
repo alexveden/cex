@@ -1245,6 +1245,11 @@ CEX_NAMESPACE struct __cex_namespace__AllocatorArena AllocatorArena;
 */
 #if !defined(cex$enable_minimal) || defined(cex$enable_ds)
 
+#if defined(cex$enable_minimal) && !defined(cex$enable_mem)
+#error "CEX ds namespace depends on `#define cex$enable_mem`"
+#endif
+
+
 /**
 
 Generic type-safe dynamic array backed by a heap header.
@@ -2730,6 +2735,11 @@ CEX_NAMESPACE struct __cex_namespace__sbuf sbuf;
 */
 #if !defined(cex$enable_minimal) || defined(cex$enable_io)
 
+#if defined(cex$enable_minimal) && !defined(cex$enable_mem)
+#error "CEX io namespace depends on `#define cex$enable_mem`"
+#endif
+
+
 /// Makes string literal with ansi colored test
 #define io$ansi(text, ansi_col) "\033[" ansi_col "m" text "\033[0m"
 
@@ -4001,6 +4011,19 @@ struct subprocess_s {
 *                          src/os.h
 */
 #if !defined(cex$enable_minimal) || defined(cex$enable_os)
+
+#if defined(cex$enable_minimal)
+#    if !defined(cex$enable_mem)
+#error "CEX os namespace depends on `#define cex$enable_mem`"
+#    elif !defined(cex$enable_ds)
+#error "CEX os namespace depends on `#define cex$enable_ds`"
+#    elif !defined(cex$enable_str)
+#error "CEX os namespace depends on `#define cex$enable_str`"
+#    elif !defined(cex$enable_io)
+#error "CEX os namespace depends on `#define cex$enable_io`"
+#    endif
+#endif
+
 
 
 #    ifdef _WIN32
