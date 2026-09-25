@@ -1106,10 +1106,10 @@ cex_json__gen__create(json_gen_c* self, IAllocator allc, json_gen_kw* kwargs)
 
     auto fstats = os.fs.stat(def_workdir);
     if (!fstats.is_valid) {
-        return e$raise(Error.not_found, "Working directory not exists: `%s`", def_workdir);
+        return e$raise(Error.not_found, "Working directory not exists");
     }
     if (!fstats.is_directory) {
-        return e$raise(Error.argument, "Expected directory, got file? `%s`", def_workdir);
+        return e$raise(Error.argument, "Expected directory, got file?");
     }
 
     *self = (json_gen_c){
@@ -1142,7 +1142,6 @@ _cex_json__gen___process_field_attr(
     (void)field;
     (void)t;
     if (str.slice.eq(t.value, str$s("json$$field"))) {
-        str_s attr_name = t.value;
         log$info("Processing %S\n", t.value);
         while ((t = CexParser.next_token(lx)).type) {
             if (t.type == CexTkn__dot) {
@@ -1154,7 +1153,7 @@ _cex_json__gen___process_field_attr(
 
                 t = CexParser.next_token(lx);
                 if (t.type != CexTkn__eq) {
-                    return e$raise(Error.integrity, "cex$$attr expected `=` after `.%S`", kw);
+                    return e$raise(Error.integrity, "cex$$attr expected `=` after `.`");
                 }
 
                 t = CexParser.next_token(lx);
@@ -1164,12 +1163,7 @@ _cex_json__gen___process_field_attr(
                     } else if (str$eq(t.value, "false")) {
                         field->flags.is_nullable = false;
                     } else {
-                        return e$raise(
-                            Error.integrity,
-                            "Expected .nulllable = true|false in %S, got `%S`",
-                            attr_name,
-                            t.value
-                        );
+                        return e$raise(Error.integrity, "Expected .nullable = true|false");
                     }
                 } else if (str$eq(kw, "optional")) {
                     if (str$eq(t.value, "true")) {
@@ -1177,12 +1171,7 @@ _cex_json__gen___process_field_attr(
                     } else if (str$eq(t.value, "false")) {
                         field->flags.is_optional = false;
                     } else {
-                        return e$raise(
-                            Error.integrity,
-                            "Expected .optional = true|false in %S, got `%S`",
-                            attr_name,
-                            t.value
-                        );
+                        return e$raise(Error.integrity, "Expected .optional = true|false");
                     }
                 } else if (str$eq(kw, "skip")) {
                     if (str$eq(t.value, "true")) {
@@ -1190,12 +1179,7 @@ _cex_json__gen___process_field_attr(
                     } else if (str$eq(t.value, "false")) {
                         field->flags.is_skipped = false;
                     } else {
-                        return e$raise(
-                            Error.integrity,
-                            "Expected .skip = true|false in %S, got `%S`",
-                            attr_name,
-                            t.value
-                        );
+                        return e$raise(Error.integrity, "Expected .skip = true|false");
                     }
                 } else if (str$eq(kw, "name")) {
                     if (t.type == CexTkn__string && t.value.len > 0) {
@@ -1203,20 +1187,10 @@ _cex_json__gen___process_field_attr(
                             return Error.memory;
                         }
                     } else {
-                        return e$raise(
-                            Error.integrity,
-                            "Expected .name = \"string_name\" in %S, got `%S`",
-                            attr_name,
-                            t.value
-                        );
+                        return e$raise(Error.integrity, "Expected .name = \"string_name\"");
                     }
                 } else {
-                    return e$raise(
-                        Error.integrity,
-                        "Unknown param_field: .%S in `.%S`",
-                        kw,
-                        attr_name
-                    );
+                    return e$raise(Error.integrity, "Unknown param_field");
                 }
             } else if (t.type == CexTkn__rparen) {
                 t = CexParser.next_token(lx);
@@ -1231,12 +1205,7 @@ _cex_json__gen___process_field_attr(
             } else if (t.type == CexTkn__comma || t.type == CexTkn__lparen) {
                 continue;
             } else {
-                return e$raise(
-                    Error.integrity,
-                    "Unexpected token (%s) in %S",
-                    CexTkn_str[t.type],
-                    t.value
-                );
+                return e$raise(Error.integrity, "Unexpected token in cex$$attr");
             }
         }
     }
@@ -1266,7 +1235,7 @@ _cex_json__gen___process_field_attr(
             case CexTkn__ident:
                 break;
             default: {
-                e$assertf(false, "Unsupported token: %s\n", CexTkn_str[t.type]);
+                e$assertf(false, "Unsupported token");
             }
         }
 
@@ -1454,7 +1423,7 @@ _cex_json__gen__codegen_deserialize_field(
                 }
 
             } else {
-                uassertf(false, "field type, not implemented yet: type=%S\n", f->type);
+                uassertf(false, "field type, not implemented yet");
             }
 
 
@@ -1494,7 +1463,7 @@ _cex_json__gen__codegen_destroy_field(json_gen_c* self, cex_codegen_s* cg$var, j
         } else if (str$eq(f->type, "str_s")) {
             cg$pf("mem$free(allc, item->%s.buf);", f->name);
         } else {
-            uassertf(false, "field type, not implemented yet: type=%S\n", f->type);
+            uassertf(false, "field type, not implemented yet");
         }
     } else {
         // Primitive type do nothing
@@ -1595,11 +1564,7 @@ _cex_json__gen__generate_type(json_gen_c* self, cex_codegen_s* cg$var, json_gen_
             }
         }
         if (nfields >= 64) {
-            return e$raise(
-                Error.overflow,
-                "Struct [%s] has more than 64 fields, try to split it into sub-types",
-                t->name
-            );
+            return e$raise(Error.overflow, "Struct has more than 64 fields");
         }
         cg$if ("fields_mask != ((1 << %d) - 1)", nfields) {
             cg$if ("!jr->error") { cg$pn("jr->error = JsonError.missing_field;"); }
@@ -1756,7 +1721,7 @@ _cex_json__gen__process_decl(json_gen_c* self,  cex_decl_s* d, bool* has_serde)
             }
 
             if (hm$getp(self->types, str.sstr(stype->name))) {
-                return e$raise(Error.exists, "Duplicate json$$struct type name: %s", stype->name);
+                return e$raise(Error.exists, "Duplicate json$$struct type name");
             }
 
             if (!hm$set(self->types, str.sstr(stype->name), stype)) { return Error.memory; }
@@ -1788,7 +1753,7 @@ cex_json__gen__process_file(json_gen_c* self, char* path)
     mem$arena_scope(256 * 1024, _)
     {
         char* code = io.file.load(path, _);
-        if (!code) { return e$raise(Error.io, "Error reading file: %s", path); }
+        if (!code) { return e$raise(Error.io, "Error reading file"); }
 
         arr$(cex_token_s) items = arr$new(items, _);
         CexParser_c lx = CexParser.create(code, 0, true);
@@ -1849,21 +1814,13 @@ cex_json__gen__run(json_gen_c* self)
         if (os.path.exists(self->c_out_name)) {
             char* content = io.file.load(self->c_out_name, _);
             if (!str.starts_with(content, "// Autogenerated serde engine by CEX")) {
-                return e$raise(
-                    Error.integrity,
-                    "File `%s` was not generated by CexSerdeGen, exiting",
-                    self->c_out_name
-                );
+                return e$raise(Error.integrity, "File was not generated by CexSerdeGen, exiting");
             }
         }
         if (os.path.exists(self->h_out_name)) {
             char* content = io.file.load(self->h_out_name, _);
             if (!str.starts_with(content, "// Autogenerated serde engine by CEX")) {
-                return e$raise(
-                    Error.integrity,
-                    "File `%s` was not generated by CexSerdeGen, exiting",
-                    self->h_out_name
-                );
+                return e$raise(Error.integrity, "File was not generated by CexSerdeGen, exiting");
             }
         }
     }

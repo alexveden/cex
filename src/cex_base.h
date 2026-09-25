@@ -472,8 +472,8 @@ int main(void)
         })
 
 
-/// Non disposable assert, returns Error.assert CEX exception when failed (supports formatting)
-#    define e$assertf(A, format, ...)                                                              \
+/// Non disposable assert, returns Error.assert CEX exception when failed
+#    define e$assertf(A, error_msg)                                                                \
         ({                                                                                         \
             if (unlikely(!((A)))) {                                                                \
                 __cex__fprintf(                                                                    \
@@ -482,8 +482,7 @@ int main(void)
                     __FILE_NAME__,                                                                 \
                     __LINE__,                                                                      \
                     __func__,                                                                      \
-                    format "\n",                                                                   \
-                    ##__VA_ARGS__                                                                  \
+                    error_msg "\n"                                                                 \
                 );                                                                                 \
                 return Error.assert;                                                               \
             }                                                                                      \
@@ -496,7 +495,7 @@ int main(void)
         })
 
 
-#    define e$assertf(A, format, ...)                                                              \
+#    define e$assertf(A, error_msg)                                                                \
         ({                                                                                         \
             if (unlikely(!((A)))) { return Error.assert; }                                         \
         })
@@ -510,7 +509,7 @@ Assertion macros, ASAN detection, and stack-trace helpers.
 - `mem$asan_enabled()` — compile-time check for Address Sanitizer
 - `sanitizer_stack_trace()` — prints ASAN stack trace when available
 - `uassert(A)` — hard assertion, prints file:line:func + traceback, then aborts
-- `uassertf(A, format, ...)` — assertion with formatted message
+- `uassertf(A, error_msg)` — assertion with message
 - `uassert_disable()` / `uassert_enable()` — suppress assertions in test mode
 
 */
@@ -542,12 +541,12 @@ void __sanitizer_print_stack_trace();
 #if defined(__clang_analyzer__)
 #    include <assert.h>
 #    define uassert(cond) assert(cond)
-#    define uassertf(cond, format, ...) assert(cond)
+#    define uassertf(cond, error_msg) assert(cond)
 #    define uassert_disable() ((void)0)
 #    define uassert_enable() ((void)0)
 #    define __cex_test_postmortem_exists() 0
 #elif defined(NDEBUG)
-#    define uassertf(cond, format, ...) ((void)(0))
+#    define uassertf(cond, error_msg) ((void)(0))
 #    define uassert(cond) ((void)(0))
 #    define uassert_disable() ((void)0)
 #    define uassert_enable() ((void)0)
@@ -588,7 +587,7 @@ int __cex_test_uassert_enabled = 1;
             }                                                                                      \
         })
 
-#    define uassertf(A, format, ...)                                                               \
+#    define uassertf(A, error_msg)                                                                 \
         ({                                                                                         \
             if (unlikely(!((A)))) {                                                                \
                 __cex__fprintf(                                                                    \
@@ -597,8 +596,7 @@ int __cex_test_uassert_enabled = 1;
                     __FILE_NAME__,                                                                 \
                     __LINE__,                                                                      \
                     __func__,                                                                      \
-                    format "\n",                                                                   \
-                    ##__VA_ARGS__                                                                  \
+                    error_msg "\n"                                                                 \
                 );                                                                                 \
                 if (uassert_is_enabled()) { cex$platform_panic(); }                                \
             }                                                                                      \
@@ -650,9 +648,9 @@ int __cex_test_uassert_enabled = 1;
 /// cex$tmpname - internal macro for generating temporary variable names (unique__line_num)
 #define cex$tmpname(base) cex$varname(base, __LINE__)
 
-/// raises an error, code: `return e$raise(Error.integrity, "ooops: %d", i);`
-#define e$raise(return_uerr, error_msg, ...)                                                       \
-    (log$error("[%s] " error_msg "\n", return_uerr, ##__VA_ARGS__), (return_uerr))
+/// raises an error, code: `return e$raise(Error.integrity, "ooops");`
+#define e$raise(return_uerr, error_msg)                                                            \
+    (log$error("[%s] " error_msg "\n", return_uerr), (return_uerr))
 
 /// catches the error of function inside scope + prints traceback
 #define e$except(_var_name, _func)                                                                 \

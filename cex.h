@@ -705,8 +705,8 @@ int main(void)
         })
 
 
-/// Non disposable assert, returns Error.assert CEX exception when failed (supports formatting)
-#    define e$assertf(A, format, ...)                                                              \
+/// Non disposable assert, returns Error.assert CEX exception when failed
+#    define e$assertf(A, error_msg)                                                                \
         ({                                                                                         \
             if (unlikely(!((A)))) {                                                                \
                 __cex__fprintf(                                                                    \
@@ -715,8 +715,7 @@ int main(void)
                     __FILE_NAME__,                                                                 \
                     __LINE__,                                                                      \
                     __func__,                                                                      \
-                    format "\n",                                                                   \
-                    ##__VA_ARGS__                                                                  \
+                    error_msg "\n"                                                                 \
                 );                                                                                 \
                 return Error.assert;                                                               \
             }                                                                                      \
@@ -729,7 +728,7 @@ int main(void)
         })
 
 
-#    define e$assertf(A, format, ...)                                                              \
+#    define e$assertf(A, error_msg)                                                                \
         ({                                                                                         \
             if (unlikely(!((A)))) { return Error.assert; }                                         \
         })
@@ -743,7 +742,7 @@ Assertion macros, ASAN detection, and stack-trace helpers.
 - `mem$asan_enabled()` — compile-time check for Address Sanitizer
 - `sanitizer_stack_trace()` — prints ASAN stack trace when available
 - `uassert(A)` — hard assertion, prints file:line:func + traceback, then aborts
-- `uassertf(A, format, ...)` — assertion with formatted message
+- `uassertf(A, error_msg)` — assertion with message
 - `uassert_disable()` / `uassert_enable()` — suppress assertions in test mode
 
 */
@@ -775,12 +774,12 @@ void __sanitizer_print_stack_trace();
 #if defined(__clang_analyzer__)
 #    include <assert.h>
 #    define uassert(cond) assert(cond)
-#    define uassertf(cond, format, ...) assert(cond)
+#    define uassertf(cond, error_msg) assert(cond)
 #    define uassert_disable() ((void)0)
 #    define uassert_enable() ((void)0)
 #    define __cex_test_postmortem_exists() 0
 #elif defined(NDEBUG)
-#    define uassertf(cond, format, ...) ((void)(0))
+#    define uassertf(cond, error_msg) ((void)(0))
 #    define uassert(cond) ((void)(0))
 #    define uassert_disable() ((void)0)
 #    define uassert_enable() ((void)0)
@@ -821,7 +820,7 @@ int __cex_test_uassert_enabled = 1;
             }                                                                                      \
         })
 
-#    define uassertf(A, format, ...)                                                               \
+#    define uassertf(A, error_msg)                                                                 \
         ({                                                                                         \
             if (unlikely(!((A)))) {                                                                \
                 __cex__fprintf(                                                                    \
@@ -830,8 +829,7 @@ int __cex_test_uassert_enabled = 1;
                     __FILE_NAME__,                                                                 \
                     __LINE__,                                                                      \
                     __func__,                                                                      \
-                    format "\n",                                                                   \
-                    ##__VA_ARGS__                                                                  \
+                    error_msg "\n"                                                                 \
                 );                                                                                 \
                 if (uassert_is_enabled()) { cex$platform_panic(); }                                \
             }                                                                                      \
@@ -883,9 +881,9 @@ int __cex_test_uassert_enabled = 1;
 /// cex$tmpname - internal macro for generating temporary variable names (unique__line_num)
 #define cex$tmpname(base) cex$varname(base, __LINE__)
 
-/// raises an error, code: `return e$raise(Error.integrity, "ooops: %d", i);`
-#define e$raise(return_uerr, error_msg, ...)                                                       \
-    (log$error("[%s] " error_msg "\n", return_uerr, ##__VA_ARGS__), (return_uerr))
+/// raises an error, code: `return e$raise(Error.integrity, "ooops");`
+#define e$raise(return_uerr, error_msg)                                                            \
+    (log$error("[%s] " error_msg "\n", return_uerr), (return_uerr))
 
 /// catches the error of function inside scope + prints traceback
 #define e$except(_var_name, _func)                                                                 \
@@ -3101,6 +3099,391 @@ struct __cex_namespace__io {
 };
 CEX_NAMESPACE struct __cex_namespace__io io;
 
+#endif
+
+
+
+/*
+*                          src/cex_errors.h
+*/
+
+#ifndef CEX_TRACEBACK_LVL
+#define CEX_TRACEBACK_LVL 2
+#endif
+
+static_assert(
+    CEX_TRACEBACK_LVL >= 0 && CEX_TRACEBACK_LVL <= 3,
+    "CEX_TRACEBACK_LVL must be 0, 1, 2, or 3"
+);
+
+/// Max recorded traceback frames (buffered levels)
+#ifndef CEX_TRACEBACK_CAP
+#    define CEX_TRACEBACK_CAP 32
+#endif
+
+/// Assertion label, shared by uassert() and _cex_errors_fail()'s suppressible check
+#define _cex_errors_assert_prefix "[ASSERT] "
+
+#undef e$raise
+#undef e$assert
+#undef e$except
+#undef e$except_errno
+#undef e$except_null
+#undef e$except_true
+#undef e$ret
+#undef e$goto
+#undef uassert
+#undef unreachable
+
+#if defined(__clang_analyzer__)
+#    define uassert(A) assert(A)
+#    define unreachable() __builtin_unreachable()
+#elif defined(NDEBUG)
+#    define uassert(A) ((void)(0))
+#    define unreachable() __builtin_unreachable()
+#else
+#    define uassert(A)                                                                             \
+        ({                                                                                         \
+            if (unlikely(!((A)))) {                                                                \
+                __cex__fprintf(                                                                    \
+                    (uassert_is_enabled() ? stderr : stdout),                                      \
+                    _cex_errors_assert_prefix,                                                     \
+                    __FILE_NAME__,                                                                 \
+                    __LINE__,                                                                      \
+                    __func__,                                                                      \
+                    "%s\n",                                                                        \
+                    #A                                                                             \
+                );                                                                                 \
+                if (uassert_is_enabled()) { cex$platform_panic(); }                                \
+            }                                                                                      \
+        })
+
+#    define unreachable()                                                                          \
+        ({                                                                                         \
+            __cex__fprintf(stderr, "[UNREACHABLE] ", __FILE_NAME__, __LINE__, __func__, "\n");     \
+            cex$platform_panic();                                                                  \
+            __builtin_unreachable();                                                               \
+        })
+#endif
+
+#if CEX_TRACEBACK_LVL == 1
+typedef struct
+{
+    Exc err;
+    const char* file;
+    u32 line;
+} _cex_errors_traceback_s;
+#else
+typedef struct
+{
+    Exc err;
+    const char* file;
+    const char* func;
+    const char* msg;
+    u32 line;
+} _cex_errors_traceback_s;
+#endif
+
+typedef struct
+{
+    u32 len;
+    u32 _pad[3];
+    _cex_errors_traceback_s items[CEX_TRACEBACK_CAP];
+} _cex_errors_traceback_data_s;
+
+#if CEX_TRACEBACK_LVL >= 1 && CEX_TRACEBACK_LVL <= 2
+/// Shared traceback ring (defined in cex_errors.c)
+extern _Thread_local _cex_errors_traceback_data_s _cex_errors_traceback_data_array;
+
+#if CEX_TRACEBACK_LVL == 2
+/// Private: append one frame to the ring (clamped at CEX_TRACEBACK_CAP)
+#define _e$push_frame(_err, _file, _line, _func, _msg)                                             \
+    ({                                                                                             \
+        if (_cex_errors_traceback_data_array.len < CEX_TRACEBACK_CAP) {                            \
+            _cex_errors_traceback_data_array.items[_cex_errors_traceback_data_array.len++] =       \
+                (_cex_errors_traceback_s){ .err = (_err),                                          \
+                                           .file = (_file),                                        \
+                                           .func = (_func),                                        \
+                                           .msg = (_msg),                                          \
+                                           .line = (_line) };                                      \
+        }                                                                                          \
+    })
+#else
+/// Private: append one frame to the ring (clamped at CEX_TRACEBACK_CAP)
+#define _e$push_frame(_err, _file, _line, _func, _msg)                                             \
+    ({                                                                                             \
+        if (_cex_errors_traceback_data_array.len < CEX_TRACEBACK_CAP) {                            \
+            _cex_errors_traceback_data_array.items[_cex_errors_traceback_data_array.len++] =       \
+                (_cex_errors_traceback_s){ .err = (_err), .file = (_file), .line = (_line) };      \
+        }                                                                                          \
+    })
+#endif
+
+/// Private: start a new error chain (reset the ring), then append a frame
+#define _e$push_origin(_err, _file, _line, _func, _msg)                                            \
+    ({                                                                                             \
+        _cex_errors_traceback_data_array.len = 0;                                                  \
+        _e$push_frame(_err, _file, _line, _func, _msg);                                            \
+    })
+#endif // CEX_TRACEBACK_LVL >= 1 && <= 2
+
+#if CEX_TRACEBACK_LVL == 0
+
+#define e$raise(return_uerr, error_msg) ((return_uerr))
+
+#define e$assert(A)                                                                                \
+    ({                                                                                             \
+        if (unlikely(!((A)))) { return Error.assert; }                                             \
+    })
+
+#define e$except(_var_name, _func)                                                                 \
+    for (Exc _var_name = _func; unlikely(_var_name != EOK); _var_name = EOK)
+
+#define e$except_errno(_expression)                                                                \
+    for (int _tmp_errno = 0; unlikely(                                                             \
+             ((_tmp_errno == 0) && ((_expression) < 0) && ((_tmp_errno = errno), 1) &&             \
+              (errno = _tmp_errno, 1))                                                             \
+         );                                                                                        \
+         _tmp_errno = 1)
+
+#define e$except_null(_expression) if (unlikely((_expression) == NULL))
+
+#define e$except_true(_expression) if (unlikely(_expression))
+
+#define e$ret(_func)                                                                               \
+    for (Exc cex$tmpname(__cex_err_traceback_) = _func;                                            \
+         unlikely(cex$tmpname(__cex_err_traceback_) != EOK);                                       \
+         cex$tmpname(__cex_err_traceback_) = EOK)                                                  \
+    return cex$tmpname(__cex_err_traceback_)
+
+#define e$goto(_func, _label)                                                                      \
+    for (Exc cex$tmpname(__cex_err_traceback_) = _func;                                            \
+         unlikely(cex$tmpname(__cex_err_traceback_) != EOK);                                       \
+         cex$tmpname(__cex_err_traceback_) = EOK)                                                  \
+    goto _label
+
+#elif CEX_TRACEBACK_LVL <= 2
+
+#define e$raise(return_uerr, error_msg)                                                            \
+    ({                                                                                             \
+        _e$push_origin((return_uerr), __FILE_NAME__, __LINE__, __func__, ("" error_msg));          \
+        (return_uerr);                                                                             \
+    })
+
+#define e$assert(A)                                                                                \
+    ({                                                                                             \
+        if (unlikely(!((A)))) {                                                                    \
+            _e$push_origin(Error.assert, __FILE_NAME__, __LINE__, __func__, #A);                   \
+            return Error.assert;                                                                   \
+        }                                                                                          \
+    })
+
+#define e$except(_var_name, _func)                                                                 \
+    for (Exc _var_name = _func;                                                                    \
+         unlikely(                                                                                 \
+             (_var_name != EOK) &&                                                                 \
+             (_e$push_frame(_var_name, __FILE_NAME__, __LINE__, __func__, #_func), 1)              \
+         );                                                                                        \
+         _var_name = EOK)
+
+#define e$except_errno(_expression)                                                                \
+    for (int _tmp_errno = 0; unlikely(                                                             \
+             ((_tmp_errno == 0) && ((_expression) < 0) && ((_tmp_errno = errno), 1) &&             \
+              (_e$push_origin(                                                                     \
+                   strerror(_tmp_errno), __FILE_NAME__, __LINE__, __func__, #_expression           \
+               ),                                                                                  \
+               1) &&                                                                               \
+              (errno = _tmp_errno, 1))                                                             \
+         );                                                                                        \
+         _tmp_errno = 1)
+
+#define e$except_null(_expression)                                                                 \
+    if (unlikely(                                                                                  \
+            ((_expression) == NULL) &&                                                             \
+            (_e$push_origin(                                                                       \
+                 Error.null_or_empty, __FILE_NAME__, __LINE__, __func__, #_expression              \
+             ),                                                                                    \
+             1)                                                                                    \
+        ))
+
+#define e$except_true(_expression)                                                                 \
+    if (unlikely(                                                                                  \
+            ((_expression)) &&                                                                     \
+            (_e$push_origin(Error.runtime, __FILE_NAME__, __LINE__, __func__, #_expression), 1)    \
+        ))
+
+#define e$ret(_func)                                                                               \
+    for (Exc cex$tmpname(__cex_err_traceback_) = _func;                                            \
+         unlikely(                                                                                 \
+             (cex$tmpname(__cex_err_traceback_) != EOK) &&                                         \
+             (_e$push_frame(                                                                       \
+                  cex$tmpname(__cex_err_traceback_), __FILE_NAME__, __LINE__, __func__, #_func     \
+              ),                                                                                   \
+              1)                                                                                   \
+         );                                                                                        \
+         cex$tmpname(__cex_err_traceback_) = EOK)                                                  \
+    return cex$tmpname(__cex_err_traceback_)
+
+#define e$goto(_func, _label)                                                                      \
+    for (Exc cex$tmpname(__cex_err_traceback_) = _func;                                            \
+         unlikely(                                                                                 \
+             (cex$tmpname(__cex_err_traceback_) != EOK) &&                                         \
+             (_e$push_frame(                                                                       \
+                  cex$tmpname(__cex_err_traceback_), __FILE_NAME__, __LINE__, __func__, #_func     \
+              ),                                                                                   \
+              1)                                                                                   \
+         );                                                                                        \
+         cex$tmpname(__cex_err_traceback_) = EOK)                                                  \
+    goto _label
+
+#else // CEX_TRACEBACK_LVL == 3
+
+#define e$raise(return_uerr, error_msg)                                                            \
+    (log$error("[%s] " error_msg "\n", return_uerr), (return_uerr))
+
+#if CEX_LOG_LVL > 0
+#    define e$assert(A)                                                                            \
+        ({                                                                                         \
+            if (unlikely(!((A)))) {                                                                \
+                __cex__fprintf(stdout, "[ASSERT] ", __FILE_NAME__, __LINE__, __func__, "%s\n", #A);\
+                return Error.assert;                                                               \
+            }                                                                                      \
+        })
+#else
+#    define e$assert(A)                                                                            \
+        ({                                                                                         \
+            if (unlikely(!((A)))) { return Error.assert; }                                         \
+        })
+#endif
+
+#define e$except(_var_name, _func)                                                                 \
+    for (Exc _var_name = _func;                                                                    \
+         unlikely((_var_name != EOK) && (__cex__traceback(_var_name, #_func), 1));                 \
+         _var_name = EOK)
+
+#define e$except_errno(_expression)                                                                \
+    for (int _tmp_errno = 0; unlikely(                                                             \
+             ((_tmp_errno == 0) && ((_expression) < 0) && ((_tmp_errno = errno), 1) &&             \
+              (log$error(                                                                          \
+                   "`%s` failed errno: %d, msg: %s\n",                                             \
+                   #_expression,                                                                   \
+                   _tmp_errno,                                                                     \
+                   strerror(_tmp_errno)                                                            \
+               ),                                                                                  \
+               1) &&                                                                               \
+              (errno = _tmp_errno, 1))                                                             \
+         );                                                                                        \
+         _tmp_errno = 1)
+
+#define e$except_null(_expression)                                                                 \
+    if (unlikely(((_expression) == NULL) && (log$error("`%s` returned NULL\n", #_expression), 1)))
+
+#define e$except_true(_expression)                                                                 \
+    if (unlikely(((_expression)) && (log$error("`%s` returned non zero\n", #_expression), 1)))
+
+#define e$ret(_func)                                                                               \
+    for (Exc cex$tmpname(__cex_err_traceback_) = _func; unlikely(                                  \
+             (cex$tmpname(__cex_err_traceback_) != EOK) &&                                         \
+             (__cex__traceback(cex$tmpname(__cex_err_traceback_), #_func), 1)                      \
+         );                                                                                        \
+         cex$tmpname(__cex_err_traceback_) = EOK)                                                  \
+    return cex$tmpname(__cex_err_traceback_)
+
+#define e$goto(_func, _label)                                                                      \
+    for (Exc cex$tmpname(__cex_err_traceback_) = _func; unlikely(                                  \
+             (cex$tmpname(__cex_err_traceback_) != EOK) &&                                         \
+             (__cex__traceback(cex$tmpname(__cex_err_traceback_), #_func), 1)                      \
+         );                                                                                        \
+         cex$tmpname(__cex_err_traceback_) = EOK)                                                  \
+    goto _label
+
+#endif // CEX_TRACEBACK_LVL
+
+/* Hard-fail panic (asserts + unreachable), prototype-scoped replacement for __cex__panic */
+
+/// Cold panic: suppressible [ASSERT] prints to stdout when disabled, everything else aborts
+__attribute__((cold, noinline))
+#ifndef CEX_TEST
+__attribute__((noreturn))
+#endif
+void _cex_errors_fail(
+    const char* prefix,
+    const char* file,
+    u32 line,
+    const char* func,
+    const char* msg
+);
+
+#if !defined(NDEBUG) && CEX_TRACEBACK_LVL == 0
+
+#    undef uassert
+#    undef unreachable
+#    define uassert(A)                                                                             \
+        ({                                                                                         \
+            if (unlikely(!((A)))) { __builtin_trap(); }                                            \
+        })
+#    define unreachable() __builtin_trap()
+
+#elif !defined(NDEBUG) && CEX_TRACEBACK_LVL <= 2
+
+#    undef uassert
+#    undef unreachable
+
+#    if CEX_TRACEBACK_LVL == 1
+#        define uassert(A)                                                                         \
+            ({                                                                                     \
+                if (unlikely(!((A)))) {                                                            \
+                    _cex_errors_fail(                                                              \
+                        _cex_errors_assert_prefix, __FILE_NAME__, __LINE__, NULL, NULL             \
+                    );                                                                             \
+                }                                                                                  \
+            })
+#        define unreachable()                                                                      \
+            _cex_errors_fail("[UNREACHABLE] ", __FILE_NAME__, __LINE__, NULL, NULL)
+#    else
+#        define uassert(A)                                                                         \
+            ({                                                                                     \
+                if (unlikely(!((A)))) {                                                            \
+                    _cex_errors_fail(                                                              \
+                        _cex_errors_assert_prefix, __FILE_NAME__, __LINE__, __func__, #A           \
+                    );                                                                             \
+                }                                                                                  \
+            })
+#        define unreachable()                                                                      \
+            _cex_errors_fail("[UNREACHABLE] ", __FILE_NAME__, __LINE__, __func__, NULL)
+#    endif
+
+#endif
+/* CEX_TRACEBACK_LVL == 3 keeps the stock baseline defined above */
+
+/* Traceback read-back (buffered levels fill the ring; 0/3 stay empty) */
+
+/// Format the recorded traceback into an owned `sbuf_c` (free with sbuf.destroy(&s))
+sbuf_c _cex_errors_traceback_fmt(IAllocator allc);
+
+/// Print the recorded traceback to a stream (no allocation)
+void _cex_errors_traceback_print(FILE* stream);
+
+/// Format the whole traceback into an owned `sbuf_c`
+#define e$traceback_fmt(_allc) _cex_errors_traceback_fmt(_allc)
+
+/// Print the whole traceback to a FILE*
+#define e$traceback_print(_stream) _cex_errors_traceback_print(_stream)
+
+#if CEX_TRACEBACK_LVL >= 1 && CEX_TRACEBACK_LVL <= 2
+/// Recorded frames array, use with for$each/for$eachp
+#define e$traceback_arr (_cex_errors_traceback_data_array.items)
+/// Number of recorded frames
+#define e$traceback_len (_cex_errors_traceback_data_array.len)
+/// Drop all recorded frames
+#define e$traceback_reset() (_cex_errors_traceback_data_array.len = 0)
+#else
+/// Recorded frames array (always empty when buffering is disabled)
+#define e$traceback_arr ((_cex_errors_traceback_s*)NULL)
+/// Number of recorded frames (always 0 when buffering is disabled)
+#define e$traceback_len 0
+/// Drop all recorded frames (no-op when buffering is disabled)
+#define e$traceback_reset() ((void)0)
 #endif
 
 
@@ -6477,7 +6860,7 @@ fuzz$setup()
         for (u32 i = 0; i < arr$len(match_tuple); i++) {
             char* fn = str.fmt(_, "%s/%05d", fuzz$corpus_dir, i);
             e$except (err, match_make(fn, match_tuple[i].text, match_tuple[i].pattern)) {
-                uassertf(false, "Error writing file: %s", fn);
+                uassertf(false, "Error writing file");
             }
         }
     }
@@ -7513,7 +7896,7 @@ _cex_allocator_arena__malloc(IAllocator allc, usize size, usize alignment)
     uassert(page->capacity - page->cursor >= _cex_arena_rec_get_size(&rec) + rec.ptr_padding + _cex_arena_rec_get_align(&rec));
     uassert(page->cursor % 8 == 0);
     uassert(rec.ptr_padding <= 8);
-    uassertf((usize)page->data % 8 == 0, "page.data offset: %zi\n", (page->data - (char*)page));
+    uassertf((usize)page->data % 8 == 0, "page.data is not 8-byte aligned");
 
     allocator_arena_rec_s* page_rec = (allocator_arena_rec_s*)&page->data[page->cursor];
     uassert((((usize)(page_rec) & ((8) - 1)) == 0) && "unaligned pointer");
@@ -12159,9 +12542,7 @@ main_loop_again:
                             // Handle character ranges like a-zA-Z0-9
                             uassertf(
                                 *pattern < *(pattern + 2),
-                                "pattern [n-m] sequence, n must be less than m: [%c-%c]",
-                                *pattern,
-                                *(pattern + 2)
+                                "pattern [n-m] sequence, n must be less than m"
                             );
                             if (*str >= *pattern && *str <= *(pattern + 2)) { matched = true; }
                             pattern += 3;
@@ -13376,6 +13757,108 @@ CEX_NAMESPACE_DEF struct __cex_namespace__io io = {
 
 
 /*
+*                          src/cex_errors.c
+*/
+
+#if CEX_TRACEBACK_LVL >= 1 && CEX_TRACEBACK_LVL <= 2
+_Thread_local _cex_errors_traceback_data_s _cex_errors_traceback_data_array;
+
+/// Private: emit one recorded frame to `_sink` using the printf-like `_write`
+#    if CEX_TRACEBACK_LVL == 2
+#        define _cex_traceback_fmt(_sink, _write, _idx, _r)                                        \
+            (_write)(                                                                              \
+                (_sink),                                                                           \
+                "#%u (%s:%u %s()) [%s] %s\n",                                                      \
+                (u32)(_idx),                                                                       \
+                (_r)->file,                                                                        \
+                (_r)->line,                                                                        \
+                (_r)->func,                                                                        \
+                (_r)->err,                                                                         \
+                (_r)->msg                                                                          \
+            )
+#    else
+#        define _cex_traceback_fmt(_sink, _write, _idx, _r)                                        \
+            (_write)((_sink), "#%u (%s:%u) [%s]\n", (u32)(_idx), (_r)->file, (_r)->line, (_r)->err)
+#    endif
+#endif // CEX_TRACEBACK_LVL >= 1 && <= 2
+
+sbuf_c
+_cex_errors_traceback_fmt(IAllocator allc)
+{
+#if CEX_TRACEBACK_LVL >= 1 && CEX_TRACEBACK_LVL <= 2
+    sbuf_c b = sbuf.create(256, allc);
+    if (b == NULL) { return NULL; }
+    for (u32 i = 0; i < _cex_errors_traceback_data_array.len; i++) {
+        (void)_cex_traceback_fmt(&b, sbuf.appendf, i, &_cex_errors_traceback_data_array.items[i]);
+    }
+    return b;
+#else
+    return sbuf.create(1, allc);
+#endif
+}
+
+void
+_cex_errors_traceback_print(FILE* stream)
+{
+#if CEX_TRACEBACK_LVL >= 1 && CEX_TRACEBACK_LVL <= 2
+    for (u32 i = 0; i < _cex_errors_traceback_data_array.len; i++) {
+        (void)_cex_traceback_fmt(stream, io.fprintf, i, &_cex_errors_traceback_data_array.items[i]);
+    }
+#else
+    (void)stream;
+#endif
+}
+
+#undef _cex_traceback_fmt
+
+#if !defined(NDEBUG) && !defined(__clang_analyzer__) &&                                            \
+    (CEX_TRACEBACK_LVL == 1 || CEX_TRACEBACK_LVL == 2)
+
+#if CEX_TRACEBACK_LVL == 1
+/// Private: emit the panic line (L1 records only file:line)
+#    define _cex_errors_report(_stream)                                                            \
+        cexsp__fprintf((_stream), "%s ( %s:%u )\n", prefix, file, line)
+#else
+/// Private: emit the panic line (L2 records file:line, func and message)
+#    define _cex_errors_report(_stream)                                                            \
+        ((msg) ? __cex__fprintf((_stream), prefix, file, line, func, "%s\n", msg)                  \
+               : __cex__fprintf((_stream), prefix, file, line, func, "\n"))
+#endif
+
+__attribute__((cold, noinline))
+#    ifndef CEX_TEST
+__attribute__((noreturn))
+#    endif
+void
+_cex_errors_fail(const char* prefix, const char* file, u32 line, const char* func, const char* msg)
+{
+#    if CEX_TRACEBACK_LVL == 1
+    (void)func;
+    (void)msg;
+#    endif
+
+#    ifdef CEX_TEST
+    if (!uassert_is_enabled() && strcmp(prefix, _cex_errors_assert_prefix) == 0) {
+        _cex_errors_report(stdout);
+        return;
+    }
+#    endif
+    _cex_errors_report(stderr);
+    fflush(stdout);
+    fflush(stderr);
+    sanitizer_stack_trace();
+#    ifdef CEX_TEST
+    breakpoint();
+#    endif
+    abort();
+}
+
+#    undef _cex_errors_report
+#endif
+
+
+
+/*
 *                          src/argparse.c
 */
 #if !defined(cex$enable_minimal) || defined(cex$enable_os)
@@ -13695,12 +14178,7 @@ _cex_argparse__options_check(argparse_c* self, bool reset)
                     return Error.argument;
                 }
                 if (opt->value == NULL && opt->short_name != 'h') {
-                    uassertf(
-                        opt->value != NULL,
-                        "option value [%c/%s] is null\n",
-                        opt->short_name,
-                        opt->long_name
-                    );
+                    uassertf(opt->value != NULL, "option value is null");
                     return Error.argument;
                 }
             } else {
@@ -13743,7 +14221,7 @@ _cex_argparse__options_check(argparse_c* self, bool reset)
                 uassert(opt->callback != NULL && "expected to be set for generic args");
                 continue;
             default:
-                uassertf(false, "wrong option type: %d", opt->type);
+                uassertf(false, "wrong option type");
         }
     }
 
@@ -15497,7 +15975,7 @@ static arr$(char*) cex_os__fs__find(char* path_pattern, bool is_recursive, IAllo
     str_s dir_part = os.path.split(path_pattern, true);
     if (dir_part.buf == NULL) {
 #    if defined(CEX_TEST) || defined(CEX_BUILD)
-        (void)e$raise(Error.argument, "Bad path: os.fn.find('%s')", path_pattern);
+        (void)e$raise(Error.argument, "Bad path: os.fn.find()");
 #    endif
         return NULL;
     }
@@ -16255,11 +16733,7 @@ cex_os__cmd__run(char** args, usize args_len, os_cmd_c* out_cmd)
 
     for (u32 i = 0; i < args_len - 1; i++) {
         if (args[i] == NULL || args[i][0] == '\0') {
-            return e$raise(
-                Error.argument,
-                "`args` item[%d] is NULL/empty, which may indicate string operation failure",
-                i
-            );
+            return e$raise(Error.argument, "`args` item is NULL/empty");
         }
     }
 
@@ -16323,7 +16797,7 @@ end:
     return result;
 #    else
     pid_t cpid = fork();
-    if (cpid < 0) { return e$raise(Error.os, "Could not fork child process: %s", strerror(errno)); }
+    if (cpid < 0) { return e$raise(Error.os, "Could not fork child process"); }
 
     if (cpid == 0) {
         if (execvp(args[0], (char* const*)args) < 0) {
@@ -16900,10 +17374,10 @@ cexy_src_include_changed(char* target_path, char* src_path, arr$(char*) alt_incl
 
     auto src_meta = os.fs.stat(src_path);
     if (!src_meta.is_valid) {
-        (void)e$raise(src_meta.error, "Error src: %s", src_path);
+        (void)e$raise(src_meta.error, "Error src");
         return false;
     } else if (!src_meta.is_file || src_meta.is_symlink) {
-        (void)e$raise("Bad type", "src is not a file: %s", src_path);
+        (void)e$raise("Bad type", "src is not a file");
         return false;
     }
 
@@ -16912,11 +17386,11 @@ cexy_src_include_changed(char* target_path, char* src_path, arr$(char*) alt_incl
         if (target_meta.error == Error.not_found) {
             return true;
         } else {
-            (void)e$raise(target_meta.error, "target_path: '%s'", target_path);
+            (void)e$raise(target_meta.error, "target_path is invalid");
             return false;
         }
     } else if (!target_meta.is_file || target_meta.is_symlink) {
-        (void)e$raise("Bad type", "target_path is not a file: %s", target_path);
+        (void)e$raise("Bad type", "target_path is not a file");
         return false;
     }
 
@@ -16960,7 +17434,7 @@ cexy_src_include_changed(char* target_path, char* src_path, arr$(char*) alt_incl
 
         char* code = io.file.load(src_path, _);
         if (code == NULL) {
-            (void)e$raise("IOError", "src is not a file: '%s'", src_path);
+            (void)e$raise("IOError", "src is not a file");
             return false;
         }
 
@@ -17034,20 +17508,20 @@ cexy_src_changed(char* target_path, char** src_array, usize src_array_len)
             log$trace("Target '%s' not exists, needs build.\n", target_path);
             return true;
         } else {
-            (void)e$raise(target_ftype.error, "target_path: '%s'", target_path);
+            (void)e$raise(target_ftype.error, "target_path is invalid");
             return false;
         }
     } else if (!target_ftype.is_file || target_ftype.is_symlink) {
-        (void)e$raise("Bad type", "target_path is not a file: %s", target_path);
+        (void)e$raise("Bad type", "target_path is not a file");
         return false;
     }
 
     for$each (p, src_array, src_array_len) {
         auto ftype = os.fs.stat(p);
         if (!ftype.is_valid) {
-            (void)e$raise(ftype.error, "Error src: %s", p);
+            (void)e$raise(ftype.error, "Error src");
         } else if (!ftype.is_file || ftype.is_symlink) {
-            (void)e$raise("Bad type", "src is not a regular file: %s", p);
+            (void)e$raise("Bad type", "src is not a regular file");
         } else {
             if (ftype.mtime > target_ftype.mtime) {
                 log$trace("Source changed '%s'\n", p);
@@ -17115,10 +17589,10 @@ Exception
 cexy__fuzz__create(char* target)
 {
     if (!str.slice.starts_with(os.path.split(target, false), str$s("fuzz_"))) {
-        return e$raise(Error.argument, "Fuzz file must start with `fuzz_` prefix, got: %s", target);
+        return e$raise(Error.argument, "Fuzz file must start with `fuzz_` prefix");
     }
     if (os.path.exists(target)) {
-        return e$raise(Error.exists, "Fuzz file already exists: %s", target);
+        return e$raise(Error.exists, "Fuzz file already exists");
     }
     e$ret(os.fs.mkpath(target));
 
@@ -17163,14 +17637,10 @@ Exception
 cexy__test__create(char* target, bool include_sample)
 {
     if (os.path.exists(target)) {
-        return e$raise(Error.exists, "Test file already exists: %s", target);
+        return e$raise(Error.exists, "Test file already exists");
     }
     if (str.eq(target, "all") || str.find(target, "*")) {
-        return e$raise(
-            Error.argument,
-            "You must pass exact file path, not pattern, got: %s",
-            target
-        );
+        return e$raise(Error.argument, "You must pass exact file path, not pattern");
     }
     e$ret(os.fs.mkpath(target));
 
@@ -17226,7 +17696,7 @@ cexy__test__clean(char* target)
     } else {
         log$info("Cleaning target: %s\n", target);
         if (!os.path.exists(target)) {
-            return e$raise(Error.exists, "Test target not exists: %s", target);
+            return e$raise(Error.exists, "Test target not exists");
         }
 
         mem$scope(tmem$, _)
@@ -17250,11 +17720,7 @@ cexy__test__make_target_pattern(char** target)
     if (str.eq(*target, "all")) { *target = "tests/test_*.c"; }
 
     if (!str.match(*target, "*test*.c")) {
-        return e$raise(
-            Error.argsparse,
-            "Invalid target: '%s', expected all or tests/test_some_file.c",
-            *target
-        );
+        return e$raise(Error.argsparse, "Invalid target, expected all or tests/test_some_file.c");
     }
     return EOK;
 }
@@ -17276,7 +17742,7 @@ cexy__test__run(char* target, char* cmd, int argc, char** argv)
             io.printf("-------------------------------------\n\n");
         } else {
             if (!os.path.exists(target)) {
-                return e$raise(Error.not_found, "Test file not found: %s", target);
+                return e$raise(Error.not_found, "Test file not found");
             }
         }
 
@@ -17710,11 +18176,7 @@ cexy__cmd__process(int argc, char** argv, void* user_ctx)
 
     if (target == NULL) {
         argparse.usage(&cmd_args);
-        return e$raise(
-            Error.argsparse,
-            "Invalid target: '%s', expected all or path/some_file.c",
-            target
-        );
+        return e$raise(Error.argsparse, "Invalid target, expected all or path/some_file.c");
     }
 
 
@@ -17725,7 +18187,7 @@ cexy__cmd__process(int argc, char** argv, void* user_ctx)
         // Use user passed pattern
     } else {
         if (!os.path.exists(target)) {
-            return e$raise(Error.not_found, "Target file not exists: '%s'", target);
+            return e$raise(Error.not_found, "Target file not exists");
         }
         only_update = false;
     }
@@ -17764,7 +18226,7 @@ cexy__cmd__process(int argc, char** argv, void* user_ctx)
                         log$debug("CEX skipped (no .h file for: %s)\n", src_fn);
                         continue;
                     } else {
-                        return e$raise(Error.not_found, "Header file not exists: '%s'", hdr_fn);
+                        return e$raise(Error.not_found, "Header file not exists");
                     }
                 }
                 char* code = io.file.load(src_fn, _);
@@ -17776,13 +18238,7 @@ cexy__cmd__process(int argc, char** argv, void* user_ctx)
                 cex_token_s t;
                 while ((t = CexParser.next_entity(&lx, &items)).type) {
                     if (t.type == CexTkn__error) {
-                        return e$raise(
-                            Error.integrity,
-                            "Error parsing file %s, at line: %d, cursor: %d",
-                            src_fn,
-                            lx.line,
-                            (i32)(lx.cur - lx.content)
-                        );
+                        return e$raise(Error.integrity, "Error parsing file");
                     }
                     cex_decl_s* d = CexParser.decl_parse(&lx, t, items, cexy$process_ignore_kw, _);
                     if (d == NULL) { continue; }
@@ -17913,7 +18369,7 @@ cexy__cmd__stats(int argc, char** argv, void* user_ctx)
             mem$scope(tmem$, _)
             {
                 char* code = io.file.load(src_fn.key, _);
-                if (!code) { return e$raise(Error.os, "Error opening file: '%s'", src_fn); }
+                if (!code) { return e$raise(Error.os, "Error opening file"); }
                 stats->n_files++;
 
                 if (code[0] != '\0') { stats->n_lines_total++; }
@@ -17924,13 +18380,7 @@ cexy__cmd__stats(int argc, char** argv, void* user_ctx)
                 u32 file_loc = 0;
                 while ((t = CexParser.next_token(&lx)).type) {
                     if (t.type == CexTkn__error) {
-                        return e$raise(
-                            Error.integrity,
-                            "Error parsing file %s, at line: %d, cursor: %d",
-                            src_fn,
-                            lx.line,
-                            (i32)(lx.cur - lx.content)
-                        );
+                        return e$raise(Error.integrity, "Error parsing file");
                     }
                     switch (t.type) {
                         case CexTkn__ident:
@@ -18353,7 +18803,7 @@ _cexy__display_full_info(
             {
                 char* code = io.file.load(src_fn, _);
                 if (code == NULL) {
-                    return e$raise(Error.not_found, "Error loading: %s\n", src_fn);
+                    return e$raise(Error.not_found, "Error loading");
                 }
                 arr$(cex_token_s) items = arr$new(items, _);
 
@@ -18421,11 +18871,7 @@ _cexy__add_precompiled_debug_cex_h(arr$(char*) * out_cc_args, IAllocator allc)
             break;
         }
         if (str.ends_with(it, ".c")) {
-            return e$raise(
-                Error.argument,
-                "You passed .c file in cc_args list, `%s`, you must pass only core compiler options",
-                it
-            );
+            return e$raise(Error.argument, "You passed .c file in cc_args list");
         }
         args_hash = str.hash(it, args_hash);
     }
@@ -18575,7 +19021,7 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
 
                 char* code = io.file.load(src_fn, arena);
                 if (code == NULL) {
-                    return e$raise(Error.not_found, "Error loading: %s\n", src_fn);
+                    return e$raise(Error.not_found, "Error loading");
                 }
                 arr$(cex_token_s) items = arr$new(items, _);
                 arr$(cex_decl_s*) all_decls = arr$new(all_decls, _);
@@ -19002,7 +19448,7 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
 
     if (!str.match(cmd, "(run|build|create|clean|debug|bench|watch)") || target == NULL) {
         argparse.usage(&cmd_args);
-        return e$raise(Error.argsparse, "Invalid command: '%s' or target: '%s'", cmd, target);
+        return e$raise(Error.argsparse, "Invalid command or target");
     }
 
     if (str.eq(cmd, "create")) {
@@ -19151,7 +19597,7 @@ cexy__utils__make_new_project(char* proj_dir)
     {
         if (!str.eq(proj_dir, ".")) {
             if (os.path.exists(proj_dir)) {
-                return e$raise(Error.exists, "New project dir already exists: %s", proj_dir);
+                return e$raise(Error.exists, "New project dir already exists");
             }
             e$ret(os.fs.mkdir(proj_dir));
             log$info("Copying this 'cex.h' into '%s/cex.h'\n", proj_dir);
@@ -19160,8 +19606,7 @@ cexy__utils__make_new_project(char* proj_dir)
             // Creating in the current dir
             if (os.path.exists("./cex.c")) {
                 return e$raise(
-                    Error.exists,
-                    "New project seems to de already initialized, cex.c exists"
+                    Error.exists, "New project seems to de already initialized, cex.c exists"
                 );
             }
         }
@@ -19292,7 +19737,7 @@ cexy__app__create(char* target)
     {
         char* app_src = os$path_join(_, cexy$src_dir, target, str.fmt(_, "%s.c", target));
         if (os.path.exists(app_src)) {
-            return e$raise(Error.exists, "App file already exists: %s", app_src, target);
+            return e$raise(Error.exists, "App file already exists");
         }
         e$ret(os.fs.mkpath(app_src));
 
@@ -19327,7 +19772,7 @@ cexy__app__create(char* target)
     {
         char* app_src = os$path_join(_, cexy$src_dir, target, "main.c");
         if (os.path.exists(app_src)) {
-            return e$raise(Error.exists, "App file already exists: %s", app_src, target);
+            return e$raise(Error.exists, "App file already exists");
         }
         e$ret(os.fs.mkpath(app_src));
 
@@ -19392,29 +19837,17 @@ cexy__app__find_app_target_src(IAllocator allc, char* target, char** out_result)
     *out_result = NULL;
 
     if (target == NULL) {
-        return e$raise(
-            Error.argsparse,
-            "Invalid target: '%s', expected all or tests/test_some_file.c",
-            target
-        );
+        return e$raise(Error.argsparse, "Invalid target, expected all or tests/test_some_file.c");
     }
     if (str.eq(target, "all")) {
         return e$raise(Error.argsparse, "all target is not supported for this command");
     }
 
     if (_cexy__is_str_pattern(target)) {
-        return e$raise(
-            Error.argsparse,
-            "Invalid target: '%s', expected alphanumerical name, patterns are not allowed",
-            target
-        );
+        return e$raise(Error.argsparse, "Invalid target, patterns are not allowed");
     }
     if (!str.match(target, "[a-zA-Z0-9_+]")) {
-        return e$raise(
-            Error.argsparse,
-            "Invalid target: '%s', expected alphanumerical name",
-            target
-        );
+        return e$raise(Error.argsparse, "Invalid target, expected alphanumerical name");
     }
     char* app_src = str.fmt(allc, "%s%c%s.c", cexy$src_dir, os$PATH_SEP, target);
     log$trace("Probing %s\n", app_src);
@@ -19425,7 +19858,7 @@ cexy__app__find_app_target_src(IAllocator allc, char* target, char** out_result)
         log$trace("Probing %s\n", app_src);
         if (!os.path.exists(app_src)) {
             mem$free(allc, app_src);
-            return e$raise(Error.not_found, "App target source not found: %s", target);
+            return e$raise(Error.not_found, "App target source not found");
         }
     }
     *out_result = app_src;
@@ -19448,7 +19881,7 @@ cexy__cmd__simple_app(int argc, char** argv, void* user_ctx)
 
     if (!str.match(cmd, "(run|build|create|clean|debug)") || target == NULL) {
         argparse.usage(&cmd_args);
-        return e$raise(Error.argsparse, "Invalid command: '%s' or target: '%s'", cmd, target);
+        return e$raise(Error.argsparse, "Invalid command or target");
     }
 
     if (str.eq(cmd, "create")) {
@@ -19545,7 +19978,7 @@ cexy__cmd__simple_fuzz(int argc, char** argv, void* user_ctx)
         }
         if (!str.match(cmd, "(run|create|debug)")) {
             argparse.usage(&cmd_args);
-            return e$raise(Error.argsparse, "Invalid fuzz command: '%s'", cmd);
+            return e$raise(Error.argsparse, "Invalid fuzz command");
         }
         if (str.eq(cmd, "create")) {
             e$ret(cexy.fuzz.create(src));
@@ -19562,7 +19995,7 @@ cexy__cmd__simple_fuzz(int argc, char** argv, void* user_ctx)
             if (max_time == 0) { max_time = 60; }
         } else {
             if (!os.path.exists(src)) {
-                return e$raise(Error.not_found, "target not found: %s", src);
+                return e$raise(Error.not_found, "target not found");
             }
         }
 
@@ -19588,7 +20021,7 @@ cexy__cmd__simple_fuzz(int argc, char** argv, void* user_ctx)
             if (!run_all || cexy.src_include_changed(target_exe, src_file, NULL)) {
                 arr$pushm(args, cexy$fuzzer);
                 e$assert(arr$len(args) > 0 && "empty cexy$fuzzer");
-                e$assertf(os.cmd.exists(args[0]), "fuzzer command not found: %s", args[0]);
+                e$assertf(os.cmd.exists(args[0]), "fuzzer command not found");
                 if (str.find(args[0], "afl")) { is_afl_fuzzer = true; }
                 if (is_afl_fuzzer) { arr$push(args, "-DCEX_FUZZ_AFL"); }
 
@@ -19804,27 +20237,23 @@ cexy__utils__pkgconf(
         if (vcpkg_root) {
             log$trace("Looking vcpkg libs at '%s' triplet='%s'\n", vcpkg_root, triplet[0]);
             if (!os.path.exists(vcpkg_root)) {
-                return e$raise(Error.not_found, "cexy$vcpkg_root not exists: %s", vcpkg_root);
+                return e$raise(Error.not_found, "cexy$vcpkg_root not exists");
             }
             char* triplet_path = str.fmt(_, "%s/installed/%s", vcpkg_root, triplet[0]);
             if (!os.path.exists(triplet_path)) {
-                return e$raise(Error.not_found, "vcpkg triplet path not exists: %s", triplet_path);
+                return e$raise(Error.not_found, "vcpkg triplet path not exists");
             }
             char* lib_path = str.fmt(_, "%s/lib/", triplet_path);
             if (!os.path.exists(lib_path)) {
-                return e$raise(Error.not_found, "vcpkg lib path not exists: %s", lib_path);
+                return e$raise(Error.not_found, "vcpkg lib path not exists");
             }
             char* inc_path = str.fmt(_, "%s/include/", triplet_path);
             if (!os.path.exists(inc_path)) {
-                return e$raise(Error.not_found, "vcpkg include path not exists: %s", inc_path);
+                return e$raise(Error.not_found, "vcpkg include path not exists");
             }
             char* pkgconf_path = str.fmt(_, "%s/lib/pkgconfig", triplet_path);
             if (!os.path.exists(pkgconf_path)) {
-                return e$raise(
-                    Error.not_found,
-                    "vcpkg lib/pkgconfig path not exists: %s",
-                    pkgconf_path
-                );
+                return e$raise(Error.not_found, "vcpkg lib/pkgconfig path not exists");
             }
 
             log$trace("Setting: PKG_CONFIG_LIBDIR='%s'\n", pkgconf_path);
@@ -19860,13 +20289,7 @@ cexy__utils__pkgconf(
                 }
 
                 if (!is_found) {
-                    return e$raise(
-                        Error.not_found,
-                        "vcpkg: lib '%s' not found (try `vcpkg install %s`) dir: %s",
-                        it,
-                        it,
-                        lib_path
-                    );
+                    return e$raise(Error.not_found, "vcpkg: lib not found");
                 }
             }
         }
@@ -19961,7 +20384,7 @@ cexy__utils__git_lib_fetch(
         return e$raise(Error.argument, "Empty or null git_url");
     }
     if (!str.ends_with(git_url, ".git")) {
-        return e$raise(Error.argument, "git_url must end with .git, got: %s", git_url);
+        return e$raise(Error.argument, "git_url must end with .git");
     }
     if (git_label == NULL || git_label[0] == '\0') { git_label = "HEAD"; }
     log$info("Checking libs from: %s @ %s\n", git_url, git_label);
@@ -20020,7 +20443,7 @@ cexy__utils__git_lib_fetch(
                                : str.fmt(_, "%s/%s", out_dir, os.path.basename(it, _));
             auto in_stat = os.fs.stat(in_path);
             if (!in_stat.is_valid) {
-                return e$raise(in_stat.error, "Invalid stat for path: %s", in_path);
+                return e$raise(in_stat.error, "Invalid stat for path");
             }
 
             auto out_stat = os.fs.stat(out_path);

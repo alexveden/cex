@@ -19,26 +19,14 @@ static_assert(
 
 #undef e$raise
 #undef e$assert
-#undef e$assertf
 #undef e$except
-#undef e$except_silent
 #undef e$except_errno
 #undef e$except_null
 #undef e$except_true
 #undef e$ret
 #undef e$goto
 #undef uassert
-#undef uassertf
 #undef unreachable
-#undef cex$platform_panic
-
-/* Stock-equivalent baseline (this header owns the macros from here on).
- * NDEBUG matches cex_base.h (no-op / __builtin_unreachable); otherwise the
- * stock inline print + panic. The level overrides further below replace
- * these for CEX_TRACEBACK_LVL 0..2. */
-#ifdef _cex$platform_panic_builtin
-#    define cex$platform_panic __cex__panic
-#endif
 
 #if defined(__clang_analyzer__)
 #    define uassert(A) assert(A)
@@ -134,7 +122,7 @@ extern _Thread_local _cex_errors_traceback_data_s _cex_errors_traceback_data_arr
 
 #if CEX_TRACEBACK_LVL == 0
 
-#define e$raise(return_uerr, error_msg, ...) ((return_uerr))
+#define e$raise(return_uerr, error_msg) ((return_uerr))
 
 #define e$assert(A)                                                                                \
     ({                                                                                             \
@@ -169,7 +157,7 @@ extern _Thread_local _cex_errors_traceback_data_s _cex_errors_traceback_data_arr
 
 #elif CEX_TRACEBACK_LVL <= 2
 
-#define e$raise(return_uerr, error_msg, ...)                                                       \
+#define e$raise(return_uerr, error_msg)                                                            \
     ({                                                                                             \
         _e$push_origin((return_uerr), __FILE_NAME__, __LINE__, __func__, ("" error_msg));          \
         (return_uerr);                                                                             \
@@ -243,8 +231,8 @@ extern _Thread_local _cex_errors_traceback_data_s _cex_errors_traceback_data_arr
 
 #else // CEX_TRACEBACK_LVL == 3
 
-#define e$raise(return_uerr, error_msg, ...)                                                       \
-    (log$error("[%s] " error_msg "\n", return_uerr, ##__VA_ARGS__), (return_uerr))
+#define e$raise(return_uerr, error_msg)                                                            \
+    (log$error("[%s] " error_msg "\n", return_uerr), (return_uerr))
 
 #if CEX_LOG_LVL > 0
 #    define e$assert(A)                                                                            \
@@ -333,31 +321,29 @@ void _cex_errors_fail(
 
 #    undef uassert
 #    undef unreachable
-#    undef cex$platform_panic
-#    define cex$platform_panic _cex_errors_fail
 
 #    if CEX_TRACEBACK_LVL == 1
 #        define uassert(A)                                                                         \
             ({                                                                                     \
                 if (unlikely(!((A)))) {                                                            \
-                    cex$platform_panic(                                                            \
+                    _cex_errors_fail(                                                              \
                         _cex_errors_assert_prefix, __FILE_NAME__, __LINE__, NULL, NULL             \
                     );                                                                             \
                 }                                                                                  \
             })
 #        define unreachable()                                                                      \
-            cex$platform_panic("[UNREACHABLE] ", __FILE_NAME__, __LINE__, NULL, NULL)
+            _cex_errors_fail("[UNREACHABLE] ", __FILE_NAME__, __LINE__, NULL, NULL)
 #    else
 #        define uassert(A)                                                                         \
             ({                                                                                     \
                 if (unlikely(!((A)))) {                                                            \
-                    cex$platform_panic(                                                            \
+                    _cex_errors_fail(                                                              \
                         _cex_errors_assert_prefix, __FILE_NAME__, __LINE__, __func__, #A           \
                     );                                                                             \
                 }                                                                                  \
             })
 #        define unreachable()                                                                      \
-            cex$platform_panic("[UNREACHABLE] ", __FILE_NAME__, __LINE__, __func__, NULL)
+            _cex_errors_fail("[UNREACHABLE] ", __FILE_NAME__, __LINE__, __func__, NULL)
 #    endif
 
 #endif

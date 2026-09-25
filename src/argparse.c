@@ -318,12 +318,7 @@ _cex_argparse__options_check(argparse_c* self, bool reset)
                     return Error.argument;
                 }
                 if (opt->value == NULL && opt->short_name != 'h') {
-                    uassertf(
-                        opt->value != NULL,
-                        "option value [%c/%s] is null\n",
-                        opt->short_name,
-                        opt->long_name
-                    );
+                    uassertf(opt->value != NULL, "option value is null");
                     return Error.argument;
                 }
             } else {
@@ -366,7 +361,7 @@ _cex_argparse__options_check(argparse_c* self, bool reset)
                 uassert(opt->callback != NULL && "expected to be set for generic args");
                 continue;
             default:
-                uassertf(false, "wrong option type: %d", opt->type);
+                uassertf(false, "wrong option type");
         }
     }
 

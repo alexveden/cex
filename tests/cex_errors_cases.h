@@ -48,14 +48,6 @@ err_raise(int i)
     return EOK;
 }
 
-/// e$raise with printf args (buffered levels keep the literal, L3 formats)
-test$noopt Exception
-err_raise_fmt(int i)
-{
-    if (i) { return e$raise(Error.io, "code %d", 42); }
-    return EOK;
-}
-
 /// e$assert failure returns Error.assert
 test$noopt Exception
 assert_fail(int i)
@@ -226,17 +218,6 @@ test$case(raise_ok)
     Exc e = err_raise(0);
     tassert_eq(e, EOK);
     tassert_frames(0);
-    return EOK;
-}
-
-test$case(raise_varargs)
-{
-    Exc e = err_raise_fmt(1);
-    tassert_eq(e, Error.io);
-    tassert_frames(1);
-#if CEX_TRACEBACK_LVL == 2
-    tassert_eq((char*)e$traceback_arr[0].msg, "code %d");
-#endif
     return EOK;
 }
 

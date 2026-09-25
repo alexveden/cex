@@ -1538,9 +1538,7 @@ main_loop_again:
                             // Handle character ranges like a-zA-Z0-9
                             uassertf(
                                 *pattern < *(pattern + 2),
-                                "pattern [n-m] sequence, n must be less than m: [%c-%c]",
-                                *pattern,
-                                *(pattern + 2)
+                                "pattern [n-m] sequence, n must be less than m"
                             );
                             if (*str >= *pattern && *str <= *(pattern + 2)) { matched = true; }
                             pattern += 3;

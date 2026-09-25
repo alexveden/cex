@@ -19,7 +19,7 @@ fuzz$setup()
     {
         for (u32 i = 0; i < arr$len(corp_seeds); i++) {
             char* fn = str.fmt(_, "%s/%03d", fuzz$corpus_dir, i);
-            if (io.file.save(fn, corp_seeds[i])) { uassertf(false, "Error writing file: %s", fn); }
+            if (io.file.save(fn, corp_seeds[i])) { uassertf(false, "Error writing file"); }
         }
     }
 }

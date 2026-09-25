@@ -118,8 +118,8 @@ Caveats:
 /// Non disposable assert, returns Error.assert CEX exception when failed
 #define e$assert(A)
 
-/// Non disposable assert, returns Error.assert CEX exception when failed (supports formatting)
-#define e$assertf(A, format, ...)
+/// Non disposable assert, returns Error.assert CEX exception when failed
+#define e$assertf(A, error_msg)
 
 /// catches the error of function inside scope + prints traceback
 #define e$except(_var_name, _func)
@@ -139,11 +139,26 @@ Caveats:
 /// `goto _label` when _func returned error + prints traceback
 #define e$goto(_func, _label)
 
-/// raises an error, code: `return e$raise(Error.integrity, "ooops: %d", i);`
-#define e$raise(return_uerr, error_msg, ...)
+/// raises an error, code: `return e$raise(Error.integrity, "ooops");`
+#define e$raise(return_uerr, error_msg)
 
 /// immediately returns from function with _func error + prints traceback
 #define e$ret(_func)
+
+/// Recorded frames array (always empty when buffering is disabled)
+#define e$traceback_arr((_cex_errors_traceback_s*)NULL)
+
+/// Format the whole traceback into an owned `sbuf_c`
+#define e$traceback_fmt(_allc)
+
+/// Number of recorded frames (always 0 when buffering is disabled)
+#define e$traceback_len
+
+/// Print the whole traceback to a FILE*
+#define e$traceback_print(_stream)
+
+/// Drop all recorded frames (no-op when buffering is disabled)
+#define e$traceback_reset()
 
 
 

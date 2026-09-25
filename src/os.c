@@ -672,7 +672,7 @@ static arr$(char*) cex_os__fs__find(char* path_pattern, bool is_recursive, IAllo
     str_s dir_part = os.path.split(path_pattern, true);
     if (dir_part.buf == NULL) {
 #    if defined(CEX_TEST) || defined(CEX_BUILD)
-        (void)e$raise(Error.argument, "Bad path: os.fn.find('%s')", path_pattern);
+        (void)e$raise(Error.argument, "Bad path: os.fn.find()");
 #    endif
         return NULL;
     }
@@ -1430,11 +1430,7 @@ cex_os__cmd__run(char** args, usize args_len, os_cmd_c* out_cmd)
 
     for (u32 i = 0; i < args_len - 1; i++) {
         if (args[i] == NULL || args[i][0] == '\0') {
-            return e$raise(
-                Error.argument,
-                "`args` item[%d] is NULL/empty, which may indicate string operation failure",
-                i
-            );
+            return e$raise(Error.argument, "`args` item is NULL/empty");
         }
     }
 
@@ -1498,7 +1494,7 @@ end:
     return result;
 #    else
     pid_t cpid = fork();
-    if (cpid < 0) { return e$raise(Error.os, "Could not fork child process: %s", strerror(errno)); }
+    if (cpid < 0) { return e$raise(Error.os, "Could not fork child process"); }
 
     if (cpid == 0) {
         if (execvp(args[0], (char* const*)args) < 0) {

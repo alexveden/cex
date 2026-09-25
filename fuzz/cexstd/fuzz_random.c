@@ -17,11 +17,11 @@ fuzz$setup()
             char* fn = str.fmt(_, "%s/%03d", fuzz$corpus_dir, i);
             FILE* fh = NULL;
             e$except (err, io.fopen(&fh, fn, "wb")) {
-                uassertf(false, "Error opening: %s", fn);
+                uassertf(false, "Error opening");
             }
             e$except (err, io.fwrite(fh, &seeds[i], sizeof(seeds[i]))) {
                 io.fclose(&fh);
-                uassertf(false, "Error writing: %s", fn);
+                uassertf(false, "Error writing");
             }
             io.fclose(&fh);
         }

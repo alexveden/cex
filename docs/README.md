@@ -465,7 +465,7 @@ CEX provides several short aliases for primitive types and some extra types for 
 | Name | Description |
 | -------------- | --------------- |
 | uassert() | General purpose assert with tracebacks |
-| uassertf() | General purpose assert with formatting  |
+| uassertf() | General purpose assert with a message |
 | unlikely() | Branch predictor management for unexpected conditions |
 | likely() | Branch predictor management for expected conditions |
 | breakpoint() | Cross-platform debugger breakpoint |
@@ -623,7 +623,7 @@ const struct _MyCustomError
 Exception
 baz(int argc)
 {
-    if (argc == 1) { return e$raise(MyError.why_arg_is_one, "Why argc is 1, argc = %d?", argc); }
+    if (argc == 1) { return e$raise(MyError.why_arg_is_one, "Why argc is 1?"); }
     return EOK;
 }
 
@@ -729,14 +729,14 @@ In general, `e$` macros provide location logging (source file, line, function), 
 #### Returning the `Exc[eption]`
 Errors in CEX are just plain string pointers. If the `Exception` function returns `NULL` or `EOK` or `Error.ok` this is indication of successful execution, otherwise any other value is an error.
 
-Also, you may return with `e$raise(error_to_return, format, ...)` macro, which prints location of the error in the code with message formatting.
+Also, you may return with `e$raise(error_to_return, "message")` macro, which prints location of the error in the code.
 
 ```c
 Exception error_sample1(int a) {
     if (a == 0) return Error.argument; // standard set of errors in CEX
     if (a == -1) return "Negative one";   // error literal also works, but harder to handle
     if (a == -2) return UserError.neg_two; // user error
-    if (a == 7) return e$raise(Error.argument, "Bad a=%d", a); // error with logging
+    if (a == 7) return e$raise(Error.argument, "Bad a"); // error with logging
     
     return EOK; // success
     // return Error.ok; // success
@@ -804,13 +804,13 @@ There are special error handling macros for this purpose:
 4. `e$except_true(func()) { ... }` - error handling for functions returning non-zero code on error.
 5. `e$ret(func_call());` - runs the `Exception` type returning function `func_call()`,  and on error it logs the traceback and re-return the same return value. This is a main code shortcut and driver for all CEX tracebacks. Use it if you don't care about precise error handling and fine to return immediately on error.
 6. `e$goto(func_call(), goto_err_label);` - runs the `Exception` type function, and does `goto goto_err_label;`. This macro is useful for resource deallocation logic, and intended to use for typical C error handling pattern `goto fail`.
-7. `e$assert(condition)` or `e$assert(condition && "What's wrong")` or `e$assertf(condition, format, ...)`  - quick condition checking inside `Exception` functions, logs an error location + returns `Error.assert`. These asserts remain in release builds and are not affected by the `NDEBUG` flag.
+7. `e$assert(condition)` or `e$assert(condition && "What's wrong")` or `e$assertf(condition, "message")`  - quick condition checking inside `Exception` functions, logs an error location + returns `Error.assert`. These asserts remain in release builds and are not affected by the `NDEBUG` flag.
 
 ```c
 Exception foo_loud(int a) {
     e$assert(a != 0);
     e$assert(a != 11 && "a is suspicious");
-    e$assertf(a != 22, "a=%d is something bad", a);
+    e$assertf(a != 22, "a is something bad");
 
     char* m = malloc(20);
     e$assert(m != NULL && "memory error"); // evergreen assert
@@ -920,10 +920,10 @@ Exception foo_literal(int a) {
     return EOK;
 }
 ```
-2. You may try to return standard error + log something with `e$raise()` which support location logging and custom formatting.
+2. You may try to return standard error + log something with `e$raise()` which supports location logging and a static message.
 ```c
 Exception foo_ret(int a) {
-    if (a == 777999) return e$raise(Error.argument, "a=%d looks weird", a);
+    if (a == 777999) return e$raise(Error.argument, "a looks weird");
     return EOK;
 }
 ```
@@ -2894,7 +2894,7 @@ So `cex.h` has 2 types of asserts:
 // Raises abort
 uassert(a == 4); // vanilla
 uassert(b == a && "Oops it's a message"); // with static message
-uassertf(b == 2, "b[%d] != 2", b); // with formatting
+uassertf(b == 2, "b != 2"); // with message
 
 // Disabling uassert() - only for unit test mode
 uassert_disable();
@@ -2905,7 +2905,7 @@ uassert_enable();
 Exception read_file(char* filename, char* buf, isize* out_buf_size) {
     e$assert(buff != NULL); // vanilla
     e$assert(filename != NULL && "invalid filename"); // with static message
-    e$assertf(filename == NULL, "filename: %s", filename); // with formatting
+    e$assertf(filename == NULL, "filename is NULL"); // with message
     return EOK;
 }
 
