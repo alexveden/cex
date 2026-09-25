@@ -117,6 +117,22 @@ err_except_errno(int i)
     return n;
 }
 
+/// syscall-like helper: writes errno = EAGAIN and returns -1 when `i`
+test$noopt int
+sys_rc_keep_errno(int i)
+{
+    if (i) { errno = EAGAIN; return -1; }
+    return 0;
+}
+
+test$noopt int
+err_except_errno_keep(int i)
+{
+    int n = 0;
+    e$except_errno(sys_rc_keep_errno(i)) { n++; }
+    return n;
+}
+
 test$noopt void*
 maybe_null(int i)
 {
@@ -306,6 +322,33 @@ test$case(except_errno_ok)
     int n = err_except_errno(0);
     tassert_eq(n, 0);
     tassert_frames(0);
+    return EOK;
+}
+
+test$case(except_errno_ok_preserves_errno)
+{
+    errno = EADDRINUSE;
+    int n = err_except_errno(0);
+    int saved_errno = errno;
+    tassert_eq(n, 0);
+    tassert_eq(saved_errno, EADDRINUSE);
+    tassert_frames(0);
+    return EOK;
+}
+
+test$case(except_errno_keeps_raised_errno)
+{
+    errno = EADDRINUSE;
+    int n = err_except_errno_keep(1);
+    tassert_eq(n, 1);
+    tassert_eq(errno, EAGAIN);
+    tassert_frames(1);
+#if TB_RECORDS
+    tassert_eq(e$traceback_arr[0].err, strerror(EAGAIN));
+#endif
+#if CEX_TRACEBACK_LVL == 2
+    tassert_eq((char*)e$traceback_arr[0].msg, "sys_rc_keep_errno(i)");
+#endif
     return EOK;
 }
 
