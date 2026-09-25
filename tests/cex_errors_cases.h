@@ -140,6 +140,24 @@ err_except_null(int i)
     return n;
 }
 
+/// e$except_null with an int 0 (a null pointer constant)
+test$noopt int
+err_except_null_zero(void)
+{
+    int n = 0;
+    e$except_null(0) { n++; }
+    return n;
+}
+
+/// e$except_null with bool false (expands to 0)
+test$noopt int
+err_except_null_false(void)
+{
+    int n = 0;
+    e$except_null(false) { n++; }
+    return n;
+}
+
 test$noopt int
 maybe_true(int i)
 {
@@ -338,6 +356,24 @@ test$case(except_null_ok)
     return EOK;
 }
 
+test$case(except_null_zero_and_false)
+{
+    int nz = err_except_null_zero();
+    tassert_eq(nz, 1);
+    tassert_frames(1);
+#if CEX_TRACEBACK_LVL == 2
+    tassert_eq((char*)e$traceback_arr[0].msg, "0");
+#endif
+
+    int nf = err_except_null_false();
+    tassert_eq(nf, 1);
+    tassert_frames(1);
+#if CEX_TRACEBACK_LVL == 2
+    tassert_eq((char*)e$traceback_arr[0].msg, "false");
+#endif
+    return EOK;
+}
+
 test$case(except_true_error)
 {
     int n = err_except_true(1);
@@ -413,15 +449,20 @@ test$case(frames_overflow)
 
 test$case(traceback_fmt_nonempty)
 {
-    Exc e = err_raise(1);
+    Exc e = ladder_ret2();
     tassert_eq(e, Error.io);
+    tassert_eq(e$traceback_len, 3);
 
     char* s = e$traceback_fmt(mem$);
     tassert(str.find(s, "#0") != NULL);
+    tassert(str.find(s, "#1") != NULL);
+    tassert(str.find(s, "#2") != NULL);
     tassert(str.find(s, __FILE_NAME__) != NULL);
 #if CEX_TRACEBACK_LVL == 2
-    tassert(str.find(s, "err_raise") != NULL);
-    tassert(str.find(s, "raise io") != NULL);
+    tassert(str.find(s, "ladder bottom") != NULL);
+    tassert(str.find(s, "ladder_raise()") != NULL);
+    tassert(str.find(s, "ladder_ret1()") != NULL);
+    tassert(str.find(s, "ladder_ret2()") != NULL);
 #endif
     sbuf.destroy(&s);
     return EOK;
@@ -429,17 +470,28 @@ test$case(traceback_fmt_nonempty)
 
 test$case(traceback_print_nonempty)
 {
-    Exc e = err_raise(1);
+    Exc e = ladder_ret2();
     tassert_eq(e, Error.io);
+    tassert_eq(e$traceback_len, 3);
 
     FILE* f = tmpfile();
     tassert(f != NULL);
 
     e$traceback_print(f);
 
-    usize pos = 0;
-    tassert_eq(io.ftell(f, &pos), EOK);
-    tassert(pos > 0);
+    Exc fe = io.fflush(f);
+    tassert_eq(fe, EOK);
+    io.rewind(f);
+
+    char buf[512] = {0};
+    isize rd = io.fread(f, buf, sizeof(buf) - 1);
+    tassert(rd > 0);
+    tassert(str.find(buf, "#0") != NULL);
+    tassert(str.find(buf, "#2") != NULL);
+
+    char* s = e$traceback_fmt(mem$);
+    tassert_eq(buf, s);
+    sbuf.destroy(&s);
 
     io.fclose(&f);
     return EOK;
