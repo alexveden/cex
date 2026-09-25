@@ -2921,6 +2921,8 @@ Compile-time verbosity knobs for CEX error handling.
 
 */
 
+/* ==== 1. Knobs & validation ==== */
+
 #ifndef CEX_TRACEBACK_VERBOSITY
 #    define CEX_TRACEBACK_VERBOSITY 2
 #endif
@@ -2947,38 +2949,42 @@ static_assert(
 /// Assertion label, shared by uassert() and _cex_errors_panic_handler()'s suppressible check
 #define _cex_errors_assert_prefix "[ASSERT] "
 
-#if CEX_LOG_LVL > 0
-#    define __cex__traceback(uerr, fail_func)                                                      \
-        (__cex__fprintf(                                                                           \
-            stdout,                                                                                \
-            "[^STCK]  ",                                                                           \
-            __FILE_NAME__,                                                                         \
-            __LINE__,                                                                              \
-            __func__,                                                                              \
-            "^^^^^ [%s] in function call `%s`\n",                                                  \
-            uerr,                                                                                  \
-            fail_func                                                                              \
-        ))
-#else
-#    define __cex__traceback(uerr, fail_func) __cex__fprintf_dummy()
-#endif
+/* ==== 2. Panic axis: CEX_PANIC_VERBOSITY ==== */
 
-/// Hard assertion with ASAN stack trace on failure. Aborts via `_cex_errors_panic_handler()`.
+/* Hard-fail panic (asserts + unreachable), prototype-scoped replacement for __cex__panic */
+
+/// Cold panic: suppressible [ASSERT] prints to stdout when disabled, everything else aborts
+__attribute__((cold, noinline))
+#ifndef CEX_TEST
+__attribute__((noreturn))
+#endif
+void _cex_errors_panic_handler(
+    const char* prefix,
+    const char* file,
+    u32 line,
+    const char* func,
+    const char* msg
+);
+
+/* C23 <stddef.h> defines unreachable(); drop it before we define ours */
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
 #    undef unreachable
 #endif
 
-#if defined(__clang_analyzer__)
-#    define uassert(A) assert(A)
+/* stub modes: assertions compile away (libc assert() under clang analyzer) */
+#if defined(__clang_analyzer__) || defined(NDEBUG)
+#    if defined(__clang_analyzer__)
+#        define uassert(A) assert(A)
+#    else
+#        define uassert(A) ((void)(0))
+#    endif
 #    define uassert_disable() ((void)0)
 #    define uassert_enable() ((void)0)
 #    define unreachable() __builtin_unreachable()
-#elif defined(NDEBUG)
-#    define uassert(A) ((void)(0))
-#    define uassert_disable() ((void)0)
-#    define uassert_enable() ((void)0)
-#    define unreachable() __builtin_unreachable()
-#else
+#endif
+
+/* enabled modes: assertion helpers, then uassert/unreachable by verbosity */
+#if !defined(__clang_analyzer__) && !defined(NDEBUG)
 
 #    ifdef CEX_TEST
 // this prevents spamming on stderr (i.e. cextest.h output stream in silent mode)
@@ -3031,6 +3037,8 @@ int __cex_test_uassert_enabled = 1;
             _cex_errors_panic_handler("[UNREACHABLE] ", __FILE_NAME__, __LINE__, __func__, NULL)
 #    endif
 #endif
+
+/* ==== 3. Traceback axis: CEX_TRACEBACK_VERBOSITY ==== */
 
 #if CEX_TRACEBACK_VERBOSITY == 1
 typedef struct
@@ -3231,6 +3239,23 @@ extern _Thread_local _cex_errors_traceback_data_s _cex_errors_traceback_data_arr
 
 #else // CEX_TRACEBACK_VERBOSITY == 3
 
+
+#    if CEX_LOG_LVL > 0
+#        define __cex__traceback(uerr, fail_func)                                                  \
+            (__cex__fprintf(                                                                       \
+                stdout,                                                                            \
+                "[^STCK]  ",                                                                       \
+                __FILE_NAME__,                                                                     \
+                __LINE__,                                                                          \
+                __func__,                                                                          \
+                "^^^^^ [%s] in function call `%s`\n",                                              \
+                uerr,                                                                              \
+                fail_func                                                                          \
+            ))
+#    else
+#        define __cex__traceback(uerr, fail_func) __cex__fprintf_dummy()
+#    endif
+
 #    define e$raise(return_uerr, error_msg)                                                        \
         (log$error("[%s] " error_msg "\n", return_uerr), (return_uerr))
 
@@ -3302,23 +3327,8 @@ extern _Thread_local _cex_errors_traceback_data_s _cex_errors_traceback_data_arr
 
 #endif // CEX_TRACEBACK_VERBOSITY
 
-/* Hard-fail panic (asserts + unreachable), prototype-scoped replacement for __cex__panic */
+/* ==== 4. Traceback read-back (buffered levels fill the ring; 0/3 stay empty) ==== */
 
-/// Cold panic: suppressible [ASSERT] prints to stdout when disabled, everything else aborts
-__attribute__((cold, noinline))
-#ifndef CEX_TEST
-__attribute__((noreturn))
-#endif
-void
-_cex_errors_panic_handler(
-    const char* prefix,
-    const char* file,
-    u32 line,
-    const char* func,
-    const char* msg
-);
-
-/* Traceback read-back (buffered levels fill the ring; 0/3 stay empty) */
 
 /// Format the recorded traceback into an owned `sbuf_c` (free with sbuf.destroy(&s))
 sbuf_c _cex_errors_traceback_fmt(IAllocator allc);
