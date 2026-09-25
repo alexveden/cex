@@ -1,26 +1,26 @@
-#include "all.h"
 #include "cex_errors.h"
+#include "all.h"
 
 #if CEX_TRACEBACK_LVL >= 1 && CEX_TRACEBACK_LVL <= 2
 _Thread_local _cex_errors_traceback_data_s _cex_errors_traceback_data_array;
 
 /// Private: emit one recorded frame to `_sink` using the printf-like `_write`
-#if CEX_TRACEBACK_LVL == 2
-#    define _cex_traceback_fmt(_sink, _write, _idx, _r)                                            \
-        (_write)(                                                                                  \
-            (_sink),                                                                               \
-            "#%u (%s:%u %s()) [%s] %s\n",                                                          \
-            (u32)(_idx),                                                                           \
-            (_r)->file,                                                                            \
-            (_r)->line,                                                                            \
-            (_r)->func,                                                                            \
-            (_r)->err,                                                                             \
-            (_r)->msg                                                                              \
-        )
-#else
-#    define _cex_traceback_fmt(_sink, _write, _idx, _r)                                            \
-        (_write)((_sink), "#%u (%s:%u) [%s]\n", (u32)(_idx), (_r)->file, (_r)->line, (_r)->err)
-#endif
+#    if CEX_TRACEBACK_LVL == 2
+#        define _cex_traceback_fmt(_sink, _write, _idx, _r)                                        \
+            (_write)(                                                                              \
+                (_sink),                                                                           \
+                "#%u (%s:%u %s()) [%s] %s\n",                                                      \
+                (u32)(_idx),                                                                       \
+                (_r)->file,                                                                        \
+                (_r)->line,                                                                        \
+                (_r)->func,                                                                        \
+                (_r)->err,                                                                         \
+                (_r)->msg                                                                          \
+            )
+#    else
+#        define _cex_traceback_fmt(_sink, _write, _idx, _r)                                        \
+            (_write)((_sink), "#%u (%s:%u) [%s]\n", (u32)(_idx), (_r)->file, (_r)->line, (_r)->err)
+#    endif
 #endif // CEX_TRACEBACK_LVL >= 1 && <= 2
 
 sbuf_c
@@ -60,10 +60,13 @@ __attribute__((noreturn))
 void
 _cex_errors_fail(const char* prefix, const char* file, u32 line, const char* func, const char* msg)
 {
+
+#    ifdef CEX_TEST
     if (!uassert_is_enabled() && strcmp(prefix, _cex_errors_assert_prefix) == 0) {
         __cex__fprintf(stdout, prefix, file, line, func, "%s\n", msg);
         return;
     }
+#    endif
     if (msg) {
         __cex__fprintf(stderr, prefix, file, line, func, "%s\n", msg);
     } else {
