@@ -1459,7 +1459,7 @@ main_loop_again:
                 char* strstart = str;
                 isize str_len_start = str_len;
                 if (unlikely(*(pattern + 1) == ')')) {
-                    uassertf(false, "Empty '()' group");
+                    uassert(false && "Empty '()' group");
                     return false;
                 }
                 if (unlikely(str_len_start) == 0) { return false; }
@@ -1474,7 +1474,7 @@ main_loop_again:
                             // Escaped symbol, can be anything
                             pattern++;
                             if (unlikely(*pattern == '\0')) {
-                                uassertf(false, "Unterminated \\ sequence inside '()' group");
+                                uassert(false && "Unterminated \\ sequence inside '()' group");
                                 return false;
                             }
                             if (str_len > 0 && *pattern == *str) { matched = true; }
@@ -1503,7 +1503,7 @@ main_loop_again:
                     }
 
                     if (unlikely(*pattern != ')')) {
-                        uassertf(false, "Invalid pattern - no closing ')'");
+                        uassert(false && "Invalid pattern - no closing ')'");
                         return false;
                     }
 
@@ -1526,7 +1526,7 @@ main_loop_again:
                     pattern = pstart + 1;
 
                     if (unlikely(*pattern == '!')) {
-                        uassertf(*(pattern + 1) != ']', "expected some chars after [!..]");
+                        uassert(*(pattern + 1) != ']' && "expected some chars after [!..]");
                         negate = true;
                         pattern++;
                     }
@@ -1536,8 +1536,8 @@ main_loop_again:
                         if (*(pattern + 1) == '-' && *(pattern + 2) != ']' &&
                             *(pattern + 2) != '\0') {
                             // Handle character ranges like a-zA-Z0-9
-                            uassertf(
-                                *pattern < *(pattern + 2),
+                            uassert(
+                                (*pattern < *(pattern + 2)) &&
                                 "pattern [n-m] sequence, n must be less than m"
                             );
                             if (*str >= *pattern && *str <= *(pattern + 2)) { matched = true; }
@@ -1553,16 +1553,16 @@ main_loop_again:
                             if (unlikely(*pattern == '+')) {
                                 // repeating group [a-z+]@, match all cases until @
                                 if (unlikely(!(*(pattern + 1) == ']'))) {
-                                    uassertf(
-                                        false,
+                                    uassert(
+                                        false &&
                                         "Unescaped '+' literal, or '+' must be last before ]"
                                     );
                                     return false;
                                 }
                                 repeating = true;
                             } else if (unlikely(*pattern == '*')) {
-                                uassertf(
-                                    false,
+                                uassert(
+                                    false &&
                                     "Invalid pattern, unescaped *, use [...\\*...], or '+' for any modifier"
                                 );
                                 return false;
@@ -1574,7 +1574,7 @@ main_loop_again:
                     }
 
                     if (unlikely(*pattern != ']')) {
-                        uassertf(false, "Invalid pattern - no closing ']'");
+                        uassert(false && "Invalid pattern - no closing ']'");
                         return false;
                     } else {
                         pattern++;

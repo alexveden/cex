@@ -84,11 +84,11 @@ do_stuff(char* filename)
     // jumps to label if read_file() fails + prints traceback
     e$goto(read_file(NULL), fail);
 
-    // silent error handling without tracebacks
-    e$except_silent (err, foo(0)) {
+    // error handling with tracebacks
+    e$except (err, foo(0)) {
 
         // Nesting of error handlers is allowed
-        e$except_silent (err, foo(2)) { return err; }
+        e$except (err, foo(2)) { return err; }
 
         // NOTE: `err` is address of char* compared with address Error.os (not by string contents!)
         if (err == Error.os) {
@@ -118,9 +118,6 @@ Caveats:
 /// Non disposable assert, returns Error.assert CEX exception when failed
 #define e$assert(A)
 
-/// Non disposable assert, returns Error.assert CEX exception when failed
-#define e$assertf(A, error_msg)
-
 /// catches the error of function inside scope + prints traceback
 #define e$except(_var_name, _func)
 
@@ -129,9 +126,6 @@ Caveats:
 
 /// catches the error is expression returned null
 #define e$except_null(_expression)
-
-/// catches the error of function inside scope (without traceback)
-#define e$except_silent(_var_name, _func)
 
 /// catches the error is expression returned true
 #define e$except_true(_expression)

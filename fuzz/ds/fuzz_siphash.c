@@ -57,12 +57,12 @@ fuzz$setup()
                 FILE* fh = NULL;
                 e$except(err, io.fopen(&fh, fn, "wb"))
                 {
-                    uassertf(false, "Error opening file");
+                    uassert(false && "Error opening file");
                 }
                 e$except(err, io.fwrite(fh, buf, total))
                 {
                     io.fclose(&fh);
-                    uassertf(false, "Error writing file");
+                    uassert(false && "Error writing file");
                 }
                 io.fclose(&fh);
             }

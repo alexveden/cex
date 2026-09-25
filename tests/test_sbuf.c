@@ -25,7 +25,7 @@ sprintf_to_cap(sbuf_c* s)
     char c = 'A';
     for (usize i = sbuf.len(s); i < sbuf.capacity(s); i++) {
         c = 'A' + i;
-        e$except_silent (err, sbuf.appendf(s, "%c", c)) { return err; }
+        e$except (err, sbuf.appendf(s, "%c", c)) { return err; }
     }
 
     return EOK;

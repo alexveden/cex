@@ -247,7 +247,7 @@ _cex_argparse__getvalue(argparse_c* self, argparse_opt_s* opt, bool is_long)
                     return _cex_argparse__error(self, opt, "requires a value", is_long);
                 }
                 uassert(opt->convert != NULL);
-                e$except_silent (err, _cex_argparse__convert(self->_ctx.optvalue, opt)) {
+                e$except (err, _cex_argparse__convert(self->_ctx.optvalue, opt)) {
                     return _cex_argparse__error(self, opt, "argument parsing error", is_long);
                 }
                 self->_ctx.optvalue = NULL;
@@ -255,7 +255,7 @@ _cex_argparse__getvalue(argparse_c* self, argparse_opt_s* opt, bool is_long)
                 self->argc--;
                 self->_ctx.cpidx++;
                 self->argv++;
-                e$except_silent (err, _cex_argparse__convert(*self->argv, opt)) {
+                e$except (err, _cex_argparse__convert(*self->argv, opt)) {
                     return _cex_argparse__error(self, opt, "argument parsing error", is_long);
                 }
             } else {
@@ -318,7 +318,7 @@ _cex_argparse__options_check(argparse_c* self, bool reset)
                     return Error.argument;
                 }
                 if (opt->value == NULL && opt->short_name != 'h') {
-                    uassertf(opt->value != NULL, "option value is null");
+                    uassert(opt->value != NULL && "option value is null");
                     return Error.argument;
                 }
             } else {
@@ -361,7 +361,7 @@ _cex_argparse__options_check(argparse_c* self, bool reset)
                 uassert(opt->callback != NULL && "expected to be set for generic args");
                 continue;
             default:
-                uassertf(false, "wrong option type");
+                uassert(false && "wrong option type");
         }
     }
 
@@ -484,7 +484,7 @@ _cex_argparse__parse_options(argparse_c* self)
         }
     }
     int initial_argc = self->argc + 1;
-    e$except_silent (err, _cex_argparse__options_check(self, true)) { return err; }
+    e$except (err, _cex_argparse__options_check(self, true)) { return err; }
 
     for (; self->argc; self->argc--, self->argv++) {
         char* arg = self->argv[0];
@@ -507,11 +507,11 @@ _cex_argparse__parse_options(argparse_c* self)
 
             self->_ctx.optvalue = arg + 1;
             self->_ctx.cpidx++;
-            e$except_silent (err, _cex_argparse__short_opt(self, self->options)) {
+            e$except (err, _cex_argparse__short_opt(self, self->options)) {
                 return _cex_argparse__report_error(self, err);
             }
             while (self->_ctx.optvalue) {
-                e$except_silent (err, _cex_argparse__short_opt(self, self->options)) {
+                e$except (err, _cex_argparse__short_opt(self, self->options)) {
                     return _cex_argparse__report_error(self, err);
                 }
             }
@@ -529,14 +529,14 @@ _cex_argparse__parse_options(argparse_c* self)
             // Breaking when first argument appears (more flexible support of subcommands)
             break;
         }
-        e$except_silent (err, _cex_argparse__long_opt(self, self->options)) {
+        e$except (err, _cex_argparse__long_opt(self, self->options)) {
             return _cex_argparse__report_error(self, err);
         }
         self->_ctx.cpidx++;
         continue;
     }
 
-    e$except_silent (err, _cex_argparse__options_check(self, false)) { return err; }
+    e$except (err, _cex_argparse__options_check(self, false)) { return err; }
 
     self->argv = self->_ctx.out + self->_ctx.cpidx + 1; // excludes 1st argv[0], program_name
     self->argc = initial_argc - self->_ctx.cpidx - 1;

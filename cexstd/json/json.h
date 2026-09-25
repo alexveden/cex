@@ -84,7 +84,7 @@ extern const struct _CEX_JsonError_struct
 /// on fail, after this does `goto goto_on_fail_label`. Prints tracebacks in unit test suites.
 #define json$rd_egoto(json_reader, try_expression, goto_on_fail_label)                             \
     if (!(json_reader)->error) {                                                                   \
-        e$except_silent (err, try_expression) {                                                    \
+        e$except (err, try_expression) {                                                    \
             (json_reader)->error = err;                                                            \
             goto goto_on_fail_label;                                                               \
         }                                                                                          \

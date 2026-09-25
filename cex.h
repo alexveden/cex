@@ -447,11 +447,11 @@ do_stuff(char* filename)
     // jumps to label if read_file() fails + prints traceback
     e$goto(read_file(NULL), fail);
 
-    // silent error handling without tracebacks
-    e$except_silent (err, foo(0)) {
+    // error handling with tracebacks
+    e$except (err, foo(0)) {
 
         // Nesting of error handlers is allowed
-        e$except_silent (err, foo(2)) { return err; }
+        e$except (err, foo(2)) { return err; }
 
         // NOTE: `err` is address of char* compared with address Error.os (not by string contents!)
         if (err == Error.os) {
@@ -704,22 +704,6 @@ int main(void)
             }                                                                                       \
         })
 
-
-/// Non disposable assert, returns Error.assert CEX exception when failed
-#    define e$assertf(A, error_msg)                                                                \
-        ({                                                                                         \
-            if (unlikely(!((A)))) {                                                                \
-                __cex__fprintf(                                                                    \
-                    stdout,                                                                        \
-                    "[ASSERT] ",                                                                   \
-                    __FILE_NAME__,                                                                 \
-                    __LINE__,                                                                      \
-                    __func__,                                                                      \
-                    error_msg "\n"                                                                 \
-                );                                                                                 \
-                return Error.assert;                                                               \
-            }                                                                                      \
-        })
 #else // #if CEX_LOG_LVL > 0
 #    define __cex__traceback(uerr, fail_func) __cex__fprintf_dummy()
 #    define e$assert(A)                                                                            \
@@ -727,11 +711,6 @@ int main(void)
             if (unlikely(!((A)))) { return Error.assert; }                                         \
         })
 
-
-#    define e$assertf(A, error_msg)                                                                \
-        ({                                                                                         \
-            if (unlikely(!((A)))) { return Error.assert; }                                         \
-        })
 #endif // #if CEX_LOG_LVL > 0
 
 
@@ -742,7 +721,6 @@ Assertion macros, ASAN detection, and stack-trace helpers.
 - `mem$asan_enabled()` — compile-time check for Address Sanitizer
 - `sanitizer_stack_trace()` — prints ASAN stack trace when available
 - `uassert(A)` — hard assertion, prints file:line:func + traceback, then aborts
-- `uassertf(A, error_msg)` — assertion with message
 - `uassert_disable()` / `uassert_enable()` — suppress assertions in test mode
 
 */
@@ -774,12 +752,10 @@ void __sanitizer_print_stack_trace();
 #if defined(__clang_analyzer__)
 #    include <assert.h>
 #    define uassert(cond) assert(cond)
-#    define uassertf(cond, error_msg) assert(cond)
 #    define uassert_disable() ((void)0)
 #    define uassert_enable() ((void)0)
 #    define __cex_test_postmortem_exists() 0
 #elif defined(NDEBUG)
-#    define uassertf(cond, error_msg) ((void)(0))
 #    define uassert(cond) ((void)(0))
 #    define uassert_disable() ((void)0)
 #    define uassert_enable() ((void)0)
@@ -820,20 +796,6 @@ int __cex_test_uassert_enabled = 1;
             }                                                                                      \
         })
 
-#    define uassertf(A, error_msg)                                                                 \
-        ({                                                                                         \
-            if (unlikely(!((A)))) {                                                                \
-                __cex__fprintf(                                                                    \
-                    (uassert_is_enabled() ? stderr : stdout),                                      \
-                    "[ASSERT] ",                                                                   \
-                    __FILE_NAME__,                                                                 \
-                    __LINE__,                                                                      \
-                    __func__,                                                                      \
-                    error_msg "\n"                                                                 \
-                );                                                                                 \
-                if (uassert_is_enabled()) { cex$platform_panic(); }                                \
-            }                                                                                      \
-        })
 #endif
 
 
@@ -890,14 +852,6 @@ int __cex_test_uassert_enabled = 1;
     for (Exc _var_name = _func;                                                                    \
          unlikely((_var_name != EOK) && (__cex__traceback(_var_name, #_func), 1));                 \
          _var_name = EOK)
-
-#if defined(CEX_TEST) || defined(CEX_BUILD)
-#    define e$except_silent(_var_name, _func) e$except (_var_name, _func)
-#else
-/// catches the error of function inside scope (without traceback)
-#    define e$except_silent(_var_name, _func)                                                      \
-        for (Exc _var_name = _func; unlikely(_var_name != EOK); _var_name = EOK)
-#endif
 
 /// catches the error of system function (if negative value + errno), prints errno error
 #define e$except_errno(_expression)                                                                \
@@ -1703,7 +1657,7 @@ struct _cexds__arr_new_kwargs_s
     ({                                                                                             \
         /* NOLINTBEGIN */                                                                          \
         _cexds__arr_integrity(a, _CEXDS_ARR_MAGIC);                                                \
-        uassertf(array != NULL, "arr$pusha: array is NULL");                                       \
+        uassert(array != NULL && "arr$pusha: array is NULL");                                      \
         usize _arr_len_va[] = { array_len };                                                       \
         usize arr_len = (sizeof(_arr_len_va) > 0) ? _arr_len_va[0] : arr$len(array);               \
         uassert(arr_len < PTRDIFF_MAX && "negative length or overflow");                           \
@@ -5716,7 +5670,7 @@ cex_test_main_fn(int argc, char** argv)
         .description = "Test runner program",
     };
 
-    e$except_silent (err, argparse.parse(&args, argc, argv)) { return 1; }
+    e$except (err, argparse.parse(&args, argc, argv)) { return 1; }
 
     if (!ctx->no_stdout_capture) {
         ctx->out_stream = tmpfile();
@@ -6860,7 +6814,7 @@ fuzz$setup()
         for (u32 i = 0; i < arr$len(match_tuple); i++) {
             char* fn = str.fmt(_, "%s/%05d", fuzz$corpus_dir, i);
             e$except (err, match_make(fn, match_tuple[i].text, match_tuple[i].pattern)) {
-                uassertf(false, "Error writing file");
+                uassert(false && "Error writing file");
             }
         }
     }
@@ -7896,7 +7850,7 @@ _cex_allocator_arena__malloc(IAllocator allc, usize size, usize alignment)
     uassert(page->capacity - page->cursor >= _cex_arena_rec_get_size(&rec) + rec.ptr_padding + _cex_arena_rec_get_align(&rec));
     uassert(page->cursor % 8 == 0);
     uassert(rec.ptr_padding <= 8);
-    uassertf((usize)page->data % 8 == 0, "page.data is not 8-byte aligned");
+    uassert((usize)page->data % 8 == 0 && "page.data is not 8-byte aligned");
 
     allocator_arena_rec_s* page_rec = (allocator_arena_rec_s*)&page->data[page->cursor];
     uassert((((usize)(page_rec) & ((8) - 1)) == 0) && "unaligned pointer");
@@ -12463,7 +12417,7 @@ main_loop_again:
                 char* strstart = str;
                 isize str_len_start = str_len;
                 if (unlikely(*(pattern + 1) == ')')) {
-                    uassertf(false, "Empty '()' group");
+                    uassert(false && "Empty '()' group");
                     return false;
                 }
                 if (unlikely(str_len_start) == 0) { return false; }
@@ -12478,7 +12432,7 @@ main_loop_again:
                             // Escaped symbol, can be anything
                             pattern++;
                             if (unlikely(*pattern == '\0')) {
-                                uassertf(false, "Unterminated \\ sequence inside '()' group");
+                                uassert(false && "Unterminated \\ sequence inside '()' group");
                                 return false;
                             }
                             if (str_len > 0 && *pattern == *str) { matched = true; }
@@ -12507,7 +12461,7 @@ main_loop_again:
                     }
 
                     if (unlikely(*pattern != ')')) {
-                        uassertf(false, "Invalid pattern - no closing ')'");
+                        uassert(false && "Invalid pattern - no closing ')'");
                         return false;
                     }
 
@@ -12530,7 +12484,7 @@ main_loop_again:
                     pattern = pstart + 1;
 
                     if (unlikely(*pattern == '!')) {
-                        uassertf(*(pattern + 1) != ']', "expected some chars after [!..]");
+                        uassert(*(pattern + 1) != ']' && "expected some chars after [!..]");
                         negate = true;
                         pattern++;
                     }
@@ -12540,8 +12494,8 @@ main_loop_again:
                         if (*(pattern + 1) == '-' && *(pattern + 2) != ']' &&
                             *(pattern + 2) != '\0') {
                             // Handle character ranges like a-zA-Z0-9
-                            uassertf(
-                                *pattern < *(pattern + 2),
+                            uassert(
+                                (*pattern < *(pattern + 2)) &&
                                 "pattern [n-m] sequence, n must be less than m"
                             );
                             if (*str >= *pattern && *str <= *(pattern + 2)) { matched = true; }
@@ -12557,16 +12511,16 @@ main_loop_again:
                             if (unlikely(*pattern == '+')) {
                                 // repeating group [a-z+]@, match all cases until @
                                 if (unlikely(!(*(pattern + 1) == ']'))) {
-                                    uassertf(
-                                        false,
+                                    uassert(
+                                        false &&
                                         "Unescaped '+' literal, or '+' must be last before ]"
                                     );
                                     return false;
                                 }
                                 repeating = true;
                             } else if (unlikely(*pattern == '*')) {
-                                uassertf(
-                                    false,
+                                uassert(
+                                    false &&
                                     "Invalid pattern, unescaped *, use [...\\*...], or '+' for any modifier"
                                 );
                                 return false;
@@ -12578,7 +12532,7 @@ main_loop_again:
                     }
 
                     if (unlikely(*pattern != ']')) {
-                        uassertf(false, "Invalid pattern - no closing ']'");
+                        uassert(false && "Invalid pattern - no closing ']'");
                         return false;
                     } else {
                         pattern++;
@@ -12925,7 +12879,7 @@ cex_sbuf_set_len(sbuf_c* self, usize new_length)
     if (unlikely(head->err)) { return head->err; }
     
     if (unlikely(head->capacity == 0 || new_length > head->capacity - 1)) {
-        e$except_silent (err, _sbuf__grow_buffer(self, new_length)) { return err; }
+        e$except (err, _sbuf__grow_buffer(self, new_length)) { return err; }
         // re-fetch head in case of realloc
         head = (sbuf_head_s*)(*self - sizeof(sbuf_head_s));
         uassert(head); // clang-tidy false positive, should never happen
@@ -13009,7 +12963,7 @@ _cex_sbuf_sprintf_callback(char* buf, void* user, u32 len)
         }
 
         // sbuf likely changed after realloc
-        e$except_silent (err, _sbuf__grow_buffer(&sbuf, ctx->length + len + 1)) {
+        e$except (err, _sbuf__grow_buffer(&sbuf, ctx->length + len + 1)) {
             ctx->err = err;
             return NULL;
         }
@@ -13108,7 +13062,7 @@ cex_sbuf_append(sbuf_c* self, char* s)
 
     // Try resize
     if (length + slen > capacity - 1) {
-        e$except_silent (err, _sbuf__grow_buffer(self, length + slen)) { return err; }
+        e$except (err, _sbuf__grow_buffer(self, length + slen)) { return err; }
         uassert(*self); // clang-tidy false positive, should never happen
     }
     memcpy((*self + length), s, slen);
@@ -13658,11 +13612,11 @@ cex_io__file__save(char* path, char* contents)
 
     FILE* file;
     // NOLINTNEXTLINE
-    e$except_silent (err, cex_io_fopen(&file, path, "w")) { return err; }
+    e$except (err, cex_io_fopen(&file, path, "w")) { return err; }
 
     usize contents_len = strlen(contents);
     if (contents_len > 0) {
-        e$except_silent (err, cex_io_fwrite(file, contents, contents_len)) {
+        e$except (err, cex_io_fwrite(file, contents, contents_len)) {
             cex_io_fclose(&file);
             return err;
         }
@@ -13684,10 +13638,10 @@ cex_io__file__load(char* path, IAllocator allc)
     }
     FILE* file;
     // NOLINTNEXTLINE
-    e$except_silent (err, cex_io_fopen(&file, path, "r")) { return NULL; }
+    e$except (err, cex_io_fopen(&file, path, "r")) { return NULL; }
 
     str_s out_content = (str_s){ 0 };
-    e$except_silent (err, cex_io_fread_all(file, &out_content, allc)) {
+    e$except (err, cex_io_fread_all(file, &out_content, allc)) {
         if (err == Error.eof) {
             uassert(out_content.buf == NULL);
             out_content.buf = mem$malloc(allc, 1);
@@ -14107,7 +14061,7 @@ _cex_argparse__getvalue(argparse_c* self, argparse_opt_s* opt, bool is_long)
                     return _cex_argparse__error(self, opt, "requires a value", is_long);
                 }
                 uassert(opt->convert != NULL);
-                e$except_silent (err, _cex_argparse__convert(self->_ctx.optvalue, opt)) {
+                e$except (err, _cex_argparse__convert(self->_ctx.optvalue, opt)) {
                     return _cex_argparse__error(self, opt, "argument parsing error", is_long);
                 }
                 self->_ctx.optvalue = NULL;
@@ -14115,7 +14069,7 @@ _cex_argparse__getvalue(argparse_c* self, argparse_opt_s* opt, bool is_long)
                 self->argc--;
                 self->_ctx.cpidx++;
                 self->argv++;
-                e$except_silent (err, _cex_argparse__convert(*self->argv, opt)) {
+                e$except (err, _cex_argparse__convert(*self->argv, opt)) {
                     return _cex_argparse__error(self, opt, "argument parsing error", is_long);
                 }
             } else {
@@ -14178,7 +14132,7 @@ _cex_argparse__options_check(argparse_c* self, bool reset)
                     return Error.argument;
                 }
                 if (opt->value == NULL && opt->short_name != 'h') {
-                    uassertf(opt->value != NULL, "option value is null");
+                    uassert(opt->value != NULL && "option value is null");
                     return Error.argument;
                 }
             } else {
@@ -14221,7 +14175,7 @@ _cex_argparse__options_check(argparse_c* self, bool reset)
                 uassert(opt->callback != NULL && "expected to be set for generic args");
                 continue;
             default:
-                uassertf(false, "wrong option type");
+                uassert(false && "wrong option type");
         }
     }
 
@@ -14344,7 +14298,7 @@ _cex_argparse__parse_options(argparse_c* self)
         }
     }
     int initial_argc = self->argc + 1;
-    e$except_silent (err, _cex_argparse__options_check(self, true)) { return err; }
+    e$except (err, _cex_argparse__options_check(self, true)) { return err; }
 
     for (; self->argc; self->argc--, self->argv++) {
         char* arg = self->argv[0];
@@ -14367,11 +14321,11 @@ _cex_argparse__parse_options(argparse_c* self)
 
             self->_ctx.optvalue = arg + 1;
             self->_ctx.cpidx++;
-            e$except_silent (err, _cex_argparse__short_opt(self, self->options)) {
+            e$except (err, _cex_argparse__short_opt(self, self->options)) {
                 return _cex_argparse__report_error(self, err);
             }
             while (self->_ctx.optvalue) {
-                e$except_silent (err, _cex_argparse__short_opt(self, self->options)) {
+                e$except (err, _cex_argparse__short_opt(self, self->options)) {
                     return _cex_argparse__report_error(self, err);
                 }
             }
@@ -14389,14 +14343,14 @@ _cex_argparse__parse_options(argparse_c* self)
             // Breaking when first argument appears (more flexible support of subcommands)
             break;
         }
-        e$except_silent (err, _cex_argparse__long_opt(self, self->options)) {
+        e$except (err, _cex_argparse__long_opt(self, self->options)) {
             return _cex_argparse__report_error(self, err);
         }
         self->_ctx.cpidx++;
         continue;
     }
 
-    e$except_silent (err, _cex_argparse__options_check(self, false)) { return err; }
+    e$except (err, _cex_argparse__options_check(self, false)) { return err; }
 
     self->argv = self->_ctx.out + self->_ctx.cpidx + 1; // excludes 1st argv[0], program_name
     self->argc = initial_argc - self->_ctx.cpidx - 1;
@@ -15808,7 +15762,7 @@ cex_os__fs__dir_walk(char* path, bool is_recursive, os_fs_dir_walk_f callback_fn
             path_offset = 1;
         }
 
-        e$except_silent (
+        e$except (
             err,
             str.copy(
                 path_buf + path_len + path_offset,
@@ -15827,7 +15781,7 @@ cex_os__fs__dir_walk(char* path, bool is_recursive, os_fs_dir_walk_f callback_fn
         }
 
         if (is_recursive && ftype.is_directory && !ftype.is_symlink) {
-            e$except_silent (
+            e$except (
                 err,
                 cex_os__fs__dir_walk(path_buf, is_recursive, callback_fn, user_ctx)
             ) {
@@ -15836,7 +15790,7 @@ cex_os__fs__dir_walk(char* path, bool is_recursive, os_fs_dir_walk_f callback_fn
             }
         }
         // After recursive call make a callback on a directory itself
-        e$except_silent (err, callback_fn(path_buf, ftype, user_ctx)) {
+        e$except (err, callback_fn(path_buf, ftype, user_ctx)) {
             result = err;
             goto end;
         }
@@ -15860,7 +15814,7 @@ _os__fs__remove_tree_walker(char* path, os_fs_stat_s ftype, void* user_ctx)
 {
     (void)user_ctx;
     (void)ftype;
-    e$except_silent (err, cex_os__fs__remove(path)) {
+    e$except (err, cex_os__fs__remove(path)) {
         log$trace("Error removing: %s\n", path);
         return err;
     }
@@ -15873,10 +15827,10 @@ cex_os__fs__remove_tree(char* path)
 {
     if (path == NULL || path[0] == '\0') { return Error.argument; }
     if (!os.path.exists(path)) { return Error.not_found; }
-    e$except_silent (err, cex_os__fs__dir_walk(path, true, _os__fs__remove_tree_walker, NULL)) {
+    e$except (err, cex_os__fs__dir_walk(path, true, _os__fs__remove_tree_walker, NULL)) {
         return err;
     }
-    e$except_silent (err, cex_os__fs__remove(path)) {
+    e$except (err, cex_os__fs__remove(path)) {
         log$trace("Error removing: %s\n", path);
         return err;
     }
@@ -15930,7 +15884,7 @@ cex_os__fs__copy_tree(char* src_dir, char* dst_dir)
         .src_dir = str.sstr(src_dir),
         .dest_dir = str.sstr(dst_dir),
     };
-    e$except_silent (err, cex_os__fs__dir_walk(src_dir, true, _os__fs__copy_tree_walker, &ctx)) {
+    e$except (err, cex_os__fs__dir_walk(src_dir, true, _os__fs__copy_tree_walker, &ctx)) {
         return err;
     }
 
@@ -16014,7 +15968,7 @@ static arr$(char*) cex_os__fs__find(char* path_pattern, bool is_recursive, IAllo
                                      .allc = allc };
     if (unlikely(ctx.result == NULL)) { return NULL; }
 
-    e$except_silent (err, cex_os__fs__dir_walk(dir_name, is_recursive, _os__fs__find_walker, &ctx)) {
+    e$except (err, cex_os__fs__dir_walk(dir_name, is_recursive, _os__fs__find_walker, &ctx)) {
         for$each (it, ctx.result) {
             mem$free(allc, it); // each individual item was allocated too
         }
@@ -16648,7 +16602,7 @@ cex_os__cmd__write_line(os_cmd_c* self, char* line)
 
     if (self->_subpr.stdin_file == NULL) { return Error.not_found; }
 
-    e$except_silent (err, io.file.writeln(self->_subpr.stdin_file, line)) { return err; }
+    e$except (err, io.file.writeln(self->_subpr.stdin_file, line)) { return err; }
     fflush(self->_subpr.stdin_file);
 
     return EOK;
@@ -16756,12 +16710,12 @@ cex_os__cmd__run(char** args, usize args_len, os_cmd_c* out_cmd)
         for (u32 i = 0; i < args_len - 1; i++) {
             if (str.find(args[i], " ") || str.find(args[i], "\"")) {
                 char* escaped_arg = str.replace(args[i], "\"", "\\\"", _);
-                e$except_silent (err, sbuf.appendf(&cmd, "\"%s\" ", escaped_arg)) {
+                e$except (err, sbuf.appendf(&cmd, "\"%s\" ", escaped_arg)) {
                     result = err;
                     goto end;
                 }
             } else {
-                e$except_silent (err, sbuf.appendf(&cmd, "%s ", args[i])) {
+                e$except (err, sbuf.appendf(&cmd, "%s ", args[i])) {
                     result = err;
                     goto end;
                 }
@@ -18520,8 +18474,6 @@ _cexy__colorize_ansi(str_s token, str_s exact_match, char current_char)
         { str$s("for$each"), 1 },
         { str$s("for$iter"), 1 },
         { str$s("e$except"), 1 },
-        { str$s("e$except_silent"), 1 },
-        { str$s("e$except_silent"), 1 },
         { str$s("char"), 2 },
         { str$s("var"), 2 },
         { str$s("arr$"), 2 },
@@ -20021,7 +19973,7 @@ cexy__cmd__simple_fuzz(int argc, char** argv, void* user_ctx)
             if (!run_all || cexy.src_include_changed(target_exe, src_file, NULL)) {
                 arr$pushm(args, cexy$fuzzer);
                 e$assert(arr$len(args) > 0 && "empty cexy$fuzzer");
-                e$assertf(os.cmd.exists(args[0]), "fuzzer command not found");
+                e$assert(os.cmd.exists(args[0]) && "fuzzer command not found");
                 if (str.find(args[0], "afl")) { is_afl_fuzzer = true; }
                 if (is_afl_fuzzer) { arr$push(args, "-DCEX_FUZZ_AFL"); }
 
@@ -20130,7 +20082,7 @@ cexy__utils__git_hash(IAllocator allc)
             return NULL;
         }
         char* output = os.cmd.read_all(&c, _);
-        e$except_silent (err, os.cmd.wait(&c, 1, 0)) {
+        e$except (err, os.cmd.wait(&c, 1, 0)) {
             log$error("`git rev-parse HEAD` error: %s err_code: %d\n", err, os.cmd.ret_code(&c));
             return NULL;
         }
@@ -20321,7 +20273,7 @@ cexy__utils__pkgconf(
         );
 
         char* output = os.cmd.read_all(&c, _);
-        e$except_silent (err, os.cmd.wait(&c, 1, 0)) {
+        e$except (err, os.cmd.wait(&c, 1, 0)) {
             log$error("%s program error:\n%s\n", cexy$pkgconf_cmd, output);
             return err;
         }

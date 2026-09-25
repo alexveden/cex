@@ -465,7 +465,6 @@ CEX provides several short aliases for primitive types and some extra types for 
 | Name | Description |
 | -------------- | --------------- |
 | uassert() | General purpose assert with tracebacks |
-| uassertf() | General purpose assert with a message |
 | unlikely() | Branch predictor management for unexpected conditions |
 | likely() | Branch predictor management for expected conditions |
 | breakpoint() | Cross-platform debugger breakpoint |
@@ -770,10 +769,10 @@ Exception foo_silent(void) {
         return err;
     }
 
-    // Method 3: silent macro, with temp error value
-    e$except_silent(err, error_sample1(0)) {
+    // Method 3: macro with temp error value
+    e$except(err, error_sample1(0)) {
         // NOTE: nesting is allowed!
-        e$except_silent(err, error_sample1(-2)) {
+        e$except(err, error_sample1(-2)) {
             return err; // err = UserError.neg_two
         }
 
@@ -790,7 +789,7 @@ Exception foo_silent(void) {
 
 > [!NOTE]
 >
-> `e$except_silent` will print error log when code runs under unit test or inside CEX build system, this helps a lot with debugging.
+> `e$except` prints the error traceback, this helps a lot with debugging.
 
 ##### Loud handling with logging
 
@@ -804,13 +803,13 @@ There are special error handling macros for this purpose:
 4. `e$except_true(func()) { ... }` - error handling for functions returning non-zero code on error.
 5. `e$ret(func_call());` - runs the `Exception` type returning function `func_call()`,  and on error it logs the traceback and re-return the same return value. This is a main code shortcut and driver for all CEX tracebacks. Use it if you don't care about precise error handling and fine to return immediately on error.
 6. `e$goto(func_call(), goto_err_label);` - runs the `Exception` type function, and does `goto goto_err_label;`. This macro is useful for resource deallocation logic, and intended to use for typical C error handling pattern `goto fail`.
-7. `e$assert(condition)` or `e$assert(condition && "What's wrong")` or `e$assertf(condition, "message")`  - quick condition checking inside `Exception` functions, logs an error location + returns `Error.assert`. These asserts remain in release builds and are not affected by the `NDEBUG` flag.
+7. `e$assert(condition)` or `e$assert(condition && "What's wrong")`  - quick condition checking inside `Exception` functions, logs an error location + returns `Error.assert`. These asserts remain in release builds and are not affected by the `NDEBUG` flag.
 
 ```c
 Exception foo_loud(int a) {
     e$assert(a != 0);
     e$assert(a != 11 && "a is suspicious");
-    e$assertf(a != 22, "a is something bad");
+    e$assert(a != 22 && "a is something bad");
 
     char* m = malloc(20);
     e$assert(m != NULL && "memory error"); // evergreen assert
@@ -2894,7 +2893,7 @@ So `cex.h` has 2 types of asserts:
 // Raises abort
 uassert(a == 4); // vanilla
 uassert(b == a && "Oops it's a message"); // with static message
-uassertf(b == 2, "b != 2"); // with message
+uassert(b == 2 && "b != 2"); // with message
 
 // Disabling uassert() - only for unit test mode
 uassert_disable();
@@ -2905,7 +2904,7 @@ uassert_enable();
 Exception read_file(char* filename, char* buf, isize* out_buf_size) {
     e$assert(buff != NULL); // vanilla
     e$assert(filename != NULL && "invalid filename"); // with static message
-    e$assertf(filename == NULL, "filename is NULL"); // with message
+    e$assert(filename == NULL && "filename is NULL"); // with message
     return EOK;
 }
 
@@ -3001,19 +3000,18 @@ additional safety mechanisms are activated:
 | # | Mechanism | What it does |
 |---|-----------|--------------|
 | 1 | **Namespace mutability** | Namespace structs become non-const allowing function-pointer mocking (e.g. `os.timer = my_mock`) |
-| 2 | **`e$except_silent` → loud** | Silent error handlers print tracebacks, aiding debugging of error paths |
-| 3 | **`uassert` disable/enable** | `uassert_disable()` redirects failures to stdout + skips abort, letting the runner capture output |
-| 4 | **`0xf7` memory poison** *(ASAN fallback)* | All `mem$`/arena allocations filled with `0xf7` to expose uninitialized reads. Duplicates ASAN's detection when the sanitizer is unavailable. |
-| 5 | **Heap allocator stats** | `mem$` tracks `n_allocs`, `n_reallocs`, `n_free` for leak detection |
-| 6 | **Post-case leak detection** | Runner compares allocs vs frees after each case, emits `[LEAK]` on mismatch |
-| 7 | **Arena sanitize on scope exit** | Full heap integrity walk at every `mem$scope` exit |
-| 8 | **Arena sanitize on destroy** | Same walk + `bytes_alloc == bytes_free` check before arena destruction |
-| 9 | **Per-case arena isolation** | Each test case gets a fresh `test$alloc` arena, destroyed afterward |
-| 10 | **Stdout capture** | stdout → temp file; replayed only on test failure with `>>>TEST OUTPUT<<<` markers |
-| 11 | **Breakpoint on assert** | `--breakpoint` (`-b`) triggers debugger on `tassert_*` failure |
-| 12 | **ASAN poison regions** *(recommended)* | Poison padding surrounds every heap & arena allocation — OOB access triggers a `use-after-poison` crash with precise stack trace |
-| 13 | **OOM simulation** | `test$alloc_set_oom_probability(prob)` injects synthetic allocation failures on `test$alloc`. Automatically reset to `0.0` between test cases. |
-| 14 | **Seeded random** | `os.random.seed(0)` is called before each test case, giving deterministic, repeatable random sequences across runs. |
+| 2 | **`uassert` disable/enable** | `uassert_disable()` redirects failures to stdout + skips abort, letting the runner capture output |
+| 3 | **`0xf7` memory poison** *(ASAN fallback)* | All `mem$`/arena allocations filled with `0xf7` to expose uninitialized reads. Duplicates ASAN's detection when the sanitizer is unavailable. |
+| 4 | **Heap allocator stats** | `mem$` tracks `n_allocs`, `n_reallocs`, `n_free` for leak detection |
+| 5 | **Post-case leak detection** | Runner compares allocs vs frees after each case, emits `[LEAK]` on mismatch |
+| 6 | **Arena sanitize on scope exit** | Full heap integrity walk at every `mem$scope` exit |
+| 7 | **Arena sanitize on destroy** | Same walk + `bytes_alloc == bytes_free` check before arena destruction |
+| 8 | **Per-case arena isolation** | Each test case gets a fresh `test$alloc` arena, destroyed afterward |
+| 9 | **Stdout capture** | stdout → temp file; replayed only on test failure with `>>>TEST OUTPUT<<<` markers |
+| 10 | **Breakpoint on assert** | `--breakpoint` (`-b`) triggers debugger on `tassert_*` failure |
+| 11 | **ASAN poison regions** *(recommended)* | Poison padding surrounds every heap & arena allocation — OOB access triggers a `use-after-poison` crash with precise stack trace |
+| 12 | **OOM simulation** | `test$alloc_set_oom_probability(prob)` injects synthetic allocation failures on `test$alloc`. Automatically reset to `0.0` between test cases. |
+| 13 | **Seeded random** | `os.random.seed(0)` is called before each test case, giving deterministic, repeatable random sequences across runs. |
 
 
 **Breakpoint example:**

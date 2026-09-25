@@ -214,11 +214,11 @@ do_stuff(char* filename)
     // jumps to label if read_file() fails + prints traceback
     e$goto(read_file(NULL), fail);
 
-    // silent error handling without tracebacks
-    e$except_silent (err, foo(0)) {
+    // error handling with tracebacks
+    e$except (err, foo(0)) {
 
         // Nesting of error handlers is allowed
-        e$except_silent (err, foo(2)) { return err; }
+        e$except (err, foo(2)) { return err; }
 
         // NOTE: `err` is address of char* compared with address Error.os (not by string contents!)
         if (err == Error.os) {
@@ -471,22 +471,6 @@ int main(void)
             }                                                                                       \
         })
 
-
-/// Non disposable assert, returns Error.assert CEX exception when failed
-#    define e$assertf(A, error_msg)                                                                \
-        ({                                                                                         \
-            if (unlikely(!((A)))) {                                                                \
-                __cex__fprintf(                                                                    \
-                    stdout,                                                                        \
-                    "[ASSERT] ",                                                                   \
-                    __FILE_NAME__,                                                                 \
-                    __LINE__,                                                                      \
-                    __func__,                                                                      \
-                    error_msg "\n"                                                                 \
-                );                                                                                 \
-                return Error.assert;                                                               \
-            }                                                                                      \
-        })
 #else // #if CEX_LOG_LVL > 0
 #    define __cex__traceback(uerr, fail_func) __cex__fprintf_dummy()
 #    define e$assert(A)                                                                            \
@@ -494,11 +478,6 @@ int main(void)
             if (unlikely(!((A)))) { return Error.assert; }                                         \
         })
 
-
-#    define e$assertf(A, error_msg)                                                                \
-        ({                                                                                         \
-            if (unlikely(!((A)))) { return Error.assert; }                                         \
-        })
 #endif // #if CEX_LOG_LVL > 0
 
 
@@ -509,7 +488,6 @@ Assertion macros, ASAN detection, and stack-trace helpers.
 - `mem$asan_enabled()` — compile-time check for Address Sanitizer
 - `sanitizer_stack_trace()` — prints ASAN stack trace when available
 - `uassert(A)` — hard assertion, prints file:line:func + traceback, then aborts
-- `uassertf(A, error_msg)` — assertion with message
 - `uassert_disable()` / `uassert_enable()` — suppress assertions in test mode
 
 */
@@ -541,12 +519,10 @@ void __sanitizer_print_stack_trace();
 #if defined(__clang_analyzer__)
 #    include <assert.h>
 #    define uassert(cond) assert(cond)
-#    define uassertf(cond, error_msg) assert(cond)
 #    define uassert_disable() ((void)0)
 #    define uassert_enable() ((void)0)
 #    define __cex_test_postmortem_exists() 0
 #elif defined(NDEBUG)
-#    define uassertf(cond, error_msg) ((void)(0))
 #    define uassert(cond) ((void)(0))
 #    define uassert_disable() ((void)0)
 #    define uassert_enable() ((void)0)
@@ -587,20 +563,6 @@ int __cex_test_uassert_enabled = 1;
             }                                                                                      \
         })
 
-#    define uassertf(A, error_msg)                                                                 \
-        ({                                                                                         \
-            if (unlikely(!((A)))) {                                                                \
-                __cex__fprintf(                                                                    \
-                    (uassert_is_enabled() ? stderr : stdout),                                      \
-                    "[ASSERT] ",                                                                   \
-                    __FILE_NAME__,                                                                 \
-                    __LINE__,                                                                      \
-                    __func__,                                                                      \
-                    error_msg "\n"                                                                 \
-                );                                                                                 \
-                if (uassert_is_enabled()) { cex$platform_panic(); }                                \
-            }                                                                                      \
-        })
 #endif
 
 
@@ -657,14 +619,6 @@ int __cex_test_uassert_enabled = 1;
     for (Exc _var_name = _func;                                                                    \
          unlikely((_var_name != EOK) && (__cex__traceback(_var_name, #_func), 1));                 \
          _var_name = EOK)
-
-#if defined(CEX_TEST) || defined(CEX_BUILD)
-#    define e$except_silent(_var_name, _func) e$except (_var_name, _func)
-#else
-/// catches the error of function inside scope (without traceback)
-#    define e$except_silent(_var_name, _func)                                                      \
-        for (Exc _var_name = _func; unlikely(_var_name != EOK); _var_name = EOK)
-#endif
 
 /// catches the error of system function (if negative value + errno), prints errno error
 #define e$except_errno(_expression)                                                                \

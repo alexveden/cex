@@ -140,12 +140,12 @@ Exception serdegen__ItemNullable__serialize(json_wr_c* jw, ItemNullable_c* item)
 
         json$wr_key("stock_field");
         // field `stock_field` is nullable json$$field(.nullable = true)
-        e$except_silent (err, serdegen.Stock.serialize(jw, item->stock_field)) {
+        e$except (err, serdegen.Stock.serialize(jw, item->stock_field)) {
             jw->error = err;
         }
 
         json$wr_key("stock_val");
-        e$except_silent (err, serdegen.Stock.serialize(jw, &item->stock_val)) {
+        e$except (err, serdegen.Stock.serialize(jw, &item->stock_val)) {
             jw->error = err;
         }
 
@@ -307,7 +307,7 @@ Exception serdegen__Item__serialize(json_wr_c* jw, Item* item) {
         json$wr_val(item->char_field);
 
         json$wr_key("stock_field");
-        e$except_silent (err, serdegen.Stock.serialize(jw, &item->stock_field)) {
+        e$except (err, serdegen.Stock.serialize(jw, &item->stock_field)) {
             jw->error = err;
         }
 
@@ -457,7 +457,7 @@ Exception serdegen__Order__serialize(json_wr_c* jw, Order* item) {
         if (unlikely(!item->stock)) {
             jw->error = JsonError.null_field;
         }
-        e$except_silent (err, serdegen.Stock.serialize(jw, item->stock)) {
+        e$except (err, serdegen.Stock.serialize(jw, item->stock)) {
             jw->error = err;
         }
 
@@ -667,7 +667,7 @@ Exception serdegen__Position__serialize(json_wr_c* jw, Position_c* item) {
         if (unlikely(!item->stock)) {
             jw->error = JsonError.null_field;
         }
-        e$except_silent (err, serdegen.Stock.serialize(jw, item->stock)) {
+        e$except (err, serdegen.Stock.serialize(jw, item->stock)) {
             jw->error = err;
         }
 

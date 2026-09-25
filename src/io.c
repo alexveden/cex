@@ -476,11 +476,11 @@ cex_io__file__save(char* path, char* contents)
 
     FILE* file;
     // NOLINTNEXTLINE
-    e$except_silent (err, cex_io_fopen(&file, path, "w")) { return err; }
+    e$except (err, cex_io_fopen(&file, path, "w")) { return err; }
 
     usize contents_len = strlen(contents);
     if (contents_len > 0) {
-        e$except_silent (err, cex_io_fwrite(file, contents, contents_len)) {
+        e$except (err, cex_io_fwrite(file, contents, contents_len)) {
             cex_io_fclose(&file);
             return err;
         }
@@ -502,10 +502,10 @@ cex_io__file__load(char* path, IAllocator allc)
     }
     FILE* file;
     // NOLINTNEXTLINE
-    e$except_silent (err, cex_io_fopen(&file, path, "r")) { return NULL; }
+    e$except (err, cex_io_fopen(&file, path, "r")) { return NULL; }
 
     str_s out_content = (str_s){ 0 };
-    e$except_silent (err, cex_io_fread_all(file, &out_content, allc)) {
+    e$except (err, cex_io_fread_all(file, &out_content, allc)) {
         if (err == Error.eof) {
             uassert(out_content.buf == NULL);
             out_content.buf = mem$malloc(allc, 1);

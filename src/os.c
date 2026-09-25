@@ -505,7 +505,7 @@ cex_os__fs__dir_walk(char* path, bool is_recursive, os_fs_dir_walk_f callback_fn
             path_offset = 1;
         }
 
-        e$except_silent (
+        e$except (
             err,
             str.copy(
                 path_buf + path_len + path_offset,
@@ -524,7 +524,7 @@ cex_os__fs__dir_walk(char* path, bool is_recursive, os_fs_dir_walk_f callback_fn
         }
 
         if (is_recursive && ftype.is_directory && !ftype.is_symlink) {
-            e$except_silent (
+            e$except (
                 err,
                 cex_os__fs__dir_walk(path_buf, is_recursive, callback_fn, user_ctx)
             ) {
@@ -533,7 +533,7 @@ cex_os__fs__dir_walk(char* path, bool is_recursive, os_fs_dir_walk_f callback_fn
             }
         }
         // After recursive call make a callback on a directory itself
-        e$except_silent (err, callback_fn(path_buf, ftype, user_ctx)) {
+        e$except (err, callback_fn(path_buf, ftype, user_ctx)) {
             result = err;
             goto end;
         }
@@ -557,7 +557,7 @@ _os__fs__remove_tree_walker(char* path, os_fs_stat_s ftype, void* user_ctx)
 {
     (void)user_ctx;
     (void)ftype;
-    e$except_silent (err, cex_os__fs__remove(path)) {
+    e$except (err, cex_os__fs__remove(path)) {
         log$trace("Error removing: %s\n", path);
         return err;
     }
@@ -570,10 +570,10 @@ cex_os__fs__remove_tree(char* path)
 {
     if (path == NULL || path[0] == '\0') { return Error.argument; }
     if (!os.path.exists(path)) { return Error.not_found; }
-    e$except_silent (err, cex_os__fs__dir_walk(path, true, _os__fs__remove_tree_walker, NULL)) {
+    e$except (err, cex_os__fs__dir_walk(path, true, _os__fs__remove_tree_walker, NULL)) {
         return err;
     }
-    e$except_silent (err, cex_os__fs__remove(path)) {
+    e$except (err, cex_os__fs__remove(path)) {
         log$trace("Error removing: %s\n", path);
         return err;
     }
@@ -627,7 +627,7 @@ cex_os__fs__copy_tree(char* src_dir, char* dst_dir)
         .src_dir = str.sstr(src_dir),
         .dest_dir = str.sstr(dst_dir),
     };
-    e$except_silent (err, cex_os__fs__dir_walk(src_dir, true, _os__fs__copy_tree_walker, &ctx)) {
+    e$except (err, cex_os__fs__dir_walk(src_dir, true, _os__fs__copy_tree_walker, &ctx)) {
         return err;
     }
 
@@ -711,7 +711,7 @@ static arr$(char*) cex_os__fs__find(char* path_pattern, bool is_recursive, IAllo
                                      .allc = allc };
     if (unlikely(ctx.result == NULL)) { return NULL; }
 
-    e$except_silent (err, cex_os__fs__dir_walk(dir_name, is_recursive, _os__fs__find_walker, &ctx)) {
+    e$except (err, cex_os__fs__dir_walk(dir_name, is_recursive, _os__fs__find_walker, &ctx)) {
         for$each (it, ctx.result) {
             mem$free(allc, it); // each individual item was allocated too
         }
@@ -1345,7 +1345,7 @@ cex_os__cmd__write_line(os_cmd_c* self, char* line)
 
     if (self->_subpr.stdin_file == NULL) { return Error.not_found; }
 
-    e$except_silent (err, io.file.writeln(self->_subpr.stdin_file, line)) { return err; }
+    e$except (err, io.file.writeln(self->_subpr.stdin_file, line)) { return err; }
     fflush(self->_subpr.stdin_file);
 
     return EOK;
@@ -1453,12 +1453,12 @@ cex_os__cmd__run(char** args, usize args_len, os_cmd_c* out_cmd)
         for (u32 i = 0; i < args_len - 1; i++) {
             if (str.find(args[i], " ") || str.find(args[i], "\"")) {
                 char* escaped_arg = str.replace(args[i], "\"", "\\\"", _);
-                e$except_silent (err, sbuf.appendf(&cmd, "\"%s\" ", escaped_arg)) {
+                e$except (err, sbuf.appendf(&cmd, "\"%s\" ", escaped_arg)) {
                     result = err;
                     goto end;
                 }
             } else {
-                e$except_silent (err, sbuf.appendf(&cmd, "%s ", args[i])) {
+                e$except (err, sbuf.appendf(&cmd, "%s ", args[i])) {
                     result = err;
                     goto end;
                 }

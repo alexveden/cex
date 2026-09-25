@@ -184,7 +184,7 @@ fuzz$setup()
         for (u32 i = 0; i < arr$len(match_tuple); i++) {
             char* fn = str.fmt(_, "%s/%05d", fuzz$corpus_dir, i);
             e$except (err, match_make(fn, match_tuple[i].text, match_tuple[i].pattern)) {
-                uassertf(false, "Error writing file");
+                uassert(false && "Error writing file");
             }
         }
     }

@@ -161,7 +161,7 @@ cex_sbuf_set_len(sbuf_c* self, usize new_length)
     if (unlikely(head->err)) { return head->err; }
     
     if (unlikely(head->capacity == 0 || new_length > head->capacity - 1)) {
-        e$except_silent (err, _sbuf__grow_buffer(self, new_length)) { return err; }
+        e$except (err, _sbuf__grow_buffer(self, new_length)) { return err; }
         // re-fetch head in case of realloc
         head = (sbuf_head_s*)(*self - sizeof(sbuf_head_s));
         uassert(head); // clang-tidy false positive, should never happen
@@ -245,7 +245,7 @@ _cex_sbuf_sprintf_callback(char* buf, void* user, u32 len)
         }
 
         // sbuf likely changed after realloc
-        e$except_silent (err, _sbuf__grow_buffer(&sbuf, ctx->length + len + 1)) {
+        e$except (err, _sbuf__grow_buffer(&sbuf, ctx->length + len + 1)) {
             ctx->err = err;
             return NULL;
         }
@@ -344,7 +344,7 @@ cex_sbuf_append(sbuf_c* self, char* s)
 
     // Try resize
     if (length + slen > capacity - 1) {
-        e$except_silent (err, _sbuf__grow_buffer(self, length + slen)) { return err; }
+        e$except (err, _sbuf__grow_buffer(self, length + slen)) { return err; }
         uassert(*self); // clang-tidy false positive, should never happen
     }
     memcpy((*self + length), s, slen);

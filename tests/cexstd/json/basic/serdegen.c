@@ -138,7 +138,7 @@ Exception serdegen__Position__serialize(json_wr_c* jw, Position_c* item) {
         if (unlikely(!item->stock)) {
             jw->error = JsonError.null_field;
         }
-        e$except_silent (err, serdegen.Stock.serialize(jw, item->stock)) {
+        e$except (err, serdegen.Stock.serialize(jw, item->stock)) {
             jw->error = err;
         }
 

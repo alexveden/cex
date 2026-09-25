@@ -255,7 +255,7 @@ struct _cexds__arr_new_kwargs_s
     ({                                                                                             \
         /* NOLINTBEGIN */                                                                          \
         _cexds__arr_integrity(a, _CEXDS_ARR_MAGIC);                                                \
-        uassertf(array != NULL, "arr$pusha: array is NULL");                                       \
+        uassert(array != NULL && "arr$pusha: array is NULL");                                      \
         usize _arr_len_va[] = { array_len };                                                       \
         usize arr_len = (sizeof(_arr_len_va) > 0) ? _arr_len_va[0] : arr$len(array);               \
         uassert(arr_len < PTRDIFF_MAX && "negative length or overflow");                           \

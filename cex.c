@@ -92,7 +92,7 @@ static void
 embed_code(sbuf_c* buf, char* code_path)
 {
     uassert(buf != NULL);
-    uassertf(os.path.exists(code_path), "not exists");
+    uassert(os.path.exists(code_path) && "not exists");
 
     FILE* fh;
     e$except (err, io.fopen(&fh, code_path, "r")) { exit(1); }

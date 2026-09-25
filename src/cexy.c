@@ -1277,8 +1277,6 @@ _cexy__colorize_ansi(str_s token, str_s exact_match, char current_char)
         { str$s("for$each"), 1 },
         { str$s("for$iter"), 1 },
         { str$s("e$except"), 1 },
-        { str$s("e$except_silent"), 1 },
-        { str$s("e$except_silent"), 1 },
         { str$s("char"), 2 },
         { str$s("var"), 2 },
         { str$s("arr$"), 2 },
@@ -2778,7 +2776,7 @@ cexy__cmd__simple_fuzz(int argc, char** argv, void* user_ctx)
             if (!run_all || cexy.src_include_changed(target_exe, src_file, NULL)) {
                 arr$pushm(args, cexy$fuzzer);
                 e$assert(arr$len(args) > 0 && "empty cexy$fuzzer");
-                e$assertf(os.cmd.exists(args[0]), "fuzzer command not found");
+                e$assert(os.cmd.exists(args[0]) && "fuzzer command not found");
                 if (str.find(args[0], "afl")) { is_afl_fuzzer = true; }
                 if (is_afl_fuzzer) { arr$push(args, "-DCEX_FUZZ_AFL"); }
 
@@ -2887,7 +2885,7 @@ cexy__utils__git_hash(IAllocator allc)
             return NULL;
         }
         char* output = os.cmd.read_all(&c, _);
-        e$except_silent (err, os.cmd.wait(&c, 1, 0)) {
+        e$except (err, os.cmd.wait(&c, 1, 0)) {
             log$error("`git rev-parse HEAD` error: %s err_code: %d\n", err, os.cmd.ret_code(&c));
             return NULL;
         }
@@ -3078,7 +3076,7 @@ cexy__utils__pkgconf(
         );
 
         char* output = os.cmd.read_all(&c, _);
-        e$except_silent (err, os.cmd.wait(&c, 1, 0)) {
+        e$except (err, os.cmd.wait(&c, 1, 0)) {
             log$error("%s program error:\n%s\n", cexy$pkgconf_cmd, output);
             return err;
         }

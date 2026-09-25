@@ -95,8 +95,8 @@ static void
 _write_corpus_file(char* path, u8* data, usize len)
 {
     FILE* f;
-    e$except_silent(err, io.fopen(&f, path, "wb")) { uassertf(false, "fopen"); }
-    e$except_silent(err, io.fwrite(f, data, len)) { uassertf(false, "fwrite"); }
+    e$except(err, io.fopen(&f, path, "wb")) { uassert(false && "fopen"); }
+    e$except(err, io.fwrite(f, data, len)) { uassert(false && "fwrite"); }
     io.fclose(&f);
 }
 

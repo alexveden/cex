@@ -441,7 +441,7 @@ test$case(test_os_mkdir)
     tassert_er(Error.argument, os.fs.mkdir(NULL));
     tassert_er(Error.argument, os.fs.mkdir(""));
 
-    e$except_silent (err, os.fs.remove(TBUILDDIR "mytestdir")) {
+    e$except (err, os.fs.remove(TBUILDDIR "mytestdir")) {
         if (err != Error.not_found) { tassert_er(Error.not_found, err); }
     }
 

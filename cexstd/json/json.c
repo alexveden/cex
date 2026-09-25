@@ -330,7 +330,7 @@ cex_json__rd__str_unescape(str_s value_str, str_s* out_val, IAllocator allc)
     if (unlikely(!output)) { return Error.memory; }
 
     usize output_size = value_str.len + 1;
-    e$except_silent (err, cex_json__rd__str_unescape_inplace(value_str, output, &output_size)) {
+    e$except (err, cex_json__rd__str_unescape_inplace(value_str, output, &output_size)) {
         mem$free(allc, output);
         return err;
     }
@@ -897,15 +897,15 @@ cex_json__wr__print_val(json_wr_c* jw, char* format, ...)
 {
     u8 last_scope = $last_scope(jw);
 
-    uassertf(
-        !(last_scope & $scope_null) || !(last_scope & $scope_has_items),
+    uassert(
+        (!(last_scope & $scope_null) || !(last_scope & $scope_has_items)) &&
         "Only one json$wr_val() is allowed in null scope"
     );
     uassert(format);
 
     if (!(last_scope & $scope_has_key)) {
-        uassertf(
-            !(last_scope & $scope_obj),
+        uassert(
+            (!(last_scope & $scope_obj)) &&
             "Writing json$wr_val() without setting json$wr_key() before"
         );
         _cex_json_writer_indent(jw, false);
@@ -967,8 +967,8 @@ cex_json__wr__print_val(json_wr_c* jw, char* format, ...)
 static void
 cex_json__wr__print_key(json_wr_c* jw, char* key)
 {
-    uassertf(
-        jw->scope_depth > 0 && jw->scope_stack[jw->scope_depth - 1] & $scope_obj,
+    uassert(
+        (jw->scope_depth > 0 && jw->scope_stack[jw->scope_depth - 1] & $scope_obj) &&
         "Expected to be in json object scope"
     );
     _cex_json_writer_indent(jw, false);
@@ -1000,8 +1000,8 @@ cex_json__wr__print_scope_enter(json_wr_c* jw, JsonType_e scope_type)
     u8 last_scope = $last_scope(jw);
 
     if (!(last_scope & $scope_has_key)) {
-        uassertf(
-            !(last_scope & $scope_obj),
+        uassert(
+            (!(last_scope & $scope_obj)) &&
             "Entering json$wr_scope() value without setting json$wr_key() before"
         );
         if (last_scope & $scope_has_items) { _cex_json_writer_indent(jw, false); }
@@ -1194,13 +1194,13 @@ _cex_json__gen___process_field_attr(
                 }
             } else if (t.type == CexTkn__rparen) {
                 t = CexParser.next_token(lx);
-                e$assertf(t.type == CexTkn__eos, "Missing semicolon after cex$$attr field");
+                e$assert(t.type == CexTkn__eos && "Missing semicolon after cex$$attr field");
 
                 for (t = CexParser.next_token(lx);
                      t.type == CexTkn__comment_single || t.type == CexTkn__comment_multi;
                      t = CexParser.next_token(lx)) {}
 
-                e$assertf(t.type == CexTkn__ident, "Expected identifier after cex$$attr field");
+                e$assert(t.type == CexTkn__ident && "Expected identifier after cex$$attr field");
                 break;
             } else if (t.type == CexTkn__comma || t.type == CexTkn__lparen) {
                 continue;
@@ -1235,7 +1235,7 @@ _cex_json__gen___process_field_attr(
             case CexTkn__ident:
                 break;
             default: {
-                e$assertf(false, "Unsupported token");
+                e$assert(false && "Unsupported token");
             }
         }
 
@@ -1270,7 +1270,7 @@ _cex_json__gen__codegen_serialize_field(json_gen_c* self, cex_codegen_s* cg$var,
                 cg$pf("// field `%s` is nullable json$$field(.nullable = true)", f->name);
             }
         }
-        cg$scope ("e$except_silent (err, %s.%s.serialize(jw, %sitem->%s)) ",
+        cg$scope ("e$except (err, %s.%s.serialize(jw, %sitem->%s)) ",
                   self->namespace,
                   field_type->ns_name,
                   f->flags.is_ptr ? "" : "&",
@@ -1423,7 +1423,7 @@ _cex_json__gen__codegen_deserialize_field(
                 }
 
             } else {
-                uassertf(false, "field type, not implemented yet");
+                uassert(false && "field type, not implemented yet");
             }
 
 
@@ -1463,7 +1463,7 @@ _cex_json__gen__codegen_destroy_field(json_gen_c* self, cex_codegen_s* cg$var, j
         } else if (str$eq(f->type, "str_s")) {
             cg$pf("mem$free(allc, item->%s.buf);", f->name);
         } else {
-            uassertf(false, "field type, not implemented yet");
+            uassert(false && "field type, not implemented yet");
         }
     } else {
         // Primitive type do nothing

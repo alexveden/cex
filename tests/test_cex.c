@@ -181,10 +181,10 @@ test$case(test_nested_excepts)
 
     tassert_eq(Error.io, foo(0));
 
-    e$except_silent (err, foo(0)) {
+    e$except (err, foo(0)) {
         tassert_er(err, Error.io);
 
-        e$except_silent (err, foo(2)) { tassert_er(err, Error.memory); }
+        e$except (err, foo(2)) { tassert_er(err, Error.memory); }
 
         // err, back after nested handling!
         tassert_er(err, Error.io);

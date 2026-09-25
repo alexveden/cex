@@ -604,7 +604,7 @@ cex_test_main_fn(int argc, char** argv)
         .description = "Test runner program",
     };
 
-    e$except_silent (err, argparse.parse(&args, argc, argv)) { return 1; }
+    e$except (err, argparse.parse(&args, argc, argv)) { return 1; }
 
     if (!ctx->no_stdout_capture) {
         ctx->out_stream = tmpfile();
