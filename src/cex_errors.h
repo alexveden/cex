@@ -36,6 +36,9 @@ static_assert(
 #    define CEX_TRACEBACK_CAP 32
 #endif
 
+/// Assertion label, shared by uassert() and _cex_errors_fail()'s suppressible check
+#define _cex_errors_assert_prefix "[ASSERT] "
+
 #undef e$raise
 #undef e$assert
 #undef e$assertf
@@ -46,6 +49,10 @@ static_assert(
 #undef e$except_true
 #undef e$ret
 #undef e$goto
+#undef uassert
+#undef uassertf
+#undef unreachable
+#undef cex$platform_panic
 
 #if CEX_TRACEBACK_LVL == 1
 typedef struct
@@ -279,6 +286,35 @@ extern _Thread_local _cex_errors_traceback_data_s _cex_errors_traceback_data_arr
     goto _label
 
 #endif // CEX_TRACEBACK_LVL
+
+/* Hard-fail panic (asserts + unreachable), prototype-scoped replacement for __cex__panic */
+
+/// Cold panic: suppressible [ASSERT] prints to stdout when disabled, everything else aborts
+__attribute__((cold, noinline))
+#ifndef CEX_TEST
+__attribute__((noreturn))
+#endif
+void _cex_errors_fail(
+    const char* prefix,
+    const char* file,
+    u32 line,
+    const char* func,
+    const char* msg
+);
+
+#ifdef _cex$platform_panic_builtin
+#    undef cex$platform_panic
+#    define cex$platform_panic _cex_errors_fail
+#endif
+
+#define uassert(A)                                                                                 \
+    ({                                                                                             \
+        if (unlikely(!((A)))) {                                                                    \
+            cex$platform_panic(_cex_errors_assert_prefix, __FILE_NAME__, __LINE__, __func__, #A);  \
+        }                                                                                          \
+    })
+
+#define unreachable() cex$platform_panic("[UNREACHABLE] ", __FILE_NAME__, __LINE__, __func__, NULL)
 
 /* Traceback read-back (buffered levels fill the ring; 0/3 stay empty) */
 

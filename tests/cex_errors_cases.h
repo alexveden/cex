@@ -242,6 +242,14 @@ test$case(assert_ok)
     return EOK;
 }
 
+test$case(uassert_disabled_returns)
+{
+    uassert_disable();
+    uassert(false);
+    uassert_enable();
+    return EOK;
+}
+
 test$case(ret_error)
 {
     Exc e = err_ret(1);

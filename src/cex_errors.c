@@ -51,3 +51,30 @@ _cex_errors_traceback_print(FILE* stream)
 }
 
 #undef _cex_traceback_fmt
+
+#if !defined(NDEBUG) && !defined(__clang_analyzer__)
+__attribute__((cold, noinline))
+#    ifndef CEX_TEST
+__attribute__((noreturn))
+#    endif
+void
+_cex_errors_fail(const char* prefix, const char* file, u32 line, const char* func, const char* msg)
+{
+    if (!uassert_is_enabled() && strcmp(prefix, _cex_errors_assert_prefix) == 0) {
+        __cex__fprintf(stdout, prefix, file, line, func, "%s\n", msg);
+        return;
+    }
+    if (msg) {
+        __cex__fprintf(stderr, prefix, file, line, func, "%s\n", msg);
+    } else {
+        __cex__fprintf(stderr, prefix, file, line, func, "\n");
+    }
+    fflush(stdout);
+    fflush(stderr);
+    sanitizer_stack_trace();
+#    ifdef CEX_TEST
+    breakpoint();
+#    endif
+    abort();
+}
+#endif
