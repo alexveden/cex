@@ -101,15 +101,6 @@ err_except(int i)
     return n;
 }
 
-/// e$except_silent, the handler runs but nothing is recorded
-test$noopt int
-err_except_silent(int i)
-{
-    int n = 0;
-    e$except_silent(err, raw_err(i)) { (void)err; n++; }
-    return n;
-}
-
 /// syscall-like helper: -1 + ENOENT when `i`, else 0
 test$noopt int
 sys_rc(int i)
@@ -288,22 +279,6 @@ test$case(except_error)
 test$case(except_ok)
 {
     int n = err_except(0);
-    tassert_eq(n, 0);
-    tassert_frames(0);
-    return EOK;
-}
-
-test$case(except_silent_error)
-{
-    int n = err_except_silent(1);
-    tassert_eq(n, 1);
-    tassert_frames(0);
-    return EOK;
-}
-
-test$case(except_silent_ok)
-{
-    int n = err_except_silent(0);
     tassert_eq(n, 0);
     tassert_frames(0);
     return EOK;

@@ -120,8 +120,6 @@ extern _Thread_local _cex_errors_traceback_data_s _cex_errors_traceback_data_arr
 #define e$except(_var_name, _func)                                                                 \
     for (Exc _var_name = _func; unlikely(_var_name != EOK); _var_name = EOK)
 
-#define e$except_silent(_var_name, _func) e$except(_var_name, _func)
-
 #define e$except_errno(_expression)                                                                \
     for (int _tmp_errno = 0; unlikely(                                                             \
              ((_tmp_errno == 0) && ((_expression) < 0) && ((_tmp_errno = errno), 1) &&             \
@@ -168,9 +166,6 @@ extern _Thread_local _cex_errors_traceback_data_s _cex_errors_traceback_data_arr
              (_e$push_frame(_var_name, __FILE_NAME__, __LINE__, __func__, #_func), 1)              \
          );                                                                                        \
          _var_name = EOK)
-
-#define e$except_silent(_var_name, _func)                                                          \
-    for (Exc _var_name = _func; unlikely(_var_name != EOK); _var_name = EOK)
 
 #define e$except_errno(_expression)                                                                \
     for (int _tmp_errno = 0; unlikely(                                                             \
@@ -246,13 +241,6 @@ extern _Thread_local _cex_errors_traceback_data_s _cex_errors_traceback_data_arr
     for (Exc _var_name = _func;                                                                    \
          unlikely((_var_name != EOK) && (__cex__traceback(_var_name, #_func), 1));                 \
          _var_name = EOK)
-
-#if defined(CEX_TEST) || defined(CEX_BUILD)
-#    define e$except_silent(_var_name, _func) e$except (_var_name, _func)
-#else
-#    define e$except_silent(_var_name, _func)                                                      \
-        for (Exc _var_name = _func; unlikely(_var_name != EOK); _var_name = EOK)
-#endif
 
 #define e$except_errno(_expression)                                                                \
     for (int _tmp_errno = 0; unlikely(                                                             \
