@@ -14,8 +14,8 @@ Compile-time verbosity knobs for CEX error handling.
 - `CEX_PANIC_VERBOSITY` (0..2, default 1) — controls `uassert()` and `unreachable()`:
 
     * 0 - `__builtin_trap()`
-    * 1 - `_cex_errors_fail()` prints `file:line`
-    * 2 - `_cex_errors_fail()` prints `file:line:func` + the failed expression
+    * 1 - `_cex_errors_panic_handler()` prints `file:line`
+    * 2 - `_cex_errors_panic_handler()` prints `file:line:func` + the failed expression
 
 */
 
@@ -42,7 +42,7 @@ static_assert(
 #    define CEX_TRACEBACK_CAP 32
 #endif
 
-/// Assertion label, shared by uassert() and _cex_errors_fail()'s suppressible check
+/// Assertion label, shared by uassert() and _cex_errors_panic_handler()'s suppressible check
 #define _cex_errors_assert_prefix "[ASSERT] "
 
 #undef e$raise
@@ -334,7 +334,13 @@ __attribute__((cold, noinline))
 __attribute__((noreturn))
 #endif
 void
-_cex_errors_fail(const char* prefix, const char* file, u32 line, const char* func, const char* msg);
+_cex_errors_panic_handler(
+    const char* prefix,
+    const char* file,
+    u32 line,
+    const char* func,
+    const char* msg
+);
 
 #if !defined(NDEBUG) && !defined(__clang_analyzer__) && CEX_PANIC_VERBOSITY == 0
 
@@ -355,7 +361,7 @@ _cex_errors_fail(const char* prefix, const char* file, u32 line, const char* fun
 #        define uassert(A)                                                                         \
             ({                                                                                     \
                 if (unlikely(!((A)))) {                                                            \
-                    _cex_errors_fail(                                                              \
+                    _cex_errors_panic_handler(                                                     \
                         _cex_errors_assert_prefix,                                                 \
                         __FILE_NAME__,                                                             \
                         __LINE__,                                                                  \
@@ -365,12 +371,12 @@ _cex_errors_fail(const char* prefix, const char* file, u32 line, const char* fun
                 }                                                                                  \
             })
 #        define unreachable()                                                                      \
-            _cex_errors_fail("[UNREACHABLE] ", __FILE_NAME__, __LINE__, NULL, NULL)
+            _cex_errors_panic_handler("[UNREACHABLE] ", __FILE_NAME__, __LINE__, NULL, NULL)
 #    else
 #        define uassert(A)                                                                         \
             ({                                                                                     \
                 if (unlikely(!((A)))) {                                                            \
-                    _cex_errors_fail(                                                              \
+                    _cex_errors_panic_handler(                                                     \
                         _cex_errors_assert_prefix,                                                 \
                         __FILE_NAME__,                                                             \
                         __LINE__,                                                                  \
@@ -380,7 +386,7 @@ _cex_errors_fail(const char* prefix, const char* file, u32 line, const char* fun
                 }                                                                                  \
             })
 #        define unreachable()                                                                      \
-            _cex_errors_fail("[UNREACHABLE] ", __FILE_NAME__, __LINE__, __func__, NULL)
+            _cex_errors_panic_handler("[UNREACHABLE] ", __FILE_NAME__, __LINE__, __func__, NULL)
 #    endif
 
 #endif

@@ -71,7 +71,13 @@ __attribute__((cold, noinline))
 __attribute__((noreturn))
 #    endif
 void
-_cex_errors_fail(const char* prefix, const char* file, u32 line, const char* func, const char* msg)
+_cex_errors_panic_handler(
+    const char* prefix,
+    const char* file,
+    u32 line,
+    const char* func,
+    const char* msg
+)
 {
 #    if CEX_PANIC_VERBOSITY == 1
     (void)func;
