@@ -449,48 +449,6 @@ int main(void)
 #    define log$trace(format, ...) __cex__fprintf_dummy()
 #endif
 
-#if CEX_LOG_LVL > 0
-#    define __cex__traceback(uerr, fail_func)                                                      \
-        (__cex__fprintf(                                                                           \
-            stdout,                                                                                \
-            "[^STCK]  ",                                                                           \
-            __FILE_NAME__,                                                                         \
-            __LINE__,                                                                              \
-            __func__,                                                                              \
-            "^^^^^ [%s] in function call `%s`\n",                                                  \
-            uerr,                                                                                  \
-            fail_func                                                                              \
-        ))
-
-/// Non disposable assert, returns Error.assert CEX exception when failed
-#    define e$assert(A)                                                                             \
-        ({                                                                                          \
-            if (unlikely(!((A)))) {                                                                 \
-                __cex__fprintf(stdout, "[ASSERT] ", __FILE_NAME__, __LINE__, __func__, "%s\n", #A); \
-                return Error.assert;                                                                \
-            }                                                                                       \
-        })
-
-#else // #if CEX_LOG_LVL > 0
-#    define __cex__traceback(uerr, fail_func) __cex__fprintf_dummy()
-#    define e$assert(A)                                                                            \
-        ({                                                                                         \
-            if (unlikely(!((A)))) { return Error.assert; }                                         \
-        })
-
-#endif // #if CEX_LOG_LVL > 0
-
-
-/**
- 
-Assertion macros, ASAN detection, and stack-trace helpers.
-
-- `mem$asan_enabled()` — compile-time check for Address Sanitizer
-- `sanitizer_stack_trace()` — prints ASAN stack trace when available
-- `uassert(A)` — hard assertion, prints file:line:func + traceback, then aborts
-- `uassert_disable()` / `uassert_enable()` — suppress assertions in test mode
-
-*/
 #ifndef mem$asan_enabled
 #    if defined(__has_feature)
 #        if __has_feature(address_sanitizer)
@@ -514,71 +472,6 @@ void __sanitizer_print_stack_trace();
 #    define sanitizer_stack_trace() __sanitizer_print_stack_trace()
 #else
 #    define sanitizer_stack_trace() ((void)(0))
-#endif
-
-#if defined(__clang_analyzer__)
-#    include <assert.h>
-#    define uassert(cond) assert(cond)
-#    define uassert_disable() ((void)0)
-#    define uassert_enable() ((void)0)
-#    define __cex_test_postmortem_exists() 0
-#elif defined(NDEBUG)
-#    define uassert(cond) ((void)(0))
-#    define uassert_disable() ((void)0)
-#    define uassert_enable() ((void)0)
-#    define __cex_test_postmortem_exists() 0
-#else
-
-#    ifdef CEX_TEST
-// this prevents spamming on stderr (i.e. cextest.h output stream in silent mode)
-int __cex_test_uassert_enabled = 1;
-#        define uassert_disable() __cex_test_uassert_enabled = 0
-#        define uassert_enable() __cex_test_uassert_enabled = 1
-#        define uassert_is_enabled() (__cex_test_uassert_enabled)
-#    else
-#        define uassert_disable()                                                                  \
-            static_assert(false, "uassert_disable() allowed only when compiled with -DCEX_TEST")
-#        define uassert_enable() (void)0
-#        define uassert_is_enabled() true
-#        define __cex_test_postmortem_ctx NULL
-#        define __cex_test_postmortem_exists() 0
-#        define __cex_test_postmortem_f(ctx)
-#    endif // #ifdef CEX_TEST
-
-
-/// Hard assertion with ASAN stack trace on failure. Aborts via `cex$platform_panic()`.
-#    define uassert(A)                                                                             \
-        ({                                                                                         \
-            if (unlikely(!((A)))) {                                                                \
-                __cex__fprintf(                                                                    \
-                    (uassert_is_enabled() ? stderr : stdout),                                      \
-                    "[ASSERT] ",                                                                   \
-                    __FILE_NAME__,                                                                 \
-                    __LINE__,                                                                      \
-                    __func__,                                                                      \
-                    "%s\n",                                                                        \
-                    #A                                                                             \
-                );                                                                                 \
-                if (uassert_is_enabled()) { cex$platform_panic(); }                                \
-            }                                                                                      \
-        })
-
-#endif
-
-
-#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
-#    undef unreachable
-#endif
-
-#ifdef NDEBUG
-#    define unreachable() __builtin_unreachable()
-#else
-#    define unreachable()                                                                          \
-        ({                                                                                         \
-            __cex__fprintf(stderr, "[UNREACHABLE] ", __FILE_NAME__, __LINE__, __func__, "\n");     \
-            cex$platform_panic();                                                                  \
-            __builtin_unreachable();                                                               \
-        })
 #endif
 
 /// Cross-platform debugger breakpoint.
@@ -609,58 +502,6 @@ int __cex_test_uassert_enabled = 1;
 
 /// cex$tmpname - internal macro for generating temporary variable names (unique__line_num)
 #define cex$tmpname(base) cex$varname(base, __LINE__)
-
-/// raises an error, code: `return e$raise(Error.integrity, "ooops");`
-#define e$raise(return_uerr, error_msg)                                                            \
-    (log$error("[%s] " error_msg "\n", return_uerr), (return_uerr))
-
-/// catches the error of function inside scope + prints traceback
-#define e$except(_var_name, _func)                                                                 \
-    for (Exc _var_name = _func;                                                                    \
-         unlikely((_var_name != EOK) && (__cex__traceback(_var_name, #_func), 1));                 \
-         _var_name = EOK)
-
-/// catches the error of system function (if negative value + errno), prints errno error
-#define e$except_errno(_expression)                                                                \
-    for (int _tmp_errno = 0; unlikely(                                                             \
-             ((_tmp_errno == 0) && ((_expression) < 0) && ((_tmp_errno = errno), 1) &&             \
-              (log$error(                                                                          \
-                   "`%s` failed errno: %d, msg: %s\n",                                             \
-                   #_expression,                                                                   \
-                   _tmp_errno,                                                                     \
-                   strerror(_tmp_errno)                                                            \
-               ),                                                                                  \
-               1) &&                                                                               \
-              (errno = _tmp_errno, 1))                                                             \
-         );                                                                                        \
-         _tmp_errno = 1)
-
-/// catches the error is expression returned null
-#define e$except_null(_expression)                                                                 \
-    if (unlikely(((_expression) == NULL) && (log$error("`%s` returned NULL\n", #_expression), 1)))
-
-/// catches the error is expression returned true
-#define e$except_true(_expression)                                                                 \
-    if (unlikely(((_expression)) && (log$error("`%s` returned non zero\n", #_expression), 1)))
-
-/// immediately returns from function with _func error + prints traceback
-#define e$ret(_func)                                                                               \
-    for (Exc cex$tmpname(__cex_err_traceback_) = _func; unlikely(                                  \
-             (cex$tmpname(__cex_err_traceback_) != EOK) &&                                         \
-             (__cex__traceback(cex$tmpname(__cex_err_traceback_), #_func), 1)                      \
-         );                                                                                        \
-         cex$tmpname(__cex_err_traceback_) = EOK)                                                  \
-    return cex$tmpname(__cex_err_traceback_)
-
-/// `goto _label` when _func returned error + prints traceback
-#define e$goto(_func, _label)                                                                      \
-    for (Exc cex$tmpname(__cex_err_traceback_) = _func; unlikely(                                  \
-             (cex$tmpname(__cex_err_traceback_) != EOK) &&                                         \
-             (__cex__traceback(cex$tmpname(__cex_err_traceback_), #_func), 1)                      \
-         );                                                                                        \
-         cex$tmpname(__cex_err_traceback_) = EOK)                                                  \
-    goto _label
-
 
 #if defined(__GNUC__) && !defined(__clang__)
 // NOTE: GCC < 12, has some weird warnings for arr$len temp pragma push + missing-field-initializers

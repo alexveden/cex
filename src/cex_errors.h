@@ -45,23 +45,89 @@ static_assert(
 /// Assertion label, shared by uassert() and _cex_errors_panic_handler()'s suppressible check
 #define _cex_errors_assert_prefix "[ASSERT] "
 
-#undef e$raise
-#undef e$assert
-#undef e$except
-#undef e$except_errno
-#undef e$except_null
-#undef e$except_true
-#undef e$ret
-#undef e$goto
-#undef uassert
-#undef unreachable
+#if CEX_LOG_LVL > 0
+#    define __cex__traceback(uerr, fail_func)                                                      \
+        (__cex__fprintf(                                                                           \
+            stdout,                                                                                \
+            "[^STCK]  ",                                                                           \
+            __FILE_NAME__,                                                                         \
+            __LINE__,                                                                              \
+            __func__,                                                                              \
+            "^^^^^ [%s] in function call `%s`\n",                                                  \
+            uerr,                                                                                  \
+            fail_func                                                                              \
+        ))
+#else
+#    define __cex__traceback(uerr, fail_func) __cex__fprintf_dummy()
+#endif
+
+/// Hard assertion with ASAN stack trace on failure. Aborts via `_cex_errors_panic_handler()`.
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
+#    undef unreachable
+#endif
 
 #if defined(__clang_analyzer__)
 #    define uassert(A) assert(A)
+#    define uassert_disable() ((void)0)
+#    define uassert_enable() ((void)0)
 #    define unreachable() __builtin_unreachable()
 #elif defined(NDEBUG)
 #    define uassert(A) ((void)(0))
+#    define uassert_disable() ((void)0)
+#    define uassert_enable() ((void)0)
 #    define unreachable() __builtin_unreachable()
+#else
+
+#    ifdef CEX_TEST
+// this prevents spamming on stderr (i.e. cextest.h output stream in silent mode)
+int __cex_test_uassert_enabled = 1;
+#        define uassert_disable() __cex_test_uassert_enabled = 0
+#        define uassert_enable() __cex_test_uassert_enabled = 1
+#        define uassert_is_enabled() (__cex_test_uassert_enabled)
+#    else
+#        define uassert_disable()                                                                  \
+            static_assert(false, "uassert_disable() allowed only when compiled with -DCEX_TEST")
+#        define uassert_enable() (void)0
+#        define uassert_is_enabled() true
+#    endif // #ifdef CEX_TEST
+
+#    if CEX_PANIC_VERBOSITY == 0
+#        define uassert(A)                                                                         \
+            ({                                                                                     \
+                if (unlikely(!((A)))) { __builtin_trap(); }                                        \
+            })
+#        define unreachable() __builtin_trap()
+#    elif CEX_PANIC_VERBOSITY == 1
+#        define uassert(A)                                                                         \
+            ({                                                                                     \
+                if (unlikely(!((A)))) {                                                            \
+                    _cex_errors_panic_handler(                                                     \
+                        _cex_errors_assert_prefix,                                                 \
+                        __FILE_NAME__,                                                             \
+                        __LINE__,                                                                  \
+                        NULL,                                                                      \
+                        NULL                                                                       \
+                    );                                                                             \
+                }                                                                                  \
+            })
+#        define unreachable()                                                                      \
+            _cex_errors_panic_handler("[UNREACHABLE] ", __FILE_NAME__, __LINE__, NULL, NULL)
+#    else
+#        define uassert(A)                                                                         \
+            ({                                                                                     \
+                if (unlikely(!((A)))) {                                                            \
+                    _cex_errors_panic_handler(                                                     \
+                        _cex_errors_assert_prefix,                                                 \
+                        __FILE_NAME__,                                                             \
+                        __LINE__,                                                                  \
+                        __func__,                                                                  \
+                        #A                                                                         \
+                    );                                                                             \
+                }                                                                                  \
+            })
+#        define unreachable()                                                                      \
+            _cex_errors_panic_handler("[UNREACHABLE] ", __FILE_NAME__, __LINE__, __func__, NULL)
+#    endif
 #endif
 
 #if CEX_TRACEBACK_VERBOSITY == 1
@@ -133,16 +199,20 @@ extern _Thread_local _cex_errors_traceback_data_s _cex_errors_traceback_data_arr
 
 #if CEX_TRACEBACK_VERBOSITY == 0
 
+/// raises an error, code: `return e$raise(Error.integrity, "ooops");`
 #    define e$raise(return_uerr, error_msg) ((return_uerr))
 
+/// Non disposable assert, returns Error.assert CEX exception when failed
 #    define e$assert(A)                                                                            \
         ({                                                                                         \
             if (unlikely(!((A)))) { return Error.assert; }                                         \
         })
 
+/// catches the error of function inside scope + prints traceback
 #    define e$except(_var_name, _func)                                                             \
         for (Exc _var_name = _func; unlikely(_var_name != EOK); _var_name = EOK)
 
+/// catches the error of system function (if negative value + errno), prints errno error
 #    define e$except_errno(_expression)                                                            \
         for (int _tmp_errno = 0; unlikely(                                                         \
                  ((_tmp_errno == 0) && ((_expression) < 0) && ((_tmp_errno = errno), 1) &&         \
@@ -150,16 +220,20 @@ extern _Thread_local _cex_errors_traceback_data_s _cex_errors_traceback_data_arr
              );                                                                                    \
              _tmp_errno = 1)
 
+/// catches the error is expression returned null
 #    define e$except_null(_expression) if (unlikely((_expression) == NULL))
 
+/// catches the error is expression returned true
 #    define e$except_true(_expression) if (unlikely(_expression))
 
+/// immediately returns from function with _func error + prints traceback
 #    define e$ret(_func)                                                                           \
         for (Exc cex$tmpname(__cex_err_traceback_) = _func;                                        \
              unlikely(cex$tmpname(__cex_err_traceback_) != EOK);                                   \
              cex$tmpname(__cex_err_traceback_) = EOK)                                              \
         return cex$tmpname(__cex_err_traceback_)
 
+/// `goto _label` when _func returned error + prints traceback
 #    define e$goto(_func, _label)                                                                  \
         for (Exc cex$tmpname(__cex_err_traceback_) = _func;                                        \
              unlikely(cex$tmpname(__cex_err_traceback_) != EOK);                                   \
@@ -341,55 +415,6 @@ _cex_errors_panic_handler(
     const char* func,
     const char* msg
 );
-
-#if !defined(NDEBUG) && !defined(__clang_analyzer__) && CEX_PANIC_VERBOSITY == 0
-
-#    undef uassert
-#    undef unreachable
-#    define uassert(A)                                                                             \
-        ({                                                                                         \
-            if (unlikely(!((A)))) { __builtin_trap(); }                                            \
-        })
-#    define unreachable() __builtin_trap()
-
-#elif !defined(NDEBUG) && !defined(__clang_analyzer__)
-
-#    undef uassert
-#    undef unreachable
-
-#    if CEX_PANIC_VERBOSITY == 1
-#        define uassert(A)                                                                         \
-            ({                                                                                     \
-                if (unlikely(!((A)))) {                                                            \
-                    _cex_errors_panic_handler(                                                     \
-                        _cex_errors_assert_prefix,                                                 \
-                        __FILE_NAME__,                                                             \
-                        __LINE__,                                                                  \
-                        NULL,                                                                      \
-                        NULL                                                                       \
-                    );                                                                             \
-                }                                                                                  \
-            })
-#        define unreachable()                                                                      \
-            _cex_errors_panic_handler("[UNREACHABLE] ", __FILE_NAME__, __LINE__, NULL, NULL)
-#    else
-#        define uassert(A)                                                                         \
-            ({                                                                                     \
-                if (unlikely(!((A)))) {                                                            \
-                    _cex_errors_panic_handler(                                                     \
-                        _cex_errors_assert_prefix,                                                 \
-                        __FILE_NAME__,                                                             \
-                        __LINE__,                                                                  \
-                        __func__,                                                                  \
-                        #A                                                                         \
-                    );                                                                             \
-                }                                                                                  \
-            })
-#        define unreachable()                                                                      \
-            _cex_errors_panic_handler("[UNREACHABLE] ", __FILE_NAME__, __LINE__, __func__, NULL)
-#    endif
-
-#endif
 
 /* Traceback read-back (buffered levels fill the ring; 0/3 stay empty) */
 
