@@ -4,17 +4,17 @@
 #pragma once
 #include "cex.h"
 #include "cexstd/json/json.h"
-#include "tests/cexstd/json//basic/Stock.h"
 #include "tests/cexstd/json//basic/Position.h"
+#include "tests/cexstd/json//basic/Stock.h"
 
 /// Generic `serdegen` type printer using json
 /// Example: 
 /// serdegen$print(any_supported_type_pointer, .indent = 0, .simplified = true ); 
 #define serdegen$print(item, kwargs...) \
     _Generic((item), \
-        Stock*: serdegen.Stock.print, \
         Position_c*: serdegen.Position.print, \
-        foo_c*: serdegen.foo.print\
+        foo_c*: serdegen.foo.print, \
+        Stock*: serdegen.Stock.print\
     )(item, &(json_wr_kw) { kwargs })
 
 struct __cex_namespace__serdegen {

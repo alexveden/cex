@@ -4,20 +4,20 @@
 #pragma once
 #include "cex.h"
 #include "cexstd/json/json.h"
-#include "tests/cexstd/json//advanced/AdvStock.h"
 #include "tests/cexstd/json//advanced/AdvPosition.h"
+#include "tests/cexstd/json//advanced/AdvStock.h"
 
 /// Generic `serdegen` type printer using json
 /// Example: 
 /// serdegen$print(any_supported_type_pointer, .indent = 0, .simplified = true ); 
 #define serdegen$print(item, kwargs...) \
     _Generic((item), \
+        Position_c*: serdegen.Position.print, \
         Stock_c*: serdegen.Stock.print, \
         ItemNullable_c*: serdegen.ItemNullable.print, \
         Item*: serdegen.Item.print, \
         Order*: serdegen.Order.print, \
-        Order2_c*: serdegen.Order2.print, \
-        Position_c*: serdegen.Position.print\
+        Order2_c*: serdegen.Order2.print\
     )(item, &(json_wr_kw) { kwargs })
 
 struct __cex_namespace__serdegen {

@@ -1793,7 +1793,9 @@ cex_json__gen__run(json_gen_c* self)
 {
     uassert(sbuf.len(&self->c_file_content) == 0 && "Already processed");
 
-    for$each (src_fn, os.fs.find(self->target, true, self->allc)) {
+    arr$(char*) src_files = os.fs.find(self->target, true, self->allc);
+    arr$sort(src_files, str.qscmp);
+    for$each (src_fn, src_files) {
         io.printf("file: %s\n", src_fn);
         e$ret(json.gen.process_file(self, src_fn));
     }
