@@ -12,6 +12,10 @@ Compile-time verbosity knobs for CEX error handling.
     * 2 - ring records `{err, file, func, msg}`
     * 3 - stock immediate logging, no ring
 
+  Buffered levels (1, 2) are not printed automatically: flush the ring at the top-level sink
+  with `e$traceback_print(stderr)` when `main()` gets a non-`EOK` result. The test runner does
+  this for each failing case.
+
 - `CEX_PANIC_VERBOSITY` (0..2, default 1) — controls `uassert()` and `unreachable()`:
 
     * 0 - `__builtin_trap()`

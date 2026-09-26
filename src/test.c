@@ -708,6 +708,7 @@ cex_test_main_fn(int argc, char** argv)
 
 
         test$alloc_set_oom_probability(0.0);
+        e$traceback_reset();
         if (ctx->is_benchmark) {
             // NOTE: we don't mute bench output because muting uses files on disk,
             //       therefore has huge performance impact
@@ -754,6 +755,7 @@ cex_test_main_fn(int argc, char** argv)
                 if (ctx->is_benchmark) { fprintf(stderr, "\n"); }
             }
         }
+        if (err != EOK && e$traceback_len > 0) { e$traceback_print(stderr); }
         if (ctx->teardown_case_fn && (err = ctx->teardown_case_fn()) != EOK) {
             fflush(stdout);
             fprintf(

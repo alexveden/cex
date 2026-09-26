@@ -163,7 +163,7 @@ Use `cex -D config` to reset all project config flags to defaults
 #define cex$version_major 0
 #define cex$version_minor 22
 #define cex$version_patch 0
-#define cex$version_date "2026-09-25"
+#define cex$version_date "2026-09-26"
 
 
 
@@ -2922,6 +2922,10 @@ Compile-time verbosity knobs for CEX error handling.
     * 1 - ring records `{err, file, line}`
     * 2 - ring records `{err, file, func, msg}`
     * 3 - stock immediate logging, no ring
+
+  Buffered levels (1, 2) are not printed automatically: flush the ring at the top-level sink
+  with `e$traceback_print(stderr)` when `main()` gets a non-`EOK` result. The test runner does
+  this for each failing case.
 
 - `CEX_PANIC_VERBOSITY` (0..2, default 1) — controls `uassert()` and `unreachable()`:
 
@@ -5717,6 +5721,7 @@ cex_test_main_fn(int argc, char** argv)
 
 
         test$alloc_set_oom_probability(0.0);
+        e$traceback_reset();
         if (ctx->is_benchmark) {
             // NOTE: we don't mute bench output because muting uses files on disk,
             //       therefore has huge performance impact
@@ -5763,6 +5768,7 @@ cex_test_main_fn(int argc, char** argv)
                 if (ctx->is_benchmark) { fprintf(stderr, "\n"); }
             }
         }
+        if (err != EOK && e$traceback_len > 0) { e$traceback_print(stderr); }
         if (ctx->teardown_case_fn && (err = ctx->teardown_case_fn()) != EOK) {
             fflush(stdout);
             fprintf(
@@ -6837,9 +6843,15 @@ CEX_NAMESPACE struct __cex_namespace__fuzz fuzz;
 "            { .name = \"build-lib\", .func = cmd_build_lib, .help = \"Custom build command\" },\n"\
 "        ),\n"\
 "    };\n"\
-"    if (argparse.parse(&args, argc, argv)) { return 1; }\n"\
+"    e$except (err, argparse.parse(&args, argc, argv)) {\n"\
+"        e$traceback_print(stderr);\n"\
+"        return 1;\n"\
+"    }\n"\
 "    void* my_user_ctx = NULL; // passed as `user_ctx` to command\n"\
-"    if (argparse.run_command(&args, my_user_ctx)) { return 1; }\n"\
+"    e$except (err, argparse.run_command(&args, my_user_ctx)) {\n"\
+"        e$traceback_print(stderr);\n"\
+"        return 1;\n"\
+"    }\n"\
 "    return 0;\n"\
 "}\n"\
 "\n"\
