@@ -5661,6 +5661,7 @@ cex_test_main_fn(int argc, char** argv)
     }
     if (ctx->setup_suite_fn) {
         Exc err = NULL;
+        e$traceback_reset();
         if ((err = ctx->setup_suite_fn())) {
             fprintf(
                 stderr,
@@ -5669,6 +5670,7 @@ cex_test_main_fn(int argc, char** argv)
                 err,
                 __FILE__
             );
+            if (e$traceback_len > 0) { e$traceback_print(stderr); }
             return 1;
         }
     }
@@ -5721,6 +5723,7 @@ cex_test_main_fn(int argc, char** argv)
         alloc_heap->stats.n_allocs = 0;
         alloc_heap->stats.n_free = 0;
 
+        e$traceback_reset();
         if (ctx->setup_case_fn && (err = ctx->setup_case_fn()) != EOK) {
             fflush(stdout);
             fprintf(
@@ -5730,6 +5733,7 @@ cex_test_main_fn(int argc, char** argv)
                 err,
                 __FILE__
             );
+            if (e$traceback_len > 0) { e$traceback_print(stderr); }
             return 1;
         }
 
@@ -5783,6 +5787,7 @@ cex_test_main_fn(int argc, char** argv)
             }
         }
         if (err != EOK && e$traceback_len > 0) { e$traceback_print(stderr); }
+        e$traceback_reset();
         if (ctx->teardown_case_fn && (err = ctx->teardown_case_fn()) != EOK) {
             fflush(stdout);
             fprintf(
@@ -5792,6 +5797,7 @@ cex_test_main_fn(int argc, char** argv)
                 err,
                 __FILE__
             );
+            if (e$traceback_len > 0) { e$traceback_print(stderr); }
             return 1;
         }
 
@@ -5822,6 +5828,7 @@ cex_test_main_fn(int argc, char** argv)
     f64 t_elapsed = os.timer() - t_start;
 
     if (ctx->teardown_suite_fn) {
+        e$traceback_reset();
         e$except (err, ctx->teardown_suite_fn()) {
             fprintf(
                 stderr,
@@ -5830,6 +5837,7 @@ cex_test_main_fn(int argc, char** argv)
                 err,
                 __FILE__
             );
+            if (e$traceback_len > 0) { e$traceback_print(stderr); }
             return 1;
         }
     }

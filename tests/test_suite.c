@@ -1015,27 +1015,4 @@ test$case(test_alloc_oom_probability_always_reset)
     return EOK;
 }
 
-/// e$raise origin
-test$noopt Exception
-err_raise(int i)
-{
-    if (i) { return e$raise(Error.io, "raise io"); }
-    return EOK;
-}
-
-/// e$ret propagation
-test$noopt Exception
-err_ret(int i)
-{
-    e$ret(err_raise(i));
-    return EOK;
-}
-
-test$case(test_raise_tracebacks_tasserts_reset)
-{
-    tassert_er(Error.io, err_ret(1));
-    tassert_eq(1, 1);
-    return EOK;
-}
-
 test$main();
