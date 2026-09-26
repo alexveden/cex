@@ -1031,10 +1031,10 @@ err_ret(int i)
     return EOK;
 }
 
-test$case(test_raise_tracebacks)
+test$case(test_raise_tracebacks_tasserts_reset)
 {
-    tassert_eq(Error.io, err_ret(1));
-    tassert_eq(0, 1);
+    tassert_er(Error.io, err_ret(1));
+    tassert_eq(1, 1);
     return EOK;
 }
 

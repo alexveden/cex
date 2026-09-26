@@ -355,6 +355,7 @@ void _cex_test_ns_restore(_cex_test_mockns_s* mock);
     ({ /* ONLY for test$case USE */                                                                \
        if (!(A)) {                                                                                 \
            _test$tassert_breakpoint();                                                             \
+           e$traceback_reset();                                                                    \
            return _test$log_err(#A);                                                               \
        }                                                                                           \
     })
@@ -364,6 +365,7 @@ void _cex_test_ns_restore(_cex_test_mockns_s* mock);
     ({ /* ONLY for test$case USE */                                                                \
        if (!(A)) {                                                                                 \
            _test$tassert_breakpoint();                                                             \
+           e$traceback_reset();                                                                    \
            if (str.sprintf(                                                                        \
                    _cex_test__mainfn_state.str_buf,                                                \
                    CEX_TEST_AMSG_MAX_LEN - 1,                                                      \
@@ -381,6 +383,7 @@ void _cex_test_ns_restore(_cex_test_mockns_s* mock);
         auto genf = _test$tassert_fn((a), (b));                                                    \
         if ((cex$tmpname(err) = genf((a), (b), __LINE__, _cex_test_eq_op__eq))) {                  \
             _test$tassert_breakpoint();                                                            \
+            e$traceback_reset();                                                                   \
             return cex$tmpname(err);                                                               \
         }                                                                                          \
     })
@@ -389,6 +392,7 @@ void _cex_test_ns_restore(_cex_test_mockns_s* mock);
 #define tassert_er(a, b)                                                                           \
     ({                                                                                             \
         Exc cex$tmpname(err) = NULL;                                                               \
+        e$traceback_reset();                                                                       \
         if ((cex$tmpname(err) = _check_eq_err((a), (b), __LINE__))) {                              \
             _test$tassert_breakpoint();                                                            \
             return cex$tmpname(err);                                                               \
@@ -401,6 +405,7 @@ void _cex_test_ns_restore(_cex_test_mockns_s* mock);
         Exc cex$tmpname(err) = NULL;                                                               \
         if ((cex$tmpname(err) = _check_eq_almost((a), (b), (delta), __LINE__))) {                  \
             _test$tassert_breakpoint();                                                            \
+            e$traceback_reset();                                                                   \
             return cex$tmpname(err);                                                               \
         }                                                                                          \
     })
@@ -411,6 +416,7 @@ void _cex_test_ns_restore(_cex_test_mockns_s* mock);
         Exc cex$tmpname(err) = NULL;                                                               \
         if ((cex$tmpname(err) = _check_eq_ptr((a), (b), __LINE__))) {                              \
             _test$tassert_breakpoint();                                                            \
+            e$traceback_reset();                                                                   \
             return cex$tmpname(err);                                                               \
         }                                                                                          \
     })
@@ -427,6 +433,7 @@ void _cex_test_ns_restore(_cex_test_mockns_s* mock);
         static_assert(sizeof(_a) == sizeof(_b), "different size");                                 \
         if (memcmp(&_a, &_b, sizeof(_a)) != 0) {                                                   \
             _test$tassert_breakpoint();                                                            \
+            e$traceback_reset();                                                                   \
             if (str.sprintf(                                                                       \
                     _cex_test__mainfn_state.str_buf,                                               \
                     CEX_TEST_AMSG_MAX_LEN - 1,                                                     \
@@ -451,6 +458,7 @@ void _cex_test_ns_restore(_cex_test_mockns_s* mock);
         usize _itsize = sizeof(*_a);                                                               \
         if (_alen != _blen) {                                                                      \
             _test$tassert_breakpoint();                                                            \
+            e$traceback_reset();                                                                   \
             if (str.sprintf(                                                                       \
                     _cex_test__mainfn_state.str_buf,                                               \
                     CEX_TEST_AMSG_MAX_LEN - 1,                                                     \
@@ -463,6 +471,7 @@ void _cex_test_ns_restore(_cex_test_mockns_s* mock);
             for (usize i = 0; i < _alen; i++) {                                                    \
                 if (memcmp(&(_a[i]), &(_b[i]), _itsize) != 0) {                                    \
                     _test$tassert_breakpoint();                                                    \
+                    e$traceback_reset();                                                           \
                     if (str.sprintf(                                                               \
                             _cex_test__mainfn_state.str_buf,                                       \
                             CEX_TEST_AMSG_MAX_LEN - 1,                                             \
@@ -482,6 +491,7 @@ void _cex_test_ns_restore(_cex_test_mockns_s* mock);
         auto genf = _test$tassert_fn((a), (b));                                                    \
         if ((cex$tmpname(err) = genf((a), (b), __LINE__, _cex_test_eq_op__ne))) {                  \
             _test$tassert_breakpoint();                                                            \
+            e$traceback_reset();                                                                   \
             return cex$tmpname(err);                                                               \
         }                                                                                          \
     })
@@ -493,6 +503,7 @@ void _cex_test_ns_restore(_cex_test_mockns_s* mock);
         auto genf = _test$tassert_fn((a), (b));                                                    \
         if ((cex$tmpname(err) = genf((a), (b), __LINE__, _cex_test_eq_op__le))) {                  \
             _test$tassert_breakpoint();                                                            \
+            e$traceback_reset();                                                                   \
             return cex$tmpname(err);                                                               \
         }                                                                                          \
     })
@@ -504,6 +515,7 @@ void _cex_test_ns_restore(_cex_test_mockns_s* mock);
         auto genf = _test$tassert_fn((a), (b));                                                    \
         if ((cex$tmpname(err) = genf((a), (b), __LINE__, _cex_test_eq_op__lt))) {                  \
             _test$tassert_breakpoint();                                                            \
+            e$traceback_reset();                                                                   \
             return cex$tmpname(err);                                                               \
         }                                                                                          \
     })
@@ -515,6 +527,7 @@ void _cex_test_ns_restore(_cex_test_mockns_s* mock);
         auto genf = _test$tassert_fn((a), (b));                                                    \
         if ((cex$tmpname(err) = genf((a), (b), __LINE__, _cex_test_eq_op__ge))) {                  \
             _test$tassert_breakpoint();                                                            \
+            e$traceback_reset();                                                                   \
             return cex$tmpname(err);                                                               \
         }                                                                                          \
     })
@@ -526,6 +539,7 @@ void _cex_test_ns_restore(_cex_test_mockns_s* mock);
         auto genf = _test$tassert_fn((a), (b));                                                    \
         if ((cex$tmpname(err) = genf((a), (b), __LINE__, _cex_test_eq_op__gt))) {                  \
             _test$tassert_breakpoint();                                                            \
+            e$traceback_reset();                                                                   \
             return cex$tmpname(err);                                                               \
         }                                                                                          \
     })
