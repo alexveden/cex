@@ -14,7 +14,7 @@
 #    define tassert_frames(_n) tassert_eq(e$traceback_len, 0)
 #endif
 
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
 /// Fork a child that runs the panic; true when it terminated abnormally (signal or nonzero exit)
 test$noopt bool
 is_panic_fatal_in_child(bool use_unreachable)
@@ -254,7 +254,7 @@ test$case(uassert_disabled_returns)
 }
 #endif
 
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
 test$case(uassert_fatal)
 {
     tassert(is_panic_fatal_in_child(false));
