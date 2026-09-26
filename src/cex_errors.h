@@ -1,4 +1,5 @@
 #pragma once
+#include "cex_base.h"
 
 /**
 Compile-time verbosity knobs for CEX error handling.
