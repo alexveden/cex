@@ -34,10 +34,10 @@ test$case(test_sysfunc)
     u32 nit = 0;
     tassert_eq(-1, sys_func(-1));
     e$except_errno (ret = sys_func(-1)) {
-        log$error("Except: ret=%d errno=%d\n", ret, errno);
-        tassert_eq(_tmp_errno, 999);
         tassert_eq(errno, 999);
+        tassert_eq(_tmp_errno, 999);
         tassert_eq(ret, -1);
+        log$error("Except: ret=%d errno=%d\n", ret, errno);
         nit++;
     }
     tassert_eq(nit, 1);
