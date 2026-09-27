@@ -2542,7 +2542,14 @@ cexy__app__create(char* target)
         cg$pn("");
         cg$func("int\nmain(int argc, char** argv)\n", "")
         {
-            cg$pf("if (%s(argc, argv) != EOK) { return 1; }", target);
+            cg$scope("e$except (err, %s(argc, argv)) ", target)
+            {
+                cg$if("err != Error.argsparse")
+                {
+                    cg$pn("e$traceback_print(stderr);");
+                }
+                cg$pn("return 1;");
+            }
             cg$pn("return 0;");
         }
         // clang-format on

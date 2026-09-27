@@ -163,7 +163,7 @@ Use `cex -D config` to reset all project config flags to defaults
 #define cex$version_major 0
 #define cex$version_minor 22
 #define cex$version_patch 0
-#define cex$version_date "2026-09-26"
+#define cex$version_date "2026-09-27"
 
 
 
@@ -6865,10 +6865,7 @@ CEX_NAMESPACE struct __cex_namespace__fuzz fuzz;
 "            { .name = \"build-lib\", .func = cmd_build_lib, .help = \"Custom build command\" },\n"\
 "        ),\n"\
 "    };\n"\
-"    e$except (err, argparse.parse(&args, argc, argv)) {\n"\
-"        e$traceback_print(stderr);\n"\
-"        return 1;\n"\
-"    }\n"\
+"    if (argparse.parse(&args, argc, argv)) { return 1; }\n"\
 "    void* my_user_ctx = NULL; // passed as `user_ctx` to command\n"\
 "    e$except (err, argparse.run_command(&args, my_user_ctx)) {\n"\
 "        e$traceback_print(stderr);\n"\
@@ -19705,7 +19702,14 @@ cexy__app__create(char* target)
         cg$pn("");
         cg$func("int\nmain(int argc, char** argv)\n", "")
         {
-            cg$pf("if (%s(argc, argv) != EOK) { return 1; }", target);
+            cg$scope("e$except (err, %s(argc, argv)) ", target)
+            {
+                cg$if("err != Error.argsparse")
+                {
+                    cg$pn("e$traceback_print(stderr);");
+                }
+                cg$pn("return 1;");
+            }
             cg$pn("return 0;");
         }
         // clang-format on

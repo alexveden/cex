@@ -51,10 +51,7 @@ main(int argc, char** argv)
     };
     // clang-format on
 
-    e$except (err, argparse.parse(&args, argc, argv)) {
-        e$traceback_print(stderr);
-        return 1;
-    }
+    if (argparse.parse(&args, argc, argv)) { return 1; }
     e$except (err, argparse.run_command(&args, NULL)) {
         e$traceback_print(stderr);
         return 1;

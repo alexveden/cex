@@ -32,10 +32,7 @@ main(int argc, char** argv)
             { .name = "build-lib", .func = cmd_build_lib, .help = "Custom build command" },
         ),
     };
-    e$except (err, argparse.parse(&args, argc, argv)) {
-        e$traceback_print(stderr);
-        return 1;
-    }
+    if (argparse.parse(&args, argc, argv)) { return 1; }
     void* my_user_ctx = NULL; // passed as `user_ctx` to command
     e$except (err, argparse.run_command(&args, my_user_ctx)) {
         e$traceback_print(stderr);

@@ -25,6 +25,13 @@ test$case(test_make_new_project)
     tassert(os.path.exists(TBUILDDIR "lib/mylib.h"));
     tassert(os.path.exists(TBUILDDIR "src/myapp.c"));
 
+    mem$scope(tmem$, _)
+    {
+        char* boilerplate = io.file.load(TBUILDDIR "cex.c", _);
+        tassert(boilerplate != NULL);
+        tassert(str.find(boilerplate, "e$traceback_print") != NULL);
+    }
+
     return EOK;
 }
 
