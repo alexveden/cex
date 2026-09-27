@@ -744,7 +744,7 @@ _cexy__process_update_code(
     mem$scope(tmem$, _)
     {
         char* code = io.file.load(code_file, _);
-        e$assert(code && "failed loading code");
+        if (unlikely(code == NULL)) { return e$raise(Error.io, "failed loading code file"); }
 
         bool is_header = str.ends_with(code_file, ".h");
 
@@ -966,7 +966,9 @@ cexy__cmd__process(int argc, char** argv, void* user_ctx)
             if (str.starts_with(basename, "test") || str.eq(basename, "cex.c")) { continue; }
             mem$scope(tmem$, _)
             {
-                e$assert(str.ends_with(src_fn, ".c") && "file must end with .c");
+                if (!str.ends_with(src_fn, ".c")) {
+                    return e$raise(Error.argument, "file must end with .c");
+                }
 
                 char* hdr_fn = str.clone(src_fn, _);
                 hdr_fn[str.len(hdr_fn) - 1] = 'h'; // .c -> .h
@@ -987,7 +989,7 @@ cexy__cmd__process(int argc, char** argv, void* user_ctx)
                     }
                 }
                 char* code = io.file.load(src_fn, _);
-                e$assert(code && "failed loading code");
+                if (unlikely(code == NULL)) { return e$raise(Error.io, "failed loading code file"); }
                 arr$(cex_token_s) items = arr$new(items, _);
                 arr$(cex_decl_s*) decls = arr$new(decls, _, .capacity = 128);
 
@@ -1406,7 +1408,7 @@ _cexy__display_full_info(
     FILE* output
 )
 {
-    uassert(output);
+    if (unlikely(output == NULL)) { return e$raise(Error.assert, "output is NULL"); }
 
     str_s name = d->name;
     str_s base_name = str.sstr(base_ns);
@@ -2371,10 +2373,10 @@ cexy__utils__make_new_project(char* proj_dir)
         auto lib_h = os$path_join(_, proj_dir, "lib", "mylib.h");
         auto lib_c = os$path_join(_, proj_dir, "lib", "mylib.c");
         auto app_c = os$path_join(_, proj_dir, "src", "myapp.c");
-        e$assert(!os.path.exists(cex_c) && "cex.c already exists");
-        e$assert(!os.path.exists(lib_h) && "mylib.h already exists");
-        e$assert(!os.path.exists(lib_h) && "mylib.c already exists");
-        e$assert(!os.path.exists(app_c) && "myapp.c already exists");
+        if (os.path.exists(cex_c)) { return e$raise(Error.exists, "cex.c already exists"); }
+        if (os.path.exists(lib_h)) { return e$raise(Error.exists, "mylib.h already exists"); }
+        if (os.path.exists(lib_c)) { return e$raise(Error.exists, "mylib.c already exists"); }
+        if (os.path.exists(app_c)) { return e$raise(Error.exists, "myapp.c already exists"); }
 
 #        ifdef _cex_main_boilerplate
         e$ret(io.file.save(os$path_join(_, proj_dir, "cex.c"), _cex_main_boilerplate));
@@ -2595,7 +2597,7 @@ cexy__app__clean(char* target)
 Exception
 cexy__app__find_app_target_src(IAllocator allc, char* target, char** out_result)
 {
-    uassert(out_result != NULL);
+    if (unlikely(out_result == NULL)) { return e$raise(Error.assert, "out_result is NULL"); }
     *out_result = NULL;
 
     if (target == NULL) {
@@ -2653,7 +2655,7 @@ cexy__cmd__simple_app(int argc, char** argv, void* user_ctx)
         e$ret(cexy.app.clean(target));
         return EOK;
     }
-    e$assert(os.path.exists(cexy$src_dir) && cexy$src_dir " not exists");
+    if (!os.path.exists(cexy$src_dir)) { return e$raise(Error.assert, "cexy$src_dir not exists"); }
 
     mem$scope(tmem$, _)
     {
@@ -2782,8 +2784,10 @@ cexy__cmd__simple_fuzz(int argc, char** argv, void* user_ctx)
             arr$clear(args);
             if (!run_all || cexy.src_include_changed(target_exe, src_file, NULL)) {
                 arr$pushm(args, cexy$fuzzer);
-                e$assert(arr$len(args) > 0 && "empty cexy$fuzzer");
-                e$assert(os.cmd.exists(args[0]) && "fuzzer command not found");
+                if (arr$len(args) == 0) { return e$raise(Error.assert, "empty cexy$fuzzer"); }
+                if (!os.cmd.exists(args[0])) {
+                    return e$raise(Error.not_found, "fuzzer command not found");
+                }
                 if (str.find(args[0], "afl")) { is_afl_fuzzer = true; }
                 if (is_afl_fuzzer) { arr$push(args, "-DCEX_FUZZ_AFL"); }
 
@@ -2813,7 +2817,7 @@ cexy__cmd__simple_fuzz(int argc, char** argv, void* user_ctx)
                 // AFL++ or something
                 e$ret(os.env.set("ASAN_OPTIONS", ""));
 
-                if (debug) { e$assert(false && "AFL fuzzer debugging is not supported"); }
+                if (debug) { return e$raise(Error.argument, "AFL fuzzer debugging is not supported"); }
                 arr$pushm(args, "afl-fuzz");
 
                 if (cmd_args.argc > 0) {
@@ -3213,7 +3217,9 @@ cexy__utils__git_lib_fetch(
                 log$info("Updating file: %s -> %s\n", it, out_path);
                 if (in_stat.is_directory) {
                     if (out_stat.is_valid && update_existing) {
-                        e$assert(out_stat.is_directory && "out_path expected to be a directory");
+                        if (!out_stat.is_directory) {
+                            return e$raise(Error.integrity, "out_path expected to be a directory");
+                        }
                         str_s src_dir = str.sstr(in_path);
                         str_s dst_dir = str.sstr(out_path);
                         for$each (fname, os.fs.find(str.fmt(_, "%S/*", src_dir), true, _)) {

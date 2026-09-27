@@ -578,6 +578,12 @@ test$case(test_git_lib_fetch_update)
     return EOK;
 }
 
+test$case(test_find_app_target_src_null_out)
+{
+    tassert_er(Error.assert, cexy.app.find_app_target_src(mem$, "foo", NULL));
+    return EOK;
+}
+
 #else
 test$case(not_supported_by_platform)
 {

@@ -623,6 +623,7 @@ test$case(os_cmd_null_args)
     tassert_er(Error.argument, os.cmd.write_line(&c, NULL));
     char* args[] = { "true", NULL };
     tassert_er(Error.argument, os.cmd.run(args, 2, NULL));
+    tassert_er(Error.argument, os.cmd.create(NULL, args, 2, NULL));
     return EOK;
 }
 #else

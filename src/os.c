@@ -1163,7 +1163,7 @@ cex_os__path__dirname(char* path, IAllocator allc)
 static Exception
 cex_os__cmd__create(os_cmd_c* self, char** args, usize args_len, os_cmd_flags_s* flags)
 {
-    uassert(self != NULL);
+    if (unlikely(self == NULL)) { return e$raise(Error.argument, "self is NULL"); }
     if (args == NULL || args_len == 0) { return "`args` is empty or null"; }
     if (args_len == 1 || args[args_len - 1] != NULL) { return "`args` last item must be a NULL"; }
     for (u32 i = 0; i < args_len - 1; i++) {

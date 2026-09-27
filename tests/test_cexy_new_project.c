@@ -35,6 +35,21 @@ test$case(test_make_new_project)
     return EOK;
 }
 
+test$case(test_make_new_project_partial_exists)
+{
+    e$ret(os.fs.mkpath(TBUILDDIR "lib/mylib.h"));
+    e$ret(io.file.save(TBUILDDIR "lib/mylib.h", ""));
+
+    mem$scope(tmem$, _)
+    {
+        char* old = os.fs.getcwd(_);
+        e$ret(os.fs.chdir(TBUILDDIR));
+        tassert_er(Error.exists, cexy.utils.make_new_project("."));
+        e$ret(os.fs.chdir(old));
+    }
+    return EOK;
+}
+
 #else
 test$case(not_supported_by_platform)
 {
