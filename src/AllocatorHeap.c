@@ -318,16 +318,14 @@ static const struct Allocator_i*
 _cex_allocator_heap__scope_enter(IAllocator self)
 {
     _cex_allocator_heap__validate(self);
-    uassert(false && "this only supported by arenas");
-    abort();
+    unreachable();
 }
 
 static void
 _cex_allocator_heap__scope_exit(IAllocator self)
 {
     _cex_allocator_heap__validate(self);
-    uassert(false && "this only supported by arenas");
-    abort();
+    unreachable();
 }
 
 static u32

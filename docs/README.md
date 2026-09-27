@@ -465,11 +465,12 @@ CEX provides several short aliases for primitive types and some extra types for 
 | Name | Description |
 | -------------- | --------------- |
 | uassert() | General purpose assert with tracebacks |
+| uassert_always() | Assert with tracebacks that is not stripped by `NDEBUG` |
 | unlikely() | Branch predictor management for unexpected conditions |
 | likely() | Branch predictor management for expected conditions |
 | breakpoint() | Cross-platform debugger breakpoint |
 | fallthrough() | Explicit fallthrough to the next switch case |
-| unreachable() | Panics in debug mode, __builtin_unreachable() `#ifdef NDEBUG` mode |
+| unreachable() | `__builtin_unreachable()` at panic level 0 / `NDEBUG`, panics at levels 1-2 |
 | tassert_* | Unit-test assertions see `./cex help tassert_` |
 
 ## Error handling
@@ -2886,7 +2887,7 @@ I'm a big fan of "asserts everywhere" code style, which is also known as design 
 
 So `cex.h` has 2 types of asserts:
 
-- `uassert*()` family work like vanilla assertion and lead to abortion at failure (but they print tracebacks with call stack and line numbers). These asserts are stripped when `NDEBUG` is defined.
+- `uassert*()` family work like vanilla assertion and lead to abortion at failure (but they print tracebacks with call stack and line numbers). `uassert()` is stripped when `NDEBUG` is defined; `uassert_always()` is not (it traps instead).
 - `e$assert()` returns `Error.assert` and only intended for usage in function with `Exception` return type. These asserts remain in place even when `NDEBUG` is defined.
 
 ```c
@@ -2894,6 +2895,9 @@ So `cex.h` has 2 types of asserts:
 uassert(a == 4); // vanilla
 uassert(b == a && "Oops it's a message"); // with static message
 uassert(b == 2 && "b != 2"); // with message
+
+// Same as uassert(), but never stripped by NDEBUG (traps instead)
+uassert_always(c == 3 && "c must be 3");
 
 // Disabling uassert() - only for unit test mode
 uassert_disable();

@@ -82,11 +82,7 @@ _cexds__arrgrowf(
     uassert(el_align <= 64 && "alignment is too high");
 
     if (arr == NULL) {
-        if (allc == NULL) {
-            uassert(allc != NULL && "using uninitialized arr/hm or out-of-mem error");
-            // unconditionally abort even in production
-            abort();
-        }
+        uassert_always(allc != NULL && "using uninitialized arr/hm or out-of-mem error");
     } else {
         _cexds__arr_integrity(arr, 0);
     }
@@ -551,8 +547,7 @@ _cexds__hash(enum _CexDsKeyType_e key_type, const void* key, usize key_size, u64
             return _cexds__hash_string(s->buf, s->len, seed);
         }
     }
-    uassert(false && "unexpected key type");
-    abort();
+    unreachable();
 }
 
 static bool
@@ -584,8 +579,7 @@ _cexds__is_key_equal(
             return 0 == memcmp(_k->buf, _hm->buf, _k->len);
         }
     }
-    uassert(false && "unexpected key type");
-    abort();
+    unreachable();
 }
 
 static inline void*

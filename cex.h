@@ -1478,10 +1478,7 @@ struct _cexds__arr_new_kwargs_s
 /// Appends a single element to the end. Automatically grows capacity if needed. Returns pointer to the new slot.
 #define arr$push(a, value...)                                                                      \
     ({                                                                                             \
-        if (unlikely(!arr$grow_check(a, 1))) {                                                     \
-            uassert(false && "arr$push memory error");                                             \
-            abort();                                                                               \
-        }                                                                                          \
+        uassert_always(arr$grow_check(a, 1) && "arr$push memory error");                           \
         (a)[_cexds__header(a)->length++] = (value);                                                \
         &(a)[_cexds__header(a)->length-1];                                                         \
     })
@@ -1505,10 +1502,7 @@ struct _cexds__arr_new_kwargs_s
         usize _arr_len_va[] = { array_len };                                                       \
         usize arr_len = (sizeof(_arr_len_va) > 0) ? _arr_len_va[0] : arr$len(array);               \
         uassert(arr_len < PTRDIFF_MAX && "negative length or overflow");                           \
-        if (unlikely(!arr$grow_check(a, arr_len))) {                                               \
-            uassert(false && "arr$pusha memory error");                                            \
-            abort();                                                                               \
-        }                                                                                          \
+        uassert_always(arr$grow_check(a, arr_len) && "arr$pusha memory error");                    \
         for (usize i = 0; i < arr_len; i++) { (a)[_cexds__header(a)->length++] = ((array)[i]); }   \
         /* NOLINTEND */                                                                            \
     })
@@ -1524,10 +1518,7 @@ struct _cexds__arr_new_kwargs_s
 /// Inserts element at index `i`, shifting subsequent elements right. Order preserved. O(n).
 #define arr$ins(a, i, value...)                                                                    \
     do {                                                                                           \
-        if (unlikely(!arr$grow_check(a, 1))) {                                                     \
-            uassert(false && "arr$ins memory error");                                              \
-            abort();                                                                               \
-        }                                                                                          \
+        uassert_always(arr$grow_check(a, 1) && "arr$ins memory error");                            \
         _cexds__header(a)->length++;                                                               \
         uassert((usize)i < _cexds__header(a)->length && "i out of bounds");                        \
         memmove(&(a)[(i) + 1], &(a)[i], sizeof(*(a)) * (_cexds__header(a)->length - 1 - (i)));     \
@@ -2925,11 +2916,16 @@ Compile-time verbosity knobs for CEX error handling.
   with `e$traceback_print(stderr)` when `main()` gets a non-`EOK` result. The test runner does
   this for each failing case.
 
-- `CEX_PANIC_VERBOSITY` (0..2, default 1) — controls `uassert()` and `unreachable()`:
+- `CEX_PANIC_VERBOSITY` (0..2, default 1) — controls `uassert()`, `uassert_always()` and
+  `unreachable()`:
 
-    * 0 - `__builtin_trap()`
+    * 0 - `uassert*()` traps with `__builtin_trap()`; `unreachable()` is `__builtin_unreachable()`
     * 1 - `_cex_errors_panic_handler()` prints `file:line`
     * 2 - `_cex_errors_panic_handler()` prints `file:line:func` + the failed expression
+
+  `uassert()` is stripped by `NDEBUG`; `uassert_always()` always terminates with `__builtin_trap()`.
+  `unreachable()` is `__builtin_unreachable()` at level 0 (and under `NDEBUG`), and delegates to
+  `cex$platform_panic()` at levels 1-2.
 
 */
 
@@ -2961,9 +2957,12 @@ static_assert(
 /// Assertion label, shared by uassert() and _cex_errors_panic_handler()'s suppressible check
 #define _cex_errors_assert_prefix "[ASSERT] "
 
+/// Assertion label for uassert_always(), never suppressible by uassert_disable()
+#define _cex_errors_assert_always_prefix "[ASSERT_ALWAYS] "
+
 /* ==== 2. Panic axis: CEX_PANIC_VERBOSITY ==== */
 
-/* Hard-fail panic (asserts + unreachable), default cex$platform_panic target */
+/* Hard-fail panic (asserts, unreachable at levels > 0), default cex$platform_panic target */
 
 /// Cold panic: suppressible [ASSERT] prints to stdout when disabled, everything else aborts
 __attribute__((cold, noinline))
@@ -2978,21 +2977,27 @@ void _cex_errors_panic_handler(
     const char* msg
 );
 
-/* C23 <stddef.h> defines unreachable(); drop it before we define ours */
-#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
+/* C23 <stddef.h> defines unreachable(); CEX provides its own */
+#ifdef unreachable
 #    undef unreachable
 #endif
 
-/* stub modes: assertions compile away (libc assert() under clang analyzer) */
+/* stub modes: uassert compiles away (libc assert() under clang analyzer) */
 #if defined(__clang_analyzer__) || defined(NDEBUG)
 #    if defined(__clang_analyzer__)
 #        define uassert(A) assert(A)
+#        define uassert_always(A) assert(A)
+#        define unreachable() __builtin_unreachable()
 #    else
 #        define uassert(A) ((void)(0))
+#        define uassert_always(A)                                                                  \
+            ({                                                                                     \
+                if (unlikely(!((A)))) { __builtin_trap(); }                                        \
+            })
+#        define unreachable() __builtin_unreachable()
 #    endif
 #    define uassert_disable() ((void)0)
 #    define uassert_enable() ((void)0)
-#    define unreachable() __builtin_unreachable()
 #endif
 
 /* enabled modes: assertion helpers, then uassert/unreachable by verbosity */
@@ -3016,7 +3021,11 @@ int __cex_test_uassert_enabled = 1;
             ({                                                                                     \
                 if (unlikely(!((A)))) { __builtin_trap(); }                                        \
             })
-#        define unreachable() __builtin_trap()
+#        define uassert_always(A)                                                                  \
+            ({                                                                                     \
+                if (unlikely(!((A)))) { __builtin_trap(); }                                        \
+            })
+#        define unreachable() __builtin_unreachable()
 #    elif CEX_PANIC_VERBOSITY == 1
 #        define uassert(A)                                                                         \
             ({                                                                                     \
@@ -3030,8 +3039,22 @@ int __cex_test_uassert_enabled = 1;
                     );                                                                             \
                 }                                                                                  \
             })
+#        define uassert_always(A)                                                                  \
+            ({                                                                                     \
+                if (unlikely(!((A)))) {                                                            \
+                    cex$platform_panic(                                                            \
+                        _cex_errors_assert_always_prefix,                                          \
+                        __FILE_NAME__,                                                             \
+                        __LINE__,                                                                  \
+                        NULL,                                                                      \
+                        NULL                                                                       \
+                    );                                                                             \
+                    __builtin_trap();                                                              \
+                }                                                                                  \
+            })
 #        define unreachable()                                                                      \
-            cex$platform_panic("[UNREACHABLE] ", __FILE_NAME__, __LINE__, NULL, NULL)
+            (cex$platform_panic("[UNREACHABLE] ", __FILE_NAME__, __LINE__, NULL, NULL),            \
+             __builtin_unreachable())
 #    else
 #        define uassert(A)                                                                         \
             ({                                                                                     \
@@ -3045,8 +3068,22 @@ int __cex_test_uassert_enabled = 1;
                     );                                                                             \
                 }                                                                                  \
             })
+#        define uassert_always(A)                                                                  \
+            ({                                                                                     \
+                if (unlikely(!((A)))) {                                                            \
+                    cex$platform_panic(                                                            \
+                        _cex_errors_assert_always_prefix,                                          \
+                        __FILE_NAME__,                                                             \
+                        __LINE__,                                                                  \
+                        __func__,                                                                  \
+                        #A                                                                         \
+                    );                                                                             \
+                    __builtin_trap();                                                              \
+                }                                                                                  \
+            })
 #        define unreachable()                                                                      \
-            cex$platform_panic("[UNREACHABLE] ", __FILE_NAME__, __LINE__, __func__, NULL)
+            (cex$platform_panic("[UNREACHABLE] ", __FILE_NAME__, __LINE__, __func__, NULL),        \
+             __builtin_unreachable())
 #    endif
 #endif
 
@@ -7527,16 +7564,14 @@ static const struct Allocator_i*
 _cex_allocator_heap__scope_enter(IAllocator self)
 {
     _cex_allocator_heap__validate(self);
-    uassert(false && "this only supported by arenas");
-    abort();
+    unreachable();
 }
 
 static void
 _cex_allocator_heap__scope_exit(IAllocator self)
 {
     _cex_allocator_heap__validate(self);
-    uassert(false && "this only supported by arenas");
-    abort();
+    unreachable();
 }
 
 static u32
@@ -8327,11 +8362,7 @@ _cexds__arrgrowf(
     uassert(el_align <= 64 && "alignment is too high");
 
     if (arr == NULL) {
-        if (allc == NULL) {
-            uassert(allc != NULL && "using uninitialized arr/hm or out-of-mem error");
-            // unconditionally abort even in production
-            abort();
-        }
+        uassert_always(allc != NULL && "using uninitialized arr/hm or out-of-mem error");
     } else {
         _cexds__arr_integrity(arr, 0);
     }
@@ -8796,8 +8827,7 @@ _cexds__hash(enum _CexDsKeyType_e key_type, const void* key, usize key_size, u64
             return _cexds__hash_string(s->buf, s->len, seed);
         }
     }
-    uassert(false && "unexpected key type");
-    abort();
+    unreachable();
 }
 
 static bool
@@ -8829,8 +8859,7 @@ _cexds__is_key_equal(
             return 0 == memcmp(_k->buf, _hm->buf, _k->len);
         }
     }
-    uassert(false && "unexpected key type");
-    abort();
+    unreachable();
 }
 
 static inline void*

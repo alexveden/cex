@@ -16,11 +16,16 @@ Compile-time verbosity knobs for CEX error handling.
   with `e$traceback_print(stderr)` when `main()` gets a non-`EOK` result. The test runner does
   this for each failing case.
 
-- `CEX_PANIC_VERBOSITY` (0..2, default 1) — controls `uassert()` and `unreachable()`:
+- `CEX_PANIC_VERBOSITY` (0..2, default 1) — controls `uassert()`, `uassert_always()` and
+  `unreachable()`:
 
-    * 0 - `__builtin_trap()`
+    * 0 - `uassert*()` traps with `__builtin_trap()`; `unreachable()` is `__builtin_unreachable()`
     * 1 - `_cex_errors_panic_handler()` prints `file:line`
     * 2 - `_cex_errors_panic_handler()` prints `file:line:func` + the failed expression
+
+  `uassert()` is stripped by `NDEBUG`; `uassert_always()` always terminates with `__builtin_trap()`.
+  `unreachable()` is `__builtin_unreachable()` at level 0 (and under `NDEBUG`), and delegates to
+  `cex$platform_panic()` at levels 1-2.
 
 */
 
@@ -52,9 +57,12 @@ static_assert(
 /// Assertion label, shared by uassert() and _cex_errors_panic_handler()'s suppressible check
 #define _cex_errors_assert_prefix "[ASSERT] "
 
+/// Assertion label for uassert_always(), never suppressible by uassert_disable()
+#define _cex_errors_assert_always_prefix "[ASSERT_ALWAYS] "
+
 /* ==== 2. Panic axis: CEX_PANIC_VERBOSITY ==== */
 
-/* Hard-fail panic (asserts + unreachable), default cex$platform_panic target */
+/* Hard-fail panic (asserts, unreachable at levels > 0), default cex$platform_panic target */
 
 /// Cold panic: suppressible [ASSERT] prints to stdout when disabled, everything else aborts
 __attribute__((cold, noinline))
@@ -69,21 +77,27 @@ void _cex_errors_panic_handler(
     const char* msg
 );
 
-/* C23 <stddef.h> defines unreachable(); drop it before we define ours */
-#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
+/* C23 <stddef.h> defines unreachable(); CEX provides its own */
+#ifdef unreachable
 #    undef unreachable
 #endif
 
-/* stub modes: assertions compile away (libc assert() under clang analyzer) */
+/* stub modes: uassert compiles away (libc assert() under clang analyzer) */
 #if defined(__clang_analyzer__) || defined(NDEBUG)
 #    if defined(__clang_analyzer__)
 #        define uassert(A) assert(A)
+#        define uassert_always(A) assert(A)
+#        define unreachable() __builtin_unreachable()
 #    else
 #        define uassert(A) ((void)(0))
+#        define uassert_always(A)                                                                  \
+            ({                                                                                     \
+                if (unlikely(!((A)))) { __builtin_trap(); }                                        \
+            })
+#        define unreachable() __builtin_unreachable()
 #    endif
 #    define uassert_disable() ((void)0)
 #    define uassert_enable() ((void)0)
-#    define unreachable() __builtin_unreachable()
 #endif
 
 /* enabled modes: assertion helpers, then uassert/unreachable by verbosity */
@@ -107,7 +121,11 @@ int __cex_test_uassert_enabled = 1;
             ({                                                                                     \
                 if (unlikely(!((A)))) { __builtin_trap(); }                                        \
             })
-#        define unreachable() __builtin_trap()
+#        define uassert_always(A)                                                                  \
+            ({                                                                                     \
+                if (unlikely(!((A)))) { __builtin_trap(); }                                        \
+            })
+#        define unreachable() __builtin_unreachable()
 #    elif CEX_PANIC_VERBOSITY == 1
 #        define uassert(A)                                                                         \
             ({                                                                                     \
@@ -121,8 +139,22 @@ int __cex_test_uassert_enabled = 1;
                     );                                                                             \
                 }                                                                                  \
             })
+#        define uassert_always(A)                                                                  \
+            ({                                                                                     \
+                if (unlikely(!((A)))) {                                                            \
+                    cex$platform_panic(                                                            \
+                        _cex_errors_assert_always_prefix,                                          \
+                        __FILE_NAME__,                                                             \
+                        __LINE__,                                                                  \
+                        NULL,                                                                      \
+                        NULL                                                                       \
+                    );                                                                             \
+                    __builtin_trap();                                                              \
+                }                                                                                  \
+            })
 #        define unreachable()                                                                      \
-            cex$platform_panic("[UNREACHABLE] ", __FILE_NAME__, __LINE__, NULL, NULL)
+            (cex$platform_panic("[UNREACHABLE] ", __FILE_NAME__, __LINE__, NULL, NULL),            \
+             __builtin_unreachable())
 #    else
 #        define uassert(A)                                                                         \
             ({                                                                                     \
@@ -136,8 +168,22 @@ int __cex_test_uassert_enabled = 1;
                     );                                                                             \
                 }                                                                                  \
             })
+#        define uassert_always(A)                                                                  \
+            ({                                                                                     \
+                if (unlikely(!((A)))) {                                                            \
+                    cex$platform_panic(                                                            \
+                        _cex_errors_assert_always_prefix,                                          \
+                        __FILE_NAME__,                                                             \
+                        __LINE__,                                                                  \
+                        __func__,                                                                  \
+                        #A                                                                         \
+                    );                                                                             \
+                    __builtin_trap();                                                              \
+                }                                                                                  \
+            })
 #        define unreachable()                                                                      \
-            cex$platform_panic("[UNREACHABLE] ", __FILE_NAME__, __LINE__, __func__, NULL)
+            (cex$platform_panic("[UNREACHABLE] ", __FILE_NAME__, __LINE__, __func__, NULL),        \
+             __builtin_unreachable())
 #    endif
 #endif
 

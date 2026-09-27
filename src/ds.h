@@ -237,10 +237,7 @@ struct _cexds__arr_new_kwargs_s
 /// Appends a single element to the end. Automatically grows capacity if needed. Returns pointer to the new slot.
 #define arr$push(a, value...)                                                                      \
     ({                                                                                             \
-        if (unlikely(!arr$grow_check(a, 1))) {                                                     \
-            uassert(false && "arr$push memory error");                                             \
-            abort();                                                                               \
-        }                                                                                          \
+        uassert_always(arr$grow_check(a, 1) && "arr$push memory error");                           \
         (a)[_cexds__header(a)->length++] = (value);                                                \
         &(a)[_cexds__header(a)->length-1];                                                         \
     })
@@ -264,10 +261,7 @@ struct _cexds__arr_new_kwargs_s
         usize _arr_len_va[] = { array_len };                                                       \
         usize arr_len = (sizeof(_arr_len_va) > 0) ? _arr_len_va[0] : arr$len(array);               \
         uassert(arr_len < PTRDIFF_MAX && "negative length or overflow");                           \
-        if (unlikely(!arr$grow_check(a, arr_len))) {                                               \
-            uassert(false && "arr$pusha memory error");                                            \
-            abort();                                                                               \
-        }                                                                                          \
+        uassert_always(arr$grow_check(a, arr_len) && "arr$pusha memory error");                    \
         for (usize i = 0; i < arr_len; i++) { (a)[_cexds__header(a)->length++] = ((array)[i]); }   \
         /* NOLINTEND */                                                                            \
     })
@@ -283,10 +277,7 @@ struct _cexds__arr_new_kwargs_s
 /// Inserts element at index `i`, shifting subsequent elements right. Order preserved. O(n).
 #define arr$ins(a, i, value...)                                                                    \
     do {                                                                                           \
-        if (unlikely(!arr$grow_check(a, 1))) {                                                     \
-            uassert(false && "arr$ins memory error");                                              \
-            abort();                                                                               \
-        }                                                                                          \
+        uassert_always(arr$grow_check(a, 1) && "arr$ins memory error");                            \
         _cexds__header(a)->length++;                                                               \
         uassert((usize)i < _cexds__header(a)->length && "i out of bounds");                        \
         memmove(&(a)[(i) + 1], &(a)[i], sizeof(*(a)) * (_cexds__header(a)->length - 1 - (i)));     \

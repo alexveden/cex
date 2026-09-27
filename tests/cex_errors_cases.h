@@ -14,25 +14,7 @@
 #    define tassert_frames(_n) tassert_eq(e$traceback_len, 0)
 #endif
 
-#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
-/// Fork a child that runs the panic; true when it terminated abnormally (signal or nonzero exit)
-test$noopt bool
-is_panic_fatal_in_child(bool use_unreachable)
-{
-    pid_t pid = fork();
-    if (pid < 0) { return false; }
-    if (pid == 0) {
-        (void)freopen("/dev/null", "w", stdout);
-        (void)freopen("/dev/null", "w", stderr);
-        if (use_unreachable) { unreachable(); }
-        else { uassert(false); }
-        _exit(0);
-    }
-    int status = 0;
-    if (waitpid(pid, &status, 0) != pid) { return false; }
-    return !(WIFEXITED(status) && WEXITSTATUS(status) == 0);
-}
-#endif
+#include "cex_errors_fork.h"
 
 /// Error.io when `i` is non-zero, else EOK; records nothing
 test$noopt Exception
@@ -257,13 +239,21 @@ test$case(uassert_disabled_returns)
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
 test$case(uassert_fatal)
 {
-    tassert(is_panic_fatal_in_child(false));
+    tassert(is_fatal_in_child(_run_uassert_panic));
     return EOK;
 }
 
+#if CEX_PANIC_VERBOSITY >= 1
 test$case(unreachable_fatal)
 {
-    tassert(is_panic_fatal_in_child(true));
+    tassert(is_fatal_in_child(_run_unreachable_panic));
+    return EOK;
+}
+#endif
+
+test$case(uassert_always_fatal)
+{
+    tassert(is_fatal_in_child(_run_uassert_always_panic));
     return EOK;
 }
 
@@ -271,7 +261,16 @@ test$case(unreachable_fatal)
 test$case(unreachable_fatal_when_disabled)
 {
     uassert_disable();
-    bool fatal = is_panic_fatal_in_child(true);
+    bool fatal = is_fatal_in_child(_run_unreachable_panic);
+    uassert_enable();
+    tassert(fatal);
+    return EOK;
+}
+
+test$case(uassert_always_fatal_when_disabled)
+{
+    uassert_disable();
+    bool fatal = is_fatal_in_child(_run_uassert_always_panic);
     uassert_enable();
     tassert(fatal);
     return EOK;
