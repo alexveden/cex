@@ -12743,14 +12743,14 @@ _sbuf__grow_buffer(sbuf_c* self, usize length)
     if (unlikely(head->allocator == NULL)) {
         // sbuf is static, bad luck, overflow
         _sbuf__set_error(head, Error.overflow);
-        return Error.overflow;
+        return e$raise(Error.overflow, "sbuf is static, cannot grow");
     }
 
     usize new_capacity = _sbuf__alloc_capacity(length);
     head = mem$realloc(head->allocator, head, new_capacity);
     if (unlikely(head == NULL)) {
         *self = NULL;
-        return Error.memory;
+        return e$raise(Error.memory, "sbuf realloc failed");
     }
 
     head->capacity = new_capacity - sizeof(sbuf_head_s) - 1,
@@ -12832,8 +12832,8 @@ cex_sbuf_set_len(sbuf_c* self, usize new_length)
 {
     if (unlikely(self == NULL)) { return e$raise(Error.argument, "self is NULL"); }
     sbuf_head_s* head = _sbuf__head(*self);
-    if (unlikely(!head)) { return Error.runtime; }
-    if (unlikely(head->err)) { return head->err; }
+    if (unlikely(!head)) { return e$raise(Error.runtime, "sbuf head is NULL"); }
+    if (unlikely(head->err)) { return e$raise(head->err, "sbuf is in error state"); }
     
     if (unlikely(head->capacity == 0 || new_length > head->capacity - 1)) {
         e$except (err, _sbuf__grow_buffer(self, new_length)) { return err; }
@@ -12949,10 +12949,10 @@ _cex_sbuf_sprintf_callback(char* buf, void* user, u32 len)
 static Exc
 cex_sbuf_appendfva(sbuf_c* self, char* format, va_list va)
 {
-    if (unlikely(self == NULL)) { return Error.argument; }
+    if (unlikely(self == NULL)) { return e$raise(Error.argument, "self is NULL"); }
     sbuf_head_s* head = _sbuf__head(*self);
-    if (unlikely(head == NULL)) { return Error.runtime; }
-    if (unlikely(head->err)) { return head->err; }
+    if (unlikely(head == NULL)) { return e$raise(Error.runtime, "sbuf head is NULL"); }
+    if (unlikely(head->err)) { return e$raise(head->err, "sbuf is in error state"); }
 
     struct _sbuf__sprintf_ctx ctx = {
         .head = head,
@@ -12977,7 +12977,8 @@ cex_sbuf_appendfva(sbuf_c* self, char* format, va_list va)
     (*self)[ctx.head->length] = '\0';
     (*self)[ctx.head->capacity] = '\0';
 
-    return ctx.err;
+    if (unlikely(ctx.err)) { return e$raise(ctx.err, "sbuf append failed"); }
+    return EOK;
 }
 
 
@@ -12988,7 +12989,9 @@ cex_sbuf_appendf(sbuf_c* self, char* format, ...)
 
     va_list va;
     va_start(va, format);
-    Exc result = cex_sbuf_appendfva(self, format, va);
+    Exc result = EOK;
+    e$goto(result = cex_sbuf_appendfva(self, format, va), done);
+done:
     va_end(va);
     return result;
 }
@@ -12999,18 +13002,18 @@ cex_sbuf_append(sbuf_c* self, char* s)
 {
     if (unlikely(self == NULL)) { return e$raise(Error.argument, "self is NULL"); }
     sbuf_head_s* head = _sbuf__head(*self);
-    if (unlikely(head == NULL)) { return Error.runtime; }
+    if (unlikely(head == NULL)) { return e$raise(Error.runtime, "sbuf head is NULL"); }
 
     if (unlikely(s == NULL)) {
         _sbuf__set_error(head, "sbuf.append s=NULL");
-        return Error.argument;
+        return e$raise(Error.argument, "s is NULL");
     }
-    if (head->err) { return head->err; }
+    if (head->err) { return e$raise(head->err, "sbuf is in error state"); }
 
     // `s` must not point into the sbuf's own buffer
     // (would cause use-after-free on realloc or memcpy overlap)
     if (unlikely(s >= *self && s < *self + head->capacity)) {
-        return Error.argument;
+        return e$raise(Error.argument, "s points into sbuf buffer");
     }
 
     usize length = head->length;
@@ -13045,7 +13048,7 @@ cex_sbuf_validate(sbuf_c* self)
 
     sbuf_head_s* head = (sbuf_head_s*)((char*)(*self) - sizeof(sbuf_head_s));
 
-    if (unlikely(head->err)) { return head->err; }
+    if (unlikely(head->err)) { return e$raise(head->err, "sbuf is in error state"); }
     if (unlikely(head->header.magic != SBUF_MAGIC)) { return "Bad magic or non sbuf_c* pointer type"; }
     if (unlikely(head->capacity == 0)) { return "Zero capacity"; }
     if (head->length > head->capacity) { return "Length > capacity"; }
