@@ -13112,18 +13112,12 @@ CEX_NAMESPACE_DEF struct __cex_namespace__sbuf sbuf = {
 Exception
 cex_io_fopen(FILE** file, char* filename, char* mode)
 {
-    if (file == NULL) {
-        uassert(file != NULL);
-        return Error.argument;
-    }
+    if (unlikely(file == NULL)) { return e$raise(Error.argument, "file is NULL"); }
 
     *file = NULL;
 
-    if (filename == NULL) { return Error.argument; }
-    if (mode == NULL) {
-        uassert(mode != NULL);
-        return Error.argument;
-    }
+    if (unlikely(filename == NULL)) { return e$raise(Error.argument, "filename is NULL"); }
+    if (unlikely(mode == NULL)) { return e$raise(Error.argument, "mode is NULL"); }
 
     *file = fopen(filename, mode);
     if (*file == NULL) {
@@ -13158,7 +13152,7 @@ cex_io_isatty(FILE* file)
 Exception
 cex_io_fflush(FILE* file)
 {
-    uassert(file != NULL);
+    if (unlikely(file == NULL)) { return e$raise(Error.argument, "file is NULL"); }
 
     int ret = fflush(file);
     if (unlikely(ret == -1)) {
@@ -13172,7 +13166,7 @@ cex_io_fflush(FILE* file)
 Exception
 cex_io_fseek(FILE* file, long offset, int whence)
 {
-    uassert(file != NULL);
+    if (unlikely(file == NULL)) { return e$raise(Error.argument, "file is NULL"); }
 
     int ret = fseek(file, offset, whence);
     if (unlikely(ret == -1)) {
@@ -13198,7 +13192,7 @@ cex_io_rewind(FILE* file)
 Exception
 cex_io_ftell(FILE* file, usize* size)
 {
-    uassert(file != NULL);
+    if (unlikely(file == NULL)) { return e$raise(Error.argument, "file is NULL"); }
 
     long ret = ftell(file);
     if (unlikely(ret < 0)) {
@@ -13276,12 +13270,12 @@ cex_io_fread_all(FILE* file, str_s* s, IAllocator allc)
     char* buf = NULL;
 
 
-    if (file == NULL) {
-        result = Error.argument;
+    if (unlikely(file == NULL)) {
+        result = e$raise(Error.argument, "file is NULL");
         goto fail;
     }
-    uassert(s != NULL);
-    uassert(allc != NULL);
+    if (unlikely(s == NULL)) { return e$raise(Error.argument, "s is NULL"); }
+    if (unlikely(allc == NULL)) { return e$raise(Error.argument, "allc is NULL"); }
 
     // Forbid console and stdin
     if (unlikely(cex_io_isatty(file))) {
@@ -13375,10 +13369,10 @@ cex_io_fread_line(FILE* file, str_s* s, IAllocator allc)
     usize buf_size = 0;
 
     if (unlikely(file == NULL)) {
-        result = Error.argument;
+        result = e$raise(Error.argument, "file is NULL");
         goto fail;
     }
-    uassert(s != NULL);
+    if (unlikely(s == NULL)) { return e$raise(Error.argument, "s is NULL"); }
 
     int c = EOF;
     while ((c = fgetc(file)) != EOF) {
@@ -13466,7 +13460,7 @@ fail:
 Exc
 cex_io_fprintf(FILE* stream, char* format, ...)
 {
-    uassert(stream != NULL);
+    if (unlikely(stream == NULL)) { return e$raise(Error.argument, "stream is NULL"); }
 
     va_list va;
     va_start(va, format);
@@ -13495,10 +13489,7 @@ cex_io_printf(char* format, ...)
 Exception
 cex_io_fwrite(FILE* file, void* buff, usize buff_len)
 {
-    if (file == NULL) {
-        uassert(file != NULL);
-        return Error.argument;
-    }
+    if (unlikely(file == NULL)) { return e$raise(Error.argument, "file is NULL"); }
 
     if (buff == NULL) { return Error.argument; }
     if (buff_len == 0) { return Error.argument; }
@@ -13509,8 +13500,7 @@ cex_io_fwrite(FILE* file, void* buff, usize buff_len)
         // return os.get_last_error();
         switch (errno) {
             case 0:
-                uassert(errno != 0 && "errno is ok");
-                return "Error, but errno is not set";
+                return e$raise(Error.io, "fwrite failed but errno is not set");
             case ENOENT:
                 return Error.not_found;
             case EPERM:
@@ -13532,10 +13522,7 @@ Exception
 cex_io__file__writeln(FILE* file, char* line)
 {
     errno = 0;
-    if (file == NULL) {
-        uassert(file != NULL);
-        return Error.argument;
-    }
+    if (unlikely(file == NULL)) { return e$raise(Error.argument, "file is NULL"); }
     if (line == NULL) { return Error.argument; }
     usize line_len = strlen(line);
     usize ret_count = fwrite(line, 1, line_len, file);

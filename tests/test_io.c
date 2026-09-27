@@ -16,10 +16,31 @@ test$case(test_io)
     tassert_eq(Error.not_found, io.fopen(&file, "test_not_exist.txt", "r"));
     tassert(file == NULL);
 
-    uassert_disable();
     tassert_eq(Error.argument, io.fopen(&file, "test_not_exist.txt", NULL));
     tassert_eq(Error.argument, io.fopen(&file, NULL, "r"));
     tassert_eq(Error.argument, io.fopen(NULL, "test.txt", "r"));
+
+    str_s s = { 0 };
+    usize pos = 0;
+    tassert_eq(Error.argument, io.fflush(NULL));
+    tassert_eq(Error.argument, io.fseek(NULL, 0, SEEK_SET));
+    tassert_eq(Error.argument, io.ftell(NULL, &pos));
+    tassert_eq(Error.argument, io.fprintf(NULL, "x"));
+    tassert_eq(Error.argument, io.fwrite(NULL, "x", 1));
+    tassert_eq(Error.argument, io.file.writeln(NULL, "x"));
+    tassert_eq(Error.argument, io.fread_all(NULL, &s, mem$));
+    tassert_eq(Error.argument, io.fread_line(NULL, &s, mem$));
+    return EOK;
+}
+
+test$case(test_io_null_args)
+{
+    FILE* file;
+    tassert_eq(Error.ok, io.fopen(&file, "tests/data/text_file_empty.txt", "r"));
+    tassert_eq(Error.argument, io.fread_all(file, NULL, mem$));
+    tassert_eq(Error.argument, io.fread_line(file, NULL, mem$));
+    tassert_eq(Error.argument, io.fread_all(file, &(str_s){ 0 }, NULL));
+    io.fclose(&file);
     return EOK;
 }
 
