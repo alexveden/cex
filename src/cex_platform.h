@@ -22,9 +22,7 @@
 
 #ifndef cex$platform_panic
 ///  Macro for redefining panic function (used in assertions, and other CEX stuff)
-#    define cex$platform_panic __cex__panic
-#    define _cex$platform_panic_builtin
-__attribute__((noinline)) void __cex__panic(void);
+#    define cex$platform_panic _cex_errors_panic_handler
 #endif
 
 #ifdef cex$enable_minimal

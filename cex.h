@@ -194,9 +194,7 @@ Use `cex -D config` to reset all project config flags to defaults
 
 #ifndef cex$platform_panic
 ///  Macro for redefining panic function (used in assertions, and other CEX stuff)
-#    define cex$platform_panic __cex__panic
-#    define _cex$platform_panic_builtin
-__attribute__((noinline)) void __cex__panic(void);
+#    define cex$platform_panic _cex_errors_panic_handler
 #endif
 
 #ifdef cex$enable_minimal
@@ -2965,7 +2963,7 @@ static_assert(
 
 /* ==== 2. Panic axis: CEX_PANIC_VERBOSITY ==== */
 
-/* Hard-fail panic (asserts + unreachable), prototype-scoped replacement for __cex__panic */
+/* Hard-fail panic (asserts + unreachable), default cex$platform_panic target */
 
 /// Cold panic: suppressible [ASSERT] prints to stdout when disabled, everything else aborts
 __attribute__((cold, noinline))
@@ -3023,7 +3021,7 @@ int __cex_test_uassert_enabled = 1;
 #        define uassert(A)                                                                         \
             ({                                                                                     \
                 if (unlikely(!((A)))) {                                                            \
-                    _cex_errors_panic_handler(                                                     \
+                    cex$platform_panic(                                                            \
                         _cex_errors_assert_prefix,                                                 \
                         __FILE_NAME__,                                                             \
                         __LINE__,                                                                  \
@@ -3033,12 +3031,12 @@ int __cex_test_uassert_enabled = 1;
                 }                                                                                  \
             })
 #        define unreachable()                                                                      \
-            _cex_errors_panic_handler("[UNREACHABLE] ", __FILE_NAME__, __LINE__, NULL, NULL)
+            cex$platform_panic("[UNREACHABLE] ", __FILE_NAME__, __LINE__, NULL, NULL)
 #    else
 #        define uassert(A)                                                                         \
             ({                                                                                     \
                 if (unlikely(!((A)))) {                                                            \
-                    _cex_errors_panic_handler(                                                     \
+                    cex$platform_panic(                                                            \
                         _cex_errors_assert_prefix,                                                 \
                         __FILE_NAME__,                                                             \
                         __LINE__,                                                                  \
@@ -3048,7 +3046,7 @@ int __cex_test_uassert_enabled = 1;
                 }                                                                                  \
             })
 #        define unreachable()                                                                      \
-            _cex_errors_panic_handler("[UNREACHABLE] ", __FILE_NAME__, __LINE__, __func__, NULL)
+            cex$platform_panic("[UNREACHABLE] ", __FILE_NAME__, __LINE__, __func__, NULL)
 #    endif
 #endif
 
@@ -7168,25 +7166,6 @@ const struct _CEX_Error_struct Error = {
     .permission = "PermissionError",     // Permission denied
     .try_again = "TryAgainError",        // EAGAIN / EWOULDBLOCK errno analog for async operations
 };
-
-#ifdef _cex$platform_panic_builtin
-
-void
-__cex__panic(void)
-{
-    fflush(stdout);
-    fflush(stderr);
-    sanitizer_stack_trace();
-
-#    ifdef CEX_TEST
-    breakpoint();
-#    else
-    abort();
-#    endif
-    return;
-}
-
-#endif
 
 
 

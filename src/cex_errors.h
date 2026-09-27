@@ -54,7 +54,7 @@ static_assert(
 
 /* ==== 2. Panic axis: CEX_PANIC_VERBOSITY ==== */
 
-/* Hard-fail panic (asserts + unreachable), prototype-scoped replacement for __cex__panic */
+/* Hard-fail panic (asserts + unreachable), default cex$platform_panic target */
 
 /// Cold panic: suppressible [ASSERT] prints to stdout when disabled, everything else aborts
 __attribute__((cold, noinline))
@@ -112,7 +112,7 @@ int __cex_test_uassert_enabled = 1;
 #        define uassert(A)                                                                         \
             ({                                                                                     \
                 if (unlikely(!((A)))) {                                                            \
-                    _cex_errors_panic_handler(                                                     \
+                    cex$platform_panic(                                                            \
                         _cex_errors_assert_prefix,                                                 \
                         __FILE_NAME__,                                                             \
                         __LINE__,                                                                  \
@@ -122,12 +122,12 @@ int __cex_test_uassert_enabled = 1;
                 }                                                                                  \
             })
 #        define unreachable()                                                                      \
-            _cex_errors_panic_handler("[UNREACHABLE] ", __FILE_NAME__, __LINE__, NULL, NULL)
+            cex$platform_panic("[UNREACHABLE] ", __FILE_NAME__, __LINE__, NULL, NULL)
 #    else
 #        define uassert(A)                                                                         \
             ({                                                                                     \
                 if (unlikely(!((A)))) {                                                            \
-                    _cex_errors_panic_handler(                                                     \
+                    cex$platform_panic(                                                            \
                         _cex_errors_assert_prefix,                                                 \
                         __FILE_NAME__,                                                             \
                         __LINE__,                                                                  \
@@ -137,7 +137,7 @@ int __cex_test_uassert_enabled = 1;
                 }                                                                                  \
             })
 #        define unreachable()                                                                      \
-            _cex_errors_panic_handler("[UNREACHABLE] ", __FILE_NAME__, __LINE__, __func__, NULL)
+            cex$platform_panic("[UNREACHABLE] ", __FILE_NAME__, __LINE__, __func__, NULL)
 #    endif
 #endif
 
