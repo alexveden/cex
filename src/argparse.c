@@ -21,7 +21,7 @@ _cex_argparse__error(argparse_c* self, argparse_opt_s* opt, char* reason, bool i
         cexsp__fprintf(stdout, "error: option `-%c` %s\n", opt->short_name, reason);
     }
 
-    return Error.argument;
+    return e$raise(Error.argument, "option parsing error");
 }
 
 static void
@@ -206,7 +206,8 @@ _cex_argparse__convert(char* s, argparse_opt_s* opt)
     // NOTE: this hits UBSAN because we casting convert function of
     // (char*, void*) into str.convert.to_u32(char*, u32*)
     // however we do explicit type checking and tagging so it should be good!
-    return opt->convert(s, opt->value);
+    e$ret(opt->convert(s, opt->value));
+    return EOK;
 }
 
 static Exception
@@ -228,7 +229,7 @@ _cex_argparse__getvalue(argparse_c* self, argparse_opt_s* opt, bool is_long)
                 self->_ctx.cpidx++;
                 *(char**)opt->value = *++self->argv;
             } else {
-                return _cex_argparse__error(self, opt, "requires a value", is_long);
+                e$ret(_cex_argparse__error(self, opt, "requires a value", is_long));
             }
             opt->is_present = true;
             break;
@@ -243,12 +244,12 @@ _cex_argparse__getvalue(argparse_c* self, argparse_opt_s* opt, bool is_long)
         case CexArgParseType__f32:
         case CexArgParseType__f64:
             if (self->_ctx.optvalue) {
-                if (self->_ctx.optvalue[0] == '\0') {
-                    return _cex_argparse__error(self, opt, "requires a value", is_long);
+                if (unlikely(self->_ctx.optvalue[0] == '\0')) {
+                    e$ret(_cex_argparse__error(self, opt, "requires a value", is_long));
                 }
                 uassert(opt->convert != NULL);
                 e$except (err, _cex_argparse__convert(self->_ctx.optvalue, opt)) {
-                    return _cex_argparse__error(self, opt, "argument parsing error", is_long);
+                    e$ret(_cex_argparse__error(self, opt, "argument parsing error", is_long));
                 }
                 self->_ctx.optvalue = NULL;
             } else if (self->argc > 1) {
@@ -256,47 +257,48 @@ _cex_argparse__getvalue(argparse_c* self, argparse_opt_s* opt, bool is_long)
                 self->_ctx.cpidx++;
                 self->argv++;
                 e$except (err, _cex_argparse__convert(*self->argv, opt)) {
-                    return _cex_argparse__error(self, opt, "argument parsing error", is_long);
+                    e$ret(_cex_argparse__error(self, opt, "argument parsing error", is_long));
                 }
             } else {
-                return _cex_argparse__error(self, opt, "requires a value", is_long);
+                e$ret(_cex_argparse__error(self, opt, "requires a value", is_long));
             }
             if (opt->type == CexArgParseType__f32) {
                 f32 res = *(f32*)opt->value;
-                if (__builtin_isnan(res) || res == INFINITY || res == -INFINITY) {
-                    return _cex_argparse__error(
+                if (unlikely(__builtin_isnan(res) || res == INFINITY || res == -INFINITY)) {
+                    e$ret(_cex_argparse__error(
                         self,
                         opt,
                         "argument parsing error (float out of range)",
                         is_long
-                    );
+                    ));
                 }
             } else if (opt->type == CexArgParseType__f64) {
                 f64 res = *(f64*)opt->value;
-                if (__builtin_isnan(res) || res == INFINITY || res == -INFINITY) {
-                    return _cex_argparse__error(
+                if (unlikely(__builtin_isnan(res) || res == INFINITY || res == -INFINITY)) {
+                    e$ret(_cex_argparse__error(
                         self,
                         opt,
                         "argument parsing error (float out of range)",
                         is_long
-                    );
+                    ));
                 }
             }
             opt->is_present = true;
             break;
         default:
             uassert(false && "unhandled");
-            return Error.runtime;
+            return e$raise(Error.runtime, "unhandled option type");
     }
 
 skipped:
     if (opt->callback) {
         opt->is_present = true;
-        return opt->callback(self, opt, opt->callback_data);
+        e$ret(opt->callback(self, opt, opt->callback_data));
+        return EOK;
     } else {
         if (opt->short_name == 'h') {
             cex_argparse_usage(self);
-            return Error.argsparse;
+            return e$raise(Error.argsparse, "help requested");
         }
     }
 
@@ -311,21 +313,21 @@ _cex_argparse__options_check(argparse_c* self, bool reset)
         if (opt->type != CexArgParseType__group) {
             if (reset) {
                 opt->is_present = 0;
-                if (!(opt->short_name || opt->long_name)) {
+                if (unlikely(!(opt->short_name || opt->long_name))) {
                     return e$raise(Error.assert, "options both long/short_name NULL");
                 }
-                if (opt->value == NULL && opt->short_name != 'h') {
+                if (unlikely(opt->value == NULL && opt->short_name != 'h')) {
                     return e$raise(Error.assert, "option value is null");
                 }
             } else {
-                if (opt->required && !opt->is_present) {
+                if (unlikely(opt->required && !opt->is_present)) {
                     cexsp__fprintf(
                         stdout,
                         "Error: missing required option: -%c/--%s\n",
                         opt->short_name,
                         opt->long_name
                     );
-                    return Error.argsparse;
+                    return e$raise(Error.argsparse, "missing required option");
                 }
             }
         }
@@ -370,10 +372,11 @@ _cex_argparse__short_opt(argparse_c* self, argparse_opt_s* options)
     for (u32 i = 0; i < self->options_len; i++, options++) {
         if (options->short_name == *self->_ctx.optvalue) {
             self->_ctx.optvalue = self->_ctx.optvalue[1] ? self->_ctx.optvalue + 1 : NULL;
-            return _cex_argparse__getvalue(self, options, false);
+            e$ret(_cex_argparse__getvalue(self, options, false));
+            return EOK;
         }
     }
-    return Error.not_found;
+    return e$raise(Error.not_found, "unknown short option");
 }
 
 static Exception
@@ -392,9 +395,10 @@ _cex_argparse__long_opt(argparse_c* self, argparse_opt_s* options)
             if (*rest != '=') { continue; }
             self->_ctx.optvalue = rest + 1;
         }
-        return _cex_argparse__getvalue(self, options, true);
+        e$ret(_cex_argparse__getvalue(self, options, true));
+        return EOK;
     }
-    return Error.not_found;
+    return e$raise(Error.not_found, "unknown long option");
 }
 
 
@@ -417,7 +421,7 @@ _cex_argparse__report_error(argparse_c* self, Exc err)
     } else if (err == Error.integrity) {
         io.printf("error: option `%s` follows argument\n", self->argv[0]);
     }
-    return Error.argsparse;
+    return e$raise(Error.argsparse, "argument parsing failed");
 }
 
 static Exception
@@ -438,7 +442,7 @@ _cex_argparse__parse_commands(argparse_c* self)
 
     if (str.eq(cmd_arg, "-h") || str.eq(cmd_arg, "--help")) {
         cex_argparse_usage(self);
-        return Error.argsparse;
+        return e$raise(Error.argsparse, "help requested");
     }
 
     for$eachp(c, self->commands, self->commands_len)
@@ -457,10 +461,10 @@ _cex_argparse__parse_commands(argparse_c* self)
             }
         }
     }
-    if (cmd == NULL) {
+    if (unlikely(cmd == NULL)) {
         cex_argparse_usage(self);
         io.printf("error: unknown command name '%s', try --help\n", (cmd_arg) ? cmd_arg : "");
-        return Error.argsparse;
+        return e$raise(Error.argsparse, "unknown command");
     }
     self->_ctx.current_command = cmd;
     self->_ctx.cpidx = 0;
@@ -504,11 +508,11 @@ _cex_argparse__parse_options(argparse_c* self)
             self->_ctx.optvalue = arg + 1;
             self->_ctx.cpidx++;
             e$except (err, _cex_argparse__short_opt(self, self->options)) {
-                return _cex_argparse__report_error(self, err);
+                e$ret(_cex_argparse__report_error(self, err));
             }
             while (self->_ctx.optvalue) {
                 e$except (err, _cex_argparse__short_opt(self, self->options)) {
-                    return _cex_argparse__report_error(self, err);
+                    e$ret(_cex_argparse__report_error(self, err));
                 }
             }
             continue;
@@ -526,7 +530,7 @@ _cex_argparse__parse_options(argparse_c* self)
             break;
         }
         e$except (err, _cex_argparse__long_opt(self, self->options)) {
-            return _cex_argparse__report_error(self, err);
+            e$ret(_cex_argparse__report_error(self, err));
         }
         self->_ctx.cpidx++;
         continue;
@@ -544,7 +548,7 @@ _cex_argparse__parse_options(argparse_c* self)
 static Exception
 cex_argparse_parse(argparse_c* self, int argc, char** argv)
 {
-    if (self->options != NULL && self->commands != NULL) {
+    if (unlikely(self->options != NULL && self->commands != NULL)) {
         return e$raise(Error.assert, "options and commands are mutually exclusive");
     }
     uassert(argc > 0);
@@ -561,9 +565,11 @@ cex_argparse_parse(argparse_c* self, int argc, char** argv)
     self->_ctx.out = argv;
 
     if (self->commands) {
-        return _cex_argparse__parse_commands(self);
+        e$ret(_cex_argparse__parse_commands(self));
+        return EOK;
     } else if (self->options) {
-        return _cex_argparse__parse_options(self);
+        e$ret(_cex_argparse__parse_options(self));
+        return EOK;
     }
     return Error.ok;
 }
@@ -615,9 +621,11 @@ cex_argparse_run_command(argparse_c* self, void* user_ctx)
     if (self->argc == 0) {
         // seems default command (with no args)
         char* dummy_args[] = { self->_ctx.current_command->name };
-        return self->_ctx.current_command->func(1, (char**)dummy_args, user_ctx);
+        e$ret(self->_ctx.current_command->func(1, (char**)dummy_args, user_ctx));
+        return EOK;
     } else {
-        return self->_ctx.current_command->func(self->argc, (char**)self->argv, user_ctx);
+        e$ret(self->_ctx.current_command->func(self->argc, (char**)self->argv, user_ctx));
+        return EOK;
     }
 }
 
