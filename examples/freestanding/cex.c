@@ -47,7 +47,7 @@ cmd_build(int argc, char** argv, void* user_ctx)
     {
         char* src = argv[1];
         char* output = str.fmt(_, "%s/%s", cexy$build_dir, str.replace(argv[1], "src/", "", _));
-        e$assertf(os.path.exists(src), "src not exists: %s", src);
+        e$assert(os.path.exists(src) && "src not exists");
 
         e$ret(os$cmd(cexy$cc, "-g", "-I.", "-nostdlib", "-static", "-ffreestanding", "-o", output, src));
 

@@ -137,7 +137,7 @@ Exception serde__App__serialize(json_wr_c* jw, App_c* item) {
         json$wr_val(item->my_string);
 
         json$wr_key("my_schema");
-        e$except_silent (err, serde.schema.serialize(jw, &item->schema)) {
+        e$except (err, serde.schema.serialize(jw, &item->schema)) {
             jw->error = err;
         }
 

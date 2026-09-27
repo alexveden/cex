@@ -258,11 +258,8 @@ cmd_test_lua_lib(int argc, char** argv, void* user_ctx)
     }
 
     if (!os.path.exists(LUA_LIB)) {
-        return e$raise(
-            Error.not_found,
-            "LUA lib not found (%s), run `./cex build-lib` first",
-            LUA_LIB
-        );
+        log$error("LUA lib not found (%s), run `./cex build-lib` first\n", LUA_LIB);
+        return Error.not_found;
     }
 
     // Making simple test script

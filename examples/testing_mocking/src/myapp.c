@@ -6,6 +6,8 @@ int main(int argc, char** argv){
     (void)argc;
     (void)argv;
     io.printf("MOCCA - Make Old C Cexy Again!\n");
-    io.printf("1 + 2 = %d\n", mylib_add(1, 2));
+    mylib_c m = { 0 };
+    e$except (err, mylib.create(&m, 0)) { return 1; }
+    io.printf("1 + 2 = %d\n", mylib.add(&m, 1, 2));
     return 0;
 }

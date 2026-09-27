@@ -22,7 +22,8 @@ App_check_args(App_c* app, i32 argc, char** argv) {
     }
 
     if (!os.path.exists(filename)) {
-        return e$raise(Error.argsparse, "File name not exists: %s", filename);
+        log$error("File name not exists: %s\n", filename);
+        return Error.argsparse;
     }
 
 
