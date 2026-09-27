@@ -1141,7 +1141,6 @@ cexsp__vsnprintf(char* buf, int count, char const* fmt, va_list va)
             l = count - 1;
         }
         buf[l] = 0;
-        // assert(c.length <= INT32_MAX);
     }
 
     return c.length;
@@ -1177,7 +1176,6 @@ cexsp__vfprintf(FILE* stream, const char* format, va_list va)
     cexsp__context c = { .file = stream, .length = 0 };
 
     cexsp__vsprintfcb(cexsp__fprintf_callback, &c, cexsp__fprintf_callback(0, &c, 0), format, va);
-    // assert(c.length <= INT32_MAX);
 
     return c.has_error == 0 ? (i32)c.length : -1;
 }

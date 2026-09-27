@@ -252,7 +252,6 @@ _cex_allocator_heap__realloc(IAllocator self, void* ptr, usize size, usize align
     usize ptr_offset = result - raw_result;
     uassert(ptr_offset <= 64 + 16);
     uassert(ptr_offset <= old_alignment + sizeof(u64) * 2);
-    // uassert(ptr_offset + size <= new_full_size);
 
 #ifdef CEX_TEST
     a->stats.n_reallocs++;

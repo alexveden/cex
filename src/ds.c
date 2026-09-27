@@ -199,7 +199,6 @@ typedef struct
     u64 hash[_CEXDS_BUCKET_LENGTH];
     ptrdiff_t index[_CEXDS_BUCKET_LENGTH];
 } _cexds__hash_bucket;
-//static_assert(sizeof(_cexds__hash_bucket) % 64 == 0, "cacheline aligned");
 
 typedef struct _cexds__hash_index
 {
@@ -1005,7 +1004,6 @@ _cexds__hmdel_key(void* a, usize elemsize, void* key, usize keysize, usize keyof
     uassert(table->used_count > 0);
     --table->used_count;
     ++table->tombstone_count;
-    // uassert(table->tombstone_count < table->slot_count/4);
     b->hash[i] = _CEXDS_HASH_DELETED;
     b->index[i] = _CEXDS_INDEX_DELETED;
 

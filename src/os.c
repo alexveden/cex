@@ -1195,27 +1195,6 @@ static bool
 cex_os__cmd__is_alive(os_cmd_c* self)
 {
     return subprocess_alive(&self->_subpr);
-
-    //     int is_alive = self->_subpr.alive;
-    //     if (!is_alive) { return 0; }
-    //
-    // #    if defined(_WIN32)
-    //     {
-    //         const unsigned long zero = 0x0;
-    //         const unsigned long wait_object_0 = 0x00000000L;
-    //
-    //         is_alive = wait_object_0 != WaitForSingleObject(process->hProcess, zero);
-    //     }
-    // #    else
-    //     {
-    //         int status;
-    //         is_alive = 0 == waitpid(self->_subpr.child, &status, WNOHANG);
-    //     }
-    // #    endif
-    //
-    //     if (!is_alive) { self->_subpr.alive = 0; }
-    //
-    //     return is_alive;
 }
 
 /// Terminates the running process

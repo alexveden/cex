@@ -5535,7 +5535,6 @@ cex_test_run_bench_case(struct _cex_test_case_s* case_ctx)
     _cex_test_flush_cpu_cache();
     f64 t_elapsed = os.timer() - t;
     uassert(t_elapsed > 0.001 && "cpu cache flush happened too fast");
-    // printf("cpu cache flush took: %fsec, call overhead: %fns\n", t_elapsed, t_overhead*1e9);
 
 
     // Cold start handle
@@ -7462,7 +7461,6 @@ _cex_allocator_heap__realloc(IAllocator self, void* ptr, usize size, usize align
     usize ptr_offset = result - raw_result;
     uassert(ptr_offset <= 64 + 16);
     uassert(ptr_offset <= old_alignment + sizeof(u64) * 2);
-    // uassert(ptr_offset + size <= new_full_size);
 
 #ifdef CEX_TEST
     a->stats.n_reallocs++;
@@ -7584,13 +7582,6 @@ _cex_arena_rec_get_align(const allocator_arena_rec_s* r)
     return 8 << (r->flags & 0x3);
 }
 
-static void
-_cex_arena_rec_set_align(allocator_arena_rec_s* r, u8 alignment)
-{
-    u8 e = (unsigned)__builtin_ctz((unsigned)(alignment)) - 3;
-    r->flags = (r->flags & ~0x3) | e;
-}
-
 // bit 2: is_free
 static bool
 _cex_arena_rec_is_free(const allocator_arena_rec_s* r)
@@ -7603,13 +7594,6 @@ _cex_arena_rec_set_free(allocator_arena_rec_s* r)
 {
     r->flags |= (1 << 2);
 }
-
-static void
-_cex_arena_rec_set_used(allocator_arena_rec_s* r)
-{
-    r->flags &= ~(1 << 2);
-}
-
 
 static void
 _cex_allocator_arena__validate(IAllocator self)
@@ -8460,7 +8444,6 @@ typedef struct
     u64 hash[_CEXDS_BUCKET_LENGTH];
     ptrdiff_t index[_CEXDS_BUCKET_LENGTH];
 } _cexds__hash_bucket;
-//static_assert(sizeof(_cexds__hash_bucket) % 64 == 0, "cacheline aligned");
 
 typedef struct _cexds__hash_index
 {
@@ -9266,7 +9249,6 @@ _cexds__hmdel_key(void* a, usize elemsize, void* key, usize keysize, usize keyof
     uassert(table->used_count > 0);
     --table->used_count;
     ++table->tombstone_count;
-    // uassert(table->tombstone_count < table->slot_count/4);
     b->hash[i] = _CEXDS_HASH_DELETED;
     b->index[i] = _CEXDS_INDEX_DELETED;
 
@@ -10480,7 +10462,6 @@ cexsp__vsnprintf(char* buf, int count, char const* fmt, va_list va)
             l = count - 1;
         }
         buf[l] = 0;
-        // assert(c.length <= INT32_MAX);
     }
 
     return c.length;
@@ -10516,7 +10497,6 @@ cexsp__vfprintf(FILE* stream, const char* format, va_list va)
     cexsp__context c = { .file = stream, .length = 0 };
 
     cexsp__vsprintfcb(cexsp__fprintf_callback, &c, cexsp__fprintf_callback(0, &c, 0), format, va);
-    // assert(c.length <= INT32_MAX);
 
     return c.has_error == 0 ? (i32)c.length : -1;
 }
@@ -12132,7 +12112,6 @@ _cex_str__fmt_callback(char* buf, void* user, u32 len)
     }
     ctx->length += len;
 
-    // fprintf(stderr, "len: %d, total_len: %d capacity: %d\n", len, ctx->length, ctx->capacity);
     if (len > 0) {
         if (ctx->buf) {
             if (buf == ctx->tmp) {
@@ -13540,7 +13519,6 @@ cex_io_fwrite(FILE* file, void* buff, usize buff_len)
     usize ret_count = fwrite(buff, 1, buff_len, file);
 
     if (unlikely(ret_count != buff_len)) {
-        // return os.get_last_error();
         switch (errno) {
             case 0:
                 return e$raise(Error.assert, "errno is not set");
@@ -16434,27 +16412,6 @@ static bool
 cex_os__cmd__is_alive(os_cmd_c* self)
 {
     return subprocess_alive(&self->_subpr);
-
-    //     int is_alive = self->_subpr.alive;
-    //     if (!is_alive) { return 0; }
-    //
-    // #    if defined(_WIN32)
-    //     {
-    //         const unsigned long zero = 0x0;
-    //         const unsigned long wait_object_0 = 0x00000000L;
-    //
-    //         is_alive = wait_object_0 != WaitForSingleObject(process->hProcess, zero);
-    //     }
-    // #    else
-    //     {
-    //         int status;
-    //         is_alive = 0 == waitpid(self->_subpr.child, &status, WNOHANG);
-    //     }
-    // #    endif
-    //
-    //     if (!is_alive) { self->_subpr.alive = 0; }
-    //
-    //     return is_alive;
 }
 
 /// Terminates the running process

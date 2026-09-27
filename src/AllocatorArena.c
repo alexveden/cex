@@ -28,13 +28,6 @@ _cex_arena_rec_get_align(const allocator_arena_rec_s* r)
     return 8 << (r->flags & 0x3);
 }
 
-static void
-_cex_arena_rec_set_align(allocator_arena_rec_s* r, u8 alignment)
-{
-    u8 e = (unsigned)__builtin_ctz((unsigned)(alignment)) - 3;
-    r->flags = (r->flags & ~0x3) | e;
-}
-
 // bit 2: is_free
 static bool
 _cex_arena_rec_is_free(const allocator_arena_rec_s* r)
@@ -47,13 +40,6 @@ _cex_arena_rec_set_free(allocator_arena_rec_s* r)
 {
     r->flags |= (1 << 2);
 }
-
-static void
-_cex_arena_rec_set_used(allocator_arena_rec_s* r)
-{
-    r->flags &= ~(1 << 2);
-}
-
 
 static void
 _cex_allocator_arena__validate(IAllocator self)

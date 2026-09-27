@@ -404,7 +404,6 @@ cex_io_fwrite(FILE* file, void* buff, usize buff_len)
     usize ret_count = fwrite(buff, 1, buff_len, file);
 
     if (unlikely(ret_count != buff_len)) {
-        // return os.get_last_error();
         switch (errno) {
             case 0:
                 return e$raise(Error.assert, "errno is not set");

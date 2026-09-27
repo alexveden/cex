@@ -506,7 +506,6 @@ cex_test_run_bench_case(struct _cex_test_case_s* case_ctx)
     _cex_test_flush_cpu_cache();
     f64 t_elapsed = os.timer() - t;
     uassert(t_elapsed > 0.001 && "cpu cache flush happened too fast");
-    // printf("cpu cache flush took: %fsec, call overhead: %fns\n", t_elapsed, t_overhead*1e9);
 
 
     // Cold start handle

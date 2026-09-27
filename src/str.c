@@ -1217,7 +1217,6 @@ _cex_str__fmt_callback(char* buf, void* user, u32 len)
     }
     ctx->length += len;
 
-    // fprintf(stderr, "len: %d, total_len: %d capacity: %d\n", len, ctx->length, ctx->capacity);
     if (len > 0) {
         if (ctx->buf) {
             if (buf == ctx->tmp) {
