@@ -672,7 +672,7 @@ static arr$(char*) cex_os__fs__find(char* path_pattern, bool is_recursive, IAllo
     str_s dir_part = os.path.split(path_pattern, true);
     if (dir_part.buf == NULL) {
 #    if defined(CEX_TEST) || defined(CEX_BUILD)
-        (void)e$raise(Error.argument, "Bad path: os.fn.find()");
+        log$error("os.fs.find(): path_pattern is NULL\n");
 #    endif
         return NULL;
     }

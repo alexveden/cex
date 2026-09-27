@@ -131,10 +131,10 @@ cexy_src_include_changed(char* target_path, char* src_path, arr$(char*) alt_incl
 
     auto src_meta = os.fs.stat(src_path);
     if (!src_meta.is_valid) {
-        (void)e$raise(src_meta.error, "Error src");
+        log$error("os.fs.stat failed for src '%s': %s\n", src_path, src_meta.error);
         return false;
     } else if (!src_meta.is_file || src_meta.is_symlink) {
-        (void)e$raise("Bad type", "src is not a file");
+        log$error("src is not a file: '%s'\n", src_path);
         return false;
     }
 
@@ -143,11 +143,11 @@ cexy_src_include_changed(char* target_path, char* src_path, arr$(char*) alt_incl
         if (target_meta.error == Error.not_found) {
             return true;
         } else {
-            (void)e$raise(target_meta.error, "target_path is invalid");
+            log$error("target_path '%s' is invalid: %s\n", target_path, target_meta.error);
             return false;
         }
     } else if (!target_meta.is_file || target_meta.is_symlink) {
-        (void)e$raise("Bad type", "target_path is not a file");
+        log$error("target_path is not a file: '%s'\n", target_path);
         return false;
     }
 
@@ -191,7 +191,7 @@ cexy_src_include_changed(char* target_path, char* src_path, arr$(char*) alt_incl
 
         char* code = io.file.load(src_path, _);
         if (code == NULL) {
-            (void)e$raise("IOError", "src is not a file");
+            log$error("io.file.load failed for src: '%s'\n", src_path);
             return false;
         }
 
@@ -265,20 +265,20 @@ cexy_src_changed(char* target_path, char** src_array, usize src_array_len)
             log$trace("Target '%s' not exists, needs build.\n", target_path);
             return true;
         } else {
-            (void)e$raise(target_ftype.error, "target_path is invalid");
+            log$error("target_path '%s' is invalid: %s\n", target_path, target_ftype.error);
             return false;
         }
     } else if (!target_ftype.is_file || target_ftype.is_symlink) {
-        (void)e$raise("Bad type", "target_path is not a file");
+        log$error("target_path is not a file: '%s'\n", target_path);
         return false;
     }
 
     for$each (p, src_array, src_array_len) {
         auto ftype = os.fs.stat(p);
         if (!ftype.is_valid) {
-            (void)e$raise(ftype.error, "Error src");
+            log$error("os.fs.stat failed for src '%s': %s\n", p, ftype.error);
         } else if (!ftype.is_file || ftype.is_symlink) {
-            (void)e$raise("Bad type", "src is not a regular file");
+            log$error("src is not a regular file: '%s'\n", p);
         } else {
             if (ftype.mtime > target_ftype.mtime) {
                 log$trace("Source changed '%s'\n", p);
