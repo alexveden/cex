@@ -5618,7 +5618,7 @@ cex_test_main_fn(int argc, char** argv)
 
     struct _cex_test_context_s* ctx = &_cex_test__mainfn_state;
     if (ctx->test_cases == NULL) {
-        fprintf(stderr, "No test$case() in the test file: %s\n", __FILE__);
+        fprintf(stderr, "No test$case() in the test file: %s\n", ctx->suite_file);
         return 1;
     }
     u32 max_name = 0;
@@ -5687,7 +5687,7 @@ cex_test_main_fn(int argc, char** argv)
                 "[%s] test$setup_suite() failed with %s (suite %s stopped)\n",
                 ctx->has_ansi ? io$ansi("FAIL", "31") : "FAIL",
                 err,
-                __FILE__
+                ctx->suite_file
             );
             if (e$traceback_len > 0) { e$traceback_print(stderr); }
             return 1;
@@ -5750,7 +5750,7 @@ cex_test_main_fn(int argc, char** argv)
                 "[%s] test$setup() failed with '%s' (suite %s stopped)\n",
                 ctx->has_ansi ? io$ansi("FAIL", "31") : "FAIL",
                 err,
-                __FILE__
+                ctx->suite_file
             );
             if (e$traceback_len > 0) { e$traceback_print(stderr); }
             return 1;
@@ -5814,7 +5814,7 @@ cex_test_main_fn(int argc, char** argv)
                 "[%s] test$teardown() failed with %s (suite %s stopped)\n",
                 ctx->has_ansi ? io$ansi("FAIL", "31") : "FAIL",
                 err,
-                __FILE__
+                ctx->suite_file
             );
             if (e$traceback_len > 0) { e$traceback_print(stderr); }
             return 1;
@@ -5854,7 +5854,7 @@ cex_test_main_fn(int argc, char** argv)
                 "[%s] test$teardown_suite() failed with %s (suite %s stopped)\n",
                 ctx->has_ansi ? io$ansi("FAIL", "31") : "FAIL",
                 err,
-                __FILE__
+                ctx->suite_file
             );
             if (e$traceback_len > 0) { e$traceback_print(stderr); }
             return 1;
