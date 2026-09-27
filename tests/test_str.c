@@ -1787,6 +1787,10 @@ test$case(test_str_sprintf)
     tassert_er(Error.argument, str.sprintf(buffer, 0, "%s", ""));
     tassert_eq(buffer[0], 'z'); // untouched!
 
+    memset(buffer, 'z', sizeof(buffer));
+    tassert_er(Error.argument, str.sprintf(buffer, sizeof(buffer), NULL));
+    tassert_eq(buffer[0], 'z'); // untouched!
+
     return EOK;
 }
 

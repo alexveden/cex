@@ -245,9 +245,9 @@ cex_str__slice__copy(char* dest, str_s src, usize destlen)
 static Exception
 cex_str_vsprintf(char* dest, usize dest_len, char* format, va_list va)
 {
-    if (unlikely(dest == NULL)) { return Error.argument; }
-    if (unlikely(dest_len == 0)) { return Error.argument; }
-    uassert(format != NULL);
+    if (unlikely(dest == NULL)) { return e$raise(Error.argument, "dest is NULL"); }
+    if (unlikely(dest_len == 0)) { return e$raise(Error.argument, "dest_len is 0"); }
+    if (unlikely(format == NULL)) { return e$raise(Error.argument, "format is NULL"); }
 
     dest[dest_len - 1] = '\0'; // always null term at capacity
 
