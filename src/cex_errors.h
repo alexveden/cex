@@ -51,11 +51,9 @@ static_assert(
 #    define CEX_TRACEBACK_CAP 32
 #endif
 
-/// Assertion label, shared by uassert() and _cex_errors_panic_handler()'s suppressible check
+/// Assertion label, shared by uassert()/uassert_always() and _cex_errors_panic_handler()'s
+/// suppressible check
 #define _cex_errors_assert_prefix "[ASSERT] "
-
-/// Assertion label for uassert_always(), never suppressible by uassert_disable()
-#define _cex_errors_assert_always_prefix "[ASSERT_ALWAYS] "
 
 /* ==== 2. Panic axis: CEX_PANIC_VERBOSITY ==== */
 
@@ -132,7 +130,7 @@ int __cex_test_uassert_enabled = 1;
             ({                                                                                     \
                 if (unlikely(!((A)))) {                                                            \
                     cex$platform_panic(                                                            \
-                        _cex_errors_assert_always_prefix,                                          \
+                        _cex_errors_assert_prefix,                                                 \
                         __FILE_NAME__,                                                             \
                         __LINE__,                                                                  \
                         NULL,                                                                      \
@@ -158,7 +156,7 @@ int __cex_test_uassert_enabled = 1;
             ({                                                                                     \
                 if (unlikely(!((A)))) {                                                            \
                     cex$platform_panic(                                                            \
-                        _cex_errors_assert_always_prefix,                                          \
+                        _cex_errors_assert_prefix,                                                 \
                         __FILE_NAME__,                                                             \
                         __LINE__,                                                                  \
                         __func__,                                                                  \
