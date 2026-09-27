@@ -17632,6 +17632,7 @@ cexy__test__run(char* target, char* cmd, int argc, char** argv)
             io.printf("-------------------------------------\n\n");
         } else {
             if (!os.path.exists(target)) {
+                log$error("Test file not found: %s\n", target);
                 return e$raise(Error.not_found, "Test file not found");
             }
         }
@@ -17877,7 +17878,10 @@ _cexy__process_update_code(
     mem$scope(tmem$, _)
     {
         char* code = io.file.load(code_file, _);
-        if (unlikely(code == NULL)) { return e$raise(Error.io, "failed loading code file"); }
+        if (unlikely(code == NULL)) {
+            log$error("Failed loading: %s\n", code_file);
+            return e$raise(Error.io, "failed loading code file");
+        }
 
         bool is_header = str.ends_with(code_file, ".h");
 
@@ -18077,6 +18081,7 @@ cexy__cmd__process(int argc, char** argv, void* user_ctx)
         // Use user passed pattern
     } else {
         if (!os.path.exists(target)) {
+            log$error("Target file not exists: %s\n", target);
             return e$raise(Error.not_found, "Target file not exists");
         }
         only_update = false;
@@ -18118,11 +18123,15 @@ cexy__cmd__process(int argc, char** argv, void* user_ctx)
                         log$debug("CEX skipped (no .h file for: %s)\n", src_fn);
                         continue;
                     } else {
+                        log$error("Header file not found: %s\n", hdr_fn);
                         return e$raise(Error.not_found, "Header file not exists");
                     }
                 }
                 char* code = io.file.load(src_fn, _);
-                if (unlikely(code == NULL)) { return e$raise(Error.io, "failed loading code file"); }
+                if (unlikely(code == NULL)) {
+                    log$error("Failed loading: %s\n", src_fn);
+                    return e$raise(Error.io, "failed loading code file");
+                }
                 arr$(cex_token_s) items = arr$new(items, _);
                 arr$(cex_decl_s*) decls = arr$new(decls, _, .capacity = 128);
 
@@ -18130,6 +18139,7 @@ cexy__cmd__process(int argc, char** argv, void* user_ctx)
                 cex_token_s t;
                 while ((t = CexParser.next_entity(&lx, &items)).type) {
                     if (t.type == CexTkn__error) {
+                        log$error("Error parsing: %s\n", src_fn);
                         return e$raise(Error.integrity, "Error parsing file");
                     }
                     cex_decl_s* d = CexParser.decl_parse(&lx, t, items, cexy$process_ignore_kw, _);
@@ -18261,7 +18271,10 @@ cexy__cmd__stats(int argc, char** argv, void* user_ctx)
             mem$scope(tmem$, _)
             {
                 char* code = io.file.load(src_fn.key, _);
-                if (!code) { return e$raise(Error.os, "Error opening file"); }
+                if (!code) {
+                    log$error("Error opening file: %s\n", src_fn.key);
+                    return e$raise(Error.os, "Error opening file");
+                }
                 stats->n_files++;
 
                 if (code[0] != '\0') { stats->n_lines_total++; }
@@ -18272,6 +18285,7 @@ cexy__cmd__stats(int argc, char** argv, void* user_ctx)
                 u32 file_loc = 0;
                 while ((t = CexParser.next_token(&lx)).type) {
                     if (t.type == CexTkn__error) {
+                        log$error("Error parsing: %s\n", src_fn.key);
                         return e$raise(Error.integrity, "Error parsing file");
                     }
                     switch (t.type) {
@@ -18693,6 +18707,7 @@ _cexy__display_full_info(
             {
                 char* code = io.file.load(src_fn, _);
                 if (code == NULL) {
+                    log$error("Error loading: %s\n", src_fn);
                     return e$raise(Error.not_found, "Error loading");
                 }
                 arr$(cex_token_s) items = arr$new(items, _);
@@ -18911,6 +18926,7 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
 
                 char* code = io.file.load(src_fn, arena);
                 if (code == NULL) {
+                    log$error("Error loading: %s\n", src_fn);
                     return e$raise(Error.not_found, "Error loading");
                 }
                 arr$(cex_token_s) items = arr$new(items, _);
@@ -19748,16 +19764,17 @@ cexy__app__find_app_target_src(IAllocator allc, char* target, char** out_result)
     }
     char* app_src = str.fmt(allc, "%s%c%s.c", cexy$src_dir, os$PATH_SEP, target);
     log$trace("Probing %s\n", app_src);
-    if (!os.path.exists(app_src)) {
-        mem$free(allc, app_src);
-
-        app_src = os$path_join(allc, cexy$src_dir, target, "main.c");
-        log$trace("Probing %s\n", app_src);
         if (!os.path.exists(app_src)) {
             mem$free(allc, app_src);
-            return e$raise(Error.not_found, "App target source not found");
+
+            app_src = os$path_join(allc, cexy$src_dir, target, "main.c");
+            log$trace("Probing %s\n", app_src);
+            if (!os.path.exists(app_src)) {
+                mem$free(allc, app_src);
+                log$error("App target source not found: %s\n", target);
+                return e$raise(Error.not_found, "App target source not found");
+            }
         }
-    }
     *out_result = app_src;
     return EOK;
 }
@@ -19892,6 +19909,7 @@ cexy__cmd__simple_fuzz(int argc, char** argv, void* user_ctx)
             if (max_time == 0) { max_time = 60; }
         } else {
             if (!os.path.exists(src)) {
+                log$error("target not found: %s\n", src);
                 return e$raise(Error.not_found, "target not found");
             }
         }
@@ -20188,6 +20206,7 @@ cexy__utils__pkgconf(
                 }
 
                 if (!is_found) {
+                    log$error("vcpkg: lib not found: %s\n", it);
                     return e$raise(Error.not_found, "vcpkg: lib not found");
                 }
             }
@@ -20280,9 +20299,11 @@ cexy__utils__git_lib_fetch(
 )
 {
     if (git_url == NULL || git_url[0] == '\0') {
+        log$error("Empty or null git_url: '%s'\n", git_url ? git_url : "(null)");
         return e$raise(Error.argument, "Empty or null git_url");
     }
     if (!str.ends_with(git_url, ".git")) {
+        log$error("git_url must end with .git: %s\n", git_url);
         return e$raise(Error.argument, "git_url must end with .git");
     }
     if (git_label == NULL || git_label[0] == '\0') { git_label = "HEAD"; }
@@ -20342,6 +20363,7 @@ cexy__utils__git_lib_fetch(
                                : str.fmt(_, "%s/%s", out_dir, os.path.basename(it, _));
             auto in_stat = os.fs.stat(in_path);
             if (!in_stat.is_valid) {
+                log$error("Invalid stat for path: %s\n", in_path);
                 return e$raise(in_stat.error, "Invalid stat for path");
             }
 
@@ -20351,6 +20373,7 @@ cexy__utils__git_lib_fetch(
                 if (in_stat.is_directory) {
                     if (out_stat.is_valid && update_existing) {
                         if (!out_stat.is_directory) {
+                            log$error("out_path expected to be a directory: %s\n", out_path);
                             return e$raise(Error.integrity, "out_path expected to be a directory");
                         }
                         str_s src_dir = str.sstr(in_path);
