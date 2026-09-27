@@ -297,9 +297,9 @@ cex_os_get_last_error(void)
 static Exception
 cex_os__fs__rename(char* old_path, char* new_path)
 {
-    if (old_path == NULL || old_path[0] == '\0') { return Error.argument; }
-    if (new_path == NULL || new_path[0] == '\0') { return Error.argument; }
-    if (os.path.exists(new_path)) { return Error.exists; }
+    if (unlikely(old_path == NULL || old_path[0] == '\0')) { return e$raise(Error.argument, "old_path is empty"); }
+    if (unlikely(new_path == NULL || new_path[0] == '\0')) { return e$raise(Error.argument, "new_path is empty"); }
+    if (unlikely(os.path.exists(new_path))) { return e$raise(Error.exists, "new_path already exists"); }
 #    ifdef _WIN32
     if (!MoveFileExA(old_path, new_path, MOVEFILE_REPLACE_EXISTING)) { return os.get_last_error(); }
     return EOK;
@@ -313,7 +313,7 @@ cex_os__fs__rename(char* old_path, char* new_path)
 static Exception
 cex_os__fs__mkdir(char* path)
 {
-    if (path == NULL || path[0] == '\0') { return Error.argument; }
+    if (unlikely(path == NULL || path[0] == '\0')) { return e$raise(Error.argument, "path is empty"); }
 #    ifdef _WIN32
     int result = mkdir(path);
 #    else
@@ -331,7 +331,7 @@ cex_os__fs__mkdir(char* path)
 static Exception
 cex_os__fs__mkpath(char* path)
 {
-    if (path == NULL || path[0] == '\0') { return Error.argument; }
+    if (unlikely(path == NULL || path[0] == '\0')) { return e$raise(Error.argument, "path is empty"); }
     str_s dir = os.path.split(path, true);
     char dir_path[PATH_MAX] = { 0 };
     e$ret(str.slice.copy(dir_path, dir, sizeof(dir_path)));
@@ -451,10 +451,10 @@ cex_os__fs__stat(char* path)
 static Exception
 cex_os__fs__remove(char* path)
 {
-    if (path == NULL || path[0] == '\0') { return Error.argument; }
+    if (unlikely(path == NULL || path[0] == '\0')) { return e$raise(Error.argument, "path is empty"); }
 
     os_fs_stat_s stat = os.fs.stat(path);
-    if (!stat.is_valid) { return stat.error; }
+    if (unlikely(!stat.is_valid)) { e$ret(stat.error); }
 #    ifdef _WIN32
     if (stat.is_file || stat.is_symlink) {
         if (!DeleteFileA(path)) { return os.get_last_error(); }
@@ -475,7 +475,7 @@ Exception
 cex_os__fs__dir_walk(char* path, bool is_recursive, os_fs_dir_walk_f callback_fn, void* user_ctx)
 {
     (void)user_ctx;
-    if (path == NULL || path[0] == '\0') { return Error.argument; }
+    if (unlikely(path == NULL || path[0] == '\0')) { return e$raise(Error.argument, "path is empty"); }
     if (unlikely(callback_fn == NULL)) { return e$raise(Error.argument, "callback_fn is NULL"); }
     Exc result = Error.os;
 
@@ -569,8 +569,8 @@ _os__fs__remove_tree_walker(char* path, os_fs_stat_s ftype, void* user_ctx)
 static Exception
 cex_os__fs__remove_tree(char* path)
 {
-    if (path == NULL || path[0] == '\0') { return Error.argument; }
-    if (!os.path.exists(path)) { return Error.not_found; }
+    if (unlikely(path == NULL || path[0] == '\0')) { return e$raise(Error.argument, "path is empty"); }
+    if (unlikely(!os.path.exists(path))) { return e$raise(Error.not_found, "path does not exist"); }
     e$except (err, cex_os__fs__dir_walk(path, true, _os__fs__remove_tree_walker, NULL)) {
         return err;
     }
@@ -614,13 +614,13 @@ _os__fs__copy_tree_walker(char* path, os_fs_stat_s ftype, void* user_ctx)
 static Exception
 cex_os__fs__copy_tree(char* src_dir, char* dst_dir)
 {
-    if (src_dir == NULL || src_dir[0] == '\0') { return Error.argument; }
+    if (unlikely(src_dir == NULL || src_dir[0] == '\0')) { return e$raise(Error.argument, "src_dir is empty"); }
     os_fs_stat_s s = os.fs.stat(src_dir);
-    if (!s.is_valid) { return s.error; }
-    if (!s.is_directory) { return Error.argument; }
+    if (unlikely(!s.is_valid)) { e$ret(s.error); }
+    if (unlikely(!s.is_directory)) { return e$raise(Error.argument, "src_dir is not a directory"); }
 
-    if (dst_dir == NULL || dst_dir[0] == '\0') { return Error.argument; }
-    if (os.path.exists(dst_dir)) { return Error.exists; }
+    if (unlikely(dst_dir == NULL || dst_dir[0] == '\0')) { return e$raise(Error.argument, "dst_dir is empty"); }
+    if (unlikely(os.path.exists(dst_dir))) { return e$raise(Error.exists, "dst_dir already exists"); }
 
     // TODO: add absolute path overlap check
 
@@ -655,10 +655,10 @@ _os__fs__find_walker(char* path, os_fs_stat_s ftype, void* user_ctx)
 
     // allocate new string because path is stack allocated buffer in os__fs__dir_walk()
     char* new_path = str.clone(path, ctx->allc);
-    if (new_path == NULL) { return Error.memory; }
+    if (unlikely(new_path == NULL)) { return e$raise(Error.memory, "str.clone failed"); }
 
     // Doing graceful memory check, otherwise arr$push will assert
-    if (!arr$grow_check(ctx->result, 1)) { return Error.memory; }
+    if (unlikely(!arr$grow_check(ctx->result, 1))) { return e$raise(Error.memory, "array grow failed"); }
     arr$push(ctx->result, new_path);
     return EOK;
 }
@@ -744,7 +744,7 @@ cex_os__fs__getcwd(IAllocator allc)
 static Exception
 cex_os__fs__chdir(char* path)
 {
-    if (path == NULL || path[0] == '\0') { return Error.exists; }
+    if (unlikely(path == NULL || path[0] == '\0')) { return e$raise(Error.exists, "path is empty"); }
 
     int result;
 #    ifdef _WIN32
@@ -753,9 +753,9 @@ cex_os__fs__chdir(char* path)
     result = chdir(path);
 #    endif
 
-    if (result == -1) {
+    if (unlikely(result == -1)) {
         if (errno == ENOENT) {
-            return Error.not_found;
+            return e$raise(Error.not_found, "path does not exist");
         } else {
             return strerror(errno);
         }
@@ -769,12 +769,12 @@ cex_os__fs__chdir(char* path)
 static Exception
 cex_os__fs__copy(char* src_path, char* dst_path)
 {
-    if (src_path == NULL || src_path[0] == '\0' || dst_path == NULL || dst_path[0] == '\0') {
-        return Error.argument;
+    if (unlikely(src_path == NULL || src_path[0] == '\0' || dst_path == NULL || dst_path[0] == '\0')) {
+        return e$raise(Error.argument, "src_path or dst_path is empty");
     }
     log$trace("copying %s -> %s\n", src_path, dst_path);
 
-    if (os.path.exists(dst_path)) { return Error.exists; }
+    if (unlikely(os.path.exists(dst_path))) { return e$raise(Error.exists, "dst_path already exists"); }
 
 #    ifdef _WIN32
     if (!CopyFileA(src_path, dst_path, FALSE)) { return os.get_last_error(); }
@@ -784,7 +784,7 @@ cex_os__fs__copy(char* src_path, char* dst_path)
     int dst_fd = -1;
     size_t buf_size = 32 * 1024;
     char* buf = mem$malloc(mem$, buf_size);
-    if (buf == NULL) { return Error.memory; }
+    if (unlikely(buf == NULL)) { return e$raise(Error.memory, "buffer allocation failed"); }
     Exc result = Error.runtime;
 
     if ((src_fd = open(src_path, O_RDONLY)) == -1) {
@@ -861,9 +861,9 @@ static Exception
 cex_os__env__unset(char* name)
 {
 #    ifdef _WIN32
-    if (_putenv_s(name, "") != 0) { return Error.runtime; }
+    if (unlikely(_putenv_s(name, "") != 0)) { return e$raise(Error.runtime, "unsetenv failed"); }
 #    else
-    if (unsetenv(name) == -1) { return Error.runtime; }
+    if (unlikely(unsetenv(name) == -1)) { return e$raise(Error.runtime, "unsetenv failed"); }
 #    endif
     return EOK;
 }
@@ -1223,7 +1223,7 @@ static Exception
 cex_os__cmd__kill(os_cmd_c* self)
 {
     if (subprocess_alive(&self->_subpr)) {
-        if (subprocess_terminate(&self->_subpr) != 0) { return Error.os; }
+        if (unlikely(subprocess_terminate(&self->_subpr) != 0)) { return e$raise(Error.os, "subprocess_terminate failed"); }
     }
     return EOK;
 }
@@ -1344,7 +1344,7 @@ cex_os__cmd__write_line(os_cmd_c* self, char* line)
     if (unlikely(self == NULL)) { return e$raise(Error.argument, "self is NULL"); }
     if (unlikely(line == NULL)) { return e$raise(Error.argument, "line is NULL"); }
 
-    if (self->_subpr.stdin_file == NULL) { return Error.not_found; }
+    if (unlikely(self->_subpr.stdin_file == NULL)) { return e$raise(Error.not_found, "stdin is not available"); }
 
     e$except (err, io.file.writeln(self->_subpr.stdin_file, line)) { return err; }
     fflush(self->_subpr.stdin_file);
@@ -1422,15 +1422,15 @@ cex_os__cmd__run(char** args, usize args_len, os_cmd_c* out_cmd)
     if (unlikely(out_cmd == NULL)) { return e$raise(Error.argument, "out_cmd is NULL"); }
     memset(out_cmd, 0, sizeof(os_cmd_c));
 
-    if (args == NULL || args_len == 0) {
+    if (unlikely(args == NULL || args_len == 0)) {
         return e$raise(Error.argument, "`args` argument is empty or null");
     }
-    if (args_len == 1 || args[args_len - 1] != NULL) {
+    if (unlikely(args_len == 1 || args[args_len - 1] != NULL)) {
         return e$raise(Error.argument, "`args` last item must be a NULL");
     }
 
     for (u32 i = 0; i < args_len - 1; i++) {
-        if (args[i] == NULL || args[i][0] == '\0') {
+        if (unlikely(args[i] == NULL || args[i][0] == '\0')) {
             return e$raise(Error.argument, "`args` item is NULL/empty");
         }
     }
@@ -1495,7 +1495,7 @@ end:
     return result;
 #    else
     pid_t cpid = fork();
-    if (cpid < 0) { return e$raise(Error.os, "Could not fork child process"); }
+    if (unlikely(cpid < 0)) { return e$raise(Error.os, "Could not fork child process"); }
 
     if (cpid == 0) {
         if (execvp(args[0], (char* const*)args) < 0) {

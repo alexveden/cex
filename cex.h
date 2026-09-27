@@ -11897,7 +11897,10 @@ cex_str__convert__to_f32s(str_s s, f32* num)
 {
     if (unlikely(!num)) { return e$raise(Error.argument, "num is NULL"); }
     f64 res = 0;
-    e$ret(cex_str_to_double_(s.buf, s.len, &res, -37, 38));
+    e$except (err, cex_str_to_double_(s.buf, s.len, &res, -37, 38)) {
+        *num = 0;
+        return err;
+    }
     *num = (f32)res;
     return EOK;
 }
@@ -11915,7 +11918,10 @@ cex_str__convert__to_i8s(str_s s, i8* num)
 {
     if (unlikely(!num)) { return e$raise(Error.argument, "num is NULL"); }
     i64 res = 0;
-    e$ret(cex_str_to_signed_num_(s.buf, s.len, &res, INT8_MIN, INT8_MAX));
+    e$except (err, cex_str_to_signed_num_(s.buf, s.len, &res, INT8_MIN, INT8_MAX)) {
+        *num = 0;
+        return err;
+    }
     *num = (i8)res;
     return EOK;
 }
@@ -11925,7 +11931,10 @@ cex_str__convert__to_i16s(str_s s, i16* num)
 {
     if (unlikely(!num)) { return e$raise(Error.argument, "num is NULL"); }
     i64 res = 0;
-    e$ret(cex_str_to_signed_num_(s.buf, s.len, &res, INT16_MIN, INT16_MAX));
+    e$except (err, cex_str_to_signed_num_(s.buf, s.len, &res, INT16_MIN, INT16_MAX)) {
+        *num = 0;
+        return err;
+    }
     *num = (i16)res;
     return EOK;
 }
@@ -11935,7 +11944,10 @@ cex_str__convert__to_i32s(str_s s, i32* num)
 {
     if (unlikely(!num)) { return e$raise(Error.argument, "num is NULL"); }
     i64 res = 0;
-    e$ret(cex_str_to_signed_num_(s.buf, s.len, &res, INT32_MIN, INT32_MAX));
+    e$except (err, cex_str_to_signed_num_(s.buf, s.len, &res, INT32_MIN, INT32_MAX)) {
+        *num = 0;
+        return err;
+    }
     *num = (i32)res;
     return EOK;
 }
@@ -11947,7 +11959,10 @@ cex_str__convert__to_i64s(str_s s, i64* num)
     if (unlikely(!num)) { return e$raise(Error.argument, "num is NULL"); }
     i64 res = 0;
     // NOTE:INT64_MIN+1 because negating of INT64_MIN leads to UB!
-    e$ret(cex_str_to_signed_num_(s.buf, s.len, &res, INT64_MIN + 1, INT64_MAX));
+    e$except (err, cex_str_to_signed_num_(s.buf, s.len, &res, INT64_MIN + 1, INT64_MAX)) {
+        *num = 0;
+        return err;
+    }
     *num = res;
     return EOK;
 }
@@ -11957,7 +11972,10 @@ cex_str__convert__to_u8s(str_s s, u8* num)
 {
     if (unlikely(!num)) { return e$raise(Error.argument, "num is NULL"); }
     u64 res = 0;
-    e$ret(cex_str_to_unsigned_num_(s.buf, s.len, &res, UINT8_MAX));
+    e$except (err, cex_str_to_unsigned_num_(s.buf, s.len, &res, UINT8_MAX)) {
+        *num = 0;
+        return err;
+    }
     *num = (u8)res;
     return EOK;
 }
@@ -11967,7 +11985,10 @@ cex_str__convert__to_u16s(str_s s, u16* num)
 {
     if (unlikely(!num)) { return e$raise(Error.argument, "num is NULL"); }
     u64 res = 0;
-    e$ret(cex_str_to_unsigned_num_(s.buf, s.len, &res, UINT16_MAX));
+    e$except (err, cex_str_to_unsigned_num_(s.buf, s.len, &res, UINT16_MAX)) {
+        *num = 0;
+        return err;
+    }
     *num = (u16)res;
     return EOK;
 }
@@ -11977,7 +11998,10 @@ cex_str__convert__to_u32s(str_s s, u32* num)
 {
     if (unlikely(!num)) { return e$raise(Error.argument, "num is NULL"); }
     u64 res = 0;
-    e$ret(cex_str_to_unsigned_num_(s.buf, s.len, &res, UINT32_MAX));
+    e$except (err, cex_str_to_unsigned_num_(s.buf, s.len, &res, UINT32_MAX)) {
+        *num = 0;
+        return err;
+    }
     *num = (u32)res;
     return EOK;
 }
@@ -11987,9 +12011,11 @@ cex_str__convert__to_u64s(str_s s, u64* num)
 {
     if (unlikely(!num)) { return e$raise(Error.argument, "num is NULL"); }
     u64 res = 0;
-    e$ret(cex_str_to_unsigned_num_(s.buf, s.len, &res, UINT64_MAX));
+    e$except (err, cex_str_to_unsigned_num_(s.buf, s.len, &res, UINT64_MAX)) {
+        *num = 0;
+        return err;
+    }
     *num = res;
-
     return EOK;
 }
 
@@ -13788,7 +13814,7 @@ _cex_argparse__error(argparse_c* self, argparse_opt_s* opt, char* reason, bool i
         cexsp__fprintf(stdout, "error: option `-%c` %s\n", opt->short_name, reason);
     }
 
-    return Error.argument;
+    return e$raise(Error.argument, "option parsing error");
 }
 
 static void
@@ -13973,7 +13999,8 @@ _cex_argparse__convert(char* s, argparse_opt_s* opt)
     // NOTE: this hits UBSAN because we casting convert function of
     // (char*, void*) into str.convert.to_u32(char*, u32*)
     // however we do explicit type checking and tagging so it should be good!
-    return opt->convert(s, opt->value);
+    e$ret(opt->convert(s, opt->value));
+    return EOK;
 }
 
 static Exception
@@ -13995,7 +14022,7 @@ _cex_argparse__getvalue(argparse_c* self, argparse_opt_s* opt, bool is_long)
                 self->_ctx.cpidx++;
                 *(char**)opt->value = *++self->argv;
             } else {
-                return _cex_argparse__error(self, opt, "requires a value", is_long);
+                e$ret(_cex_argparse__error(self, opt, "requires a value", is_long));
             }
             opt->is_present = true;
             break;
@@ -14010,12 +14037,12 @@ _cex_argparse__getvalue(argparse_c* self, argparse_opt_s* opt, bool is_long)
         case CexArgParseType__f32:
         case CexArgParseType__f64:
             if (self->_ctx.optvalue) {
-                if (self->_ctx.optvalue[0] == '\0') {
-                    return _cex_argparse__error(self, opt, "requires a value", is_long);
+                if (unlikely(self->_ctx.optvalue[0] == '\0')) {
+                    e$ret(_cex_argparse__error(self, opt, "requires a value", is_long));
                 }
                 uassert(opt->convert != NULL);
                 e$except (err, _cex_argparse__convert(self->_ctx.optvalue, opt)) {
-                    return _cex_argparse__error(self, opt, "argument parsing error", is_long);
+                    e$ret(_cex_argparse__error(self, opt, "argument parsing error", is_long));
                 }
                 self->_ctx.optvalue = NULL;
             } else if (self->argc > 1) {
@@ -14023,47 +14050,48 @@ _cex_argparse__getvalue(argparse_c* self, argparse_opt_s* opt, bool is_long)
                 self->_ctx.cpidx++;
                 self->argv++;
                 e$except (err, _cex_argparse__convert(*self->argv, opt)) {
-                    return _cex_argparse__error(self, opt, "argument parsing error", is_long);
+                    e$ret(_cex_argparse__error(self, opt, "argument parsing error", is_long));
                 }
             } else {
-                return _cex_argparse__error(self, opt, "requires a value", is_long);
+                e$ret(_cex_argparse__error(self, opt, "requires a value", is_long));
             }
             if (opt->type == CexArgParseType__f32) {
                 f32 res = *(f32*)opt->value;
-                if (__builtin_isnan(res) || res == INFINITY || res == -INFINITY) {
-                    return _cex_argparse__error(
+                if (unlikely(__builtin_isnan(res) || res == INFINITY || res == -INFINITY)) {
+                    e$ret(_cex_argparse__error(
                         self,
                         opt,
                         "argument parsing error (float out of range)",
                         is_long
-                    );
+                    ));
                 }
             } else if (opt->type == CexArgParseType__f64) {
                 f64 res = *(f64*)opt->value;
-                if (__builtin_isnan(res) || res == INFINITY || res == -INFINITY) {
-                    return _cex_argparse__error(
+                if (unlikely(__builtin_isnan(res) || res == INFINITY || res == -INFINITY)) {
+                    e$ret(_cex_argparse__error(
                         self,
                         opt,
                         "argument parsing error (float out of range)",
                         is_long
-                    );
+                    ));
                 }
             }
             opt->is_present = true;
             break;
         default:
             uassert(false && "unhandled");
-            return Error.runtime;
+            return e$raise(Error.runtime, "unhandled option type");
     }
 
 skipped:
     if (opt->callback) {
         opt->is_present = true;
-        return opt->callback(self, opt, opt->callback_data);
+        e$ret(opt->callback(self, opt, opt->callback_data));
+        return EOK;
     } else {
         if (opt->short_name == 'h') {
             cex_argparse_usage(self);
-            return Error.argsparse;
+            return e$raise(Error.argsparse, "help requested");
         }
     }
 
@@ -14078,21 +14106,21 @@ _cex_argparse__options_check(argparse_c* self, bool reset)
         if (opt->type != CexArgParseType__group) {
             if (reset) {
                 opt->is_present = 0;
-                if (!(opt->short_name || opt->long_name)) {
+                if (unlikely(!(opt->short_name || opt->long_name))) {
                     return e$raise(Error.assert, "options both long/short_name NULL");
                 }
-                if (opt->value == NULL && opt->short_name != 'h') {
+                if (unlikely(opt->value == NULL && opt->short_name != 'h')) {
                     return e$raise(Error.assert, "option value is null");
                 }
             } else {
-                if (opt->required && !opt->is_present) {
+                if (unlikely(opt->required && !opt->is_present)) {
                     cexsp__fprintf(
                         stdout,
                         "Error: missing required option: -%c/--%s\n",
                         opt->short_name,
                         opt->long_name
                     );
-                    return Error.argsparse;
+                    return e$raise(Error.argsparse, "missing required option");
                 }
             }
         }
@@ -14137,10 +14165,11 @@ _cex_argparse__short_opt(argparse_c* self, argparse_opt_s* options)
     for (u32 i = 0; i < self->options_len; i++, options++) {
         if (options->short_name == *self->_ctx.optvalue) {
             self->_ctx.optvalue = self->_ctx.optvalue[1] ? self->_ctx.optvalue + 1 : NULL;
-            return _cex_argparse__getvalue(self, options, false);
+            e$ret(_cex_argparse__getvalue(self, options, false));
+            return EOK;
         }
     }
-    return Error.not_found;
+    return e$raise(Error.not_found, "unknown short option");
 }
 
 static Exception
@@ -14159,9 +14188,10 @@ _cex_argparse__long_opt(argparse_c* self, argparse_opt_s* options)
             if (*rest != '=') { continue; }
             self->_ctx.optvalue = rest + 1;
         }
-        return _cex_argparse__getvalue(self, options, true);
+        e$ret(_cex_argparse__getvalue(self, options, true));
+        return EOK;
     }
-    return Error.not_found;
+    return e$raise(Error.not_found, "unknown long option");
 }
 
 
@@ -14184,7 +14214,7 @@ _cex_argparse__report_error(argparse_c* self, Exc err)
     } else if (err == Error.integrity) {
         io.printf("error: option `%s` follows argument\n", self->argv[0]);
     }
-    return Error.argsparse;
+    return e$raise(Error.argsparse, "argument parsing failed");
 }
 
 static Exception
@@ -14205,7 +14235,7 @@ _cex_argparse__parse_commands(argparse_c* self)
 
     if (str.eq(cmd_arg, "-h") || str.eq(cmd_arg, "--help")) {
         cex_argparse_usage(self);
-        return Error.argsparse;
+        return e$raise(Error.argsparse, "help requested");
     }
 
     for$eachp(c, self->commands, self->commands_len)
@@ -14224,10 +14254,10 @@ _cex_argparse__parse_commands(argparse_c* self)
             }
         }
     }
-    if (cmd == NULL) {
+    if (unlikely(cmd == NULL)) {
         cex_argparse_usage(self);
         io.printf("error: unknown command name '%s', try --help\n", (cmd_arg) ? cmd_arg : "");
-        return Error.argsparse;
+        return e$raise(Error.argsparse, "unknown command");
     }
     self->_ctx.current_command = cmd;
     self->_ctx.cpidx = 0;
@@ -14271,11 +14301,11 @@ _cex_argparse__parse_options(argparse_c* self)
             self->_ctx.optvalue = arg + 1;
             self->_ctx.cpidx++;
             e$except (err, _cex_argparse__short_opt(self, self->options)) {
-                return _cex_argparse__report_error(self, err);
+                e$ret(_cex_argparse__report_error(self, err));
             }
             while (self->_ctx.optvalue) {
                 e$except (err, _cex_argparse__short_opt(self, self->options)) {
-                    return _cex_argparse__report_error(self, err);
+                    e$ret(_cex_argparse__report_error(self, err));
                 }
             }
             continue;
@@ -14293,7 +14323,7 @@ _cex_argparse__parse_options(argparse_c* self)
             break;
         }
         e$except (err, _cex_argparse__long_opt(self, self->options)) {
-            return _cex_argparse__report_error(self, err);
+            e$ret(_cex_argparse__report_error(self, err));
         }
         self->_ctx.cpidx++;
         continue;
@@ -14311,7 +14341,7 @@ _cex_argparse__parse_options(argparse_c* self)
 static Exception
 cex_argparse_parse(argparse_c* self, int argc, char** argv)
 {
-    if (self->options != NULL && self->commands != NULL) {
+    if (unlikely(self->options != NULL && self->commands != NULL)) {
         return e$raise(Error.assert, "options and commands are mutually exclusive");
     }
     uassert(argc > 0);
@@ -14328,9 +14358,11 @@ cex_argparse_parse(argparse_c* self, int argc, char** argv)
     self->_ctx.out = argv;
 
     if (self->commands) {
-        return _cex_argparse__parse_commands(self);
+        e$ret(_cex_argparse__parse_commands(self));
+        return EOK;
     } else if (self->options) {
-        return _cex_argparse__parse_options(self);
+        e$ret(_cex_argparse__parse_options(self));
+        return EOK;
     }
     return Error.ok;
 }
@@ -14382,9 +14414,11 @@ cex_argparse_run_command(argparse_c* self, void* user_ctx)
     if (self->argc == 0) {
         // seems default command (with no args)
         char* dummy_args[] = { self->_ctx.current_command->name };
-        return self->_ctx.current_command->func(1, (char**)dummy_args, user_ctx);
+        e$ret(self->_ctx.current_command->func(1, (char**)dummy_args, user_ctx));
+        return EOK;
     } else {
-        return self->_ctx.current_command->func(self->argc, (char**)self->argv, user_ctx);
+        e$ret(self->_ctx.current_command->func(self->argc, (char**)self->argv, user_ctx));
+        return EOK;
     }
 }
 
@@ -15502,9 +15536,9 @@ cex_os_get_last_error(void)
 static Exception
 cex_os__fs__rename(char* old_path, char* new_path)
 {
-    if (old_path == NULL || old_path[0] == '\0') { return Error.argument; }
-    if (new_path == NULL || new_path[0] == '\0') { return Error.argument; }
-    if (os.path.exists(new_path)) { return Error.exists; }
+    if (unlikely(old_path == NULL || old_path[0] == '\0')) { return e$raise(Error.argument, "old_path is empty"); }
+    if (unlikely(new_path == NULL || new_path[0] == '\0')) { return e$raise(Error.argument, "new_path is empty"); }
+    if (unlikely(os.path.exists(new_path))) { return e$raise(Error.exists, "new_path already exists"); }
 #    ifdef _WIN32
     if (!MoveFileExA(old_path, new_path, MOVEFILE_REPLACE_EXISTING)) { return os.get_last_error(); }
     return EOK;
@@ -15518,7 +15552,7 @@ cex_os__fs__rename(char* old_path, char* new_path)
 static Exception
 cex_os__fs__mkdir(char* path)
 {
-    if (path == NULL || path[0] == '\0') { return Error.argument; }
+    if (unlikely(path == NULL || path[0] == '\0')) { return e$raise(Error.argument, "path is empty"); }
 #    ifdef _WIN32
     int result = mkdir(path);
 #    else
@@ -15536,7 +15570,7 @@ cex_os__fs__mkdir(char* path)
 static Exception
 cex_os__fs__mkpath(char* path)
 {
-    if (path == NULL || path[0] == '\0') { return Error.argument; }
+    if (unlikely(path == NULL || path[0] == '\0')) { return e$raise(Error.argument, "path is empty"); }
     str_s dir = os.path.split(path, true);
     char dir_path[PATH_MAX] = { 0 };
     e$ret(str.slice.copy(dir_path, dir, sizeof(dir_path)));
@@ -15656,10 +15690,10 @@ cex_os__fs__stat(char* path)
 static Exception
 cex_os__fs__remove(char* path)
 {
-    if (path == NULL || path[0] == '\0') { return Error.argument; }
+    if (unlikely(path == NULL || path[0] == '\0')) { return e$raise(Error.argument, "path is empty"); }
 
     os_fs_stat_s stat = os.fs.stat(path);
-    if (!stat.is_valid) { return stat.error; }
+    if (unlikely(!stat.is_valid)) { e$ret(stat.error); }
 #    ifdef _WIN32
     if (stat.is_file || stat.is_symlink) {
         if (!DeleteFileA(path)) { return os.get_last_error(); }
@@ -15680,7 +15714,7 @@ Exception
 cex_os__fs__dir_walk(char* path, bool is_recursive, os_fs_dir_walk_f callback_fn, void* user_ctx)
 {
     (void)user_ctx;
-    if (path == NULL || path[0] == '\0') { return Error.argument; }
+    if (unlikely(path == NULL || path[0] == '\0')) { return e$raise(Error.argument, "path is empty"); }
     if (unlikely(callback_fn == NULL)) { return e$raise(Error.argument, "callback_fn is NULL"); }
     Exc result = Error.os;
 
@@ -15774,8 +15808,8 @@ _os__fs__remove_tree_walker(char* path, os_fs_stat_s ftype, void* user_ctx)
 static Exception
 cex_os__fs__remove_tree(char* path)
 {
-    if (path == NULL || path[0] == '\0') { return Error.argument; }
-    if (!os.path.exists(path)) { return Error.not_found; }
+    if (unlikely(path == NULL || path[0] == '\0')) { return e$raise(Error.argument, "path is empty"); }
+    if (unlikely(!os.path.exists(path))) { return e$raise(Error.not_found, "path does not exist"); }
     e$except (err, cex_os__fs__dir_walk(path, true, _os__fs__remove_tree_walker, NULL)) {
         return err;
     }
@@ -15819,13 +15853,13 @@ _os__fs__copy_tree_walker(char* path, os_fs_stat_s ftype, void* user_ctx)
 static Exception
 cex_os__fs__copy_tree(char* src_dir, char* dst_dir)
 {
-    if (src_dir == NULL || src_dir[0] == '\0') { return Error.argument; }
+    if (unlikely(src_dir == NULL || src_dir[0] == '\0')) { return e$raise(Error.argument, "src_dir is empty"); }
     os_fs_stat_s s = os.fs.stat(src_dir);
-    if (!s.is_valid) { return s.error; }
-    if (!s.is_directory) { return Error.argument; }
+    if (unlikely(!s.is_valid)) { e$ret(s.error); }
+    if (unlikely(!s.is_directory)) { return e$raise(Error.argument, "src_dir is not a directory"); }
 
-    if (dst_dir == NULL || dst_dir[0] == '\0') { return Error.argument; }
-    if (os.path.exists(dst_dir)) { return Error.exists; }
+    if (unlikely(dst_dir == NULL || dst_dir[0] == '\0')) { return e$raise(Error.argument, "dst_dir is empty"); }
+    if (unlikely(os.path.exists(dst_dir))) { return e$raise(Error.exists, "dst_dir already exists"); }
 
     // TODO: add absolute path overlap check
 
@@ -15860,10 +15894,10 @@ _os__fs__find_walker(char* path, os_fs_stat_s ftype, void* user_ctx)
 
     // allocate new string because path is stack allocated buffer in os__fs__dir_walk()
     char* new_path = str.clone(path, ctx->allc);
-    if (new_path == NULL) { return Error.memory; }
+    if (unlikely(new_path == NULL)) { return e$raise(Error.memory, "str.clone failed"); }
 
     // Doing graceful memory check, otherwise arr$push will assert
-    if (!arr$grow_check(ctx->result, 1)) { return Error.memory; }
+    if (unlikely(!arr$grow_check(ctx->result, 1))) { return e$raise(Error.memory, "array grow failed"); }
     arr$push(ctx->result, new_path);
     return EOK;
 }
@@ -15949,7 +15983,7 @@ cex_os__fs__getcwd(IAllocator allc)
 static Exception
 cex_os__fs__chdir(char* path)
 {
-    if (path == NULL || path[0] == '\0') { return Error.exists; }
+    if (unlikely(path == NULL || path[0] == '\0')) { return e$raise(Error.exists, "path is empty"); }
 
     int result;
 #    ifdef _WIN32
@@ -15958,9 +15992,9 @@ cex_os__fs__chdir(char* path)
     result = chdir(path);
 #    endif
 
-    if (result == -1) {
+    if (unlikely(result == -1)) {
         if (errno == ENOENT) {
-            return Error.not_found;
+            return e$raise(Error.not_found, "path does not exist");
         } else {
             return strerror(errno);
         }
@@ -15974,12 +16008,12 @@ cex_os__fs__chdir(char* path)
 static Exception
 cex_os__fs__copy(char* src_path, char* dst_path)
 {
-    if (src_path == NULL || src_path[0] == '\0' || dst_path == NULL || dst_path[0] == '\0') {
-        return Error.argument;
+    if (unlikely(src_path == NULL || src_path[0] == '\0' || dst_path == NULL || dst_path[0] == '\0')) {
+        return e$raise(Error.argument, "src_path or dst_path is empty");
     }
     log$trace("copying %s -> %s\n", src_path, dst_path);
 
-    if (os.path.exists(dst_path)) { return Error.exists; }
+    if (unlikely(os.path.exists(dst_path))) { return e$raise(Error.exists, "dst_path already exists"); }
 
 #    ifdef _WIN32
     if (!CopyFileA(src_path, dst_path, FALSE)) { return os.get_last_error(); }
@@ -15989,7 +16023,7 @@ cex_os__fs__copy(char* src_path, char* dst_path)
     int dst_fd = -1;
     size_t buf_size = 32 * 1024;
     char* buf = mem$malloc(mem$, buf_size);
-    if (buf == NULL) { return Error.memory; }
+    if (unlikely(buf == NULL)) { return e$raise(Error.memory, "buffer allocation failed"); }
     Exc result = Error.runtime;
 
     if ((src_fd = open(src_path, O_RDONLY)) == -1) {
@@ -16066,9 +16100,9 @@ static Exception
 cex_os__env__unset(char* name)
 {
 #    ifdef _WIN32
-    if (_putenv_s(name, "") != 0) { return Error.runtime; }
+    if (unlikely(_putenv_s(name, "") != 0)) { return e$raise(Error.runtime, "unsetenv failed"); }
 #    else
-    if (unsetenv(name) == -1) { return Error.runtime; }
+    if (unlikely(unsetenv(name) == -1)) { return e$raise(Error.runtime, "unsetenv failed"); }
 #    endif
     return EOK;
 }
@@ -16428,7 +16462,7 @@ static Exception
 cex_os__cmd__kill(os_cmd_c* self)
 {
     if (subprocess_alive(&self->_subpr)) {
-        if (subprocess_terminate(&self->_subpr) != 0) { return Error.os; }
+        if (unlikely(subprocess_terminate(&self->_subpr) != 0)) { return e$raise(Error.os, "subprocess_terminate failed"); }
     }
     return EOK;
 }
@@ -16549,7 +16583,7 @@ cex_os__cmd__write_line(os_cmd_c* self, char* line)
     if (unlikely(self == NULL)) { return e$raise(Error.argument, "self is NULL"); }
     if (unlikely(line == NULL)) { return e$raise(Error.argument, "line is NULL"); }
 
-    if (self->_subpr.stdin_file == NULL) { return Error.not_found; }
+    if (unlikely(self->_subpr.stdin_file == NULL)) { return e$raise(Error.not_found, "stdin is not available"); }
 
     e$except (err, io.file.writeln(self->_subpr.stdin_file, line)) { return err; }
     fflush(self->_subpr.stdin_file);
@@ -16627,15 +16661,15 @@ cex_os__cmd__run(char** args, usize args_len, os_cmd_c* out_cmd)
     if (unlikely(out_cmd == NULL)) { return e$raise(Error.argument, "out_cmd is NULL"); }
     memset(out_cmd, 0, sizeof(os_cmd_c));
 
-    if (args == NULL || args_len == 0) {
+    if (unlikely(args == NULL || args_len == 0)) {
         return e$raise(Error.argument, "`args` argument is empty or null");
     }
-    if (args_len == 1 || args[args_len - 1] != NULL) {
+    if (unlikely(args_len == 1 || args[args_len - 1] != NULL)) {
         return e$raise(Error.argument, "`args` last item must be a NULL");
     }
 
     for (u32 i = 0; i < args_len - 1; i++) {
-        if (args[i] == NULL || args[i][0] == '\0') {
+        if (unlikely(args[i] == NULL || args[i][0] == '\0')) {
             return e$raise(Error.argument, "`args` item is NULL/empty");
         }
     }
@@ -16700,7 +16734,7 @@ end:
     return result;
 #    else
     pid_t cpid = fork();
-    if (cpid < 0) { return e$raise(Error.os, "Could not fork child process"); }
+    if (unlikely(cpid < 0)) { return e$raise(Error.os, "Could not fork child process"); }
 
     if (cpid == 0) {
         if (execvp(args[0], (char* const*)args) < 0) {
