@@ -982,7 +982,10 @@ cex_str__convert__to_f32s(str_s s, f32* num)
 {
     if (unlikely(!num)) { return e$raise(Error.argument, "num is NULL"); }
     f64 res = 0;
-    e$ret(cex_str_to_double_(s.buf, s.len, &res, -37, 38));
+    e$except (err, cex_str_to_double_(s.buf, s.len, &res, -37, 38)) {
+        *num = 0;
+        return err;
+    }
     *num = (f32)res;
     return EOK;
 }
@@ -1000,7 +1003,10 @@ cex_str__convert__to_i8s(str_s s, i8* num)
 {
     if (unlikely(!num)) { return e$raise(Error.argument, "num is NULL"); }
     i64 res = 0;
-    e$ret(cex_str_to_signed_num_(s.buf, s.len, &res, INT8_MIN, INT8_MAX));
+    e$except (err, cex_str_to_signed_num_(s.buf, s.len, &res, INT8_MIN, INT8_MAX)) {
+        *num = 0;
+        return err;
+    }
     *num = (i8)res;
     return EOK;
 }
@@ -1010,7 +1016,10 @@ cex_str__convert__to_i16s(str_s s, i16* num)
 {
     if (unlikely(!num)) { return e$raise(Error.argument, "num is NULL"); }
     i64 res = 0;
-    e$ret(cex_str_to_signed_num_(s.buf, s.len, &res, INT16_MIN, INT16_MAX));
+    e$except (err, cex_str_to_signed_num_(s.buf, s.len, &res, INT16_MIN, INT16_MAX)) {
+        *num = 0;
+        return err;
+    }
     *num = (i16)res;
     return EOK;
 }
@@ -1020,7 +1029,10 @@ cex_str__convert__to_i32s(str_s s, i32* num)
 {
     if (unlikely(!num)) { return e$raise(Error.argument, "num is NULL"); }
     i64 res = 0;
-    e$ret(cex_str_to_signed_num_(s.buf, s.len, &res, INT32_MIN, INT32_MAX));
+    e$except (err, cex_str_to_signed_num_(s.buf, s.len, &res, INT32_MIN, INT32_MAX)) {
+        *num = 0;
+        return err;
+    }
     *num = (i32)res;
     return EOK;
 }
@@ -1032,7 +1044,10 @@ cex_str__convert__to_i64s(str_s s, i64* num)
     if (unlikely(!num)) { return e$raise(Error.argument, "num is NULL"); }
     i64 res = 0;
     // NOTE:INT64_MIN+1 because negating of INT64_MIN leads to UB!
-    e$ret(cex_str_to_signed_num_(s.buf, s.len, &res, INT64_MIN + 1, INT64_MAX));
+    e$except (err, cex_str_to_signed_num_(s.buf, s.len, &res, INT64_MIN + 1, INT64_MAX)) {
+        *num = 0;
+        return err;
+    }
     *num = res;
     return EOK;
 }
@@ -1042,7 +1057,10 @@ cex_str__convert__to_u8s(str_s s, u8* num)
 {
     if (unlikely(!num)) { return e$raise(Error.argument, "num is NULL"); }
     u64 res = 0;
-    e$ret(cex_str_to_unsigned_num_(s.buf, s.len, &res, UINT8_MAX));
+    e$except (err, cex_str_to_unsigned_num_(s.buf, s.len, &res, UINT8_MAX)) {
+        *num = 0;
+        return err;
+    }
     *num = (u8)res;
     return EOK;
 }
@@ -1052,7 +1070,10 @@ cex_str__convert__to_u16s(str_s s, u16* num)
 {
     if (unlikely(!num)) { return e$raise(Error.argument, "num is NULL"); }
     u64 res = 0;
-    e$ret(cex_str_to_unsigned_num_(s.buf, s.len, &res, UINT16_MAX));
+    e$except (err, cex_str_to_unsigned_num_(s.buf, s.len, &res, UINT16_MAX)) {
+        *num = 0;
+        return err;
+    }
     *num = (u16)res;
     return EOK;
 }
@@ -1062,7 +1083,10 @@ cex_str__convert__to_u32s(str_s s, u32* num)
 {
     if (unlikely(!num)) { return e$raise(Error.argument, "num is NULL"); }
     u64 res = 0;
-    e$ret(cex_str_to_unsigned_num_(s.buf, s.len, &res, UINT32_MAX));
+    e$except (err, cex_str_to_unsigned_num_(s.buf, s.len, &res, UINT32_MAX)) {
+        *num = 0;
+        return err;
+    }
     *num = (u32)res;
     return EOK;
 }
@@ -1072,9 +1096,11 @@ cex_str__convert__to_u64s(str_s s, u64* num)
 {
     if (unlikely(!num)) { return e$raise(Error.argument, "num is NULL"); }
     u64 res = 0;
-    e$ret(cex_str_to_unsigned_num_(s.buf, s.len, &res, UINT64_MAX));
+    e$except (err, cex_str_to_unsigned_num_(s.buf, s.len, &res, UINT64_MAX)) {
+        *num = 0;
+        return err;
+    }
     *num = res;
-
     return EOK;
 }
 
