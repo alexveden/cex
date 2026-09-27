@@ -1727,7 +1727,7 @@ char* expected = "{\n\
                 tassert_eq(unesc.len, 4);
                 tassert_eq("😀", unesc.buf);
             } else {
-                unreachable();
+                uassert_always(false && "unexpected key");
             }
         }
         tassert_eq(jr.error, EOK);

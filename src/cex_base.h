@@ -5,7 +5,7 @@ Core foundation of CEX — bundled into `cex.h`.
 Provides primitive type aliases (`u8` … `u64`, `i8` … `i64`, `f32`/`f64`,
 `usize`/`isize`), `IAllocator` allocator interface, `str_s` string slice,
 error handling (`__e$`), logging (`__log$`), assertions (`uassert`), and
-utility macros (`unlikely`/`likely`/`breakpoint`/`unreachable`/token concat).
+utility macros (`unlikely`/`likely`/`breakpoint`/token concat).
 
 | Type                | Description                               |
 | auto                | Automatically inferred variable type      |

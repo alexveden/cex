@@ -238,7 +238,7 @@ Core foundation of CEX — bundled into `cex.h`.
 Provides primitive type aliases (`u8` … `u64`, `i8` … `i64`, `f32`/`f64`,
 `usize`/`isize`), `IAllocator` allocator interface, `str_s` string slice,
 error handling (`__e$`), logging (`__log$`), assertions (`uassert`), and
-utility macros (`unlikely`/`likely`/`breakpoint`/`unreachable`/token concat).
+utility macros (`unlikely`/`likely`/`breakpoint`/token concat).
 
 | Type                | Description                               |
 | auto                | Automatically inferred variable type      |
@@ -2916,16 +2916,13 @@ Compile-time verbosity knobs for CEX error handling.
   with `e$traceback_print(stderr)` when `main()` gets a non-`EOK` result. The test runner does
   this for each failing case.
 
-- `CEX_PANIC_VERBOSITY` (0..2, default 1) — controls `uassert()`, `uassert_always()` and
-  `unreachable()`:
+- `CEX_PANIC_VERBOSITY` (0..2, default 1) — controls `uassert()` and `uassert_always()`:
 
-    * 0 - `uassert*()` traps with `__builtin_trap()`; `unreachable()` is `__builtin_unreachable()`
+    * 0 - `uassert*()` traps with `__builtin_trap()`
     * 1 - `_cex_errors_panic_handler()` prints `file:line`
     * 2 - `_cex_errors_panic_handler()` prints `file:line:func` + the failed expression
 
   `uassert()` is stripped by `NDEBUG`; `uassert_always()` always terminates with `__builtin_trap()`.
-  `unreachable()` is `__builtin_unreachable()` at level 0 (and under `NDEBUG`), and delegates to
-  `cex$platform_panic()` at levels 1-2.
 
 */
 
@@ -2962,7 +2959,7 @@ static_assert(
 
 /* ==== 2. Panic axis: CEX_PANIC_VERBOSITY ==== */
 
-/* Hard-fail panic (asserts, unreachable at levels > 0), default cex$platform_panic target */
+/* Hard-fail panic (asserts at levels > 0), default cex$platform_panic target */
 
 /// Cold panic: suppressible [ASSERT] prints to stdout when disabled, everything else aborts
 __attribute__((cold, noinline))
@@ -2977,30 +2974,23 @@ void _cex_errors_panic_handler(
     const char* msg
 );
 
-/* C23 <stddef.h> defines unreachable(); CEX provides its own */
-#ifdef unreachable
-#    undef unreachable
-#endif
-
 /* stub modes: uassert compiles away (libc assert() under clang analyzer) */
 #if defined(__clang_analyzer__) || defined(NDEBUG)
 #    if defined(__clang_analyzer__)
 #        define uassert(A) assert(A)
 #        define uassert_always(A) assert(A)
-#        define unreachable() __builtin_unreachable()
 #    else
 #        define uassert(A) ((void)(0))
 #        define uassert_always(A)                                                                  \
             ({                                                                                     \
                 if (unlikely(!((A)))) { __builtin_trap(); }                                        \
             })
-#        define unreachable() __builtin_unreachable()
 #    endif
 #    define uassert_disable() ((void)0)
 #    define uassert_enable() ((void)0)
 #endif
 
-/* enabled modes: assertion helpers, then uassert/unreachable by verbosity */
+/* enabled modes: assertion helpers, then uassert by verbosity */
 #if !defined(__clang_analyzer__) && !defined(NDEBUG)
 
 #    ifdef CEX_TEST
@@ -3025,7 +3015,6 @@ int __cex_test_uassert_enabled = 1;
             ({                                                                                     \
                 if (unlikely(!((A)))) { __builtin_trap(); }                                        \
             })
-#        define unreachable() __builtin_unreachable()
 #    elif CEX_PANIC_VERBOSITY == 1
 #        define uassert(A)                                                                         \
             ({                                                                                     \
@@ -3052,9 +3041,6 @@ int __cex_test_uassert_enabled = 1;
                     __builtin_trap();                                                              \
                 }                                                                                  \
             })
-#        define unreachable()                                                                      \
-            (cex$platform_panic("[UNREACHABLE] ", __FILE_NAME__, __LINE__, NULL, NULL),            \
-             __builtin_unreachable())
 #    else
 #        define uassert(A)                                                                         \
             ({                                                                                     \
@@ -3081,9 +3067,6 @@ int __cex_test_uassert_enabled = 1;
                     __builtin_trap();                                                              \
                 }                                                                                  \
             })
-#        define unreachable()                                                                      \
-            (cex$platform_panic("[UNREACHABLE] ", __FILE_NAME__, __LINE__, __func__, NULL),        \
-             __builtin_unreachable())
 #    endif
 #endif
 
@@ -5098,7 +5081,7 @@ _check_eq_int(i64 a, i64 b, int line, enum _cex_test_eq_op_e op)
     char* ops = "?";
     switch (op) {
         case _cex_test_eq_op__na:
-            unreachable();
+            uassert_always(false && "invalid eq op");
             break;
         case _cex_test_eq_op__eq:
             passed = a == b;
@@ -5148,7 +5131,7 @@ _check_eq_u64(u64 a, u64 b, int line, enum _cex_test_eq_op_e op)
     char* ops = "?";
     switch (op) {
         case _cex_test_eq_op__na:
-            unreachable();
+            uassert_always(false && "invalid eq op");
             break;
         case _cex_test_eq_op__eq:
             passed = a == b;
@@ -5240,7 +5223,7 @@ _check_eq_f32(f64 a, f64 b, int line, enum _cex_test_eq_op_e op)
     }
     switch (op) {
         case _cex_test_eq_op__na:
-            unreachable();
+            uassert_always(false && "invalid eq op");
             break;
         case _cex_test_eq_op__eq:
             passed = is_equal;
@@ -5299,7 +5282,7 @@ _check_eq_str(char* a, char* b, int line, enum _cex_test_eq_op_e op)
             ops = "==";
             break;
         default:
-            unreachable();
+            uassert_always(false && "invalid eq op");
     }
     extern struct _cex_test_context_s _cex_test__mainfn_state;
     if (!passed) {
@@ -5440,7 +5423,7 @@ _check_eqs_slice(str_s a, str_s b, int line, enum _cex_test_eq_op_e op)
             ops = "==";
             break;
         default:
-            unreachable();
+            uassert_always(false && "invalid eq op");
     }
     extern struct _cex_test_context_s _cex_test__mainfn_state;
     if (!passed) {
@@ -7564,14 +7547,14 @@ static const struct Allocator_i*
 _cex_allocator_heap__scope_enter(IAllocator self)
 {
     _cex_allocator_heap__validate(self);
-    unreachable();
+    uassert_always(false && "heap allocator has no scopes");
 }
 
 static void
 _cex_allocator_heap__scope_exit(IAllocator self)
 {
     _cex_allocator_heap__validate(self);
-    unreachable();
+    uassert_always(false && "heap allocator has no scopes");
 }
 
 static u32
@@ -8827,7 +8810,7 @@ _cexds__hash(enum _CexDsKeyType_e key_type, const void* key, usize key_size, u64
             return _cexds__hash_string(s->buf, s->len, seed);
         }
     }
-    unreachable();
+    uassert_always(false && "unhandled key type");
 }
 
 static bool
@@ -8859,7 +8842,7 @@ _cexds__is_key_equal(
             return 0 == memcmp(_k->buf, _hm->buf, _k->len);
         }
     }
-    unreachable();
+    uassert_always(false && "unhandled key type");
 }
 
 static inline void*
@@ -8886,7 +8869,7 @@ _cexds__hmkey_ptr(void* a, usize elemsize, usize index, usize keyoffset)
             break;
         }
         default:
-            unreachable();
+            uassert_always(false && "unhandled key type");
     }
     return key_data_p;
 }
@@ -16727,7 +16710,7 @@ end:
             log$error("Could not exec child process: %s\n", strerror(errno));
             exit(1);
         }
-        uassert(false && "unreachable");
+        uassert_always(false && "execvp failed, child already exited");
     }
 
     *out_cmd = (os_cmd_c){ ._is_subprocess = false,
@@ -20739,7 +20722,7 @@ _CexParser__scan_scope(CexParser_c* lx)
                 t.type = CexTkn__lbrace;
                 break;
             default:
-                unreachable();
+                uassert_always(false && "scope char is one of ( [ {");
         }
         t.value.len = 1;
         lx$next(lx);
@@ -20771,7 +20754,7 @@ _CexParser__scan_scope(CexParser_c* lx)
                 t.type = CexTkn__brace_block;
                 break;
             default:
-                unreachable();
+                uassert_always(false && "scope char is one of ( [ {");
         }
 
         while ((c = lx$peek(lx))) {

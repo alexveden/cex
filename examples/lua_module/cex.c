@@ -144,7 +144,7 @@ cmd_build_lua(int argc, char** argv, void* user_ctx)
             } else if (os.platform.current() == OSPlatform__macos) {
                 arr$pushm(args, "-DLUA_USE_MACOSX");
             } else {
-                unreachable();
+                uassert_always(false && "unsupported platform");
             }
 
             arr$pushm(args, src, "-o", tgt);
@@ -171,7 +171,7 @@ cmd_build_lua(int argc, char** argv, void* user_ctx)
         } else if (os.platform.current() == OSPlatform__macos) {
             arr$pushm(args, "-ldl", "-lreadline");
         } else {
-            unreachable();
+            uassert_always(false && "unsupported platform");
         }
 
         arr$pusha(args, hm$get(make_vars, str$s("LIBS")));

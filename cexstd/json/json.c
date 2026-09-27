@@ -638,7 +638,7 @@ parse_generic:
             goto error_unexpected;
         }
     }
-    unreachable();
+    uassert_always(false && "unexpected token");
 
 end:
     return it->type > 0;
@@ -933,7 +933,7 @@ cex_json__wr__print_val(json_wr_c* jw, char* format, ...)
             }
             va_end(va);
         } else {
-            unreachable();
+            uassert_always(false && "unsupported format specifier");
         }
     } else if (format[1] == 'B') {
         va_list va = { 0 };
@@ -1017,7 +1017,7 @@ cex_json__wr__print_scope_enter(json_wr_c* jw, JsonType_e scope_type)
     } else if (scope_type == JsonType__null) {
         scope = $scope_null;
     } else {
-        unreachable();
+        uassert_always(false && "invalid scope type");
     }
 
     if (jw->scope_depth <= sizeof(jw->scope_stack) - 1) {

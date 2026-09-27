@@ -44,12 +44,6 @@ _run_uassert_panic(void)
 }
 
 test$noopt void
-_run_unreachable_panic(void)
-{
-    unreachable();
-}
-
-test$noopt void
 _run_uassert_always_panic(void)
 {
     uassert_always(false);

@@ -5,8 +5,8 @@
 
 ### Changes / improvements
 - feat: `uassert_always()` - assertion that is not stripped by `NDEBUG` and traps instead
-- `unreachable()` is `__builtin_unreachable()` at panic level 0 / `NDEBUG`, delegates to `cex$platform_panic()` at levels 1-2
-- ds/allocator hard-fail paths migrated to `uassert_always()` / `unreachable()`
+- removed: `unreachable()` macro, use `uassert_always(false && "...")` instead
+- ds/allocator hard-fail paths migrated to `uassert_always()`
 
 ## 0.21
 2026-06-07

@@ -1481,7 +1481,7 @@ end:
             log$error("Could not exec child process: %s\n", strerror(errno));
             exit(1);
         }
-        uassert(false && "unreachable");
+        uassert_always(false && "execvp failed, child already exited");
     }
 
     *out_cmd = (os_cmd_c){ ._is_subprocess = false,

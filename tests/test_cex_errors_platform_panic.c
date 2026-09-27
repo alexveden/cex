@@ -14,12 +14,6 @@ test$case(uassert_uses_custom_panic)
     return EOK;
 }
 
-test$case(unreachable_uses_custom_panic)
-{
-    tassert_eq(get_child_exit_code(_run_unreachable_panic), 42);
-    return EOK;
-}
-
 test$case(uassert_always_uses_custom_panic)
 {
     tassert_eq(get_child_exit_code(_run_uassert_always_panic), 42);

@@ -32,7 +32,7 @@ _check_eq_int(i64 a, i64 b, int line, enum _cex_test_eq_op_e op)
     char* ops = "?";
     switch (op) {
         case _cex_test_eq_op__na:
-            unreachable();
+            uassert_always(false && "invalid eq op");
             break;
         case _cex_test_eq_op__eq:
             passed = a == b;
@@ -82,7 +82,7 @@ _check_eq_u64(u64 a, u64 b, int line, enum _cex_test_eq_op_e op)
     char* ops = "?";
     switch (op) {
         case _cex_test_eq_op__na:
-            unreachable();
+            uassert_always(false && "invalid eq op");
             break;
         case _cex_test_eq_op__eq:
             passed = a == b;
@@ -174,7 +174,7 @@ _check_eq_f32(f64 a, f64 b, int line, enum _cex_test_eq_op_e op)
     }
     switch (op) {
         case _cex_test_eq_op__na:
-            unreachable();
+            uassert_always(false && "invalid eq op");
             break;
         case _cex_test_eq_op__eq:
             passed = is_equal;
@@ -233,7 +233,7 @@ _check_eq_str(char* a, char* b, int line, enum _cex_test_eq_op_e op)
             ops = "==";
             break;
         default:
-            unreachable();
+            uassert_always(false && "invalid eq op");
     }
     extern struct _cex_test_context_s _cex_test__mainfn_state;
     if (!passed) {
@@ -374,7 +374,7 @@ _check_eqs_slice(str_s a, str_s b, int line, enum _cex_test_eq_op_e op)
             ops = "==";
             break;
         default:
-            unreachable();
+            uassert_always(false && "invalid eq op");
     }
     extern struct _cex_test_context_s _cex_test__mainfn_state;
     if (!passed) {

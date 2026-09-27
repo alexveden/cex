@@ -243,14 +243,6 @@ test$case(uassert_fatal)
     return EOK;
 }
 
-#if CEX_PANIC_VERBOSITY >= 1
-test$case(unreachable_fatal)
-{
-    tassert(is_fatal_in_child(_run_unreachable_panic));
-    return EOK;
-}
-#endif
-
 test$case(uassert_always_fatal)
 {
     tassert(is_fatal_in_child(_run_uassert_always_panic));
@@ -258,15 +250,6 @@ test$case(uassert_always_fatal)
 }
 
 #if CEX_PANIC_VERBOSITY >= 1
-test$case(unreachable_fatal_when_disabled)
-{
-    uassert_disable();
-    bool fatal = is_fatal_in_child(_run_unreachable_panic);
-    uassert_enable();
-    tassert(fatal);
-    return EOK;
-}
-
 test$case(uassert_always_fatal_when_disabled)
 {
     uassert_disable();

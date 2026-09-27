@@ -470,7 +470,6 @@ CEX provides several short aliases for primitive types and some extra types for 
 | likely() | Branch predictor management for expected conditions |
 | breakpoint() | Cross-platform debugger breakpoint |
 | fallthrough() | Explicit fallthrough to the next switch case |
-| unreachable() | `__builtin_unreachable()` at panic level 0 / `NDEBUG`, panics at levels 1-2 |
 | tassert_* | Unit-test assertions see `./cex help tassert_` |
 
 ## Error handling

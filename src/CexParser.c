@@ -225,7 +225,7 @@ _CexParser__scan_scope(CexParser_c* lx)
                 t.type = CexTkn__lbrace;
                 break;
             default:
-                unreachable();
+                uassert_always(false && "scope char is one of ( [ {");
         }
         t.value.len = 1;
         lx$next(lx);
@@ -257,7 +257,7 @@ _CexParser__scan_scope(CexParser_c* lx)
                 t.type = CexTkn__brace_block;
                 break;
             default:
-                unreachable();
+                uassert_always(false && "scope char is one of ( [ {");
         }
 
         while ((c = lx$peek(lx))) {

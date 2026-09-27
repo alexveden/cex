@@ -547,7 +547,7 @@ _cexds__hash(enum _CexDsKeyType_e key_type, const void* key, usize key_size, u64
             return _cexds__hash_string(s->buf, s->len, seed);
         }
     }
-    unreachable();
+    uassert_always(false && "unhandled key type");
 }
 
 static bool
@@ -579,7 +579,7 @@ _cexds__is_key_equal(
             return 0 == memcmp(_k->buf, _hm->buf, _k->len);
         }
     }
-    unreachable();
+    uassert_always(false && "unhandled key type");
 }
 
 static inline void*
@@ -606,7 +606,7 @@ _cexds__hmkey_ptr(void* a, usize elemsize, usize index, usize keyoffset)
             break;
         }
         default:
-            unreachable();
+            uassert_always(false && "unhandled key type");
     }
     return key_data_p;
 }
