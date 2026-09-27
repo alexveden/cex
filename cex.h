@@ -14062,14 +14062,10 @@ _cex_argparse__options_check(argparse_c* self, bool reset)
             if (reset) {
                 opt->is_present = 0;
                 if (!(opt->short_name || opt->long_name)) {
-                    uassert(
-                        (opt->short_name || opt->long_name) && "options both long/short_name NULL"
-                    );
-                    return Error.argument;
+                    return e$raise(Error.assert, "options both long/short_name NULL");
                 }
                 if (opt->value == NULL && opt->short_name != 'h') {
-                    uassert(opt->value != NULL && "option value is null");
-                    return Error.argument;
+                    return e$raise(Error.assert, "option value is null");
                 }
             } else {
                 if (opt->required && !opt->is_present) {
@@ -14299,8 +14295,7 @@ static Exception
 cex_argparse_parse(argparse_c* self, int argc, char** argv)
 {
     if (self->options != NULL && self->commands != NULL) {
-        uassert(false && "options and commands are mutually exclusive");
-        return Error.integrity;
+        return e$raise(Error.assert, "options and commands are mutually exclusive");
     }
     uassert(argc > 0);
     uassert(argv != NULL);

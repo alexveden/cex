@@ -222,7 +222,7 @@ test$case(test_cex_argparse_bad_opts_both_no_long_short)
     uassert_disable();
     argparse.usage(&args);
 
-    tassert_eq(Error.argument, argparse.parse(&args, argc, argv));
+    tassert_eq(Error.assert, argparse.parse(&args, argc, argv));
 
     return EOK;
 }
@@ -990,8 +990,26 @@ test$case(test_argparse_commands_and_option_mutually_exclusive)
     char* argv[] = { "program_name", "-f", "10", "arg1", "arg2" };
     int argc = arr$len(argv);
 
-    uassert_disable();
-    tassert_er(Error.integrity, argparse.parse(&args, argc, argv));
+    tassert_er(Error.assert, argparse.parse(&args, argc, argv));
+
+    return EOK;
+}
+
+test$case(test_cex_argparse_bad_opts_null_value)
+{
+    argparse_opt_s options[] = {
+        argparse$opt_help(),
+        argparse$opt(NULL, 'x', "xxx"),
+    };
+
+    argparse_c args = {
+        .options = options,
+        .options_len = arr$len(options),
+    };
+
+    char* argv[] = { "program_name" };
+
+    tassert_eq(Error.assert, argparse.parse(&args, 1, argv));
 
     return EOK;
 }
