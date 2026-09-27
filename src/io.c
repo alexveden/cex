@@ -407,7 +407,7 @@ cex_io_fwrite(FILE* file, void* buff, usize buff_len)
         // return os.get_last_error();
         switch (errno) {
             case 0:
-                return e$raise(Error.io, "fwrite failed but errno is not set");
+                return e$raise(Error.assert, "errno is not set");
             case ENOENT:
                 return Error.not_found;
             case EPERM:

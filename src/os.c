@@ -278,8 +278,7 @@ cex_os_get_last_error(void)
 #    else
     switch (errno) {
         case 0:
-            uassert(errno != 0 && "errno is ok");
-            return "Error, but errno is not set";
+            return e$raise(Error.assert, "errno is not set");
         case ENOENT:
             return Error.not_found;
         case EPERM:
@@ -341,7 +340,9 @@ cex_os__fs__mkpath(char* path)
 
     for$iter (str_s, it, str.slice.iter_split(dir, "\\/", &it.iterator)) {
         if (dir_path_len > 0) {
-            uassert(dir_path_len < sizeof(dir_path) - 2);
+            if (unlikely(dir_path_len >= sizeof(dir_path) - 2)) {
+                return e$raise(Error.overflow, "dir path is too long");
+            }
             dir_path[dir_path_len] = os$PATH_SEP;
             dir_path_len++;
             dir_path[dir_path_len] = '\0';
@@ -475,8 +476,8 @@ cex_os__fs__dir_walk(char* path, bool is_recursive, os_fs_dir_walk_f callback_fn
 {
     (void)user_ctx;
     if (path == NULL || path[0] == '\0') { return Error.argument; }
+    if (unlikely(callback_fn == NULL)) { return e$raise(Error.argument, "callback_fn is NULL"); }
     Exc result = Error.os;
-    uassert(callback_fn != NULL && "you must provide callback_fn");
 
     DIR* dp = opendir(path);
 
@@ -1233,8 +1234,8 @@ cex_os__cmd__kill(os_cmd_c* self)
 static Exception
 cex_os__cmd__wait(os_cmd_c* procs, usize procs_cnt, f64 timeout_sec)
 {
-    uassert(procs_cnt > 0);
-    uassert(procs);
+    if (unlikely(procs == NULL)) { return e$raise(Error.argument, "procs is NULL"); }
+    if (unlikely(procs_cnt == 0)) { return e$raise(Error.argument, "procs_cnt is 0"); }
     Exc result = EOK;
 
 
@@ -1340,8 +1341,8 @@ cex_os__cmd__read_line(os_cmd_c* self, IAllocator allc)
 static Exception
 cex_os__cmd__write_line(os_cmd_c* self, char* line)
 {
-    uassert(self != NULL);
-    if (line == NULL) { return Error.argument; }
+    if (unlikely(self == NULL)) { return e$raise(Error.argument, "self is NULL"); }
+    if (unlikely(line == NULL)) { return e$raise(Error.argument, "line is NULL"); }
 
     if (self->_subpr.stdin_file == NULL) { return Error.not_found; }
 
@@ -1418,7 +1419,7 @@ cex_os__cmd__exists(char* cmd_exe)
 static Exception
 cex_os__cmd__run(char** args, usize args_len, os_cmd_c* out_cmd)
 {
-    uassert(out_cmd != NULL);
+    if (unlikely(out_cmd == NULL)) { return e$raise(Error.argument, "out_cmd is NULL"); }
     memset(out_cmd, 0, sizeof(os_cmd_c));
 
     if (args == NULL || args_len == 0) {

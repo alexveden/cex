@@ -209,4 +209,13 @@ test$case(test_env_home_dir_unset)
     return EOK;
 }
 
+test$case(test_os_get_last_error_no_errno)
+{
+#ifndef _WIN32
+    errno = 0;
+    tassert_er(Error.assert, os.get_last_error());
+#endif
+    return EOK;
+}
+
 test$main();

@@ -78,6 +78,9 @@ test$case(test_os_dir_walk_print)
         } else {
             tassert_eq(5, ncalls);
         }
+
+        // NULL callback must be rejected, not abort
+        tassert_er(Error.argument, os.fs.dir_walk("tests/data/dir1", false, NULL, NULL));
     }
 
     return EOK;
@@ -680,6 +683,17 @@ test$case(test_os_mkpath)
     // removing non-existing raised Error.not_found
     tassert_er(Error.not_found, os.fs.remove_tree(TBUILDDIR));
 
+    return EOK;
+}
+
+test$case(test_os_mkpath_overflow)
+{
+    char path[PATH_MAX + 32];
+    memset(path, 'a', sizeof(path) - 1);
+    path[PATH_MAX + 10] = '/';
+    path[PATH_MAX + 11] = 'x';
+    path[PATH_MAX + 12] = '\0';
+    tassert_er(Error.overflow, os.fs.mkpath(path));
     return EOK;
 }
 

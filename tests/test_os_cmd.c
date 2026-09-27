@@ -614,6 +614,17 @@ test$case(os_cmd_wait_on_zii_data)
     tassert_eq(0, os.cmd.ret_code(&c[2]));
     return EOK;
 }
+test$case(os_cmd_null_args)
+{
+    os_cmd_c c = { 0 };
+    tassert_er(Error.argument, os.cmd.wait(NULL, 1, 0));
+    tassert_er(Error.argument, os.cmd.wait(&c, 0, 0));
+    tassert_er(Error.argument, os.cmd.write_line(NULL, "x"));
+    tassert_er(Error.argument, os.cmd.write_line(&c, NULL));
+    char* args[] = { "true", NULL };
+    tassert_er(Error.argument, os.cmd.run(args, 2, NULL));
+    return EOK;
+}
 #else
 test$case(os_cmd_not_supported_by_platform)
 {
