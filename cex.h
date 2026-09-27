@@ -3081,7 +3081,11 @@ typedef struct
 
 #if CEX_TRACEBACK_VERBOSITY >= 1 && CEX_TRACEBACK_VERBOSITY <= 2
 /// Shared traceback ring (defined in cex_errors.c)
-extern _Thread_local _cex_errors_traceback_data_s _cex_errors_traceback_data_array;
+extern
+#    if !cex$is_freestanding
+    _Thread_local
+#    endif
+    _cex_errors_traceback_data_s _cex_errors_traceback_data_array;
 
 #    if CEX_TRACEBACK_VERBOSITY == 2
 /// Private: append one frame to the ring (clamped at CEX_TRACEBACK_CAP)
@@ -13689,7 +13693,10 @@ CEX_NAMESPACE_DEF struct __cex_namespace__io io = {
 */
 
 #if CEX_TRACEBACK_VERBOSITY >= 1 && CEX_TRACEBACK_VERBOSITY <= 2
-_Thread_local _cex_errors_traceback_data_s _cex_errors_traceback_data_array;
+#    if !cex$is_freestanding
+_Thread_local
+#    endif
+_cex_errors_traceback_data_s _cex_errors_traceback_data_array;
 #endif // CEX_TRACEBACK_VERBOSITY >= 1 && <= 2
 
 #if !defined(cex$enable_minimal) || defined(cex$enable_io)
@@ -16823,7 +16830,11 @@ typedef struct
     u64 initial_seed;
 } _cex_os_random_s;
 
-static _Thread_local _cex_os_random_s _cex_os_rnd = { 0 };
+static
+#if !cex$is_freestanding
+_Thread_local
+#endif
+_cex_os_random_s _cex_os_rnd = { 0 };
 
 static inline u64
 _cex_os_random_avalanche(u64 h)

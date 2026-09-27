@@ -1603,7 +1603,11 @@ typedef struct
     u64 initial_seed;
 } _cex_os_random_s;
 
-static _Thread_local _cex_os_random_s _cex_os_rnd = { 0 };
+static
+#if !cex$is_freestanding
+_Thread_local
+#endif
+_cex_os_random_s _cex_os_rnd = { 0 };
 
 static inline u64
 _cex_os_random_avalanche(u64 h)

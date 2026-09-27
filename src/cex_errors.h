@@ -170,7 +170,11 @@ typedef struct
 
 #if CEX_TRACEBACK_VERBOSITY >= 1 && CEX_TRACEBACK_VERBOSITY <= 2
 /// Shared traceback ring (defined in cex_errors.c)
-extern _Thread_local _cex_errors_traceback_data_s _cex_errors_traceback_data_array;
+extern
+#    if !cex$is_freestanding
+    _Thread_local
+#    endif
+    _cex_errors_traceback_data_s _cex_errors_traceback_data_array;
 
 #    if CEX_TRACEBACK_VERBOSITY == 2
 /// Private: append one frame to the ring (clamped at CEX_TRACEBACK_CAP)

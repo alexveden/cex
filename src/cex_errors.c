@@ -2,7 +2,10 @@
 #include "all.h"
 
 #if CEX_TRACEBACK_VERBOSITY >= 1 && CEX_TRACEBACK_VERBOSITY <= 2
-_Thread_local _cex_errors_traceback_data_s _cex_errors_traceback_data_array;
+#    if !cex$is_freestanding
+_Thread_local
+#    endif
+_cex_errors_traceback_data_s _cex_errors_traceback_data_array;
 #endif // CEX_TRACEBACK_VERBOSITY >= 1 && <= 2
 
 #if !defined(cex$enable_minimal) || defined(cex$enable_io)
