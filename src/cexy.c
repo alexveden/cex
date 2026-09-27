@@ -345,10 +345,10 @@ cexy_target_make(char* src_path, char* build_dir, char* name_or_extension, IAllo
 Exception
 cexy__fuzz__create(char* target)
 {
-    if (!str.slice.starts_with(os.path.split(target, false), str$s("fuzz_"))) {
+    if (unlikely(!str.slice.starts_with(os.path.split(target, false), str$s("fuzz_")))) {
         return e$raise(Error.argument, "Fuzz file must start with `fuzz_` prefix");
     }
-    if (os.path.exists(target)) {
+    if (unlikely(os.path.exists(target))) {
         return e$raise(Error.exists, "Fuzz file already exists");
     }
     e$ret(os.fs.mkpath(target));
@@ -393,10 +393,10 @@ cexy__fuzz__create(char* target)
 Exception
 cexy__test__create(char* target, bool include_sample)
 {
-    if (os.path.exists(target)) {
+    if (unlikely(os.path.exists(target))) {
         return e$raise(Error.exists, "Test file already exists");
     }
-    if (str.eq(target, "all") || str.find(target, "*")) {
+    if (unlikely(str.eq(target, "all") || str.find(target, "*"))) {
         return e$raise(Error.argument, "You must pass exact file path, not pattern");
     }
     e$ret(os.fs.mkpath(target));
@@ -452,7 +452,7 @@ cexy__test__clean(char* target)
         e$ret(os.fs.remove_tree(cexy$build_dir "/tests/"));
     } else {
         log$info("Cleaning target: %s\n", target);
-        if (!os.path.exists(target)) {
+        if (unlikely(!os.path.exists(target))) {
             return e$raise(Error.exists, "Test target not exists");
         }
 
@@ -468,7 +468,7 @@ cexy__test__clean(char* target)
 Exception
 cexy__test__make_target_pattern(char** target)
 {
-    if (target == NULL) {
+    if (unlikely(target == NULL)) {
         return e$raise(
             Error.argsparse,
             "Invalid target: '(null)', expected all or tests/test_some_file.c"
@@ -476,7 +476,7 @@ cexy__test__make_target_pattern(char** target)
     }
     if (str.eq(*target, "all")) { *target = "tests/test_*.c"; }
 
-    if (!str.match(*target, "*test*.c")) {
+    if (unlikely(!str.match(*target, "*test*.c"))) {
         return e$raise(Error.argsparse, "Invalid target, expected all or tests/test_some_file.c");
     }
     return EOK;
@@ -485,7 +485,9 @@ cexy__test__make_target_pattern(char** target)
 Exception
 cexy__test__run(char* target, char* cmd, int argc, char** argv)
 {
-    if (!str.match(cmd, "(run|debug|bench|watch)")) { return "Unsupported command"; }
+    if (unlikely(!str.match(cmd, "(run|debug|bench|watch)"))) {
+        return e$raise(Error.argument, "unsupported command");
+    }
 
     Exc result = EOK;
     u32 n_tests = 0;
@@ -498,7 +500,7 @@ cexy__test__run(char* target, char* cmd, int argc, char** argv)
             io.printf("Running Tests: %s\n", target);
             io.printf("-------------------------------------\n\n");
         } else {
-            if (!os.path.exists(target)) {
+            if (unlikely(!os.path.exists(target))) {
                 log$error("Test file not found: %s\n", target);
                 return e$raise(Error.not_found, "Test file not found");
             }
@@ -676,7 +678,7 @@ _cexy__process_gen_struct(str_s ns_prefix, arr$(cex_decl_s*) decls, sbuf_c* out_
     }
     cg$pa("%s", ";");
 
-    if (!cg$is_valid()) { return e$raise(Error.runtime, "Code generation error occured\n"); }
+    if (unlikely(!cg$is_valid())) { return e$raise(Error.runtime, "Code generation error occured\n"); }
     return EOK;
 }
 
@@ -729,7 +731,7 @@ _cexy__process_gen_var_def(str_s ns_prefix, arr$(cex_decl_s*) decls, sbuf_c* out
     }
     cg$pa("%s", ";");
 
-    if (!cg$is_valid()) { return e$raise(Error.runtime, "Code generation error occured\n"); }
+    if (unlikely(!cg$is_valid())) { return e$raise(Error.runtime, "Code generation error occured\n"); }
     return EOK;
 }
 
@@ -935,7 +937,7 @@ cexy__cmd__process(int argc, char** argv, void* user_ctx)
     e$ret(argparse.parse(&cmd_args, argc, argv));
     char* target = argparse.next(&cmd_args);
 
-    if (target == NULL) {
+    if (unlikely(target == NULL)) {
         argparse.usage(&cmd_args);
         return e$raise(Error.argsparse, "Invalid target, expected all or path/some_file.c");
     }
@@ -947,7 +949,7 @@ cexy__cmd__process(int argc, char** argv, void* user_ctx)
     } else if (str.ends_with(target, "*.c")) {
         // Use user passed pattern
     } else {
-        if (!os.path.exists(target)) {
+        if (unlikely(!os.path.exists(target))) {
             log$error("Target file not exists: %s\n", target);
             return e$raise(Error.not_found, "Target file not exists");
         }
@@ -971,7 +973,7 @@ cexy__cmd__process(int argc, char** argv, void* user_ctx)
             if (str.starts_with(basename, "test") || str.eq(basename, "cex.c")) { continue; }
             mem$scope(tmem$, _)
             {
-                if (!str.ends_with(src_fn, ".c")) {
+                if (unlikely(!str.ends_with(src_fn, ".c"))) {
                     return e$raise(Error.argument, "file must end with .c");
                 }
 
@@ -1005,7 +1007,7 @@ cexy__cmd__process(int argc, char** argv, void* user_ctx)
                 CexParser_c lx = CexParser.create(code, 0, true);
                 cex_token_s t;
                 while ((t = CexParser.next_entity(&lx, &items)).type) {
-                    if (t.type == CexTkn__error) {
+                    if (unlikely(t.type == CexTkn__error)) {
                         log$error("Error parsing: %s\n", src_fn);
                         return e$raise(Error.integrity, "Error parsing file");
                     }
@@ -1100,7 +1102,7 @@ cexy__cmd__stats(int argc, char** argv, void* user_ctx)
         hm$(char*, bool) excl_files = hm$new(excl_files, _, .capacity = 128);
 
         char* target = argparse.next(&cmd_args);
-        if (target == NULL) { target = "*.[ch]"; }
+        if (unlikely(target == NULL)) { target = "*.[ch]"; }
 
         do {
             bool is_exclude = false;
@@ -1138,7 +1140,7 @@ cexy__cmd__stats(int argc, char** argv, void* user_ctx)
             mem$scope(tmem$, _)
             {
                 char* code = io.file.load(src_fn.key, _);
-                if (!code) {
+                if (unlikely(!code)) {
                     log$error("Error opening file: %s\n", src_fn.key);
                     return e$raise(Error.os, "Error opening file");
                 }
@@ -1151,7 +1153,7 @@ cexy__cmd__stats(int argc, char** argv, void* user_ctx)
                 u32 last_line = 0;
                 u32 file_loc = 0;
                 while ((t = CexParser.next_token(&lx)).type) {
-                    if (t.type == CexTkn__error) {
+                    if (unlikely(t.type == CexTkn__error)) {
                         log$error("Error parsing: %s\n", src_fn.key);
                         return e$raise(Error.integrity, "Error parsing file");
                     }
@@ -1573,7 +1575,7 @@ _cexy__display_full_info(
             mem$scope(tmem$, _)
             {
                 char* code = io.file.load(src_fn, _);
-                if (code == NULL) {
+                if (unlikely(code == NULL)) {
                     log$error("Error loading: %s\n", src_fn);
                     return e$raise(Error.not_found, "Error loading");
                 }
@@ -1582,7 +1584,7 @@ _cexy__display_full_info(
                 CexParser_c lx = CexParser.create(code, 0, true);
                 cex_token_s t;
                 while ((t = CexParser.next_entity(&lx, &items)).type) {
-                    if (t.type == CexTkn__error) { break; }
+                    if (unlikely(t.type == CexTkn__error)) { break; }
                     if (t.type != CexTkn__func_def) { continue; }
                     cex_decl_s* d = CexParser.decl_parse(&lx, t, items, NULL, _);
                     if (d == NULL) { continue; }
@@ -1642,7 +1644,7 @@ _cexy__add_precompiled_debug_cex_h(arr$(char*) * out_cc_args, IAllocator allc)
             has_optimization = true;
             break;
         }
-        if (str.ends_with(it, ".c")) {
+        if (unlikely(str.ends_with(it, ".c"))) {
             return e$raise(Error.argument, "You passed .c file in cc_args list");
         }
         args_hash = str.hash(it, args_hash);
@@ -1726,7 +1728,7 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
             argparse$opt(&out_file, 'o', "out", .help = "write output of command to file"),
         ),
     };
-    if (argparse.parse(&cmd_args, argc, argv)) { return Error.argsparse; }
+    if (unlikely(argparse.parse(&cmd_args, argc, argv))) { return Error.argsparse; }
     char* query = argparse.next(&cmd_args);
     str_s query_s = str.sstr(query);
 
@@ -1792,7 +1794,7 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
                 log$trace("Loading: %s (namespace: %s)\n", src_fn, base_ns);
 
                 char* code = io.file.load(src_fn, arena);
-                if (code == NULL) {
+                if (unlikely(code == NULL)) {
                     log$error("Error loading: %s\n", src_fn);
                     return e$raise(Error.not_found, "Error loading");
                 }
@@ -1803,7 +1805,7 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
                 CexParser_c lx = CexParser.create(code, 0, true);
                 cex_token_s t;
                 while ((t = CexParser.next_entity(&lx, &items)).type) {
-                    if (t.type == CexTkn__error) {
+                    if (unlikely(t.type == CexTkn__error)) {
                         log$error("Error parsing: %s at line: %d\n", src_fn, lx.line);
                         break;
                     }
@@ -1845,14 +1847,15 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
                             if (d->type == CexTkn__typedef && d->ret_type[0] == '\0') { continue; }
                             if (is_namespace_filter) { continue; }
                             // We have full match display full help
-                            return _cexy__display_full_info(
+                            e$ret(_cexy__display_full_info(
                                 d,
                                 base_ns,
                                 show_source,
                                 show_example,
                                 NULL,
                                 output
-                            );
+                            ));
+                            return EOK;
                         }
 
                         bool has_match = false;
@@ -1914,14 +1917,15 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
 
                 if (ns_decl) {
                     char* ns_prefix = str.slice.clone(str.sub(query, 0, -1), _);
-                    return _cexy__display_full_info(
+                    e$ret(_cexy__display_full_info(
                         ns_decl,
                         ns_prefix,
                         false,
                         false,
                         all_decls,
                         output
-                    );
+                    ));
+                    return EOK;
                 }
                 if (arr$len(names) == 0) { continue; }
             }
@@ -1999,7 +2003,7 @@ cexy__cmd__config(int argc, char** argv, void* user_ctx)
         .epilog = epilog_help,
         argparse$opt_list(argparse$opt_help(), ),
     };
-    if (argparse.parse(&cmd_args, argc, argv)) { return Error.argsparse; }
+    if (unlikely(argparse.parse(&cmd_args, argc, argv))) { return Error.argsparse; }
     // clang-format off
 #define $env                                                                                \
     "\ncexy$* variables used in build system, see `cex help 'cexy$cc'` for more info\n"            \
@@ -2071,7 +2075,7 @@ cexy__cmd__config(int argc, char** argv, void* user_ctx)
             io.printf("* cexy$vcpkg_triplet        %s\n", triplet[0]);
             if (!vcpkg_root) {
                 log$error("Build system expects vcpkg to be installed and configured\n");
-                result = "vcpkg not installed/misconfigured";
+                result = e$raise(Error.runtime, "vcpkg not installed/misconfigured");
             }
         } else {
             io.printf("* cexy$vcpkg_root           %s\n", (vcpkg_root) ? vcpkg_root : "Not set");
@@ -2103,7 +2107,7 @@ cexy__cmd__config(int argc, char** argv, void* user_ctx)
                     );
                 }
                 io.printf("\tCompile with `#define CEX_LOG_LVL 5` for more info\n");
-                result = "Missing Libs";
+                result = e$raise(Error.runtime, "Missing Libs");
             }
         }
 
@@ -2179,7 +2183,7 @@ cexy__cmd__libfetch(int argc, char** argv, void* user_ctx)
             ),
         ),
     };
-    if (argparse.parse(&cmd_args, argc, argv)) { return Error.argsparse; }
+    if (unlikely(argparse.parse(&cmd_args, argc, argv))) { return Error.argsparse; }
 
     e$ret(cexy.utils.git_lib_fetch(
         git_url,
@@ -2219,7 +2223,7 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
     char* cmd = argparse.next(&cmd_args);
     char* target = argparse.next(&cmd_args);
 
-    if (!str.match(cmd, "(run|build|create|clean|debug|bench|watch)") || target == NULL) {
+    if (unlikely(!str.match(cmd, "(run|build|create|clean|debug|bench|watch)") || target == NULL)) {
         argparse.usage(&cmd_args);
         return e$raise(Error.argsparse, "Invalid command or target");
     }
@@ -2338,7 +2342,7 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
         fflush(stdout);
 
         if (str.match(cmd, "(run|debug|bench)")) {
-            if (cexy.test.run(target, cmd, cmd_args.argc, cmd_args.argv)) { return Error.runtime; }
+            e$ret(cexy.test.run(target, cmd, cmd_args.argc, cmd_args.argv));
             goto end;
         } else if (str.eq(cmd, "watch")) {
             if (!io.isatty(stdout)) {
@@ -2369,7 +2373,7 @@ cexy__utils__make_new_project(char* proj_dir)
     mem$scope(tmem$, _)
     {
         if (!str.eq(proj_dir, ".")) {
-            if (os.path.exists(proj_dir)) {
+            if (unlikely(os.path.exists(proj_dir))) {
                 return e$raise(Error.exists, "New project dir already exists");
             }
             e$ret(os.fs.mkdir(proj_dir));
@@ -2377,7 +2381,7 @@ cexy__utils__make_new_project(char* proj_dir)
             e$ret(os.fs.copy("./cex.h", os$path_join(_, proj_dir, "cex.h")));
         } else {
             // Creating in the current dir
-            if (os.path.exists("./cex.c")) {
+            if (unlikely(os.path.exists("./cex.c"))) {
                 return e$raise(
                     Error.exists, "New project seems to de already initialized, cex.c exists"
                 );
@@ -2389,10 +2393,10 @@ cexy__utils__make_new_project(char* proj_dir)
         auto lib_h = os$path_join(_, proj_dir, "lib", "mylib.h");
         auto lib_c = os$path_join(_, proj_dir, "lib", "mylib.c");
         auto app_c = os$path_join(_, proj_dir, "src", "myapp.c");
-        if (os.path.exists(cex_c)) { return e$raise(Error.exists, "cex.c already exists"); }
-        if (os.path.exists(lib_h)) { return e$raise(Error.exists, "mylib.h already exists"); }
-        if (os.path.exists(lib_c)) { return e$raise(Error.exists, "mylib.c already exists"); }
-        if (os.path.exists(app_c)) { return e$raise(Error.exists, "myapp.c already exists"); }
+        if (unlikely(os.path.exists(cex_c))) { return e$raise(Error.exists, "cex.c already exists"); }
+        if (unlikely(os.path.exists(lib_h))) { return e$raise(Error.exists, "mylib.h already exists"); }
+        if (unlikely(os.path.exists(lib_c))) { return e$raise(Error.exists, "mylib.c already exists"); }
+        if (unlikely(os.path.exists(app_c))) { return e$raise(Error.exists, "myapp.c already exists"); }
 
 #        ifdef _cex_main_boilerplate
         e$ret(io.file.save(os$path_join(_, proj_dir, "cex.c"), _cex_main_boilerplate));
@@ -2493,7 +2497,7 @@ cexy__cmd__new(int argc, char** argv, void* user_ctx)
     e$ret(argparse.parse(&cmd_args, argc, argv));
     char* proj_dir = argparse.next(&cmd_args);
 
-    if (proj_dir == NULL) {
+    if (unlikely(proj_dir == NULL)) {
         argparse.usage(&cmd_args);
         return e$raise(Error.argsparse, "Expected new project directory path.");
     }
@@ -2509,7 +2513,7 @@ cexy__app__create(char* target)
     mem$scope(tmem$, _)
     {
         char* app_src = os$path_join(_, cexy$src_dir, target, str.fmt(_, "%s.c", target));
-        if (os.path.exists(app_src)) {
+        if (unlikely(os.path.exists(app_src))) {
             return e$raise(Error.exists, "App file already exists");
         }
         e$ret(os.fs.mkpath(app_src));
@@ -2544,7 +2548,7 @@ cexy__app__create(char* target)
     mem$scope(tmem$, _)
     {
         char* app_src = os$path_join(_, cexy$src_dir, target, "main.c");
-        if (os.path.exists(app_src)) {
+        if (unlikely(os.path.exists(app_src))) {
             return e$raise(Error.exists, "App file already exists");
         }
         e$ret(os.fs.mkpath(app_src));
@@ -2616,17 +2620,17 @@ cexy__app__find_app_target_src(IAllocator allc, char* target, char** out_result)
     if (unlikely(out_result == NULL)) { return e$raise(Error.assert, "out_result is NULL"); }
     *out_result = NULL;
 
-    if (target == NULL) {
+    if (unlikely(target == NULL)) {
         return e$raise(Error.argsparse, "Invalid target, expected all or tests/test_some_file.c");
     }
-    if (str.eq(target, "all")) {
+    if (unlikely(str.eq(target, "all"))) {
         return e$raise(Error.argsparse, "all target is not supported for this command");
     }
 
-    if (_cexy__is_str_pattern(target)) {
+    if (unlikely(_cexy__is_str_pattern(target))) {
         return e$raise(Error.argsparse, "Invalid target, patterns are not allowed");
     }
-    if (!str.match(target, "[a-zA-Z0-9_+]")) {
+    if (unlikely(!str.match(target, "[a-zA-Z0-9_+]"))) {
         return e$raise(Error.argsparse, "Invalid target, expected alphanumerical name");
     }
     char* app_src = str.fmt(allc, "%s%c%s.c", cexy$src_dir, os$PATH_SEP, target);
@@ -2636,7 +2640,7 @@ cexy__app__find_app_target_src(IAllocator allc, char* target, char** out_result)
 
             app_src = os$path_join(allc, cexy$src_dir, target, "main.c");
             log$trace("Probing %s\n", app_src);
-            if (!os.path.exists(app_src)) {
+            if (unlikely(!os.path.exists(app_src))) {
                 mem$free(allc, app_src);
                 log$error("App target source not found: %s\n", target);
                 return e$raise(Error.not_found, "App target source not found");
@@ -2660,7 +2664,7 @@ cexy__cmd__simple_app(int argc, char** argv, void* user_ctx)
     char* cmd = argparse.next(&cmd_args);
     char* target = argparse.next(&cmd_args);
 
-    if (!str.match(cmd, "(run|build|create|clean|debug)") || target == NULL) {
+    if (unlikely(!str.match(cmd, "(run|build|create|clean|debug)") || target == NULL)) {
         argparse.usage(&cmd_args);
         return e$raise(Error.argsparse, "Invalid command or target");
     }
@@ -2672,7 +2676,7 @@ cexy__cmd__simple_app(int argc, char** argv, void* user_ctx)
         e$ret(cexy.app.clean(target));
         return EOK;
     }
-    if (!os.path.exists(cexy$src_dir)) { return e$raise(Error.assert, "cexy$src_dir not exists"); }
+    if (unlikely(!os.path.exists(cexy$src_dir))) { return e$raise(Error.assert, "cexy$src_dir not exists"); }
 
     mem$scope(tmem$, _)
     {
@@ -2752,12 +2756,12 @@ cexy__cmd__simple_fuzz(int argc, char** argv, void* user_ctx)
         e$ret(argparse.parse(&cmd_args, argc, argv));
         char* cmd = argparse.next(&cmd_args);
         char* src = argparse.next(&cmd_args);
-        if (src == NULL) {
+        if (unlikely(src == NULL)) {
             argparse.usage(&cmd_args);
-            io.printf("Bad fuzz file argument\n");
+            log$error("Bad fuzz file argument\n");
             return Error.argsparse;
         }
-        if (!str.match(cmd, "(run|create|debug)")) {
+        if (unlikely(!str.match(cmd, "(run|create|debug)"))) {
             argparse.usage(&cmd_args);
             return e$raise(Error.argsparse, "Invalid fuzz command");
         }
@@ -2775,7 +2779,7 @@ cexy__cmd__simple_fuzz(int argc, char** argv, void* user_ctx)
             run_all = true;
             if (max_time == 0) { max_time = 60; }
         } else {
-            if (!os.path.exists(src)) {
+            if (unlikely(!os.path.exists(src))) {
                 log$error("target not found: %s\n", src);
                 return e$raise(Error.not_found, "target not found");
             }
@@ -2802,8 +2806,8 @@ cexy__cmd__simple_fuzz(int argc, char** argv, void* user_ctx)
             arr$clear(args);
             if (!run_all || cexy.src_include_changed(target_exe, src_file, NULL)) {
                 arr$pushm(args, cexy$fuzzer);
-                if (arr$len(args) == 0) { return e$raise(Error.assert, "empty cexy$fuzzer"); }
-                if (!os.cmd.exists(args[0])) {
+                if (unlikely(arr$len(args) == 0)) { return e$raise(Error.assert, "empty cexy$fuzzer"); }
+                if (unlikely(!os.cmd.exists(args[0]))) {
                     return e$raise(Error.not_found, "fuzzer command not found");
                 }
                 if (str.find(args[0], "afl")) { is_afl_fuzzer = true; }
@@ -2835,7 +2839,7 @@ cexy__cmd__simple_fuzz(int argc, char** argv, void* user_ctx)
                 // AFL++ or something
                 e$ret(os.env.set("ASAN_OPTIONS", ""));
 
-                if (debug) { return e$raise(Error.argument, "AFL fuzzer debugging is not supported"); }
+                if (unlikely(debug)) { return e$raise(Error.argument, "AFL fuzzer debugging is not supported"); }
                 arr$pushm(args, "afl-fuzz");
 
                 if (cmd_args.argc > 0) {
@@ -3020,23 +3024,23 @@ cexy__utils__pkgconf(
 
         if (vcpkg_root) {
             log$trace("Looking vcpkg libs at '%s' triplet='%s'\n", vcpkg_root, triplet[0]);
-            if (!os.path.exists(vcpkg_root)) {
+            if (unlikely(!os.path.exists(vcpkg_root))) {
                 return e$raise(Error.not_found, "cexy$vcpkg_root not exists");
             }
             char* triplet_path = str.fmt(_, "%s/installed/%s", vcpkg_root, triplet[0]);
-            if (!os.path.exists(triplet_path)) {
+            if (unlikely(!os.path.exists(triplet_path))) {
                 return e$raise(Error.not_found, "vcpkg triplet path not exists");
             }
             char* lib_path = str.fmt(_, "%s/lib/", triplet_path);
-            if (!os.path.exists(lib_path)) {
+            if (unlikely(!os.path.exists(lib_path))) {
                 return e$raise(Error.not_found, "vcpkg lib path not exists");
             }
             char* inc_path = str.fmt(_, "%s/include/", triplet_path);
-            if (!os.path.exists(inc_path)) {
+            if (unlikely(!os.path.exists(inc_path))) {
                 return e$raise(Error.not_found, "vcpkg include path not exists");
             }
             char* pkgconf_path = str.fmt(_, "%s/lib/pkgconfig", triplet_path);
-            if (!os.path.exists(pkgconf_path)) {
+            if (unlikely(!os.path.exists(pkgconf_path))) {
                 return e$raise(Error.not_found, "vcpkg lib/pkgconfig path not exists");
             }
 
@@ -3072,7 +3076,7 @@ cexy__utils__pkgconf(
                     }
                 }
 
-                if (!is_found) {
+                if (unlikely(!is_found)) {
                     log$error("vcpkg: lib not found: %s\n", it);
                     return e$raise(Error.not_found, "vcpkg: lib not found");
                 }
@@ -3139,7 +3143,7 @@ cexy__utils__make_compile_flags(
             }
         }
         if (cc_flags_or_null != NULL) { arr$pusha(args, cc_flags_or_null); }
-        if (arr$len(args) == 0) { return e$raise(Error.null_or_empty, "Compiler flags are empty"); }
+        if (unlikely(arr$len(args) == 0)) { return e$raise(Error.null_or_empty, "Compiler flags are empty"); }
 
         FILE* fh;
         e$ret(io.fopen(&fh, flags_file, "w"));
@@ -3165,11 +3169,11 @@ cexy__utils__git_lib_fetch(
     usize repo_paths_len
 )
 {
-    if (git_url == NULL || git_url[0] == '\0') {
+    if (unlikely(git_url == NULL || git_url[0] == '\0')) {
         log$error("Empty or null git_url: '%s'\n", git_url ? git_url : "(null)");
         return e$raise(Error.argument, "Empty or null git_url");
     }
-    if (!str.ends_with(git_url, ".git")) {
+    if (unlikely(!str.ends_with(git_url, ".git"))) {
         log$error("git_url must end with .git: %s\n", git_url);
         return e$raise(Error.argument, "git_url must end with .git");
     }
@@ -3229,7 +3233,7 @@ cexy__utils__git_lib_fetch(
                                ? str.fmt(_, "%s/%s", out_dir, it)
                                : str.fmt(_, "%s/%s", out_dir, os.path.basename(it, _));
             auto in_stat = os.fs.stat(in_path);
-            if (!in_stat.is_valid) {
+            if (unlikely(!in_stat.is_valid)) {
                 log$error("Invalid stat for path: %s\n", in_path);
                 return e$raise(in_stat.error, "Invalid stat for path");
             }
@@ -3239,7 +3243,7 @@ cexy__utils__git_lib_fetch(
                 log$info("Updating file: %s -> %s\n", it, out_path);
                 if (in_stat.is_directory) {
                     if (out_stat.is_valid && update_existing) {
-                        if (!out_stat.is_directory) {
+                        if (unlikely(!out_stat.is_directory)) {
                             log$error("out_path expected to be a directory: %s\n", out_path);
                             return e$raise(Error.integrity, "out_path expected to be a directory");
                         }
