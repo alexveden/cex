@@ -155,7 +155,7 @@ cex_sbuf_create_static(char* buf, usize buf_size)
 static Exc
 cex_sbuf_set_len(sbuf_c* self, usize new_length)
 {
-    uassert(self != NULL);
+    if (unlikely(self == NULL)) { return e$raise(Error.argument, "self is NULL"); }
     sbuf_head_s* head = _sbuf__head(*self);
     if (unlikely(!head)) { return Error.runtime; }
     if (unlikely(head->err)) { return head->err; }
@@ -322,7 +322,7 @@ cex_sbuf_appendf(sbuf_c* self, char* format, ...)
 static Exc
 cex_sbuf_append(sbuf_c* self, char* s)
 {
-    uassert(self != NULL);
+    if (unlikely(self == NULL)) { return e$raise(Error.argument, "self is NULL"); }
     sbuf_head_s* head = _sbuf__head(*self);
     if (unlikely(head == NULL)) { return Error.runtime; }
 

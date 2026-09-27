@@ -716,4 +716,11 @@ test$case(test_sbuf_append_external_pointer)
     return EOK;
 }
 
+test$case(test_sbuf_null_self)
+{
+    tassert_eq(Error.argument, sbuf.set_len(NULL, 0));
+    tassert_eq(Error.argument, sbuf.append(NULL, "x"));
+    return EOK;
+}
+
 test$main();
