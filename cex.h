@@ -13163,10 +13163,10 @@ cex_io_fopen(FILE** file, char* filename, char* mode)
     if (unlikely(mode == NULL)) { return e$raise(Error.argument, "mode is NULL"); }
 
     *file = fopen(filename, mode);
-    if (*file == NULL) {
+    if (unlikely(*file == NULL)) {
         switch (errno) {
             case ENOENT:
-                return Error.not_found;
+                return e$raise(Error.not_found, "file does not exist");
             default:
                 return strerror(errno);
         }
@@ -13199,7 +13199,7 @@ cex_io_fflush(FILE* file)
 
     int ret = fflush(file);
     if (unlikely(ret == -1)) {
-        return Error.io;
+        return e$raise(Error.io, "fflush failed");
     } else {
         return Error.ok;
     }
@@ -13213,10 +13213,10 @@ cex_io_fseek(FILE* file, long offset, int whence)
 
     int ret = fseek(file, offset, whence);
     if (unlikely(ret == -1)) {
-        if (errno == EINVAL) {
-            return Error.argument;
+        if (unlikely(errno == EINVAL)) {
+            return e$raise(Error.argument, "invalid whence");
         } else {
-            return Error.io;
+            return e$raise(Error.io, "fseek failed");
         }
     } else {
         return Error.ok;
@@ -13239,10 +13239,10 @@ cex_io_ftell(FILE* file, usize* size)
 
     long ret = ftell(file);
     if (unlikely(ret < 0)) {
-        if (errno == EINVAL) {
-            return Error.argument;
+        if (unlikely(errno == EINVAL)) {
+            return e$raise(Error.argument, "invalid whence");
         } else {
-            return Error.io;
+            return e$raise(Error.io, "ftell failed");
         }
         *size = 0;
     } else {
@@ -13510,8 +13510,8 @@ cex_io_fprintf(FILE* stream, char* format, ...)
     int result = cexsp__vfprintf(stream, format, va);
     va_end(va);
 
-    if (result == -1) {
-        return Error.io;
+    if (unlikely(result == -1)) {
+        return e$raise(Error.io, "vfprintf failed");
     } else {
         return Error.ok;
     }
@@ -13534,24 +13534,24 @@ cex_io_fwrite(FILE* file, void* buff, usize buff_len)
 {
     if (unlikely(file == NULL)) { return e$raise(Error.argument, "file is NULL"); }
 
-    if (buff == NULL) { return Error.argument; }
-    if (buff_len == 0) { return Error.argument; }
+    if (unlikely(buff == NULL)) { return e$raise(Error.argument, "buff is NULL"); }
+    if (unlikely(buff_len == 0)) { return e$raise(Error.argument, "buff_len is 0"); }
 
     usize ret_count = fwrite(buff, 1, buff_len, file);
 
-    if (ret_count != buff_len) {
+    if (unlikely(ret_count != buff_len)) {
         // return os.get_last_error();
         switch (errno) {
             case 0:
                 return e$raise(Error.assert, "errno is not set");
             case ENOENT:
-                return Error.not_found;
+                return e$raise(Error.not_found, "file does not exist");
             case EPERM:
-                return Error.permission;
+                return e$raise(Error.permission, "permission denied");
             case EIO:
-                return Error.io;
+                return e$raise(Error.io, "fwrite failed");
             case EAGAIN:
-                return Error.try_again;
+                return e$raise(Error.try_again, "try again");
             default:
                 return strerror(errno);
         }
@@ -13566,15 +13566,15 @@ cex_io__file__writeln(FILE* file, char* line)
 {
     errno = 0;
     if (unlikely(file == NULL)) { return e$raise(Error.argument, "file is NULL"); }
-    if (line == NULL) { return Error.argument; }
+    if (unlikely(line == NULL)) { return e$raise(Error.argument, "line is NULL"); }
     usize line_len = strlen(line);
     usize ret_count = fwrite(line, 1, line_len, file);
-    if (ret_count != line_len) { return Error.io; }
+    if (unlikely(ret_count != line_len)) { return e$raise(Error.io, "fwrite failed"); }
 
     char new_line[] = { '\n' };
     ret_count = fwrite(new_line, 1, sizeof(new_line), file);
 
-    if (ret_count != sizeof(new_line)) { return Error.io; }
+    if (unlikely(ret_count != sizeof(new_line))) { return e$raise(Error.io, "fwrite failed"); }
     return Error.ok;
 }
 
@@ -13593,9 +13593,9 @@ cex_io_fclose(FILE** file)
 Exception
 cex_io__file__save(char* path, char* contents)
 {
-    if (path == NULL) { return Error.argument; }
+    if (unlikely(path == NULL)) { return e$raise(Error.argument, "path is NULL"); }
 
-    if (contents == NULL) { return Error.argument; }
+    if (unlikely(contents == NULL)) { return e$raise(Error.argument, "contents is NULL"); }
 
     FILE* file;
     // NOLINTNEXTLINE
