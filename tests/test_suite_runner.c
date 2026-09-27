@@ -118,13 +118,6 @@ test$case(runner_teardown_suite_failure_prints_traceback)
     return EOK;
 }
 
-#else
-
-test$case(not_supported_by_platform)
-{
-    return EOK;
-}
-
 #endif
 
 test$main();

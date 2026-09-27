@@ -69,11 +69,6 @@ test$case(test_namespace_entities)
     return EOK;
 }
 
-#else
-test$case(not_supported_by_platform)
-{
-    return EOK;
-}
 #endif  // #if !defined(__EMSCRIPTEN__)
 
 test$main();

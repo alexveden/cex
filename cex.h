@@ -5618,8 +5618,8 @@ cex_test_main_fn(int argc, char** argv)
 
     struct _cex_test_context_s* ctx = &_cex_test__mainfn_state;
     if (ctx->test_cases == NULL) {
-        fprintf(stderr, "No test$case() in the test file: %s\n", ctx->suite_file);
-        return 1;
+        fprintf(stderr, "%s [SKIP] no test cases\n", ctx->suite_file);
+        return 0;
     }
     u32 max_name = 0;
     for$each (t, ctx->test_cases) {

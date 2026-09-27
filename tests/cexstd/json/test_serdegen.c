@@ -246,11 +246,6 @@ test$case(serdegen_json_comments)
 
     return EOK;
 }
-#else
-test$case(os_cmd_not_supported_by_platform)
-{
-    return EOK;
-}
 #endif // #if !defined(__EMSCRIPTEN__)
 
 test$main();

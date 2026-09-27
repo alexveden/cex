@@ -50,11 +50,6 @@ test$case(test_make_new_project_partial_exists)
     return EOK;
 }
 
-#else
-test$case(not_supported_by_platform)
-{
-    return EOK;
-}
 #endif  // #if !defined(__EMSCRIPTEN__)
 
 test$main();

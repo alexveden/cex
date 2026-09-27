@@ -584,11 +584,6 @@ test$case(test_find_app_target_src_null_out)
     return EOK;
 }
 
-#else
-test$case(not_supported_by_platform)
-{
-    return EOK;
-}
 #endif  // #if !defined(__EMSCRIPTEN__)
 
 test$main();

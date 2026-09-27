@@ -626,11 +626,6 @@ test$case(os_cmd_null_args)
     tassert_er(Error.argument, os.cmd.create(NULL, args, 2, NULL));
     return EOK;
 }
-#else
-test$case(os_cmd_not_supported_by_platform)
-{
-    return EOK;
-}
 #endif  // #if !defined(__EMSCRIPTEN__)
 
 
