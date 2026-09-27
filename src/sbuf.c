@@ -333,7 +333,7 @@ cex_sbuf_append(sbuf_c* self, char* s)
         _sbuf__set_error(head, "sbuf.append s=NULL");
         return e$raise(Error.argument, "s is NULL");
     }
-    if (head->err) { return e$raise(head->err, "sbuf is in error state"); }
+    if (unlikely(head->err)) { return e$raise(head->err, "sbuf is in error state"); }
 
     // `s` must not point into the sbuf's own buffer
     // (would cause use-after-free on realloc or memcpy overlap)
@@ -376,8 +376,8 @@ cex_sbuf_validate(sbuf_c* self)
     if (unlikely(head->err)) { return e$raise(head->err, "sbuf is in error state"); }
     if (unlikely(head->header.magic != SBUF_MAGIC)) { return "Bad magic or non sbuf_c* pointer type"; }
     if (unlikely(head->capacity == 0)) { return "Zero capacity"; }
-    if (head->length > head->capacity) { return "Length > capacity"; }
-    if (head->header.nullterm != 0) { return "Missing null term in header"; }
+    if (unlikely(head->length > head->capacity)) { return "Length > capacity"; }
+    if (unlikely(head->header.nullterm != 0)) { return "Missing null term in header"; }
 
     return EOK;
 }

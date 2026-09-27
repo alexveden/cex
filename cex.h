@@ -11081,9 +11081,9 @@ static Exception
 cex_str_copy(char* dest, char* src, usize destlen)
 {
     uassert(dest != src && "buffers overlap");
-    if (unlikely(dest == NULL || destlen == 0)) { return Error.argument; }
+    if (unlikely(dest == NULL || destlen == 0)) { return e$raise(Error.argument, "dest is NULL or destlen is 0"); }
     dest[0] = '\0'; // If we fail next, it still writes empty string
-    if (unlikely(src == NULL)) { return Error.argument; }
+    if (unlikely(src == NULL)) { return e$raise(Error.argument, "src is NULL"); }
 
     char* d = dest;
     char* s = src;
@@ -11096,7 +11096,7 @@ cex_str_copy(char* dest, char* src, usize destlen)
     }
     *d = '\0'; // always terminate
 
-    if (unlikely(*s != '\0')) { return Error.overflow; }
+    if (unlikely(*s != '\0')) { return e$raise(Error.overflow, "src exceeds dest buffer"); }
 
     return Error.ok;
 }
@@ -11146,10 +11146,10 @@ static Exception
 cex_str__slice__copy(char* dest, str_s src, usize destlen)
 {
     uassert(dest != src.buf && "buffers overlap");
-    if (unlikely(dest == NULL || destlen == 0)) { return Error.argument; }
+    if (unlikely(dest == NULL || destlen == 0)) { return e$raise(Error.argument, "dest is NULL or destlen is 0"); }
     dest[0] = '\0';
-    if (unlikely(src.buf == NULL)) { return Error.argument; }
-    if (src.len >= destlen) { return Error.overflow; }
+    if (unlikely(src.buf == NULL)) { return e$raise(Error.argument, "src.buf is NULL"); }
+    if (unlikely(src.len >= destlen)) { return e$raise(Error.overflow, "src.len exceeds destlen"); }
     memcpy(dest, src.buf, src.len);
     dest[src.len] = '\0';
     dest[destlen - 1] = '\0';
@@ -11168,9 +11168,9 @@ cex_str_vsprintf(char* dest, usize dest_len, char* format, va_list va)
 
     int result = cexsp__vsnprintf(dest, dest_len, format, va);
 
-    if (result < 0 || (usize)result >= dest_len) {
+    if (unlikely(result < 0 || (usize)result >= dest_len)) {
         // NOTE: even with overflow, data is truncated and written to the dest + null term
-        return Error.overflow;
+        return e$raise(Error.overflow, "format output exceeds dest_len");
     }
 
     return EOK;
@@ -11182,7 +11182,9 @@ cex_str_sprintf(char* dest, usize dest_len, char* format, ...)
 {
     va_list va;
     va_start(va, format);
-    Exc result = cex_str_vsprintf(dest, dest_len, format, va);
+    Exc result = EOK;
+    e$goto(result = cex_str_vsprintf(dest, dest_len, format, va), done);
+done:
     va_end(va);
     return result;
 }
@@ -11567,15 +11569,15 @@ cex_str_to_signed_num_(char* self, usize len, i64* num, i64 num_min, i64 num_max
     uassert(num_min == 0 || num_min < -64);
     uassert(num_min >= INT64_MIN + 1 && "try num_min+1, negation overflow");
 
-    if (unlikely(self == NULL)) { return Error.argument; }
-    if (unlikely(len > 32)) { return Error.argument; }
+    if (unlikely(self == NULL)) { return e$raise(Error.argument, "self is NULL"); }
+    if (unlikely(len > 32)) { return e$raise(Error.argument, "len exceeds 32"); }
 
     char* s = self;
     if (len == 0) { len = strlen(self); }
     usize i = 0;
 
     for (; i < len && s[i] == ' '; i++) {}
-    if (unlikely(i >= len)) { return Error.argument; }
+    if (unlikely(i >= len)) { return e$raise(Error.argument, "invalid number format"); }
 
     bool negative = false;
     if (s[i] == '-') {
@@ -11586,14 +11588,14 @@ cex_str_to_signed_num_(char* self, usize len, i64* num, i64 num_min, i64 num_max
     }
     i32 base = 10;
 
-    if (unlikely(i >= len)) { return Error.argument; }
+    if (unlikely(i >= len)) { return e$raise(Error.argument, "invalid number format"); }
 
     if ((len - i) >= 2 && s[i] == '0' && (s[i + 1] == 'x' || s[i + 1] == 'X')) {
         i += 2;
         base = 16;
         if (unlikely(i >= len)) {
             // edge case when '0x'
-            return Error.argument;
+            return e$raise(Error.argument, "invalid number format");
         }
     }
 
@@ -11616,10 +11618,10 @@ cex_str_to_signed_num_(char* self, usize len, i64* num, i64 num_min, i64 num_max
             break;
         }
 
-        if (unlikely(c >= base)) { return Error.argument; }
+        if (unlikely(c >= base)) { return e$raise(Error.argument, "invalid number format"); }
 
         if (unlikely(acc > cutoff || (acc == cutoff && c > cutlim))) {
-            return Error.overflow;
+            return e$raise(Error.overflow, "number out of range");
         } else {
             acc *= base;
             acc += c;
@@ -11628,7 +11630,7 @@ cex_str_to_signed_num_(char* self, usize len, i64* num, i64 num_min, i64 num_max
 
     // Allow trailing spaces, but no other character allowed
     for (; i < len; i++) {
-        if (s[i] != ' ') { return Error.argument; }
+        if (unlikely(s[i] != ' ')) { return e$raise(Error.argument, "invalid number format"); }
     }
 
     *num = negative ? -(i64)acc : (i64)acc;
@@ -11643,24 +11645,24 @@ cex_str_to_unsigned_num_(char* s, usize len, u64* num, u64 num_max)
     uassert(num_max > 0);
     uassert(num_max > 64);
 
-    if (unlikely(s == NULL)) { return Error.argument; }
+    if (unlikely(s == NULL)) { return e$raise(Error.argument, "self is NULL"); }
 
     if (len == 0) { len = strlen(s); }
-    if (unlikely(len > 32)) { return Error.argument; }
+    if (unlikely(len > 32)) { return e$raise(Error.argument, "len exceeds 32"); }
     usize i = 0;
 
     for (; i < len && s[i] == ' '; i++) {}
-    if (unlikely(i >= len)) { return Error.argument; }
+    if (unlikely(i >= len)) { return e$raise(Error.argument, "invalid number format"); }
 
 
-    if (s[i] == '-') {
-        return Error.argument;
+    if (unlikely(s[i] == '-')) {
+        return e$raise(Error.argument, "negative value not allowed");
     } else if (unlikely(s[i] == '+')) {
         i++;
     }
     i32 base = 10;
 
-    if (unlikely(i >= len)) { return Error.argument; }
+    if (unlikely(i >= len)) { return e$raise(Error.argument, "invalid number format"); }
 
     if ((len - i) >= 2 && s[i] == '0' && (s[i + 1] == 'x' || s[i + 1] == 'X')) {
         i += 2;
@@ -11668,7 +11670,7 @@ cex_str_to_unsigned_num_(char* s, usize len, u64* num, u64 num_max)
 
         if (unlikely(i >= len)) {
             // edge case when '0x'
-            return Error.argument;
+            return e$raise(Error.argument, "invalid number format");
         }
     }
 
@@ -11691,10 +11693,10 @@ cex_str_to_unsigned_num_(char* s, usize len, u64* num, u64 num_max)
             break;
         }
 
-        if (unlikely(c >= base)) { return Error.argument; }
+        if (unlikely(c >= base)) { return e$raise(Error.argument, "invalid number format"); }
 
         if (unlikely(acc > cutoff || (acc == cutoff && c > cutlim))) {
-            return Error.overflow;
+            return e$raise(Error.overflow, "number out of range");
         } else {
             acc *= base;
             acc += c;
@@ -11703,7 +11705,7 @@ cex_str_to_unsigned_num_(char* s, usize len, u64* num, u64 num_max)
 
     // Allow trailing spaces, but no other character allowed
     for (; i < len; i++) {
-        if (s[i] != ' ') { return Error.argument; }
+        if (unlikely(s[i] != ' ')) { return e$raise(Error.argument, "invalid number format"); }
     }
 
     *num = acc;
@@ -11715,17 +11717,17 @@ static Exception
 cex_str_to_double_(char* self, usize len, double* num, i32 exp_min, i32 exp_max)
 {
     static_assert(sizeof(double) == 8, "unexpected double precision");
-    if (unlikely(self == NULL)) { return Error.argument; }
+    if (unlikely(self == NULL)) { return e$raise(Error.argument, "self is NULL"); }
 
     char* s = self;
     if (len == 0) { len = strlen(s); }
-    if (unlikely(len > 64)) { return Error.argument; }
+    if (unlikely(len > 64)) { return e$raise(Error.argument, "len exceeds 64"); }
 
     usize i = 0;
     double number = 0.0;
 
     for (; i < len && s[i] == ' '; i++) {}
-    if (unlikely(i >= len)) { return Error.argument; }
+    if (unlikely(i >= len)) { return e$raise(Error.argument, "invalid number format"); }
 
     double sign = 1;
     if (s[i] == '-') {
@@ -11735,10 +11737,10 @@ cex_str_to_double_(char* self, usize len, double* num, i32 exp_min, i32 exp_max)
         i++;
     }
 
-    if (unlikely(i >= len)) { return Error.argument; }
+    if (unlikely(i >= len)) { return e$raise(Error.argument, "invalid number format"); }
 
     if (unlikely(s[i] == 'n' || s[i] == 'i' || s[i] == 'N' || s[i] == 'I')) {
-        if (unlikely(len - i < 3)) { return Error.argument; }
+        if (unlikely(len - i < 3)) { return e$raise(Error.argument, "invalid number format"); }
         if (s[i] == 'n' || s[i] == 'N') {
             if ((s[i + 1] == 'a' || s[i + 1] == 'A') && (s[i + 2] == 'n' || s[i + 2] == 'N')) {
                 number = NAN;
@@ -11766,7 +11768,7 @@ cex_str_to_double_(char* self, usize len, double* num, i32 exp_min, i32 exp_max)
 
         // Allow trailing spaces, but no other character allowed
         for (; i < len; i++) {
-            if (s[i] != ' ') { return Error.argument; }
+            if (unlikely(s[i] != ' ')) { return e$raise(Error.argument, "invalid number format"); }
         }
 
         *num = number;
@@ -11785,7 +11787,7 @@ cex_str_to_double_(char* self, usize len, double* num, i32 exp_min, i32 exp_max)
         } else if (c == 'e' || c == 'E' || c == '.') {
             break;
         } else {
-            return Error.argument;
+            return e$raise(Error.argument, "invalid number format");
         }
 
         number = number * 10. + c;
@@ -11834,19 +11836,19 @@ cex_str_to_double_(char* self, usize len, double* num, i32 exp_min, i32 exp_max)
             }
 
             if (unlikely(n > ((u32)INT32_MAX - c) / 10)) {
-                return Error.overflow;
+                return e$raise(Error.overflow, "number out of range");
             }
             n = n * 10 + c;
         }
 
         i64 total_exp = (i64)exponent + (i64)(i32)n * exp_sign;
         if (unlikely(total_exp < exp_min || total_exp > exp_max)) {
-            return Error.overflow;
+            return e$raise(Error.overflow, "number out of range");
         }
         exponent = (i32)total_exp;
     }
 
-    if (num_digits == 0) { return Error.argument; }
+    if (unlikely(num_digits == 0)) { return e$raise(Error.argument, "invalid number format"); }
 
     // Scale the result
     double p10 = 10.;
@@ -11864,11 +11866,11 @@ cex_str_to_double_(char* self, usize len, double* num, i32 exp_min, i32 exp_max)
         p10 *= p10;
     }
 
-    if (number == HUGE_VAL) { return Error.overflow; }
+    if (unlikely(number == HUGE_VAL)) { return e$raise(Error.overflow, "number out of range"); }
 
     // Allow trailing spaces, but no other character allowed
     for (; i < len; i++) {
-        if (s[i] != ' ') { return Error.argument; }
+        if (unlikely(s[i] != ' ')) { return e$raise(Error.argument, "invalid number format"); }
     }
 
     *num = number;
@@ -11879,13 +11881,13 @@ cex_str_to_double_(char* self, usize len, double* num, i32 exp_min, i32 exp_max)
 static Exception
 cex_str__convert__to_bools(str_s s, bool* num)
 {
-    if (unlikely(!num)) { return Error.argument; }
+    if (unlikely(!num)) { return e$raise(Error.argument, "num is NULL"); }
     if (str$eq(s, "true")) {
         *num = true;
     } else if (str$eq(s, "false")) {
         *num = false;
     } else {
-        return Error.argument;
+        return e$raise(Error.argument, "invalid bool string");
     }
     return EOK;
 }
@@ -11893,168 +11895,180 @@ cex_str__convert__to_bools(str_s s, bool* num)
 static Exception
 cex_str__convert__to_f32s(str_s s, f32* num)
 {
-    if (unlikely(!num)) { return Error.argument; }
+    if (unlikely(!num)) { return e$raise(Error.argument, "num is NULL"); }
     f64 res = 0;
-    Exc r = cex_str_to_double_(s.buf, s.len, &res, -37, 38);
+    e$ret(cex_str_to_double_(s.buf, s.len, &res, -37, 38));
     *num = (f32)res;
-    return r;
+    return EOK;
 }
 
 static Exception
 cex_str__convert__to_f64s(str_s s, f64* num)
 {
-    if (unlikely(!num)) { return Error.argument; }
-    return cex_str_to_double_(s.buf, s.len, num, -307, 308);
+    if (unlikely(!num)) { return e$raise(Error.argument, "num is NULL"); }
+    e$ret(cex_str_to_double_(s.buf, s.len, num, -307, 308));
+    return EOK;
 }
 
 static Exception
 cex_str__convert__to_i8s(str_s s, i8* num)
 {
-    if (unlikely(!num)) { return Error.argument; }
+    if (unlikely(!num)) { return e$raise(Error.argument, "num is NULL"); }
     i64 res = 0;
-    Exc r = cex_str_to_signed_num_(s.buf, s.len, &res, INT8_MIN, INT8_MAX);
+    e$ret(cex_str_to_signed_num_(s.buf, s.len, &res, INT8_MIN, INT8_MAX));
     *num = (i8)res;
-    return r;
+    return EOK;
 }
 
 static Exception
 cex_str__convert__to_i16s(str_s s, i16* num)
 {
-    if (unlikely(!num)) { return Error.argument; }
+    if (unlikely(!num)) { return e$raise(Error.argument, "num is NULL"); }
     i64 res = 0;
-    auto r = cex_str_to_signed_num_(s.buf, s.len, &res, INT16_MIN, INT16_MAX);
+    e$ret(cex_str_to_signed_num_(s.buf, s.len, &res, INT16_MIN, INT16_MAX));
     *num = (i16)res;
-    return r;
+    return EOK;
 }
 
 static Exception
 cex_str__convert__to_i32s(str_s s, i32* num)
 {
-    if (unlikely(!num)) { return Error.argument; }
+    if (unlikely(!num)) { return e$raise(Error.argument, "num is NULL"); }
     i64 res = 0;
-    auto r = cex_str_to_signed_num_(s.buf, s.len, &res, INT32_MIN, INT32_MAX);
+    e$ret(cex_str_to_signed_num_(s.buf, s.len, &res, INT32_MIN, INT32_MAX));
     *num = (i32)res;
-    return r;
+    return EOK;
 }
 
 
 static Exception
 cex_str__convert__to_i64s(str_s s, i64* num)
 {
-    if (unlikely(!num)) { return Error.argument; }
+    if (unlikely(!num)) { return e$raise(Error.argument, "num is NULL"); }
     i64 res = 0;
     // NOTE:INT64_MIN+1 because negating of INT64_MIN leads to UB!
-    auto r = cex_str_to_signed_num_(s.buf, s.len, &res, INT64_MIN + 1, INT64_MAX);
+    e$ret(cex_str_to_signed_num_(s.buf, s.len, &res, INT64_MIN + 1, INT64_MAX));
     *num = res;
-    return r;
+    return EOK;
 }
 
 static Exception
 cex_str__convert__to_u8s(str_s s, u8* num)
 {
-    if (unlikely(!num)) { return Error.argument; }
+    if (unlikely(!num)) { return e$raise(Error.argument, "num is NULL"); }
     u64 res = 0;
-    Exc r = cex_str_to_unsigned_num_(s.buf, s.len, &res, UINT8_MAX);
+    e$ret(cex_str_to_unsigned_num_(s.buf, s.len, &res, UINT8_MAX));
     *num = (u8)res;
-    return r;
+    return EOK;
 }
 
 static Exception
 cex_str__convert__to_u16s(str_s s, u16* num)
 {
-    if (unlikely(!num)) { return Error.argument; }
+    if (unlikely(!num)) { return e$raise(Error.argument, "num is NULL"); }
     u64 res = 0;
-    Exc r = cex_str_to_unsigned_num_(s.buf, s.len, &res, UINT16_MAX);
+    e$ret(cex_str_to_unsigned_num_(s.buf, s.len, &res, UINT16_MAX));
     *num = (u16)res;
-    return r;
+    return EOK;
 }
 
 static Exception
 cex_str__convert__to_u32s(str_s s, u32* num)
 {
-    if (unlikely(!num)) { return Error.argument; }
+    if (unlikely(!num)) { return e$raise(Error.argument, "num is NULL"); }
     u64 res = 0;
-    Exc r = cex_str_to_unsigned_num_(s.buf, s.len, &res, UINT32_MAX);
+    e$ret(cex_str_to_unsigned_num_(s.buf, s.len, &res, UINT32_MAX));
     *num = (u32)res;
-    return r;
+    return EOK;
 }
 
 static Exception
 cex_str__convert__to_u64s(str_s s, u64* num)
 {
-    if (unlikely(!num)) { return Error.argument; }
+    if (unlikely(!num)) { return e$raise(Error.argument, "num is NULL"); }
     u64 res = 0;
-    Exc r = cex_str_to_unsigned_num_(s.buf, s.len, &res, UINT64_MAX);
+    e$ret(cex_str_to_unsigned_num_(s.buf, s.len, &res, UINT64_MAX));
     *num = res;
 
-    return r;
+    return EOK;
 }
 
 static Exception
 cex_str__convert__to_bool(char* s, bool* num)
 {
-    return cex_str__convert__to_bools(str.sstr(s), num);
+    e$ret(cex_str__convert__to_bools(str.sstr(s), num));
+    return EOK;
 }
 
 static Exception
 cex_str__convert__to_f32(char* s, f32* num)
 {
-    return cex_str__convert__to_f32s(str.sstr(s), num);
+    e$ret(cex_str__convert__to_f32s(str.sstr(s), num));
+    return EOK;
 }
 
 static Exception
 cex_str__convert__to_f64(char* s, f64* num)
 {
-    return cex_str__convert__to_f64s(str.sstr(s), num);
+    e$ret(cex_str__convert__to_f64s(str.sstr(s), num));
+    return EOK;
 }
 
 static Exception
 cex_str__convert__to_i8(char* s, i8* num)
 {
-    return cex_str__convert__to_i8s(str.sstr(s), num);
+    e$ret(cex_str__convert__to_i8s(str.sstr(s), num));
+    return EOK;
 }
 
 static Exception
 cex_str__convert__to_i16(char* s, i16* num)
 {
-    return cex_str__convert__to_i16s(str.sstr(s), num);
+    e$ret(cex_str__convert__to_i16s(str.sstr(s), num));
+    return EOK;
 }
 
 static Exception
 cex_str__convert__to_i32(char* s, i32* num)
 {
-    return cex_str__convert__to_i32s(str.sstr(s), num);
+    e$ret(cex_str__convert__to_i32s(str.sstr(s), num));
+    return EOK;
 }
 
 
 static Exception
 cex_str__convert__to_i64(char* s, i64* num)
 {
-    return cex_str__convert__to_i64s(str.sstr(s), num);
+    e$ret(cex_str__convert__to_i64s(str.sstr(s), num));
+    return EOK;
 }
 
 static Exception
 cex_str__convert__to_u8(char* s, u8* num)
 {
-    return cex_str__convert__to_u8s(str.sstr(s), num);
+    e$ret(cex_str__convert__to_u8s(str.sstr(s), num));
+    return EOK;
 }
 
 static Exception
 cex_str__convert__to_u16(char* s, u16* num)
 {
-    return cex_str__convert__to_u16s(str.sstr(s), num);
+    e$ret(cex_str__convert__to_u16s(str.sstr(s), num));
+    return EOK;
 }
 
 static Exception
 cex_str__convert__to_u32(char* s, u32* num)
 {
-    return cex_str__convert__to_u32s(str.sstr(s), num);
+    e$ret(cex_str__convert__to_u32s(str.sstr(s), num));
+    return EOK;
 }
 
 static Exception
 cex_str__convert__to_u64(char* s, u64* num)
 {
-    return cex_str__convert__to_u64s(str.sstr(s), num);
+    e$ret(cex_str__convert__to_u64s(str.sstr(s), num));
+    return EOK;
 }
 
 
@@ -13008,7 +13022,7 @@ cex_sbuf_append(sbuf_c* self, char* s)
         _sbuf__set_error(head, "sbuf.append s=NULL");
         return e$raise(Error.argument, "s is NULL");
     }
-    if (head->err) { return e$raise(head->err, "sbuf is in error state"); }
+    if (unlikely(head->err)) { return e$raise(head->err, "sbuf is in error state"); }
 
     // `s` must not point into the sbuf's own buffer
     // (would cause use-after-free on realloc or memcpy overlap)
@@ -13051,8 +13065,8 @@ cex_sbuf_validate(sbuf_c* self)
     if (unlikely(head->err)) { return e$raise(head->err, "sbuf is in error state"); }
     if (unlikely(head->header.magic != SBUF_MAGIC)) { return "Bad magic or non sbuf_c* pointer type"; }
     if (unlikely(head->capacity == 0)) { return "Zero capacity"; }
-    if (head->length > head->capacity) { return "Length > capacity"; }
-    if (head->header.nullterm != 0) { return "Missing null term in header"; }
+    if (unlikely(head->length > head->capacity)) { return "Length > capacity"; }
+    if (unlikely(head->header.nullterm != 0)) { return "Missing null term in header"; }
 
     return EOK;
 }
