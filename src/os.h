@@ -214,7 +214,7 @@ Examples:
 - Running simple commands
 ```c
 // NOTE: there are many operation with os-related stuff in cexy build system
-// try to play in example roulette:  ./cex help --example os.cmd.run
+// see real usages:  ./cex help --example os.cmd.run
 
 // Easy macro, run fixed number of arguments
 

@@ -1,5 +1,6 @@
 #define TBUILDDIR "tests/build/cexytest/"
 #define TNSDIR "cexytest_ns_myfoo/"
+#define TEXDIR "cexytest_example/"
 #define CEX_LOG_LVL 4
 #define cexy$cc_include "-I.", "-I" TBUILDDIR
 #include "src/all.c"
@@ -15,6 +16,7 @@ test$setup_case()
 test$teardown_case()
 {
     if (os.fs.remove_tree(TBUILDDIR)) {};
+    if (os.fs.remove_tree(TEXDIR)) {};
     return EOK;
 }
 
@@ -29,6 +31,22 @@ test_brief_decl_to_str(cex_decl_s* d, IAllocator alloc)
     _cexy__print_brief_decl(d, d->name, out);
     io.fclose(&out);
     return io.file.load(path, alloc);
+}
+
+static Exception
+test_help_example_make_fixture(void)
+{
+    if (os.fs.remove_tree(TEXDIR)) {};
+    e$ret(os.fs.mkpath(TEXDIR));
+    e$ret(io.file.save(
+        TEXDIR "example.c",
+        "static int exf_used(int x) { return x + 1; }\n"
+        "static int exf_usedr_caller(int x) { return exf_usedr(x); }\n"
+        "static int exf_caller(int x) { return exf_used(x); }\n"
+        "static int exf_usedr(int x) { return x + 2; }\n"
+        "static int exf_unused(int x) { return x; }\n"
+    ));
+    return EOK;
 }
 
 test$case(test_print_brief_decl_func)
@@ -496,6 +514,141 @@ test$case(test_help_idioms_no_docs)
                      "cexy$",
                      NULL };
     tassert_er(Error.not_found, cexy.cmd.help(arr$len(argv) - 1, argv, NULL));
+    return EOK;
+}
+
+test$case(test_help_example_deterministic)
+{
+    e$ret(test_help_example_make_fixture());
+    char* out1 = TBUILDDIR "example1.txt";
+    char* out2 = TBUILDDIR "example2.txt";
+    char* argv1[] = { "help",
+                      "--example",
+                      "--filter",
+                      "./" TEXDIR "*.[hc]",
+                      "--out",
+                      out1,
+                      "exf_used" };
+    char* argv2[] = { "help",
+                      "--example",
+                      "--filter",
+                      "./" TEXDIR "*.[hc]",
+                      "--out",
+                      out2,
+                      "exf_used" };
+    tassert_er(EOK, cexy.cmd.help(arr$len(argv1), argv1, NULL));
+    tassert_er(EOK, cexy.cmd.help(arr$len(argv2), argv2, NULL));
+    mem$scope(tmem$, _)
+    {
+        char* c1 = io.file.load(out1, _);
+        char* c2 = io.file.load(out2, _);
+        tassert(c1 && c2);
+        tassert(str.eq(c1, c2));
+        tassert(str.find(c1, "Examples of 'exf_used'"));
+        tassert(!str.find(c1, "try again"));
+    }
+    return EOK;
+}
+
+test$case(test_help_example_shows_usage_location)
+{
+    e$ret(test_help_example_make_fixture());
+    char* out_path = TBUILDDIR "example_loc.txt";
+    char* argv[] = { "help",
+                     "--example",
+                     "--filter",
+                     "./" TEXDIR "*.[hc]",
+                     "--out",
+                     out_path,
+                     "exf_used" };
+    tassert_er(EOK, cexy.cmd.help(arr$len(argv), argv, NULL));
+    mem$scope(tmem$, _)
+    {
+        char* content = io.file.load(out_path, _);
+        tassert(content);
+        tassert(str.find(content, "./" TEXDIR "example.c:3"));
+        tassert(str.find(content, "int exf_caller(int x)"));
+        tassert(str.find(content, "return exf_used(x)"));
+    }
+    return EOK;
+}
+
+test$case(test_help_example_no_usages)
+{
+    e$ret(test_help_example_make_fixture());
+    char* out_path = TBUILDDIR "example_none.txt";
+    char* argv[] = { "help",
+                     "--example",
+                     "--filter",
+                     "./" TEXDIR "*.[hc]",
+                     "--out",
+                     out_path,
+                     "exf_unused" };
+    tassert_er(EOK, cexy.cmd.help(arr$len(argv), argv, NULL));
+    mem$scope(tmem$, _)
+    {
+        char* content = io.file.load(out_path, _);
+        tassert(content);
+        tassert(str.find(content, "No examples of 'exf_unused'"));
+    }
+    return EOK;
+}
+
+test$case(test_help_example_brief_locations)
+{
+    e$ret(test_help_example_make_fixture());
+    char* out_path = TBUILDDIR "example_brief.txt";
+    char* argv[] = { "help",
+                     "--brief",
+                     "--example",
+                     "--filter",
+                     "./" TEXDIR "*.[hc]",
+                     "--out",
+                     out_path,
+                     "exf_used" };
+    tassert_er(EOK, cexy.cmd.help(arr$len(argv), argv, NULL));
+    mem$scope(tmem$, _)
+    {
+        char* content = io.file.load(out_path, _);
+        tassert(content);
+        tassert(str.find(content, "Examples of 'exf_used'"));
+        tassert(str.find(content, "./" TEXDIR "example.c:3:"));
+        tassert(str.find(content, "return exf_used(x);"));
+        tassert(!str.find(content, "exf_usedr"));
+    }
+    return EOK;
+}
+
+test$case(test_help_example_word_boundary)
+{
+    e$ret(test_help_example_make_fixture());
+    char* out_path = TBUILDDIR "example_boundary.txt";
+    char* argv[] = { "help",
+                     "--example",
+                     "--filter",
+                     "./" TEXDIR "*.[hc]",
+                     "--out",
+                     out_path,
+                     "exf_used" };
+    tassert_er(EOK, cexy.cmd.help(arr$len(argv), argv, NULL));
+    mem$scope(tmem$, _)
+    {
+        char* content = io.file.load(out_path, _);
+        tassert(content);
+        tassert(str.find(content, "Examples of 'exf_used' (1)"));
+        tassert(str.find(content, "1) ./" TEXDIR "example.c:3"));
+    }
+    return EOK;
+}
+
+test$case(test_find_symbol_usage_word_boundary)
+{
+    tassert_eq(_cexy__find_symbol_usage(str$s("str.find(x)"), str$s("str.find")), 0);
+    tassert_eq(_cexy__find_symbol_usage(str$s("str.findr(x)"), str$s("str.find")), -1);
+    tassert_eq(_cexy__find_symbol_usage(str$s("str.find_x"), str$s("str.find")), -1);
+    tassert_eq(_cexy__find_symbol_usage(str$s("xstr.find(x)"), str$s("str.find")), -1);
+    tassert_eq(_cexy__find_symbol_usage(str$s("arr$pushm(x)"), str$s("arr$push")), -1);
+    tassert_eq(_cexy__find_symbol_usage(str$s("x = arr$push(a, b);"), str$s("arr$push")), 4);
     return EOK;
 }
 

@@ -1460,6 +1460,98 @@ _cexy__print_brief_decl(cex_decl_s* d, str_s name, FILE* output)
     _cexy__print_brief_lines(_cexy__process_make_brief_docs(d), output);
 }
 
+static void
+_cexy__print_example_window(str_s code, u32 line, str_s name, FILE* output)
+{
+    const u32 context = 3;
+    u32 first = line > context ? line - context : 0;
+    u32 last = line + context;
+    u32 idx = 0;
+    for$iter (str_s, ln, str.slice.iter_split(code, "\n", &ln.iterator)) {
+        if (idx > last) { break; }
+        if (idx >= first) {
+            _cexy__colorize_print(ln.val, name, output);
+            io.fprintf(output, "\n");
+        }
+        idx++;
+    }
+}
+
+static isize
+_cexy__find_symbol_usage(str_s body, str_s name)
+{
+    if (name.len == 0 || name.len > body.len) { return -1; }
+    for (isize i = 0; i + (isize)name.len <= (isize)body.len; i++) {
+        if (memcmp(body.buf + i, name.buf, name.len) != 0) { continue; }
+        char before = i > 0 ? body.buf[i - 1] : '\0';
+        isize end = i + (isize)name.len;
+        char after = end < (isize)body.len ? body.buf[end] : '\0';
+        bool before_ok = !(isalnum((unsigned char)before) || before == '_' || before == '$');
+        bool after_ok = !(isalnum((unsigned char)after) || after == '_' || after == '$');
+        if (before_ok && after_ok) { return i; }
+    }
+    return -1;
+}
+
+static void
+_cexy__print_examples(
+    cex_decl_s* self,
+    str_s name,
+    arr$(cex_decl_s*) all_decls,
+    bool brief,
+    FILE* output
+)
+{
+    if (all_decls == NULL) { return; }
+
+    arr$(cex_decl_s*) matches = arr$new(matches, tmem$);
+    for$each (d, all_decls) {
+        if (arr$len(matches) == 3) { break; }
+        if (d == self) { continue; }
+        if (d->type != CexTkn__func_def || d->body.buf == NULL) { continue; }
+        if (d->file == NULL) { continue; }
+        if (_cexy__find_symbol_usage(d->body, name) == -1) { continue; }
+        arr$push(matches, d);
+    }
+
+    if (arr$len(matches) == 0) {
+        io.fprintf(output, "\nNo examples of '%S' found in the scanned files\n", name);
+        return;
+    }
+
+    io.fprintf(output, "\nExamples of '%S' (%u):\n", name, (u32)arr$len(matches));
+    u32 idx = 0;
+    for$each (m, matches) {
+        idx++;
+        isize off = _cexy__find_symbol_usage(m->body, name);
+        uassert(off >= 0);
+        u32 line = m->line + 1;
+        for (const char* p = m->name.buf; p < m->body.buf + off; p++) {
+            if (*p == '\n') { line++; }
+        }
+
+        if (brief) {
+            isize ls = off;
+            while (ls > 0 && m->body.buf[ls - 1] != '\n') { ls--; }
+            isize le = off + (isize)name.len;
+            while (le < (isize)m->body.len && m->body.buf[le] != '\n') { le++; }
+            str_s use_line = str.slice.strip(str.slice.sub(m->body, ls, le));
+            io.fprintf(output, "%s:%u: %S\n", m->file, line, use_line);
+            continue;
+        }
+
+        char* code = io.file.load((char*)m->file, tmem$);
+        if (unlikely(code == NULL)) { continue; }
+
+        io.fprintf(output, "\n%u) %s:%u\n", idx, m->file, line);
+        if (output != stdout) { io.fprintf(output, "\n```c\n"); }
+        if (sbuf.len(&m->ret_type)) { io.fprintf(output, "%s ", m->ret_type); }
+        io.fprintf(output, "%S(%s)\n", m->name, m->args);
+        _cexy__print_example_window(str.sstr(code), line > 0 ? line - 1 : 0, name, output);
+        if (output != stdout) { io.fprintf(output, "\n```\n"); }
+    }
+}
+
 static Exception
 _cexy__display_full_info(
     cex_decl_s* d,
@@ -1469,6 +1561,7 @@ _cexy__display_full_info(
     bool show_idioms,
     bool brief,
     arr$(cex_decl_s*) cex_ns_decls,
+    arr$(cex_decl_s*) all_decls,
     FILE* output
 )
 {
@@ -1500,13 +1593,14 @@ _cexy__display_full_info(
         if (brief) {
             if (!cex_ns_decls) {
                 _cexy__print_brief_decl(d, name, output);
-                goto end;
-            }
-            io.fprintf(output, "namespace %S", base_name);
-            if (d->file) { io.fprintf(output, "   // %s:%d", d->file, d->line + 1); }
-            io.fprintf(output, "\n");
-            if (!show_idioms) {
-                _cexy__print_brief_lines(_cexy__process_make_brief_docs(d), output);
+                if (!show_example) { goto end; }
+            } else {
+                io.fprintf(output, "namespace %S", base_name);
+                if (d->file) { io.fprintf(output, "   // %s:%d", d->file, d->line + 1); }
+                io.fprintf(output, "\n");
+                if (!show_idioms) {
+                    _cexy__print_brief_lines(_cexy__process_make_brief_docs(d), output);
+                }
             }
         } else {
             if (d->docs.buf) {
@@ -1610,101 +1704,48 @@ _cexy__display_full_info(
             if (!brief) { io.fprintf(output, "\n\n"); }
         }
 
-        if (brief) { goto end; }
-
-        if (d->type == CexTkn__macro_const || d->type == CexTkn__macro_func) {
-            if (str.slice.starts_with(d->name, str$s("__"))) {
-                if (output != stdout) { io.fprintf(output, "\n```\n"); }
-                goto end; // NOTE: it's likely placeholder i.e. __foo$ - only for docs, just skip
+        if (!brief) {
+            if (d->type == CexTkn__macro_const || d->type == CexTkn__macro_func) {
+                if (str.slice.starts_with(d->name, str$s("__"))) {
+                    if (output != stdout) { io.fprintf(output, "\n```\n"); }
+                    goto end; // NOTE: it's likely placeholder i.e. __foo$ - only for docs, just skip
+                }
+                io.fprintf(output, "#define ");
             }
-            io.fprintf(output, "#define ");
-        }
 
-        if (sbuf.len(&d->ret_type)) {
-            _cexy__colorize_print(str.sstr(d->ret_type), name, output);
+            if (sbuf.len(&d->ret_type)) {
+                _cexy__colorize_print(str.sstr(d->ret_type), name, output);
+                io.fprintf(output, " ");
+            }
+
+            _cexy__colorize_print(name, name, output);
             io.fprintf(output, " ");
-        }
 
-        _cexy__colorize_print(name, name, output);
-        io.fprintf(output, " ");
+            if (sbuf.len(&d->args)) {
+                io.fprintf(output, "(");
+                _cexy__colorize_print(str.sstr(d->args), name, output);
+                io.fprintf(output, ")");
+            }
+            if (!show_source && d->type == CexTkn__func_def) {
+                io.fprintf(output, ";");
+            } else if (d->body.buf) {
+                _cexy__colorize_print(d->body, name, output);
+                io.fprintf(output, ";");
+            } else if (ns_struct) {
+                _cexy__colorize_print(ns_struct->body, name, output);
+            }
+            io.fprintf(output, "\n");
 
-        if (sbuf.len(&d->args)) {
-            io.fprintf(output, "(");
-            _cexy__colorize_print(str.sstr(d->args), name, output);
-            io.fprintf(output, ")");
-        }
-        if (!show_source && d->type == CexTkn__func_def) {
-            io.fprintf(output, ";");
-        } else if (d->body.buf) {
-            _cexy__colorize_print(d->body, name, output);
-            io.fprintf(output, ";");
-        } else if (ns_struct) {
-            _cexy__colorize_print(ns_struct->body, name, output);
-        }
-        io.fprintf(output, "\n");
-
-        if (output != stdout) {
-            // For export using c code block (markdown compatible)
-            io.fprintf(output, "\n```\n");
+            if (output != stdout) {
+                // For export using c code block (markdown compatible)
+                io.fprintf(output, "\n```\n");
+            }
         }
 
         // No examples for whole namespaces (early exit)
         if (!show_example || ns_struct) { goto end; }
 
-        // Looking for a random example
-        os.random.seed((u64)(os.timer() * 1e9));
-        io.fprintf(output, "\nSearching for examples of '%S'\n", name);
-        arr$(char*) sources = os.fs.find("./*.[hc]", true, _);
-
-        u32 n_used = 0;
-        for$each (src_fn, sources) {
-            mem$scope(tmem$, _)
-            {
-                char* code = io.file.load(src_fn, _);
-                if (unlikely(code == NULL)) {
-                    log$error("Error loading: %s\n", src_fn);
-                    return e$raise(Error.not_found, "Error loading");
-                }
-                arr$(cex_token_s) items = arr$new(items, _);
-
-                CexParser_c lx = CexParser.create(code, 0, true);
-                cex_token_s t;
-                while ((t = CexParser.next_entity(&lx, &items)).type) {
-                    if (unlikely(t.type == CexTkn__error)) { break; }
-                    if (t.type != CexTkn__func_def) { continue; }
-                    cex_decl_s* d = CexParser.decl_parse(&lx, t, items, NULL, _);
-                    if (d == NULL) { continue; }
-                    if (d->body.buf == NULL) { continue; }
-                    if (str.slice.index_of(d->body, name) != -1) {
-                        n_used++;
-                        double dice = os.random.f32();
-                        if (dice < 0.25) {
-                            io.fprintf(output, "\n\nFound at %s:%d\n", src_fn, d->line);
-
-                            if (output != stdout) { io.fprintf(output, "\n```c\n"); }
-
-                            io.fprintf(output, "%s %S(%s)\n", d->ret_type, d->name, d->args);
-                            _cexy__colorize_print(d->body, name, output);
-                            io.fprintf(output, "\n");
-
-                            if (output != stdout) { io.fprintf(output, "\n```\n"); }
-
-                            goto end;
-                        }
-                    }
-                }
-            }
-        }
-        if (n_used == 0) {
-            io.fprintf(output, "No usages of %S in the codebase\n", name);
-        } else {
-            io.fprintf(
-                output,
-                "%d usages of %S in the codebase, but no random pick, try again!\n",
-                n_used,
-                name
-            );
-        }
+        _cexy__print_examples(d, name, all_decls, brief, output);
     }
 end:
     if (output != stdout) {
@@ -1826,6 +1867,7 @@ _cexy__help_query(
                 show_idioms,
                 brief,
                 NULL,
+                all_decls,
                 output
             ));
             return EOK;
@@ -1913,6 +1955,7 @@ _cexy__help_query(
             show_idioms,
             brief,
             ns_decls,
+            all_decls,
             output
         ));
         return EOK;
@@ -1961,22 +2004,23 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
     char* process_help = "Symbol / documentation search tool for C projects";
     char* epilog_help = 
         "\nQuery examples: \n"
-        "./cex help                     - show this help message\n"
-        "./cex help foo                 - find any symbol containing 'foo' (case sensitive)\n"
-        "./cex help foo.                - find namespace prefix: foo$, Foo_func(), FOO_CONST, etc\n"
-        "./cex help os$                 - find CEX namespace help (docs, macros, functions, types)\n"
-        "./cex help 'foo_*_bar'         - find using pattern search for symbols (see './cex help str.match')\n"
-        "./cex help '*_(bar|foo)'       - find any symbol ending with '_bar' or '_foo'\n"
-        "./cex help str.find            - display function documentation if exactly matched\n"
-        "./cex help 'os$PATH_SEP'       - display macro constant value if exactly matched\n"
-        "./cex help str_s               - display type info and documentation if exactly matched\n"
-        "./cex help --source str.find   - display function source if exactly matched\n"
-        "./cex help --list              - list all namespaces in project directory\n"
-        "./cex help --example str.find  - display random function use in codebase if exactly matched\n"
-        "./cex help --brief str.        - compact agent-friendly namespace API\n"
-        "./cex help --brief a b c       - batch query multiple symbols\n"
-        "./cex help --idioms str$       - print only namespace idioms/docs block\n"
-        "./cex help --brief --idioms str$ - namespace idioms + compact API\n"
+        "./cex help                             - show this help message\n"
+        "./cex help foo                         - find any symbol containing 'foo' (case sensitive)\n"
+        "./cex help foo.                        - find namespace prefix: foo$, Foo_func(), FOO_CONST, etc\n"
+        "./cex help os$                         - find CEX namespace help (docs, macros, functions, types)\n"
+        "./cex help 'foo_*_bar'                 - find using pattern search for symbols (see './cex help str.match')\n"
+        "./cex help '*_(bar|foo)'               - find any symbol ending with '_bar' or '_foo'\n"
+        "./cex help str.find                    - display function documentation if exactly matched\n"
+        "./cex help 'os$PATH_SEP'               - display macro constant value if exactly matched\n"
+        "./cex help str_s                       - display type info and documentation if exactly matched\n"
+        "./cex help --source str.find           - display function source if exactly matched\n"
+        "./cex help --list                      - list all namespaces in project directory\n"
+        "./cex help --example str.find          - display up to 3 usages (file:line + code) from the codebase\n"
+        "./cex help --brief str.                - compact agent-friendly namespace API\n"
+        "./cex help --brief a b c               - batch query multiple symbols\n"
+        "./cex help --brief --example str.find  - compact example locations only\n"
+        "./cex help --idioms str$               - print only namespace idioms/docs block\n"
+        "./cex help --brief --idioms str$       - namespace idioms + compact API\n"
     ;
     char* filter = "./*.[hc]";
     char* out_file = NULL;
@@ -2003,7 +2047,7 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
                 &show_example,
                 'e',
                 "example",
-                .help = "finds random example in source base"
+                .help = "show up to 3 usage examples from the source base"
             ),
             argparse$opt(
                 &show_idioms,
@@ -2108,9 +2152,7 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
                 cex_token_s t;
                 while ((t = CexParser.next_entity(&lx, &items)).type) {
                     if (unlikely(t.type == CexTkn__error)) {
-                        if (!brief) {
-                            log$error("Error parsing: %s at line: %d\n", src_fn, lx.line);
-                        }
+                        log$trace("Error parsing: %s at line: %d\n", src_fn, lx.line);
                         break;
                     }
                     cex_decl_s* d = CexParser.decl_parse(&lx, t, items, NULL, arena);
