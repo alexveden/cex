@@ -96,6 +96,7 @@ test$case(my_test_case){
 /// Automatically reset to 0.0 before each test case.
 #define test$alloc_set_oom_probability(prob)
 
+/// Benchmark case (runs only via ./cex test bench)
 #define test$bench(NAME)
 
 /// Unit-test test case

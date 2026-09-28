@@ -186,6 +186,7 @@ extern
     }                                                                                               \
     Exception test$noopt cex_test_##NAME(void)
 
+/// Benchmark case (runs only via ./cex test bench)
 #define test$bench(NAME)                                                                             \
     extern struct _cex_test_context_s _cex_test__mainfn_state;                                      \
     static Exception cex_test_##NAME();                                                             \
@@ -229,7 +230,7 @@ extern
     {                                                                                              \
         _test$env_check();                                                                          \
         argv[0] = __FILE__;                                                                        \
-        int ret_code = cex_test_main_fn(argc, argv);                                               \
+        int ret_code = _cex_test_main_fn(argc, argv);                                               \
         if (_cex_test__mainfn_state.test_cases) { arr$free(_cex_test__mainfn_state.test_cases); }  \
         if (_cex_test__mainfn_state.orig_stdout_fd) {                                              \
             _cex_test_file_close$(_cex_test__mainfn_state.orig_stdout_fd);                         \

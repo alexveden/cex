@@ -394,7 +394,7 @@ _check_eqs_slice(str_s a, str_s b, int line, enum _cex_test_eq_op_e op)
 }
 
 static void __attribute__((noinline))
-cex_test_mute()
+_cex_test_mute()
 {
     extern struct _cex_test_context_s _cex_test__mainfn_state;
     struct _cex_test_context_s* ctx = &_cex_test__mainfn_state;
@@ -411,7 +411,7 @@ cex_test_mute()
     }
 }
 static void __attribute__((noinline))
-cex_test_unmute(Exc test_result)
+_cex_test_unmute(Exc test_result)
 {
     (void)test_result;
     extern struct _cex_test_context_s _cex_test__mainfn_state;
@@ -481,7 +481,7 @@ _cex_test_bench_call_timer_overhead(void)
 }
 
 static Exc test$noopt __attribute__((noinline))
-cex_test_run_bench_case(struct _cex_test_case_s* case_ctx)
+_cex_test_run_bench_case(struct _cex_test_case_s* case_ctx)
 {
     uassert(case_ctx->is_benchmark);
 
@@ -563,7 +563,7 @@ cex_test_run_bench_case(struct _cex_test_case_s* case_ctx)
 }
 
 static int __attribute__((noinline))
-cex_test_main_fn(int argc, char** argv)
+_cex_test_main_fn(int argc, char** argv)
 {
     (void)argc;
     (void)argv;
@@ -715,15 +715,15 @@ cex_test_main_fn(int argc, char** argv)
         if (ctx->is_benchmark) {
             // NOTE: we don't mute bench output because muting uses files on disk,
             //       therefore has huge performance impact
-            err = cex_test_run_bench_case(&t);
+            err = _cex_test_run_bench_case(&t);
         } else {
-            cex_test_mute();
+            _cex_test_mute();
             err = t.test_fn();
             if (ctx->quiet_mode && err != EOK) {
                 fprintf(stdout, "[%s] %s\n", ctx->has_ansi ? io$ansi("FAIL", "31") : "FAIL", err);
                 fprintf(stdout, "Test suite: %s case: %s\n", ctx->suite_file, t.test_name);
             }
-            cex_test_unmute(err);
+            _cex_test_unmute(err);
         }
         test$alloc_set_oom_probability(0.0);
 
