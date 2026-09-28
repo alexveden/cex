@@ -199,6 +199,8 @@ void _cex_os_time_scope_cleanup(f64* timer);
 
 /**
 
+## Operating system
+
 Cross-platform OS related operations:
 
 - `os.cmd.` - for running commands and interacting with them
@@ -236,67 +238,49 @@ e$ret(os$cmd(
 ```c
 mem$scope(tmem$, _)
 {
-        arr$(char*) args = arr$new(args, _);
-        arr$pushm(
-            args,
-            cexy$cc,
-            "-Wall",
-            "-Werror",
-        );
+    arr$(char*) args = arr$new(args, _);
+    arr$pushm(
+        args,
+        cexy$cc,
+        "-Wall",
+        "-Werror",
+    );
 
-        if (os.platform.current() == OSPlatform__win) {
-            arr$pushm(args, "-lbcrypt");
-        }
-
-        arr$pushm(args, NULL); // NOTE: last element must be NULL
-        e$ret(os$cmda(args));
+    if (os.platform.current() == OSPlatform__win) {
+        arr$pushm(args, "-lbcrypt");
     }
+
+    arr$pushm(args, NULL); // NOTE: last element must be NULL
+    e$ret(os$cmda(args));
 }
 ```
 
 - Getting command output (low level api)
 ```c
-
-test$case(os_cmd_create)
+os_cmd_c c = { 0 };
+mem$scope(tmem$, _)
 {
-    os_cmd_c c = { 0 };
-    mem$scope(tmem$, _)
-    {
-        char* args[] = { "./cex", NULL };
-        tassert_er(EOK, os.cmd.create(&c, args, arr$len(args), NULL));
+    char* args[] = { "./myprog", NULL };
+    e$ret(os.cmd.create(&c, args, arr$len(args), NULL));
 
-        char* output = os.cmd.read_all(&c, _);
-        tassert(output != NULL);
-        io.printf("%s\n", output);
+    char* output = os.cmd.read_all(&c, _);
+    if (output) { io.printf("%s\n", output); }
 
-        int err_code = 0;
-        tassert_er(Error.runtime, os.cmd.wait(&c, 1, 0));
-        tassert_eq(err_code, 1);
-    }
-    return EOK;
+    int err_code = 0;
+    e$ret(os.cmd.wait(&c, 10, &err_code));
 }
 ```
 
 - Working with files
 ```c
+if (os.path.exists("./build")) { e$ret(os.fs.remove("./build")); }
 
-test$case(test_os_find_all_c_files)
-{
-    mem$scope(tmem$, _)
-    {
-        // Check if exists and remove
-        if (os.path.exists("./cex")) { e$ret(os.fs.remove("./cex")); }
+// illustration of path combining
+char* pattern = os$path_join(_, "./src", "*.c");
 
-        // illustration of path combining
-        char* pattern = os$path_join(_, "./", "*.c");
-
-        // find all matching *.c files
-        for$each (it, os.fs.find(pattern, _), false , _)) {
-            log$debug("found file: %s\n", it);
-        }
-    }
-
-    return EOK;
+// find all matching *.c files
+for$each (it, os.fs.find(pattern, true, _)) {
+    log$debug("found file: %s\n", it);
 }
 ```
 
