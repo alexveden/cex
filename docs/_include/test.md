@@ -1,6 +1,6 @@
 
 
-Unit Testing engine:
+## Unit testing
 
 - Running/building tests
 ```sh
@@ -79,6 +79,34 @@ test$case(my_test_case){
     return EOK;
 }
 
+```
+
+- Test allocator
+```c
+test$case(my_test_case)
+{
+    // `test$alloc` is a per-case arena (1 MB page, always growing, scopes disabled),
+    // created before each case and destroyed after — no manual free needed
+    int* buf = mem$malloc(test$alloc, 256 * sizeof(int));
+
+    // allocations on test$alloc are not leak-tracked (freed with the case)
+    return EOK;
+}
+```
+
+- Simulating OOM
+```c
+test$case(my_test_case)
+{
+    // 0.0 = never fail (default, reset before each case)
+    // 1.0 = always fail, 0.5 = ~50% failure rate
+    test$alloc_set_oom_probability(1.0);
+
+    void* p = mem$malloc(test$alloc, 64);
+    tassert(p == NULL); // exercise the OOM path of your code
+
+    return EOK;
+}
 ```
 
 
