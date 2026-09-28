@@ -19303,7 +19303,9 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
                 cex_token_s t;
                 while ((t = CexParser.next_entity(&lx, &items)).type) {
                     if (unlikely(t.type == CexTkn__error)) {
-                        log$trace("Error parsing: %s at line: %d\n", src_fn, lx.line);
+                        if (!brief) {
+                            log$error("Error parsing: %s at line: %d\n", src_fn, lx.line);
+                        }
                         break;
                     }
                     cex_decl_s* d = CexParser.decl_parse(&lx, t, items, NULL, arena);
@@ -20859,7 +20861,7 @@ _CexParser__scan_string(CexParser_c* lx)
                 if (t.type == CexTkn__string) { goto end; }
                 break;
             default: {
-                if (unlikely((u8)c < 0x20)) {
+                if (unlikely((u8)c < 0x20 && c != '\t')) {
                     t.type = CexTkn__error;
                     t.value = (str_s){ 0 };
                     return t;
@@ -20973,6 +20975,8 @@ _CexParser__scan_scope(CexParser_c* lx)
     } else {
         char scope_stack[128] = { 0 };
         u32 scope_depth = 0;
+        bool skip_branch = false;
+        u32 skip_depth = 0;
 
 #define scope$push(c) /* temp macro! */                                                            \
     if (++scope_depth < sizeof(scope_stack)) { scope_stack[scope_depth - 1] = c; }
@@ -21000,25 +21004,34 @@ _CexParser__scan_scope(CexParser_c* lx)
         while ((c = lx$peek(lx))) {
             switch (c) {
                 case '{':
-                    scope$push(c);
+                    if (!skip_branch) { scope$push(c); }
                     break;
                 case '[':
-                    scope$push(c);
+                    if (!skip_branch) { scope$push(c); }
                     break;
                 case '(':
-                    scope$push(c);
+                    if (!skip_branch) { scope$push(c); }
                     break;
                 case '}':
-                    scope$pop_if('{');
+                    if (!skip_branch) { scope$pop_if('{'); }
                     break;
                 case ']':
-                    scope$pop_if('[');
+                    if (!skip_branch) { scope$pop_if('['); }
                     break;
                 case ')':
-                    scope$pop_if('(');
+                    if (!skip_branch) { scope$pop_if('('); }
                     break;
-                case '"':
+                case '"': {
+                    auto s = _CexParser__scan_string(lx);
+                    t.value.len += s.value.len + 2;
+                    continue;
+                }
                 case '\'': {
+                    // C++ digit separator (1'000, 0b1100'0000), not a char literal
+                    if (lx->cur > lx->content && isalnum((u8)lx->cur[-1]) &&
+                        isalnum((u8)lx$peek_next(lx))) {
+                        break;
+                    }
                     auto s = _CexParser__scan_string(lx);
                     t.value.len += s.value.len + 2;
                     continue;
@@ -21039,12 +21052,25 @@ _CexParser__scan_scope(CexParser_c* lx)
                     } else {
                         goto end;
                     }
+                    // Conditional compilation branches may contain different bracket
+                    // layouts, so keep the first branch and skip the rest
+                    if (str.slice.starts_with(s.value, str$s("if"))) {
+                        if (skip_branch) { skip_depth++; }
+                    } else if (str.slice.starts_with(s.value, str$s("else")) ||
+                               str.slice.starts_with(s.value, str$s("elif"))) {
+                        if (!skip_branch) {
+                            skip_branch = true;
+                            skip_depth = 1;
+                        }
+                    } else if (str.slice.starts_with(s.value, str$s("endif"))) {
+                        if (skip_branch && --skip_depth == 0) { skip_branch = false; }
+                    }
                     continue;
                 }
             }
             if (lx$next(lx)) { t.value.len++; }
 
-            if (scope_depth == 0) { goto end; }
+            if (!skip_branch && scope_depth == 0) { goto end; }
         }
 
 #undef scope$push

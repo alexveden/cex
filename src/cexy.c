@@ -2152,7 +2152,9 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
                 cex_token_s t;
                 while ((t = CexParser.next_entity(&lx, &items)).type) {
                     if (unlikely(t.type == CexTkn__error)) {
-                        log$trace("Error parsing: %s at line: %d\n", src_fn, lx.line);
+                        if (!brief) {
+                            log$error("Error parsing: %s at line: %d\n", src_fn, lx.line);
+                        }
                         break;
                     }
                     cex_decl_s* d = CexParser.decl_parse(&lx, t, items, NULL, arena);

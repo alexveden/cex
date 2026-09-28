@@ -1277,4 +1277,234 @@ test$case(test_attr_requires_semicolon)
     }
     return EOK;
 }
+
+test$case(test_preproc_cond_branch_braces_continues_parsing)
+{
+    // clang-format off
+    char* code =
+        "#if A\n"
+        "int main(int argc, char **argv){\n"
+        "#else\n"
+        "int wmain(int argc, wchar_t **wargv){\n"
+        "  char **argv;\n"
+        "#endif\n"
+        "  return 0;\n"
+        "}\n"
+        "int trailing(void) { return 1; }\n";
+    CexParser_c lx = CexParser_create(code, 0, true);
+    cex_token_s t;
+    mem$scope(tmem$, _){
+        arr$(cex_token_s) items = arr$new(items, _);
+
+        t = CexParser_next_entity(&lx, &items);
+        log$debug("Entity:  type: %d type_str: '%s' children: %zu\n%S\n", t.type, CexTkn_str[t.type], arr$len(items), t.value);
+        tassert_eq(t.type, CexTkn__preproc);
+
+        t = CexParser_next_entity(&lx, &items);
+        log$debug("Entity:  type: %d type_str: '%s' children: %zu\n%S\n", t.type, CexTkn_str[t.type], arr$len(items), t.value);
+        tassert_eq(t.type, CexTkn__func_def);
+        auto d = CexParser.decl_parse(&lx, t, items, NULL, _);
+        tassert(d != NULL);
+        tassert_eq(d->name, str$s("main"));
+
+        t = CexParser_next_entity(&lx, &items);
+        log$debug("Entity:  type: %d type_str: '%s' children: %zu\n%S\n", t.type, CexTkn_str[t.type], arr$len(items), t.value);
+        tassert_eq(t.type, CexTkn__func_def);
+        d = CexParser.decl_parse(&lx, t, items, NULL, _);
+        tassert(d != NULL);
+        tassert_eq(d->name, str$s("trailing"));
+
+        t = CexParser_next_entity(&lx, &items);
+        tassert_eq(t.type, CexTkn__eof);
+    }
+    return EOK;
+}
+
+test$case(test_preproc_cond_inside_func_body)
+{
+    // clang-format off
+    char* code =
+        "void f(void) {\n"
+        "#if A\n"
+        "  if (x) {\n"
+        "#else\n"
+        "  if (y) {\n"
+        "#endif\n"
+        "  }\n"
+        "}\n"
+        "int after(void) { return 0; }\n";
+    CexParser_c lx = CexParser_create(code, 0, true);
+    cex_token_s t;
+    mem$scope(tmem$, _){
+        arr$(cex_token_s) items = arr$new(items, _);
+
+        t = CexParser_next_entity(&lx, &items);
+        log$debug("Entity:  type: %d type_str: '%s' children: %zu\n%S\n", t.type, CexTkn_str[t.type], arr$len(items), t.value);
+        tassert_eq(t.type, CexTkn__func_def);
+        auto d = CexParser.decl_parse(&lx, t, items, NULL, _);
+        tassert(d != NULL);
+        tassert_eq(d->name, str$s("f"));
+
+        t = CexParser_next_entity(&lx, &items);
+        log$debug("Entity:  type: %d type_str: '%s' children: %zu\n%S\n", t.type, CexTkn_str[t.type], arr$len(items), t.value);
+        tassert_eq(t.type, CexTkn__func_def);
+        d = CexParser.decl_parse(&lx, t, items, NULL, _);
+        tassert(d != NULL);
+        tassert_eq(d->name, str$s("after"));
+
+        t = CexParser_next_entity(&lx, &items);
+        tassert_eq(t.type, CexTkn__eof);
+    }
+    return EOK;
+}
+
+test$case(test_preproc_cond_top_level_else_decls)
+{
+    // clang-format off
+    char* code =
+        "#if A\n"
+        "int foo(void);\n"
+        "#else\n"
+        "int bar(void);\n"
+        "#endif\n";
+    CexParser_c lx = CexParser_create(code, 0, true);
+    cex_token_s t;
+    mem$scope(tmem$, _){
+        arr$(cex_token_s) items = arr$new(items, _);
+
+        t = CexParser_next_entity(&lx, &items);
+        tassert_eq(t.type, CexTkn__preproc);
+
+        t = CexParser_next_entity(&lx, &items);
+        tassert_eq(t.type, CexTkn__func_decl);
+        auto d = CexParser.decl_parse(&lx, t, items, NULL, _);
+        tassert(d != NULL);
+        tassert_eq(d->name, str$s("foo"));
+
+        t = CexParser_next_entity(&lx, &items);
+        tassert_eq(t.type, CexTkn__preproc);
+
+        t = CexParser_next_entity(&lx, &items);
+        tassert_eq(t.type, CexTkn__func_decl);
+        d = CexParser.decl_parse(&lx, t, items, NULL, _);
+        tassert(d != NULL);
+        tassert_eq(d->name, str$s("bar"));
+
+        t = CexParser_next_entity(&lx, &items);
+        tassert_eq(t.type, CexTkn__preproc);
+
+        t = CexParser_next_entity(&lx, &items);
+        tassert_eq(t.type, CexTkn__eof);
+    }
+    return EOK;
+}
+
+test$case(test_preproc_cond_nested)
+{
+    // clang-format off
+    char* code =
+        "void f(void) {\n"
+        "#if A\n"
+        "#  if B\n"
+        "  if (x) {\n"
+        "#  else\n"
+        "  if (y) {\n"
+        "#  endif\n"
+        "#else\n"
+        "  if (z) {\n"
+        "#endif\n"
+        "  }\n"
+        "}\n"
+        "int after(void) { return 0; }\n";
+    CexParser_c lx = CexParser_create(code, 0, true);
+    cex_token_s t;
+    mem$scope(tmem$, _){
+        arr$(cex_token_s) items = arr$new(items, _);
+
+        t = CexParser_next_entity(&lx, &items);
+        log$debug("Entity:  type: %d type_str: '%s' children: %zu\n%S\n", t.type, CexTkn_str[t.type], arr$len(items), t.value);
+        tassert_eq(t.type, CexTkn__func_def);
+        auto d = CexParser.decl_parse(&lx, t, items, NULL, _);
+        tassert(d != NULL);
+        tassert_eq(d->name, str$s("f"));
+
+        t = CexParser_next_entity(&lx, &items);
+        log$debug("Entity:  type: %d type_str: '%s' children: %zu\n%S\n", t.type, CexTkn_str[t.type], arr$len(items), t.value);
+        tassert_eq(t.type, CexTkn__func_def);
+        d = CexParser.decl_parse(&lx, t, items, NULL, _);
+        tassert(d != NULL);
+        tassert_eq(d->name, str$s("after"));
+
+        t = CexParser_next_entity(&lx, &items);
+        tassert_eq(t.type, CexTkn__eof);
+    }
+    return EOK;
+}
+
+test$case(test_scope_cpp_digit_separator)
+{
+    // clang-format off
+    char* code =
+        "int f(int x) {\n"
+        "  if ((x & 0b1100'0000) != 0b1000'0000) { return 0; }\n"
+        "  return 1;\n"
+        "}\n"
+        "int after(void) { return 0; }\n";
+    CexParser_c lx = CexParser_create(code, 0, true);
+    cex_token_s t;
+    mem$scope(tmem$, _){
+        arr$(cex_token_s) items = arr$new(items, _);
+
+        t = CexParser_next_entity(&lx, &items);
+        log$debug("Entity:  type: %d type_str: '%s' children: %zu\n%S\n", t.type, CexTkn_str[t.type], arr$len(items), t.value);
+        tassert_eq(t.type, CexTkn__func_def);
+        auto d = CexParser.decl_parse(&lx, t, items, NULL, _);
+        tassert(d != NULL);
+        tassert_eq(d->name, str$s("f"));
+
+        t = CexParser_next_entity(&lx, &items);
+        log$debug("Entity:  type: %d type_str: '%s' children: %zu\n%S\n", t.type, CexTkn_str[t.type], arr$len(items), t.value);
+        tassert_eq(t.type, CexTkn__func_def);
+        d = CexParser.decl_parse(&lx, t, items, NULL, _);
+        tassert(d != NULL);
+        tassert_eq(d->name, str$s("after"));
+
+        t = CexParser_next_entity(&lx, &items);
+        tassert_eq(t.type, CexTkn__eof);
+    }
+    return EOK;
+}
+
+test$case(test_scope_string_with_tab)
+{
+    // clang-format off
+    char* code =
+        "void f(void) {\n"
+        "  __asm__(\"\tdcbtstt\t0,%0\" : : \"b\"(x) : \"memory\");\n"
+        "}\n"
+        "int after(void) { return 0; }\n";
+    CexParser_c lx = CexParser_create(code, 0, true);
+    cex_token_s t;
+    mem$scope(tmem$, _){
+        arr$(cex_token_s) items = arr$new(items, _);
+
+        t = CexParser_next_entity(&lx, &items);
+        log$debug("Entity:  type: %d type_str: '%s' children: %zu\n%S\n", t.type, CexTkn_str[t.type], arr$len(items), t.value);
+        tassert_eq(t.type, CexTkn__func_def);
+        auto d = CexParser.decl_parse(&lx, t, items, NULL, _);
+        tassert(d != NULL);
+        tassert_eq(d->name, str$s("f"));
+
+        t = CexParser_next_entity(&lx, &items);
+        log$debug("Entity:  type: %d type_str: '%s' children: %zu\n%S\n", t.type, CexTkn_str[t.type], arr$len(items), t.value);
+        tassert_eq(t.type, CexTkn__func_def);
+        d = CexParser.decl_parse(&lx, t, items, NULL, _);
+        tassert(d != NULL);
+        tassert_eq(d->name, str$s("after"));
+
+        t = CexParser_next_entity(&lx, &items);
+        tassert_eq(t.type, CexTkn__eof);
+    }
+    return EOK;
+}
 test$main();
