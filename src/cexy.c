@@ -1528,6 +1528,8 @@ _cexy__display_full_info(
             {
 
                 hm$(str_s, cex_decl_s*) ns_symbols = hm$new(ns_symbols, _, .capacity = 128);
+                char* ns_upper = str.fmt(_, "%s_", str.upper(base_ns, _));
+                str_s ns_upper_prefix = str.sstr(ns_upper);
                 for$each (it, cex_ns_decls) {
                     // Check if __namespace$ exists
                     if (it->type == CexTkn__macro_const &&
@@ -1545,22 +1547,29 @@ _cexy__display_full_info(
                         if (!str.slice.starts_with(sym_name, base_name)) { continue; }
                         if (sym_name.buf[base_name.len] != '.') { continue; }
                     } else {
-                        if (!str.slice.starts_with(it->name, base_name)) { continue; }
+                        bool is_ns_const = ns_upper_prefix.len > 0 &&
+                                           (it->type == CexTkn__macro_const ||
+                                            it->type == CexTkn__macro_func) &&
+                                           str.slice.starts_with(it->name, ns_upper_prefix);
+                        if (!is_ns_const) {
+                            if (!str.slice.starts_with(it->name, base_name)) { continue; }
 
-                        if ((it->type == CexTkn__macro_func || it->type == CexTkn__macro_const)) {
-                            if (it->name.buf[base_name.len] != '$') { continue; }
-                        } else if (it->type == CexTkn__typedef) {
-                            if (it->name.buf[base_name.len] != '_') { continue; }
-                            if (!(str.slice.ends_with(it->name, str$s("_c")) ||
-                                  str.slice.ends_with(it->name, str$s("_s")) ||
-                                  str.slice.ends_with(it->name, str$s("_kw")))) {
+                            if ((it->type == CexTkn__macro_func ||
+                                 it->type == CexTkn__macro_const)) {
+                                if (it->name.buf[base_name.len] != '$') { continue; }
+                            } else if (it->type == CexTkn__typedef) {
+                                if (it->name.buf[base_name.len] != '_') { continue; }
+                                if (!(str.slice.ends_with(it->name, str$s("_c")) ||
+                                      str.slice.ends_with(it->name, str$s("_s")) ||
+                                      str.slice.ends_with(it->name, str$s("_kw")))) {
+                                    continue;
+                                }
+                            } else if (it->type == CexTkn__cex_module_struct) {
+                                ns_struct = it;
+                                continue; // does not add, use special treatment
+                            } else {
                                 continue;
                             }
-                        } else if (it->type == CexTkn__cex_module_struct) {
-                            ns_struct = it;
-                            continue; // does not add, use special treatment
-                        } else {
-                            continue;
                         }
                     }
 
@@ -1844,7 +1853,7 @@ _cexy__help_query(
                     // include __foo$ (doc name)
                     sub_name = str.slice.sub(d->name, 2, -1);
                     if (str.slice.eq(sub_name, prefix)) {
-                        ns_decl = d;
+                        if (!ns_decl) { ns_decl = d; }
                         has_match = true;
                     }
                 }

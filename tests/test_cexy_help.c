@@ -1,4 +1,5 @@
 #define TBUILDDIR "tests/build/cexytest/"
+#define TNSDIR "cexytest_ns_myfoo/"
 #define CEX_LOG_LVL 4
 #define cexy$cc_include "-I.", "-I" TBUILDDIR
 #include "src/all.c"
@@ -187,6 +188,107 @@ test$case(test_help_brief_cexy_namespace_includes_non_prefixed_funcs)
         tassert(str.find(content, "cexy.build_self"));
         tassert(!str.find(content, "os.cmd.run"));
     }
+    return EOK;
+}
+
+test$case(test_help_namespace_cex_includes_macros)
+{
+    char* out_path = TBUILDDIR "help_cex_ns.txt";
+    char* argv[] = { "help",
+                     "--filter",
+                     "./src/cex_platform.[hc]",
+                     "--out",
+                     out_path,
+                     "cex$" };
+    tassert_er(EOK, cexy.cmd.help(arr$len(argv), argv, NULL));
+    mem$scope(tmem$, _)
+    {
+        char* content = io.file.load(out_path, _);
+        tassert(content);
+        tassert(str.find(content, "#define cex$platform_malloc"));
+        tassert(str.find(content, "cex$version_major"));
+    }
+    return EOK;
+}
+
+test$case(test_help_namespace_cex_includes_upper_consts)
+{
+    char* out_path = TBUILDDIR "help_cex_consts.txt";
+    char* argv[] = { "help",
+                     "--filter",
+                     "./src/cex_platform.[hc]",
+                     "--out",
+                     out_path,
+                     "cex$" };
+    tassert_er(EOK, cexy.cmd.help(arr$len(argv), argv, NULL));
+    mem$scope(tmem$, _)
+    {
+        char* content = io.file.load(out_path, _);
+        tassert(content);
+        tassert(str.find(content, "#define CEX_LOG_LVL"));
+        tassert(str.find(content, "#define CEX_ALLOCATOR_MAX_SCOPE_STACK"));
+    }
+    return EOK;
+}
+
+test$case(test_help_namespace_str_excludes_cex_consts)
+{
+    char* out_path = TBUILDDIR "help_str_ns.txt";
+    char* argv[] = { "help",
+                     "--filter",
+                     "./src/str.[hc]",
+                     "--out",
+                     out_path,
+                     "str$" };
+    tassert_er(EOK, cexy.cmd.help(arr$len(argv), argv, NULL));
+    mem$scope(tmem$, _)
+    {
+        char* content = io.file.load(out_path, _);
+        tassert(content);
+        tassert(str.find(content, "str$"));
+        tassert(!str.find(content, "CEX_LOG_LVL"));
+    }
+    return EOK;
+}
+
+test$case(test_help_namespace_custom_returns_all_symbols)
+{
+    char* out_path = TBUILDDIR "help_myfoo_ns.txt";
+    if (os.fs.remove_tree(TNSDIR)) {};
+    e$ret(os.fs.mkpath(TNSDIR));
+    e$ret(io.file.save(
+        TNSDIR "myfoo.h",
+        "/// Myfoo namespace docs\n"
+        "struct __cex_namespace__myfoo {\n"
+        "    /// Does foo\n"
+        "    int (*foo)(int x);\n"
+        "};\n"
+        "\n"
+        "/// Myfoo macro\n"
+        "#define myfoo$bar 1\n"
+        "\n"
+        "/// Myfoo const\n"
+        "#define MYFOO_BAZ 2\n"
+        "\n"
+        "/// Myfoo type\n"
+        "typedef struct myfoo_thing_s { int x; } myfoo_thing_s;\n"
+    ));
+    char* argv[] = { "help",
+                     "--filter",
+                     "./" TNSDIR "*.[hc]",
+                     "--out",
+                     out_path,
+                     "myfoo$" };
+    tassert_er(EOK, cexy.cmd.help(arr$len(argv), argv, NULL));
+    mem$scope(tmem$, _)
+    {
+        char* content = io.file.load(out_path, _);
+        tassert(content);
+        tassert(str.find(content, "myfoo$bar"));
+        tassert(str.find(content, "MYFOO_BAZ"));
+        tassert(str.find(content, "myfoo_thing_s"));
+    }
+    if (os.fs.remove_tree(TNSDIR)) {};
     return EOK;
 }
 
