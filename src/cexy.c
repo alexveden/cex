@@ -9,6 +9,7 @@
 #        include <ctype.h>
 #        include <time.h>
 
+/// Rebuilds ./cex from cex.c when cex.h or cex.c changed
 static void
 cexy_build_self(int argc, char** argv, char* cex_source)
 {
@@ -117,6 +118,7 @@ cexy_build_self(int argc, char** argv, char* cex_source)
     }
 }
 
+/// True if src_path or one of its #includes is newer than target_path
 static bool
 cexy_src_include_changed(char* target_path, char* src_path, arr$(char*) alt_include_path)
 {
@@ -244,6 +246,7 @@ cexy_src_include_changed(char* target_path, char* src_path, arr$(char*) alt_incl
     return false;
 }
 
+/// True if any source in src_array is newer than target_path
 static bool
 cexy_src_changed(char* target_path, char** src_array, usize src_array_len)
 {
@@ -290,6 +293,7 @@ cexy_src_changed(char* target_path, char** src_array, usize src_array_len)
     return false;
 }
 
+/// Builds a build-dir output path from a source path and name/extension
 static char*
 cexy_target_make(char* src_path, char* build_dir, char* name_or_extension, IAllocator allocator)
 {
@@ -342,6 +346,7 @@ cexy_target_make(char* src_path, char* build_dir, char* name_or_extension, IAllo
     return result;
 }
 
+/// Scaffolds a new fuzz_ file
 Exception
 cexy__fuzz__create(char* target)
 {
@@ -390,6 +395,7 @@ cexy__fuzz__create(char* target)
     return EOK;
 }
 
+/// Scaffolds a new test file (optionally with a sample case)
 Exception
 cexy__test__create(char* target, bool include_sample)
 {
@@ -443,6 +449,7 @@ cexy__test__create(char* target, bool include_sample)
     return EOK;
 }
 
+/// Removes built test executable(s)
 Exception
 cexy__test__clean(char* target)
 {
@@ -465,6 +472,7 @@ cexy__test__clean(char* target)
     return EOK;
 }
 
+/// Normalizes a test target (all or a path) into a build glob
 Exception
 cexy__test__make_target_pattern(char** target)
 {
@@ -482,6 +490,7 @@ cexy__test__make_target_pattern(char** target)
     return EOK;
 }
 
+/// Builds and runs/debugs/benches/watches a test target
 Exception
 cexy__test__run(char* target, char* cmd, int argc, char** argv)
 {
@@ -903,6 +912,7 @@ _cexy__fn_dotted(str_s fn_name, char* expected_ns, IAllocator alloc)
     }
 }
 
+/// CLI: generate CEX namespaces from project sources
 static Exception
 cexy__cmd__process(int argc, char** argv, void* user_ctx)
 {
@@ -1073,6 +1083,7 @@ cexy__cmd__process(int argc, char** argv, void* user_ctx)
     return EOK;
 }
 
+/// CLI: parse project and report code metrics
 static Exception
 cexy__cmd__stats(int argc, char** argv, void* user_ctx)
 {
@@ -1995,6 +2006,7 @@ _cexy__help_query(
     return EOK;
 }
 
+/// CLI: symbol/doc search over the project
 static Exception
 cexy__cmd__help(int argc, char** argv, void* user_ctx)
 {
@@ -2269,6 +2281,7 @@ end:
     return result;
 }
 
+/// CLI: show project and system environment
 static Exception
 cexy__cmd__config(int argc, char** argv, void* user_ctx)
 {
@@ -2418,6 +2431,7 @@ cexy__cmd__config(int argc, char** argv, void* user_ctx)
     return result;
 }
 
+/// CLI: fetch 3rd-party libraries via git
 static Exception
 cexy__cmd__libfetch(int argc, char** argv, void* user_ctx)
 {
@@ -2486,6 +2500,7 @@ cexy__cmd__libfetch(int argc, char** argv, void* user_ctx)
     return EOK;
 }
 
+/// CLI: simple test runner (build/run/debug/bench/watch)
 static Exception
 cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
 {
@@ -2654,6 +2669,7 @@ end:
     return EOK;
 }
 
+/// Creates a new project skeleton in proj_dir
 static Exception
 cexy__utils__make_new_project(char* proj_dir)
 {
@@ -2771,6 +2787,7 @@ cexy__utils__make_new_project(char* proj_dir)
     return EOK;
 }
 
+/// CLI: scaffold a new boilerplate CEX project
 static Exception
 cexy__cmd__new(int argc, char** argv, void* user_ctx)
 {
@@ -2795,6 +2812,7 @@ cexy__cmd__new(int argc, char** argv, void* user_ctx)
     return EOK;
 }
 
+/// Scaffolds a new app source file
 Exception
 cexy__app__create(char* target)
 {
@@ -2868,6 +2886,7 @@ cexy__app__create(char* target)
     return EOK;
 }
 
+/// Builds and runs an app (optionally under the debugger)
 Exception
 cexy__app__run(char* target, bool is_debug, int argc, char** argv)
 {
@@ -2886,6 +2905,7 @@ cexy__app__run(char* target, bool is_debug, int argc, char** argv)
     return EOK;
 }
 
+/// Removes a built app executable
 Exception
 cexy__app__clean(char* target)
 {
@@ -2902,6 +2922,7 @@ cexy__app__clean(char* target)
     return EOK;
 }
 
+/// Finds the source path for an app target
 Exception
 cexy__app__find_app_target_src(IAllocator allc, char* target, char** out_result)
 {
@@ -2938,6 +2959,7 @@ cexy__app__find_app_target_src(IAllocator allc, char* target, char** out_result)
     return EOK;
 }
 
+/// CLI: simple app runner (build/run/debug/create/clean)
 static Exception
 cexy__cmd__simple_app(int argc, char** argv, void* user_ctx)
 {
@@ -3010,6 +3032,7 @@ cexy__cmd__simple_app(int argc, char** argv, void* user_ctx)
     return EOK;
 }
 
+/// CLI: compile and run fuzz tests
 Exception
 cexy__cmd__simple_fuzz(int argc, char** argv, void* user_ctx)
 {
@@ -3187,6 +3210,7 @@ cexy__cmd__simple_fuzz(int argc, char** argv, void* user_ctx)
     return EOK;
 }
 
+/// Returns the current git commit hash (or NULL)
 static char*
 cexy__utils__git_hash(IAllocator allc)
 {
@@ -3289,6 +3313,7 @@ _cexy__utils__pkgconf_parse(IAllocator allc, arr$(char*) * out_cc_args, char* pk
     return EOK;
 }
 
+/// Resolves pkg-config --cflags/--libs into out_cc_args
 static Exception
 cexy__utils__pkgconf(
     IAllocator allc,
@@ -3408,6 +3433,7 @@ cexy__utils__pkgconf(
     return EOK;
 }
 
+/// Writes compile_flags.txt from the project compiler flags
 static Exception
 cexy__utils__make_compile_flags(
     char* flags_file,
@@ -3446,6 +3472,7 @@ cexy__utils__make_compile_flags(
     return EOK;
 }
 
+/// Clones/updates a git dependency into out_dir
 static Exception
 cexy__utils__git_lib_fetch(
     char* git_url,

@@ -514,10 +514,10 @@ test$case(test_help_idioms_no_docs)
     char* argv[] = { "help",
                      "--idioms",
                      "--filter",
-                     "./src/cexy.[hc]",
+                     "./src/CexParser.[hc]",
                      "--out",
                      out_path,
-                     "cexy$",
+                     "lx$",
                      NULL };
     tassert_er(Error.not_found, cexy.cmd.help(arr$len(argv) - 1, argv, NULL));
     return EOK;
