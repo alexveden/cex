@@ -18670,30 +18670,39 @@ _cexy__display_full_info(
                             ns_struct = it;
                         }
                     }
-                    if (!str.slice.starts_with(it->name, base_name)) { continue; }
+                    str_s sym_name = it->name;
+                    if (it->type == CexTkn__func_def) {
+                        if (!brief) { continue; }
+                        sym_name = _cexy__fn_dotted(it->name, base_ns, _);
+                        if (!sym_name.buf) { continue; }
+                        if (!str.slice.starts_with(sym_name, base_name)) { continue; }
+                        if (sym_name.buf[base_name.len] != '.') { continue; }
+                    } else {
+                        if (!str.slice.starts_with(it->name, base_name)) { continue; }
 
-                    if ((it->type == CexTkn__macro_func || it->type == CexTkn__macro_const)) {
-                        if (it->name.buf[base_name.len] != '$') { continue; }
-                    } else if (it->type == CexTkn__typedef) {
-                        if (it->name.buf[base_name.len] != '_') { continue; }
-                        if (!(str.slice.ends_with(it->name, str$s("_c")) ||
-                              str.slice.ends_with(it->name, str$s("_s")) ||
-                              str.slice.ends_with(it->name, str$s("_kw")))) {
+                        if ((it->type == CexTkn__macro_func || it->type == CexTkn__macro_const)) {
+                            if (it->name.buf[base_name.len] != '$') { continue; }
+                        } else if (it->type == CexTkn__typedef) {
+                            if (it->name.buf[base_name.len] != '_') { continue; }
+                            if (!(str.slice.ends_with(it->name, str$s("_c")) ||
+                                  str.slice.ends_with(it->name, str$s("_s")) ||
+                                  str.slice.ends_with(it->name, str$s("_kw")))) {
+                                continue;
+                            }
+                        } else if (it->type == CexTkn__cex_module_struct) {
+                            ns_struct = it;
+                            continue; // does not add, use special treatment
+                        } else {
                             continue;
                         }
-                    } else if (it->type == CexTkn__cex_module_struct) {
-                        ns_struct = it;
-                        continue; // does not add, use special treatment
-                    } else {
-                        continue;
                     }
 
-                    if (hm$getp(ns_symbols, it->name) != NULL) {
+                    if (hm$getp(ns_symbols, sym_name) != NULL) {
                         // Maybe new with docs?
-                        if (it->docs.buf) { hm$set(ns_symbols, it->name, it); }
+                        if (it->docs.buf) { hm$set(ns_symbols, sym_name, it); }
                         continue; // duplicate
                     } else {
-                        hm$set(ns_symbols, it->name, it);
+                        hm$set(ns_symbols, sym_name, it);
                     }
                 }
                 // WARNING: sorting of hashmap items is a dead end, hash indexes get invalidated
@@ -18701,7 +18710,7 @@ _cexy__display_full_info(
 
                 for$each (it, ns_symbols) {
                     if (brief) {
-                        _cexy__print_brief_decl(it.value, it.value->name, output);
+                        _cexy__print_brief_decl(it.value, it.key, output);
                         continue;
                     }
                     if (it.value->docs.buf) {
@@ -18999,11 +19008,23 @@ _cexy__help_query(
     }
 
     if (ns_decl) {
+        char* ns_prefix = str.slice.clone(str.sub(query, 0, -1), arena);
         arr$(cex_decl_s*) ns_decls = arr$new(ns_decls, arena);
         for$each (d, all_decls) {
-            if (d->file == ns_decl->file) { arr$push(ns_decls, d); }
+            bool same_file = d->file == ns_decl->file;
+            // namespace symbols may live outside the header: the bundle, or the <ns>.c impl
+            bool bundle = str.eq((char*)d->file, "./cex.h");
+            bool ns_impl = d->type == CexTkn__func_def &&
+                           str.slice.eq(
+                               str.slice.sub(
+                                   str.sstr(os.path.basename((char*)d->file, arena)),
+                                   0,
+                                   -2
+                               ),
+                               str.sstr(ns_prefix)
+                           );
+            if (same_file || (brief && (bundle || ns_impl))) { arr$push(ns_decls, d); }
         }
-        char* ns_prefix = str.slice.clone(str.sub(query, 0, -1), arena);
         e$ret(_cexy__display_full_info(
             ns_decl,
             ns_prefix,
@@ -19163,9 +19184,7 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
                 cex_token_s t;
                 while ((t = CexParser.next_entity(&lx, &items)).type) {
                     if (unlikely(t.type == CexTkn__error)) {
-                        if (brief) {
-                            io.fprintf(stderr, "cex help: parse error: %s:%d\n", src_fn, lx.line);
-                        } else {
+                        if (!brief) {
                             log$error("Error parsing: %s at line: %d\n", src_fn, lx.line);
                         }
                         break;
@@ -19226,11 +19245,10 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
                 );
                 if (err != EOK) {
                     io.fprintf(stderr, "cex help: no match for '%s'\n", query);
-                    any_not_found = true;
+                    result = e$raise(Error.not_found, "cex help: no match for query");
                 }
             }
         }
-        if (any_not_found) { result = Error.not_found; }
     }
 
     if (output && output != stdout) { io.fclose(&output); }

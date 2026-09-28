@@ -119,6 +119,53 @@ test$case(test_print_brief_decl_typedef)
     return EOK;
 }
 
+test$case(test_help_brief_namespace_includes_funcs)
+{
+    char* out_path = TBUILDDIR "help_brief_ns.txt";
+    char* argv[] = { "help",
+                     "--brief",
+                     "--filter",
+                     "./src/str.[hc]",
+                     "--out",
+                     out_path,
+                     "str$" };
+    tassert_er(EOK, cexy.cmd.help(arr$len(argv), argv, NULL));
+    mem$scope(tmem$, _)
+    {
+        char* content = io.file.load(out_path, _);
+        tassert(content);
+        tassert(str.find(content, "namespace str"));
+        tassert(str.find(content, "str$convert"));
+        tassert(str.find(content, "str.find("));
+        tassert(str.find(content, "str.slice.sub("));
+        tassert(!str.find(content, "os.cmd.run"));
+    }
+    return EOK;
+}
+
+test$case(test_help_brief_cexy_namespace_includes_non_prefixed_funcs)
+{
+    char* out_path = TBUILDDIR "help_brief_cexy_ns.txt";
+    char* argv[] = { "help",
+                     "--brief",
+                     "--filter",
+                     "./src/cexy.[hc]",
+                     "--out",
+                     out_path,
+                     "cexy$" };
+    tassert_er(EOK, cexy.cmd.help(arr$len(argv), argv, NULL));
+    mem$scope(tmem$, _)
+    {
+        char* content = io.file.load(out_path, _);
+        tassert(content);
+        tassert(str.find(content, "namespace cexy"));
+        tassert(str.find(content, "cexy.cmd.help"));
+        tassert(str.find(content, "cexy.build_self"));
+        tassert(!str.find(content, "os.cmd.run"));
+    }
+    return EOK;
+}
+
 test$case(test_help_brief_batch)
 {
     char* out_path = TBUILDDIR "help_batch.txt";
