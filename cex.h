@@ -3439,7 +3439,7 @@ typedef struct argparse_opt_s
     argparse_callback_f callback;
     void* callback_data;
     argparse_convert_f convert;
-    bool is_present; // also setting in in argparse$opt* macro, allows optional parameter sugar
+    bool is_present; // also set in argparse$opt* macro, allows optional parameter sugar
 } argparse_opt_s;
 
 /// command settings type (prefer macros)
@@ -3501,7 +3501,7 @@ typedef struct argparse_c
 } argparse_c;
 
 
-/// holder for list of  argparse$opt()
+/// holder for list of argparse$opt()
 #define argparse$opt_list(...) .options = (argparse_opt_s[]) {__VA_ARGS__ {0} /* NULL TERM */}
 
 /// command line option record (generic type of arguments)
@@ -3550,7 +3550,7 @@ typedef struct argparse_c
 // clang-format off
 
 
-/// holder for list of 
+/// holder for list of argparse$cmd() records
 #define argparse$cmd_list(...) .commands = (argparse_cmd_s[]) {__VA_ARGS__ {0} /* NULL TERM */}
 
 /// options group separator
@@ -3564,15 +3564,17 @@ typedef struct argparse_c
 
 /**
 
-* Command line args parsing
+## Argument parsing
+
+Command line args parsing.
+
+### Commands
 
 ```c
-// NOTE: Command example 
-
+// NOTE: Command example
 Exception cmd_build_docs(int argc, char** argv, void* user_ctx);
 
-int
-main(int argc, char** argv)
+int main(int argc, char** argv)
 {
     // clang-format off
     argparse_c args = {
@@ -3583,6 +3585,7 @@ main(int argc, char** argv)
             { .name = "build-docs", .func = cmd_build_docs, .help = "Build CEX documentation" },
         ),
     };
+    // clang-format on
     if (argparse.parse(&args, argc, argv)) { return 1; }
     if (argparse.run_command(&args, NULL)) { return 1; }
     return 0;
@@ -3593,16 +3596,13 @@ cmd_build_docs(int argc, char** argv, void* user_ctx)
 {
     // Command handling func
 }
-
 ```
 
-* Parsing custom arguments
+### Options
 
 ```c
 // Simple options example
-
-int
-main(int argc, char** argv)
+int main(int argc, char** argv)
 {
     bool force = 0;
     bool test = 0;
@@ -3613,7 +3613,7 @@ main(int argc, char** argv)
     char* usage = "basic [options] [[--] args]\n"
                   "basic [options]\n";
 
-    argparse_c argparse = {
+    argparse_c args = {
         argparse$opt_list(
             argparse$opt_help(),
             argparse$opt_group("Basic options"),
@@ -3624,11 +3624,10 @@ main(int argc, char** argv)
             argparse$opt(&int_num, 'i', "int", "selected integer"),
             argparse$opt(&flt_num, 's', "float", "selected float"),
         ),
-        // NOTE: usage/description are optional 
-
+        // NOTE: usage/description are optional
         .usage = usage,
         .description = "\nA brief description of what the program does and how it works.",
-        "\nAdditional description of the program after the description of the arguments.",
+        .epilog = "\nAdditional description of the program after the description of the arguments.",
     };
     if (argparse.parse(&args, argc, argv)) { return 1; }
 
@@ -3636,9 +3635,7 @@ main(int argc, char** argv)
 
     return 0;
 }
-
 ```
-
 
 */
 struct __cex_namespace__argparse {
