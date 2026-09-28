@@ -2396,84 +2396,91 @@ CEXSP__PUBLICDEC void cexsp__set_separators(char comma, char period);
 
 /**
 
-CEX string principles:
+## Strings
 
-- `str` namespace is build for compatibility with C strings
+### Principles
+
+- `str` namespace is built for compatibility with C strings
 - all string functions are NULL resilient
 - all string functions can return NULL on error
 - you don't have to check every operation for NULL every time, just at the end
-- all string format operations support CEX specific specificators (see below)
+- all string format operations support CEX-specific specifiers (see below)
 
-String slices:
+### String slices
 
 - Slices are backed by `(str_s){.buf = s, .len = NNN}` struct
 - Slices are passed by value and allocated on stack
 - Slices can be made from null-terminated strings, or buffers, or literals
 - str$s("hello") - use this for compile time defined slices/constants
 - Slices are not guaranteed to be null-terminated
-- Slices support operations which allowed by read-only string view representation
-- CEX formatting uses `%S` for slices: `io.print("Hello %S\n", str$s("world"))`
+- Slices support operations which are allowed by read-only string view representation
+- CEX formatting uses `%S` for slices: `io.printf("Hello %S\n", str$s("world"))`
 
+### String macros
 
-- Working with slices:
+- `str$s("hello")` - compile-time `str_s` from a string literal (literals only, not `char*`)
+- `str$eq(slice, "literal")` - fast slice-vs-literal comparison (no `strcmp`)
+- `str$join(alloc, ",", "a", "b", "c")` - join parts into a new string
+- `str$convert(str_or_slice, &out_var)` - parse a string/slice into a numeric or bool out variable
+
+### Dynamic strings
+
+For mutable, growing strings use the `sbuf` namespace (`sbuf_c` is a `char*` alias, always
+null-terminated):
+
+- `sbuf.create(cap, alloc)` / `sbuf.create_static(buf, n)` - allocator- or stack-backed builder
+- `sbuf.appendf(&s, "%s: %S", "x", slice)` / `sbuf.append(&s, "text")` - append
+- `sbuf.len(&s)` / `sbuf.capacity(&s)` / `sbuf.clear(&s)` - inspect/reset
+- `sbuf.destroy(&s)` - free (sets `s` to NULL)
+
+See `./cex help sbuf$` for the full API.
+
+### Examples
+
+- Working with slices
 ```c
-
-test$case(test_cstr)
-{
-    char* cstr = "hello";
-    str_s s = str.sstr(cstr);
-    tassert_eq(s.buf, cstr);
-    tassert_eq(s.len, 5);
-    tassert(s.buf == cstr);
-    tassert_eq(str.len(s.buf), 5);
-}
-
+char* cstr = "hello";
+str_s s = str.sstr(cstr);   // (str_s){.buf = "hello", .len = 5}
+usize n = str.len(cstr);    // 5
 ```
 
 - Getting substring as slices
 ```c
-
-str.sub("123456", 0, 0); // slice: 123456
-str.sub("123456", 1, 0); // slice: 23456
-str.sub("123456", 1, -1); // slice: 2345
-str.sub("123456", -3, -1); // slice: 345
-str.sub("123456", -30, 2000); // slice: (str_s){.buf = NULL, .len = 0} (error, but no crash)
+str.sub("123456", 0, 0);      // slice: 123456
+str.sub("123456", 1, 0);      // slice: 23456
+str.sub("123456", 1, -1);     // slice: 2345
+str.sub("123456", -3, -1);    // slice: 45
+str.sub("123456", -30, 2000); // slice: 123456 (out-of-range clamps, no crash)
 
 // works with slices too
 str_s s = str.sstr("123456");
-str_s sub = str.slice.sub(s, 1, 2);
-
+str_s sub = str.slice.sub(s, 1, 2); // slice: 2
 ```
 
 - Splitting / iterating via tokens
-
 ```c
-
 // Working without mem allocation
-s = str.sstr("123,456");
+str_s s = str.sstr("123,456");
 for$iter (str_s, it, str.slice.iter_split(s, ",", &it.iterator)) {
     io.printf("%S\n", it.val); // NOTE: it.val is non null-terminated slice
 }
-
+// 123
+// 456
 
 // Mem allocating split
 mem$scope(tmem$, _)
 {
-
-    // NOTE: each `res` item will be allocated C-string, use tmem$ or deallocate independently
-    arr$(char*) res = str.split("123,456,789", ",", _);
-    tassert(res != NULL); // NULL on error
+    // NOTE: each `res` item is a cloned C-string, use tmem$ or deallocate independently
+    arr$(char*) res = str.split("123,456,789", ",", _); // NULL on error
 
     for$each (v, res) {
         io.printf("%s\n", v); // NOTE: strings now cloned and null-terminated
     }
 }
-
 ```
 
 - Chaining string operations
 ```c
-
 mem$scope(tmem$, _)
 {
     char* s = str.fmt(_, "hi there"); // NULL on error
@@ -2482,16 +2489,14 @@ mem$scope(tmem$, _)
     if (s == NULL) {
         // TODO: oops error occurred, in one of three operations, but we don't need to check each one
     }
-
-    tassert_eq(s, "result is: hello there");
+    // s == "result is: hello there"
 }
 ```
 
 - Pattern matching
-
 ```c
 // Pattern matching 101
-// * - one or more characters
+// * - zero or more characters
 // ? - one character
 // [abc] - one character a or b or c
 // [!abc] - one character, but not a or b or c
@@ -2500,20 +2505,18 @@ mem$scope(tmem$, _)
 // \\* - escaping literal '*'
 // (abc|def|xyz) - matching combination of words abc or def or xyz
 
-tassert(str.match("test.txt", "*?txt"));
-tassert(str.match("image.png", "image.[jp][pn]g"));
-tassert(str.match("backup.txt", "[!a]*.txt"));
-tassert(!str.match("D", "[a-cA-C0-9]"));
-tassert(str.match("1234567890abcdefABCDEF", "[0-9a-fA-F+]"));
-tassert(str.match("create", "(run|build|create|clean)"));
-
+str.match("test.txt", "*?txt");                      // true
+str.match("image.png", "image.[jp][pn]g");           // true
+str.match("backup.txt", "[!a]*.txt");                // true
+str.match("D", "[a-cA-C0-9]");                       // false
+str.match("1234567890abcdefABCDEF", "[0-9a-fA-F+]"); // true
+str.match("create", "(run|build|create|clean)");     // true
 
 // Works with slices
 str_s src = str$s("my_test __String.txt");
-tassert(str.slice.match(src, "*"));
-tassert(str.slice.match(src, "*.txt*"));
-tassert(str.slice.match(src, "my_test*.txt"));
-
+str.slice.match(src, "*");            // true
+str.slice.match(src, "*.txt*");       // true
+str.slice.match(src, "my_test*.txt"); // true
 ```
 
 */
@@ -2715,7 +2718,7 @@ if (!sbuf.isvalid(&s)) {
 s[i]   // getting i-th character of string
 strlen(s); // C strings work, because sbuf_c is vanilla char*
 sbuf.len(&s); // faster way of getting length (uses metadata)
-sbuf.grow(&s, new_capacity); // increase capacity
+sbuf.set_len(&s, new_length); // set length (reallocates if it exceeds capacity)
 sbuf.capacity(&s); // current capacity, 0 if error occurred
 sbuf.clear(&s); // reset dynamic string + null term
 

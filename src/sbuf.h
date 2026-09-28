@@ -56,7 +56,7 @@ if (!sbuf.isvalid(&s)) {
 s[i]   // getting i-th character of string
 strlen(s); // C strings work, because sbuf_c is vanilla char*
 sbuf.len(&s); // faster way of getting length (uses metadata)
-sbuf.grow(&s, new_capacity); // increase capacity
+sbuf.set_len(&s, new_length); // set length (reallocates if it exceeds capacity)
 sbuf.capacity(&s); // current capacity, 0 if error occurred
 sbuf.clear(&s); // reset dynamic string + null term
 
