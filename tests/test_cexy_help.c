@@ -536,6 +536,8 @@ test$case(test_help_agents_out)
         tassert(str.find(content, "Generic type-safe dynamic array backed by a heap header."));
         tassert(str.find(content, "CEX Exception-based error handling."));
         tassert(str.find(content, "Unified array / hashmap / slice iteration framework."));
+        tassert(str.find(content, "Unit Testing engine:"));
+        tassert(str.find(content, "## Fuzzing"));
         tassert(!str.find(content, "no idioms"));
     }
     return EOK;
