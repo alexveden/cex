@@ -897,7 +897,8 @@ and extra ones are dropped. Traceback read-back API:
 
 A frame prints as `#N (file:line func()) [err] msg` at level 2, and as
 `#N (file:line) [err]` at level 1. The CEX test runner resets the ring before each test
-case and flushes it to stderr for every failing case.
+case and flushes it to stderr for every failing case. See
+[Traceback overhead](#traceback-overhead) for the cost of recording.
 
 #### Caveats
 
@@ -1042,6 +1043,42 @@ All CEX `e$` macros use `unlikely` a.k.a. `__builtin_expect` to shape assembly c
 ```
 
 The `unlikely(!(A))` hints the compiler to place assembly instructions in a way of favoring the happy path of `e$assert`, which is a performance gain when you have multiple error handling checks and/or big blocks for error handling.
+
+##### Traceback overhead
+
+Traceback recording stays off the hot path and off the heap:
+
+* **Compile-time switch.** `CEX_TRACEBACK_VERBOSITY` is a preprocessor knob, not a
+  runtime flag. At level `0` the `e$` macros compile to plain control flow and the ring
+  is not emitted (`e$traceback_len` is a literal `0`) — no overhead at all.
+* **No allocation, no locks, no I/O.** The ring is one fixed `_Thread_local` array of
+  `CEX_TRACEBACK_CAP` (default 32) frames. Recording never allocates, never takes a
+  lock, and never writes to a stream — which is why level 2 is roughly **100x faster**
+  than level 3, where each error formats and prints at the failure site.
+* **Cold raise, hot propagation.** The first `e$raise` writes a cold cache line and
+  costs about **40–100 ns**. Frames appended while propagating the same error (`e$ret`,
+  `e$goto`, `e$except`) hit a hot cache line and cost **under 20 ns** each — propagation
+  is cheaper than the initial raise.
+* **Happy path first.** Every check is wrapped in `unlikely()`, so success is
+  straight-line code and the ring write lives in the cold branch.
+* **Frame contents.** Level 1 records `{err, file, line}`; level 2 adds `{func, msg}`.
+  Fields are stored by reference (`__FILE_NAME__`, `__func__`, the `#expr` literal)
+  plus a `u32` line and the `Exc` pointer — no string copies. Level 2 also embeds more
+  string literals in the binary; level 1 keeps only the filename and line.
+* **Bounded chain.** Origin-recording macros reset the ring before pushing, so it holds
+  one error chain; past `CEX_TRACEBACK_CAP` the extra frames are dropped (the origin and
+  earliest frames are kept).
+* **`e$except_errno` calls `strerror()`** on the error path to capture the errno text.
+
+Flushing via `e$traceback_print()` walks the ring and does not allocate per frame.
+
+Measure on your machine with:
+
+```sh
+./cex test bench tests/bench/test_bench_raise_buffered.c
+```
+
+It compares `e$raise`/`e$ret`/`e$goto` against plain pointer returns.
 
 #### Compatibility
 Be careful if you need to expose CEX exception returning functions to an API. Sometimes, if you are working with different shared libraries, the addresses of the same errors might be different. If user code is intended to check and handle API errors, maybe it's better to stick to C-compatible approach instead of CEX errors.
