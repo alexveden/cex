@@ -203,6 +203,41 @@ test$case(test_help_not_found_exit)
     return EOK;
 }
 
+test$case(test_help_bare_shows_usage)
+{
+    char* argv[] = { "help", NULL };
+    tassert_er(EOK, cexy.cmd.help(arr$len(argv) - 1, argv, NULL));
+    return EOK;
+}
+
+test$case(test_help_list_namespaces)
+{
+    char* out_path = TBUILDDIR "help_list.txt";
+    char* argv[] = { "help",
+                     "--list",
+                     "--filter",
+                     "./src/str.[hc]",
+                     "--out",
+                     out_path,
+                     NULL };
+    tassert_er(EOK, cexy.cmd.help(arr$len(argv) - 1, argv, NULL));
+    mem$scope(tmem$, _)
+    {
+        char* content = io.file.load(out_path, _);
+        tassert(content);
+        tassert(str.find(content, "str$"));
+        tassert(str.find(content, "str"));
+    }
+    return EOK;
+}
+
+test$case(test_help_list_with_query_errors)
+{
+    char* argv[] = { "help", "--list", "str.find", NULL };
+    tassert_er(Error.argument, cexy.cmd.help(arr$len(argv) - 1, argv, NULL));
+    return EOK;
+}
+
 test$case(test_namespace_entities)
 {
 #define $file "src/str"

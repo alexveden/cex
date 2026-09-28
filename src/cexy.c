@@ -1929,7 +1929,8 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
     char* process_help = "Symbol / documentation search tool for C projects";
     char* epilog_help = 
         "\nQuery examples: \n"
-        "cex help                     - list all namespaces in project directory\n"
+        "cex help                     - show this help message\n"
+        "cex help --list              - list all namespaces in project directory\n"
         "cex help foo                 - find any symbol containing 'foo' (case sensitive)\n"
         "cex help foo.                - find namespace prefix: foo$, Foo_func(), FOO_CONST, etc\n"
         "cex help os$                 - find CEX namespace help (docs, macros, functions, types)\n"
@@ -1948,6 +1949,7 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
     bool show_source = false;
     bool show_example = false;
     bool brief = false;
+    bool list = false;
 
     // clang-format on
     argparse_c cmd_args = {
@@ -1960,6 +1962,7 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
             argparse$opt_help(),
             argparse$opt(&filter, 'f', "filter", .help = "file pattern for searching"),
             argparse$opt(&brief, 'b', "brief", .help = "compact agent-friendly output"),
+            argparse$opt(&list, 'l', "list", .help = "list all namespaces"),
             argparse$opt(&show_source, 's', "source", .help = "show full source on match"),
             argparse$opt(
                 &show_example,
@@ -1983,6 +1986,19 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
 
     mem$arena_scope(1024 * 100, arena)
     {
+        arr$(char*) queries = arr$new(queries, arena);
+        char* query;
+        while ((query = argparse.next(&cmd_args)) != NULL) { arr$push(queries, query); }
+
+        if (list && arr$len(queries) > 0) {
+            argparse.usage(&cmd_args);
+            result = e$raise(Error.argument, "--list cannot be combined with queries");
+            goto end;
+        }
+        if (arr$len(queries) == 0 && !list) {
+            argparse.usage(&cmd_args);
+            goto end;
+        }
 
         arr$(char*) sources = os.fs.find(filter, true, arena);
 
@@ -2046,10 +2062,6 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
             }
         }
 
-        arr$(char*) queries = arr$new(queries, arena);
-        char* query;
-        while ((query = argparse.next(&cmd_args)) != NULL) { arr$push(queries, query); }
-
         bool any_not_found = false;
         if (arr$len(queries) == 0) {
             hm$(str_s, cex_decl_s*) names = hm$new(names, arena, .capacity = 1024);
@@ -2094,12 +2106,16 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
                 );
                 if (err != EOK) {
                     io.fprintf(stderr, "cex help: no match for '%s'\n", query);
-                    result = e$raise(Error.not_found, "cex help: no match for query");
+                    any_not_found = true;
                 }
             }
         }
+        if (any_not_found) { 
+            result = e$raise(Error.not_found, "cex help: no match for query");
+        }
     }
 
+end:
     if (output && output != stdout) { io.fclose(&output); }
 
     return result;
