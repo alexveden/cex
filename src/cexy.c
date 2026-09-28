@@ -2021,6 +2021,8 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
         "./cex help --brief --example str.find  - compact example locations only\n"
         "./cex help --idioms str$               - print only namespace idioms/docs block\n"
         "./cex help --brief --idioms str$       - namespace idioms + compact API\n"
+        "./cex help --agents                    - dump key CEX namespace idioms (AGENTS.md content)\n"
+        "./cex help --agents --out AGENTS.md    - write AGENTS.md\n"
     ;
     char* filter = "./*.[hc]";
     char* out_file = NULL;
@@ -2029,6 +2031,7 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
     bool show_idioms = false;
     bool brief = false;
     bool list = false;
+    bool agents = false;
 
     // clang-format on
     argparse_c cmd_args = {
@@ -2055,6 +2058,12 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
                 "idioms",
                 .help = "print only the namespace idioms/docs block (e.g. 'str$')"
             ),
+            argparse$opt(
+                &agents,
+                'a',
+                "agents",
+                .help = "dump key CEX namespace idioms for AGENTS.md"
+            ),
             argparse$opt(&out_file, 'o', "out", .help = "write output of command to file"),
         ),
     };
@@ -2075,6 +2084,18 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
         char* query;
         while ((query = argparse.next(&cmd_args)) != NULL) { arr$push(queries, query); }
 
+        if (agents) {
+            if (list || show_idioms || brief || show_source || show_example ||
+                arr$len(queries) > 0) {
+                argparse.usage(&cmd_args);
+                result = e$raise(
+                    Error.argument,
+                    "--agents cannot be combined with queries or other output flags"
+                );
+                goto end;
+            }
+            filter = "./cex.h";
+        }
         if (show_idioms && list) {
             argparse.usage(&cmd_args);
             result = e$raise(Error.argument, "--idioms cannot be combined with --list");
@@ -2098,7 +2119,7 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
             result = e$raise(Error.argument, "--list cannot be combined with queries");
             goto end;
         }
-        if (arr$len(queries) == 0 && !list) {
+        if (arr$len(queries) == 0 && !list && !agents) {
             argparse.usage(&cmd_args);
             goto end;
         }
@@ -2166,7 +2187,25 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
         }
 
         bool any_not_found = false;
-        if (arr$len(queries) == 0) {
+        if (agents) {
+            char* agents_ns[] = { "cex", "e", "mem", "for", "arr", "hm", "str", "cexy" };
+            for$each (ns, agents_ns) {
+                char* q = str.fmt(arena, "%s$", ns);
+                Exc err = _cexy__help_query(
+                    q,
+                    all_decls,
+                    false,
+                    false,
+                    false,
+                    true,
+                    arena,
+                    output
+                );
+                if (err != EOK) {
+                    io.fprintf(stderr, "cex help: no idioms for '%s' (skipped)\n", q);
+                }
+            }
+        } else if (arr$len(queries) == 0) {
             hm$(str_s, cex_decl_s*) names = hm$new(names, arena, .capacity = 1024);
             for$each (d, all_decls) {
                 if (d->type == CexTkn__macro_const || d->type == CexTkn__macro_func) {

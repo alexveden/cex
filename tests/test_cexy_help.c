@@ -517,6 +517,42 @@ test$case(test_help_idioms_no_docs)
     return EOK;
 }
 
+test$case(test_help_agents_out)
+{
+    char* out_path = TBUILDDIR "help_agents.txt";
+    char* argv[] = { "help", "--agents", "--out", out_path, NULL };
+    tassert_er(EOK, cexy.cmd.help(arr$len(argv) - 1, argv, NULL));
+    mem$scope(tmem$, _)
+    {
+        char* content = io.file.load(out_path, _);
+        tassert(content);
+        tassert(str.find(content, "CEX string principles:"));
+        tassert(str.find(content, "Generic type-safe dynamic array backed by a heap header."));
+        tassert(str.find(content, "CEX Exception-based error handling."));
+        tassert(str.find(content, "Unified array / hashmap / slice iteration framework."));
+        tassert(!str.find(content, "no idioms"));
+    }
+    return EOK;
+}
+
+test$case(test_help_agents_rejects_query)
+{
+    char* argv[] = { "help", "--agents", "str$", NULL };
+    tassert_er(Error.argument, cexy.cmd.help(arr$len(argv) - 1, argv, NULL));
+    return EOK;
+}
+
+test$case(test_help_agents_rejects_flags)
+{
+    char* brief[] = { "help", "--agents", "--brief", NULL };
+    tassert_er(Error.argument, cexy.cmd.help(arr$len(brief) - 1, brief, NULL));
+    char* idioms[] = { "help", "--agents", "--idioms", NULL };
+    tassert_er(Error.argument, cexy.cmd.help(arr$len(idioms) - 1, idioms, NULL));
+    char* list[] = { "help", "--agents", "--list", NULL };
+    tassert_er(Error.argument, cexy.cmd.help(arr$len(list) - 1, list, NULL));
+    return EOK;
+}
+
 test$case(test_help_example_deterministic)
 {
     e$ret(test_help_example_make_fixture());
