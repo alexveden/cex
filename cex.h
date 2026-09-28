@@ -607,6 +607,8 @@ __cex__fprintf_dummy(void)
 #endif
 /**
 
+## Logging
+
 Simple console logging with file:line location prefix.
 
 `log$error` / `log$warn` / `log$info` / `log$debug` / `log$trace`
