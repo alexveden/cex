@@ -143,6 +143,30 @@ test$case(test_help_brief_namespace_includes_funcs)
     return EOK;
 }
 
+test$case(test_help_brief_namespace_excludes_private)
+{
+    char* out_path = TBUILDDIR "help_brief_ns_private.txt";
+    char* argv[] = { "help",
+                     "--brief",
+                     "--filter",
+                     "./src/str.[hc]",
+                     "--out",
+                     out_path,
+                     "str$",
+                     NULL };
+    tassert_er(EOK, cexy.cmd.help(arr$len(argv) - 1, argv, NULL));
+    mem$scope(tmem$, _)
+    {
+        char* content = io.file.load(out_path, _);
+        tassert(content);
+        tassert(!str.find(content, "str.to_double_"));
+        tassert(!str.find(content, "str.to_signed_num_"));
+        tassert(!str.find(content, "str.to_unsigned_num_"));
+        tassert(str.find(content, "str.find("));
+    }
+    return EOK;
+}
+
 test$case(test_help_brief_cexy_namespace_includes_non_prefixed_funcs)
 {
     char* out_path = TBUILDDIR "help_brief_cexy_ns.txt";

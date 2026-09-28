@@ -1539,6 +1539,7 @@ _cexy__display_full_info(
                     str_s sym_name = it->name;
                     if (it->type == CexTkn__func_def) {
                         if (!brief) { continue; }
+                        if (!_cexy__fn_match(it->name, base_name)) { continue; }
                         sym_name = _cexy__fn_dotted(it->name, base_ns, _);
                         if (!sym_name.buf) { continue; }
                         if (!str.slice.starts_with(sym_name, base_name)) { continue; }
