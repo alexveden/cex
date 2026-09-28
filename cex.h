@@ -19080,20 +19080,20 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
     char* process_help = "Symbol / documentation search tool for C projects";
     char* epilog_help = 
         "\nQuery examples: \n"
-        "cex help                     - show this help message\n"
-        "cex help --list              - list all namespaces in project directory\n"
-        "cex help foo                 - find any symbol containing 'foo' (case sensitive)\n"
-        "cex help foo.                - find namespace prefix: foo$, Foo_func(), FOO_CONST, etc\n"
-        "cex help os$                 - find CEX namespace help (docs, macros, functions, types)\n"
-        "cex help 'foo_*_bar'         - find using pattern search for symbols (see 'cex help str.match')\n"
-        "cex help '*_(bar|foo)'       - find any symbol ending with '_bar' or '_foo'\n"
-        "cex help str.find            - display function documentation if exactly matched\n"
-        "cex help 'os$PATH_SEP'       - display macro constant value if exactly matched\n"
-        "cex help str_s               - display type info and documentation if exactly matched\n"
-        "cex help --source str.find   - display function source if exactly matched\n"
-        "cex help --example str.find  - display random function use in codebase if exactly matched\n"
-        "cex help --brief str.        - compact agent-friendly namespace API\n"
-        "cex help --brief a b c       - batch query multiple symbols\n"
+        "./cex help                     - show this help message\n"
+        "./cex help foo                 - find any symbol containing 'foo' (case sensitive)\n"
+        "./cex help foo.                - find namespace prefix: foo$, Foo_func(), FOO_CONST, etc\n"
+        "./cex help os$                 - find CEX namespace help (docs, macros, functions, types)\n"
+        "./cex help 'foo_*_bar'         - find using pattern search for symbols (see './cex help str.match')\n"
+        "./cex help '*_(bar|foo)'       - find any symbol ending with '_bar' or '_foo'\n"
+        "./cex help str.find            - display function documentation if exactly matched\n"
+        "./cex help 'os$PATH_SEP'       - display macro constant value if exactly matched\n"
+        "./cex help str_s               - display type info and documentation if exactly matched\n"
+        "./cex help --source str.find   - display function source if exactly matched\n"
+        "./cex help --list              - list all namespaces in project directory\n"
+        "./cex help --example str.find  - display random function use in codebase if exactly matched\n"
+        "./cex help --brief str.        - compact agent-friendly namespace API\n"
+        "./cex help --brief a b c       - batch query multiple symbols\n"
     ;
     char* filter = "./*.[hc]";
     char* out_file = NULL;
@@ -19224,7 +19224,7 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
                         !str.slice.starts_with(macro_ns, str$s("_"))) {
                         hm$set(names, macro_ns, d);
                     }
-                } else if (d->type == CexTkn__typedef || d->type == CexTkn__cex_module_struct) {
+                } else if (d->type == CexTkn__cex_module_struct) {
                     if (!hm$getp(names, d->name)) { hm$set(names, d->name, d); }
                 }
             }

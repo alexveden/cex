@@ -227,6 +227,7 @@ test$case(test_help_list_namespaces)
         tassert(content);
         tassert(str.find(content, "str$"));
         tassert(str.find(content, "str"));
+        tassert(!str.find(content, "typedef"));
     }
     return EOK;
 }
