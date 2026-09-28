@@ -19,6 +19,143 @@ test$teardown_case()
 
 #if !defined(__EMSCRIPTEN__)
 
+static char*
+test_brief_decl_to_str(cex_decl_s* d, IAllocator alloc)
+{
+    char* path = TBUILDDIR "brief_decl.txt";
+    FILE* out = NULL;
+    e$except (err, io.fopen(&out, path, "w")) { return NULL; }
+    _cexy__print_brief_decl(d, d->name, out);
+    io.fclose(&out);
+    return io.file.load(path, alloc);
+}
+
+test$case(test_print_brief_decl_func)
+{
+    mem$scope(tmem$, _)
+    {
+        sbuf_c ret = sbuf.create(32, _);
+        sbuf_c args = sbuf.create(32, _);
+        e$ret(sbuf.append(&ret, "char*"));
+        e$ret(sbuf.append(&args, "char* s"));
+        cex_decl_s d = {
+            .name = str$s("str.find"),
+            .docs = str$s("/// Find it\n"),
+            .ret_type = ret,
+            .args = args,
+            .file = "src/str.c",
+            .line = 10,
+            .type = CexTkn__func_def,
+        };
+        char* content = test_brief_decl_to_str(&d, _);
+        tassert(content);
+        tassert(str.find(content, "char* str.find(char* s)   // src/str.c:11"));
+        tassert(str.find(content, "  Find it"));
+    }
+    return EOK;
+}
+
+test$case(test_print_brief_decl_macro)
+{
+    mem$scope(tmem$, _)
+    {
+        sbuf_c args = sbuf.create(32, _);
+        e$ret(sbuf.append(&args, "a, value..."));
+        cex_decl_s d = {
+            .name = str$s("arr$push"),
+            .docs = str$s("/// Appends element\n"),
+            .args = args,
+            .file = "cex.h",
+            .line = 1478,
+            .type = CexTkn__macro_func,
+        };
+        char* content = test_brief_decl_to_str(&d, _);
+        tassert(content);
+        tassert(str.find(content, "#define arr$push(a, value...)   // cex.h:1479"));
+        tassert(str.find(content, "  Appends element"));
+    }
+    return EOK;
+}
+
+test$case(test_print_brief_decl_multiline)
+{
+    mem$scope(tmem$, _)
+    {
+        sbuf_c args = sbuf.create(32, _);
+        e$ret(sbuf.append(&args, "char* s"));
+        cex_decl_s d = {
+            .name = str$s("str.copy"),
+            .docs = str$s("/// first line,\n/// second line.\n"),
+            .args = args,
+            .file = "src/str.c",
+            .line = 165,
+            .type = CexTkn__func_def,
+        };
+        char* content = test_brief_decl_to_str(&d, _);
+        tassert(content);
+        tassert(str.find(content, "  first line,\n  second line.\n"));
+        tassert(!str.find(content, "///"));
+    }
+    return EOK;
+}
+
+test$case(test_print_brief_decl_typedef)
+{
+    mem$scope(tmem$, _)
+    {
+        sbuf_c ret = sbuf.create(32, _);
+        e$ret(sbuf.append(&ret, "typedef struct"));
+        cex_decl_s d = {
+            .name = str$s("str_s"),
+            .ret_type = ret,
+            .file = "cex.h",
+            .line = 323,
+            .type = CexTkn__typedef,
+        };
+        char* content = test_brief_decl_to_str(&d, _);
+        tassert(content);
+        tassert(str.find(content, "typedef struct str_s   // cex.h:324"));
+    }
+    return EOK;
+}
+
+test$case(test_help_brief_batch)
+{
+    char* out_path = TBUILDDIR "help_batch.txt";
+    char* argv[] = { "help",
+                     "--brief",
+                     "--filter",
+                     "./src/str.c",
+                     "--out",
+                     out_path,
+                     "str.find",
+                     "str.replace" };
+    tassert_er(EOK, cexy.cmd.help(arr$len(argv), argv, NULL));
+    mem$scope(tmem$, _)
+    {
+        char* content = io.file.load(out_path, _);
+        tassert(content);
+        tassert(str.find(content, "str.find"));
+        tassert(str.find(content, "str.replace"));
+        tassert(!str.find(content, "Symbol found at"));
+    }
+    return EOK;
+}
+
+test$case(test_help_not_found_exit)
+{
+    char* out_path = TBUILDDIR "help_notfound.txt";
+    char* argv[] = { "help",
+                     "--brief",
+                     "--filter",
+                     "./src/str.c",
+                     "--out",
+                     out_path,
+                     "no_such_symbol_xyz" };
+    tassert_er(Error.not_found, cexy.cmd.help(arr$len(argv), argv, NULL));
+    return EOK;
+}
+
 test$case(test_namespace_entities)
 {
 #define $file "src/str"
