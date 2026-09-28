@@ -2793,118 +2793,91 @@ CEX_NAMESPACE struct __cex_namespace__sbuf sbuf;
 #endif
 
 
-/// Makes string literal with ansi colored test
+/// Makes string literal with ansi colored text
 #define io$ansi(text, ansi_col) "\033[" ansi_col "m" text "\033[0m"
 
 /**
-Cross-platform IO namespace
 
-- Read all file content (low level api)
+## Input/Output
+
+Cross-platform IO namespace.
+
+### File load/save (easy api)
+
 ```c
+e$ret(io.file.save("tests/data/text_file_write.txt", "Hello from CEX!\n"));
 
-test$case(test_readall)
+char* content = io.file.load("tests/data/text_file_write.txt", mem$); // NULL on error
+io.printf("%s", content); // Hello from CEX!
+mem$free(mem$, content);
+```
+
+### Low-level file api
+
+- Read all content
+
+```c
+FILE* file;
+e$ret(io.fopen(&file, "tests/data/text_file_50b.txt", "r"));
+
+usize size = io.file.size(file); // 50
+
+str_s content;
+e$ret(io.fread_all(file, &content, mem$)); // content.buf is allocated by mem$
+mem$free(mem$, content.buf);
+
+io.fclose(&file); // file is set to NULL
+```
+
+- Read/write lines
+
+```c
+FILE* file;
+e$ret(io.fopen(&file, "tests/data/text_file_write.txt", "w+"));
+
+mem$scope(tmem$, _)
 {
-    // Open new file
-    FILE* file;
-    e$ret(io.fopen(&file, "tests/data/text_file_50b.txt", "r"));
+    // Write line by line
+    e$ret(io.file.writeln(file, "hello"));
+    e$ret(io.file.writeln(file, "world"));
 
+    // Read line by line
+    io.rewind(file);
+    io.printf("%s\n", io.file.readln(file, _)); // hello (backed by temp allocator)
 
-    // get file size 
-    tassert_eq(50, io.file.size(file));
-
-    // Read all content
+    // low-level api (uses heap allocator, needs free)
     str_s content;
-    e$ret(io.fread_all(file, &content, mem$));
-    mem$free(mem$, content.buf); // content.buf is allocated by mem$ !
-
-    // Cleanup
-    io.fclose(&file); // file will be set to NULL
-    tassert(file == NULL);
-
-    return EOK;
+    e$ret(io.fread_line(file, &content, mem$));
+    io.printf("%S\n", content); // world
+    mem$free(mem$, content.buf);
 }
-
+io.fclose(&file);
 ```
 
-- File load/save (easy api)
-```c
-
-test$case(test_fload_save)
-{
-    tassert_eq(Error.ok, io.file.save("tests/data/text_file_write.txt", "Hello from CEX!\n"));
-    char* content = io.file.load("tests/data/text_file_write.txt", mem$);
-    tassert(content);
-    tassert_eq(content, "Hello from CEX!\n");
-    mem$free(mem$, content);
-    return EOK;
-}
-
-```
-
-- File read/write lines 
+- Read/write bytes
 
 ```c
-test$case(test_write_line)
-{
-    FILE* file;
-    tassert_eq(Error.ok, io.fopen(&file, "tests/data/text_file_write.txt", "w+"));
+// Read bytes in a loop
+FILE* file;
+e$ret(io.fopen(&file, "tests/data/text_file_50b.txt", "r"));
 
-    str_s content;
-    mem$scope(tmem$, _)
-    {
-        // Writing line by line
-        tassert_eq(EOK, io.file.writeln(file, "hello"));
-        tassert_eq(EOK, io.file.writeln(file, "world"));
-
-        // Reading line by line
-        io.rewind(file);
-
-        // easy api - backed by temp allocator
-        tassert_eq("hello", io.file.readln(file, _));
-
-        // low-level api (using heap allocator, needs free!)
-        tassert_er(EOK, io.fread_line(file, &content, mem$));
-        tassert(str.slice.eq(content, str$s("world")));
-        mem$free(mem$, content.buf);
+char buf[128] = {0};
+isize nread = 0;
+while ((nread = io.fread(file, buf, 10))) {
+    if (nread < 0) {
+        // io.fread() error, os.get_last_error() gives the Exception
+        break;
     }
-
-    io.fclose(&file);
-    return EOK;
+    buf[10] = '\0';
+    io.printf("%s", buf);
 }
-```
+io.fclose(&file);
 
-- File low-level write/read
-```c
-
-test$case(test_read_loop)
-{
-    FILE* file;
-    tassert_eq(Error.ok, io.fopen(&file, "tests/data/text_file_50b.txt", "r+"));
-
-    char buf[128] = {0};
-
-    // Read bytes
-    isize nread = 0;
-    while((nread = io.fread(file, buf, 10))) {
-        if (nread < 0) {
-            // TODO: io.fread() error occured, you should handle it here
-            // NOTE: you can use os.get_last_error() for Exception representation of io.fread() err
-            break;
-        }
-        
-        tassert_eq(nread, 10);
-        buf[10] = '\0';
-        io.printf("%s", buf);
-    }
-
-    // Write bytes
-    char buf2[] = "foobar";
-    tassert_ne(EOK, io.fwrite(file, buf2, arr$len(buf2)));
-
-    io.fclose(&file);
-    return EOK;
-}
-
+// Write bytes
+e$ret(io.fopen(&file, "tests/data/text_file_write.txt", "w+"));
+char data[] = "foobar";
+e$ret(io.fwrite(file, data, arr$len(data)));
+io.fclose(&file);
 ```
 
 */
