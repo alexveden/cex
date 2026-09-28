@@ -16,18 +16,21 @@ typedef struct cex_codegen_s
  */
 
 /**
-* Code generation module 
+
+## Code generation
+
+Code generation macros for emitting formatted source code into an `sbuf_c`.
+
+`cg$init()` declares the shared `cg$var` in the current scope; `cg$init_scope()` keeps it local to a block.
+
+### Example
 
 ```c
-
-test$case(test_codegen_test)
+Exception
+generate_my_code(sbuf_c* b)
 {
-    sbuf_c b = sbuf.create(1024, mem$);
-    // NOTE: cg$ macros should be working within cg$init() scope or make sure cg$var is available
-    cg$init(&b);
-
-    tassert(cg$var->buf == &b);
-    tassert(cg$var->indent == 0);
+    // NOTE: cg$ macros must be used inside a cg$init() scope, or cg$var must be in scope
+    cg$init(b);
 
     cg$pn("printf(\"hello world\");");
     cg$pn("#define GOO");
@@ -96,15 +99,19 @@ test$case(test_codegen_test)
         }
     }
 
-    tassert(cg$is_valid());
+    if (!cg$is_valid()) { e$raise(cg$var->error, "code generation failed"); }
 
-    printf("result: \n%s\n", b);
-
-
-    sbuf.destroy(&b);
     return EOK;
 }
+```
 
+```c
+sbuf_c b = sbuf.create(1024, mem$);
+e$ret(generate_my_code(&b));
+
+io.printf("result: \n%s\n", b);
+
+sbuf.destroy(&b);
 ```
 
 */
