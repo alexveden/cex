@@ -1430,14 +1430,17 @@ static void
 _cexy__print_brief_lines(str_s brief, FILE* output)
 {
     if (!brief.len) { return; }
+    bool printed = false;
     for$iter (str_s, line, str.slice.iter_split(brief, "\n", &line.iterator)) {
         str_s clean = str.slice.strip(line.val);
         if (str.slice.starts_with(clean, str$s("///"))) {
             clean = str.slice.strip(str.slice.sub(clean, 3, 0));
         }
         if (clean.len == 0) { continue; }
-        io.fprintf(output, "  %S\n", clean);
+        io.fprintf(output, printed ? " %S" : "  %S", clean);
+        printed = true;
     }
+    if (printed) { io.fprintf(output, "\n"); }
 }
 
 static void

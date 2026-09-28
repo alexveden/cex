@@ -93,7 +93,7 @@ test$case(test_print_brief_decl_multiline)
         };
         char* content = test_brief_decl_to_str(&d, _);
         tassert(content);
-        tassert(str.find(content, "  first line,\n  second line.\n"));
+        tassert(str.find(content, "  first line, second line.\n"));
         tassert(!str.find(content, "///"));
     }
     return EOK;
