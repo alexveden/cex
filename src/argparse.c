@@ -24,6 +24,7 @@ _cex_argparse__error(argparse_c* self, argparse_opt_s* opt, char* reason, bool i
     return e$raise(Error.argument, "option parsing error");
 }
 
+/// Prints usage and options/commands to stdout (after parse())
 static void
 cex_argparse_usage(argparse_c* self)
 {
@@ -545,6 +546,7 @@ _cex_argparse__parse_options(argparse_c* self)
     return EOK;
 }
 
+/// Parses main() argc/argv into options or selects a command
 static Exception
 cex_argparse_parse(argparse_c* self, int argc, char** argv)
 {
@@ -574,6 +576,7 @@ cex_argparse_parse(argparse_c* self, int argc, char** argv)
     return Error.ok;
 }
 
+/// Returns the next unconsumed argument (for option callbacks)
 static char*
 cex_argparse_next(argparse_c* self)
 {
@@ -614,6 +617,7 @@ cex_argparse_next(argparse_c* self)
     return result;
 }
 
+/// Invokes the command selected by parse()
 static Exception
 cex_argparse_run_command(argparse_c* self, void* user_ctx)
 {
