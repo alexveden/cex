@@ -523,6 +523,38 @@ test$case(test_help_idioms_no_docs)
     return EOK;
 }
 
+test$case(test_help_idioms_have_md_header)
+{
+    char* namespaces[] = {
+        "AllocatorArena$", "CexParser$", "arr$", "argparse$", "cex$", "cexy$",
+        "cg$",             "e$",         "for$", "fuzz$",     "hm$",  "io$",
+        "log$",            "mem$",       "os$",  "sbuf$",     "str$", "test$",
+    };
+    for$each (ns, namespaces) {
+        mem$scope(tmem$, _)
+        {
+            char* out_path = TBUILDDIR "help_idioms_hdr.txt";
+            char* argv[] = {
+                "help", "--idioms", "--filter", "./src/*.[hc]", "--out", out_path, ns, NULL
+            };
+            tassert_er(EOK, cexy.cmd.help(arr$len(argv) - 1, argv, NULL));
+
+            char* content = io.file.load(out_path, _);
+            tassertf(content != NULL, "no idioms for %s", ns);
+
+            bool has_header = false;
+            for$iter (str_s, it, str.slice.iter_split(str.sstr(content), "\n", &it.iterator)) {
+                if (str.slice.starts_with(str.slice.strip(it.val), str$s("## "))) {
+                    has_header = true;
+                    break;
+                }
+            }
+            tassertf(has_header, "%s idioms missing '## ' header", ns);
+        }
+    }
+    return EOK;
+}
+
 test$case(test_help_agents_out)
 {
     char* out_path = TBUILDDIR "help_agents.txt";
