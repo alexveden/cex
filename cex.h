@@ -2781,9 +2781,9 @@ Cross-platform IO namespace.
 ### File load/save (easy api)
 
 ```c
-e$ret(io.file.save("tests/data/text_file_write.txt", "Hello from CEX!\n"));
+e$ret(io.file.save("./myfile.txt", "Hello from CEX!\n"));
 
-char* content = io.file.load("tests/data/text_file_write.txt", mem$); // NULL on error
+char* content = io.file.load("./myfile.txt", mem$); // NULL on error
 io.printf("%s", content); // Hello from CEX!
 mem$free(mem$, content);
 ```
@@ -2794,9 +2794,9 @@ mem$free(mem$, content);
 
 ```c
 FILE* file;
-e$ret(io.fopen(&file, "tests/data/text_file_50b.txt", "r"));
+e$ret(io.fopen(&file, "./data.txt", "r"));
 
-usize size = io.file.size(file); // 50
+usize size = io.file.size(file); // file size in bytes
 
 str_s content;
 e$ret(io.fread_all(file, &content, mem$)); // content.buf is allocated by mem$
@@ -2809,7 +2809,7 @@ io.fclose(&file); // file is set to NULL
 
 ```c
 FILE* file;
-e$ret(io.fopen(&file, "tests/data/text_file_write.txt", "w+"));
+e$ret(io.fopen(&file, "./myfile.txt", "w+"));
 
 mem$scope(tmem$, _)
 {
@@ -2835,7 +2835,7 @@ io.fclose(&file);
 ```c
 // Read bytes in a loop
 FILE* file;
-e$ret(io.fopen(&file, "tests/data/text_file_50b.txt", "r"));
+e$ret(io.fopen(&file, "./data.txt", "r"));
 
 char buf[128] = {0};
 isize nread = 0;
@@ -2850,7 +2850,7 @@ while ((nread = io.fread(file, buf, 10))) {
 io.fclose(&file);
 
 // Write bytes
-e$ret(io.fopen(&file, "tests/data/text_file_write.txt", "w+"));
+e$ret(io.fopen(&file, "./myfile.txt", "w+"));
 char data[] = "foobar";
 e$ret(io.fwrite(file, data, arr$len(data)));
 io.fclose(&file);
