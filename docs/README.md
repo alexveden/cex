@@ -560,14 +560,16 @@ extern const struct _CEX_Error_struct
 Exception
 remove_file(char* path)
 {
-    if (path == NULL || path[0] == '\0') { 
-        return Error.argument;  // Empty of null file
+    if (path == NULL || path[0] == '\0') {
+        // WARNING: plain return doesn't register a traceback frame, prefer e$raise()
+        return Error.argument;  // returns a pointer to a static const string
     }
     if (!os.path.exists(path)) {
-        return "Not exists" // literal error are allowed, but must be handled as strcmp()
+        // WARNING: plain return doesn't register a traceback frame, prefer e$raise()
+        return "Not exists"; // literal errors are allowed, but must be handled as strcmp()
     }
     if (str.eq(path, "magic.file")) {
-        // Returns an Error.integrity and logs error at current line to stdout
+        // Records an origin traceback frame tagged Error.integrity
         return e$raise(Error.integrity, "Removing magic file is not allowed!");
     }
     if (remove(path) < 0) { 
@@ -591,12 +593,12 @@ main(char* path)
         return err;
     }
     // Method 3: helper macros + handling with traceback
-    e$except(err, remove_file(path)) { // NOTE: this call automatically prints a traceback
+    e$except(err, remove_file(path)) { // NOTE: records a traceback frame for the error
         if (err == Error.integrity) { /* TODO: do special case handling */  }
     }
 
     // Method 4: helper macros + handling unhandled
-    e$ret(remove_file(path)); // NOTE: on error, prints traceback and returns error to the caller
+    e$ret(remove_file(path)); // NOTE: on error, records a frame and returns error to the caller
 
     remove_file(path);  // <<< OOPS compiler error, return value of this function unchecked
 
@@ -645,11 +647,12 @@ int
 main(int argc, char** argv)
 {
     (void)argv;
-    e$except (err, foo2(argc)) { 
+    e$except (err, foo2(argc)) {
+        e$traceback_print(stderr); // top-level sink: flush the recorded frames
         if (err == MyError.why_arg_is_one) {
             io.printf("We need moar args!\n");
         }
-        return 1; 
+        return 1;
     }
     return 0;
 }
@@ -657,12 +660,16 @@ main(int argc, char** argv)
 
 ```sh
 MOCCA - Make Old C Cexy Again!
-[ERROR]   ( main.c:12 baz() ) [WhyArgIsOneError] Why argc is 1, argc = 1?
-[^STCK]   ( main.c:19 bar() ) ^^^^^ [WhyArgIsOneError] in function call `baz(argc)`
-[^STCK]   ( main.c:27 foo2() ) ^^^^^ [WhyArgIsOneError] in function call `bar(argc)`
-[^STCK]   ( main.c:35 main() ) ^^^^^ [WhyArgIsOneError] in function call `foo2(argc)`
+#0 ( main.c:12 baz() ) [WhyArgIsOneError] Why argc is 1?
+#1 ( main.c:19 bar() ) [WhyArgIsOneError] baz(argc)
+#2 ( main.c:27 foo2() ) [WhyArgIsOneError] bar(argc)
+#3 ( main.c:35 main() ) [WhyArgIsOneError] foo2(argc)
 We need moar args!
 ```
+
+At buffered verbosity levels (1, 2) the traceback is recorded, not printed. It is
+flushed by the top-level sink via `e$traceback_print(stderr)`. At level 3 the same
+frames are logged immediately with `[ERROR]` / `[^STCK]` prefixes instead.
 
 ### Rewriting initial C example to CEX
 
@@ -689,8 +696,8 @@ Exception read_file(char* filename, char* buf, isize* out_buf_size) {
     return EOK; /* <4> */
 }
 ```
-1. Returns error with printing out internal expression: `[ASSERT]  ( main.c:26 read_file() ) buf != NULL`. `e$assert` is an Exception returning assert, it doesn't abort your program, and these asserts are not stripped in release builds.
-2. Handles typical `-1 + errno` check with print: `[ERROR]   ( main.c:27 read_file() ) fd = open("foo.txt", O_RDONLY) failed errno: 2, msg: No such file or directory`
+1. Records a traceback frame with the internal expression: `#0 ( main.c:26 read_file() ) [AssertError] buf != NULL`. `e$assert` returns `Error.assert`, it doesn't abort your program, and these asserts are not stripped in release builds.
+2. Records a frame carrying the errno text: `#0 ( main.c:27 read_file() ) [No such file or directory] fd = open("foo.txt", O_RDONLY)`.
 3. Result of a function returned by reference to the `out` parameter.
 4. Unambiguous return code for success.
 
@@ -721,21 +728,21 @@ isize read_file(char* filename, char* buf, usize buf_size) {
 ### Helper macros `e$...`
 CEX has a toolbox of macros with `e$` prefix, which are dedicated to the `Exception` specific tasks. However, it's not mandatory to use them, and you can stick to regular control flow constructs from C.
 
-In general, `e$` macros provide location logging (source file, line, function), which is a building block for error traceback mechanism in CEX.
+In general, `e$` macros record error locations (source file, line, function), which is the building block for the error traceback mechanism in CEX.
 
 `e$` macros mostly designed to work with functions that return `Exception` type.
 
 #### Returning the `Exc[eption]`
 Errors in CEX are just plain string pointers. If the `Exception` function returns `NULL` or `EOK` or `Error.ok` this is indication of successful execution, otherwise any other value is an error.
 
-Also, you may return with `e$raise(error_to_return, "message")` macro, which prints location of the error in the code.
+Also, you may return with `e$raise(error_to_return, "message")` macro, which records the origin location of the error in the code. The message must be a string literal.
 
 ```c
 Exception error_sample1(int a) {
     if (a == 0) return Error.argument; // standard set of errors in CEX
     if (a == -1) return "Negative one";   // error literal also works, but harder to handle
     if (a == -2) return UserError.neg_two; // user error
-    if (a == 7) return e$raise(Error.argument, "Bad a"); // error with logging
+    if (a == 7) return e$raise(Error.argument, "Bad a"); // error with recorded origin
     
     return EOK; // success
     // return Error.ok; // success
@@ -746,13 +753,17 @@ Exception error_sample1(int a) {
 #### Handling errors
 Error handling in CEX supports two ways:
 
-* Silent handling - which suppresses error location logging, this might be useful for performance critical code, or tight loops. Also, this is a general way of returning errors for CEX standard lib.
-* Loud handling with logging - this way is useful for one shot complex functions which may return multiple types of errors for different reasons. This is the way if you wanted to incorporate tracebacks for your errors.
+* Silent handling - plain `if` / `return` checks with no traceback bookkeeping. This is the general way CEX standard library reports errors, and it suits performance critical code or tight loops.
+* Traceback handling with `e$` macros - records the error location (file, line, function) and builds a call stack that can be flushed later. This suits complex functions that may return multiple types of errors for different reasons.
+
+> [!NOTE]
+>
+> Traceback recording is a compile-time feature (`CEX_TRACEBACK_VERBOSITY`). At level 0 it compiles away to plain control flow; at levels 1/2 it fills an in-memory ring; at level 3 it logs immediately. See [Traceback verbosity and sinks](#traceback-verbosity-and-sinks) below.
 
 ##### Silent handling example
 > [!NOTE]
 >
-> Avoid using e$raise() in called functions if you need silent error handling, use plain `return Error.*`
+> Plain `return Error.*` doesn't touch the traceback ring. `e$raise()` records an origin frame, so prefer it only when you actually intend to report the traceback.
 
 ```c
 Exception foo_silent(void) {
@@ -789,21 +800,21 @@ Exception foo_silent(void) {
 
 > [!NOTE]
 >
-> `e$except` prints the error traceback, this helps a lot with debugging.
+> `e$except` records the error traceback, this helps a lot with debugging. Flush it with `e$traceback_print()` at the top-level sink.
 
-##### Loud handling with logging
+##### Traceback handling
 
-If you write some general purpose code with debuggability in mind, the logged error handling can be a breeze. It allows traceback error logging, therefore deep stack errors now easier to track and reason about.
+If you write some general purpose code with debuggability in mind, the traceback error handling can be a breeze. It records where each error came from, therefore deep stack errors become easier to track and reason about.
 
 There are special error handling macros for this purpose:
 
-1. `e$except(err, func_call()) { ... }` - error handling scope which initialize temporary variable `err` and logs if there was an error returned by `func_call()`. `func_call()` must return `Exception` type for this macro.
-2. `e$except_errno(sys_func()) { ... }` - error handling for system functions, returning `-1` and setting `errno`.
-3. `e$except_null(ptr_func()) { ... }` - error handling for `NULL` on error functions.
-4. `e$except_true(func()) { ... }` - error handling for functions returning non-zero code on error.
-5. `e$ret(func_call());` - runs the `Exception` type returning function `func_call()`,  and on error it logs the traceback and re-return the same return value. This is a main code shortcut and driver for all CEX tracebacks. Use it if you don't care about precise error handling and fine to return immediately on error.
-6. `e$goto(func_call(), goto_err_label);` - runs the `Exception` type function, and does `goto goto_err_label;`. This macro is useful for resource deallocation logic, and intended to use for typical C error handling pattern `goto fail`.
-7. `e$assert(condition)` or `e$assert(condition && "What's wrong")`  - quick condition checking inside `Exception` functions, logs an error location + returns `Error.assert`. These asserts remain in release builds and are not affected by the `NDEBUG` flag.
+1. `e$except(err, func_call()) { ... }` - error handling scope which initializes temporary variable `err` and records a traceback frame if `func_call()` returned an error. `func_call()` must return `Exception` type for this macro.
+2. `e$except_errno(sys_func()) { ... }` - error handling for system functions, returning `-1` and setting `errno`; records a frame with the `strerror(errno)` text.
+3. `e$except_null(ptr_func()) { ... }` - error handling for `NULL` on error functions; records a frame with `Error.null_or_empty`.
+4. `e$except_true(func()) { ... }` - error handling for functions returning non-zero code on error; records a frame with `Error.runtime`.
+5. `e$ret(func_call());` - runs the `Exception` type returning function `func_call()`, and on error it records a frame and re-returns the same return value. This is a main code shortcut and driver for all CEX tracebacks. Use it if you don't care about precise error handling and fine to return immediately on error.
+6. `e$goto(func_call(), goto_err_label);` - runs the `Exception` type function, records a frame, and does `goto goto_err_label;`. This macro is useful for resource deallocation logic, and intended to use for typical C error handling pattern `goto fail`.
+7. `e$assert(condition)` or `e$assert(condition && "What's wrong")`  - quick condition checking inside `Exception` functions, records an origin frame + returns `Error.assert`. These asserts remain in release builds and are not affected by the `NDEBUG` flag.
 
 ```c
 Exception foo_loud(int a) {
@@ -848,6 +859,45 @@ fail:
 }
 
 ```
+
+#### Traceback verbosity and sinks
+
+`e$` macros record a traceback instead of printing it immediately. Verbosity is a
+compile-time knob `CEX_TRACEBACK_VERBOSITY` (0..3, default 2):
+
+| Level | Behavior                                              |
+| ----- | ----------------------------------------------------- |
+| 0     | No tracebacks, ring disabled (`e$traceback_len == 0`) |
+| 1     | Ring records `{err, file, line}`                      |
+| 2     | Ring records `{err, file, func, msg}` (default)       |
+| 3     | Immediate logging to stdout, no ring                  |
+
+Buffered levels (1, 2) are not printed automatically. Flush the ring at the top-level
+sink when `main()` gets a non-`EOK` result:
+
+```c
+int
+main(int argc, char** argv)
+{
+    e$except (err, app_main(argc, argv)) {
+        e$traceback_print(stderr);
+        return 1;
+    }
+    return 0;
+}
+```
+
+Ring capacity is `CEX_TRACEBACK_CAP` (default 32 frames): the oldest frames are kept
+and extra ones are dropped. Traceback read-back API:
+
+* `e$traceback_print(stream)` — print all recorded frames to a `FILE*`
+* `e$traceback_arr` — recorded frames array, use with `for$each`/`for$eachp`
+* `e$traceback_len` — number of recorded frames
+* `e$traceback_reset()` — drop all recorded frames
+
+A frame prints as `#N (file:line func()) [err] msg` at level 2, and as
+`#N (file:line) [err]` at level 1. The CEX test runner resets the ring before each test
+case and flushes it to stderr for every failing case.
 
 #### Caveats
 
@@ -980,18 +1030,18 @@ With this being said, performance of typical error handling in CEX is one assemb
 > CEX uses direct pointer comparison `if (err == Error.argument)`, instead of string content comparison `if(strcmp(err, "ArgumentError") == 0) /* << BAD */`
 
 ##### Branch predictor control
-All CEX `e$` macros uses `unlikely` a.k.a. `__builtin_expect` to shape assembly code in the way of favoring happy path, for example this is a `e$assert` source snippet:
+All CEX `e$` macros use `unlikely` a.k.a. `__builtin_expect` to shape assembly code in the way of favoring the happy path, for example this is the buffered `e$assert` source snippet:
 ```c
 #    define e$assert(A)                                                                             \
         ({                                                                                          \
             if (unlikely(!((A)))) {                                                                 \
-                __cex__fprintf(stdout, "[ASSERT] ", __FILE_NAME__, __LINE__, __func__, "%s\n", #A); \
+                _e$push_origin(Error.assert, __FILE_NAME__, __LINE__, __func__, #A);                \
                 return Error.assert;                                                                \
             }                                                                                       \
         })
 ```
 
-The `unlikely(!(A))` hints the compiler to place assembly instructions in a way of favoring happy path of the `e$assert`, which is a performance gain when you have multiple error handling checks and/or big blocks for error handling.
+The `unlikely(!(A))` hints the compiler to place assembly instructions in a way of favoring the happy path of `e$assert`, which is a performance gain when you have multiple error handling checks and/or big blocks for error handling.
 
 #### Compatibility
 Be careful if you need to expose CEX exception returning functions to an API. Sometimes, if you are working with different shared libraries, the addresses of the same errors might be different. If user code is intended to check and handle API errors, maybe it's better to stick to C-compatible approach instead of CEX errors.
@@ -2886,8 +2936,8 @@ I'm a big fan of "asserts everywhere" code style, which is also known as design 
 
 So `cex.h` has 2 types of asserts:
 
-- `uassert*()` family work like vanilla assertion and lead to abortion at failure (but they print tracebacks with call stack and line numbers). `uassert()` is stripped when `NDEBUG` is defined; `uassert_always()` is not (it traps instead).
-- `e$assert()` returns `Error.assert` and only intended for usage in function with `Exception` return type. These asserts remain in place even when `NDEBUG` is defined.
+- `uassert*()` family work like vanilla assertion and lead to abortion at failure (but they report `file:line`, and with ASAN a call stack). `uassert()` is stripped when `NDEBUG` is defined; `uassert_always()` is not (it traps instead).
+- `e$assert()` records a traceback frame and returns `Error.assert`; it is only intended for usage in a function with `Exception` return type. These asserts remain in place even when `NDEBUG` is defined.
 
 ```c
 // Raises abort
@@ -2903,9 +2953,9 @@ uassert_disable();
 run_bad_stuff(NULL);
 uassert_enable();
 
-// Returns Error.assert on failure + prints [ASSERT] file:line in the stdout
+// Records a frame and returns Error.assert on failure
 Exception read_file(char* filename, char* buf, isize* out_buf_size) {
-    e$assert(buff != NULL); // vanilla
+    e$assert(buf != NULL); // vanilla
     e$assert(filename != NULL && "invalid filename"); // with static message
     e$assert(filename == NULL && "filename is NULL"); // with message
     return EOK;
@@ -2913,9 +2963,14 @@ Exception read_file(char* filename, char* buf, isize* out_buf_size) {
 
 ```
 
+The report format of `uassert*()` is controlled by `CEX_PANIC_VERBOSITY` (0..2, default 1):
+level 0 traps silently, level 1 prints `file:line`, level 2 prints `file:line:func` plus
+the failed expression. See [Traceback verbosity and sinks](#traceback-verbosity-and-sinks).
+
 > [!NOTE]
 >
-> uassert() tracebacks only available if program was compiled with ASAN flags.
+> `uassert*()` call stack printouts require ASAN; without sanitizers only the
+> `CEX_PANIC_VERBOSITY` report is printed.
 
 
 ### Unit Testing Tool

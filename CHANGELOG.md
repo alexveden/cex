@@ -7,6 +7,11 @@
 - feat: `uassert_always()` - assertion that is not stripped by `NDEBUG` and traps instead
 - removed: `unreachable()` macro, use `uassert_always(false && "...")` instead
 - ds/allocator hard-fail paths migrated to `uassert_always()`
+- feat: `CEX_TRACEBACK_VERBOSITY` (0..3, default 2) - buffered traceback ring (levels 1, 2) or immediate logging (level 3)
+- feat: `CEX_PANIC_VERBOSITY` (0..2, default 1) - `uassert()` / `uassert_always()` report verbosity
+- feat: traceback read-back API `e$traceback_print` / `e$traceback_arr` / `e$traceback_len` / `e$traceback_reset` + top-level sink pattern
+- (breaking) `e$raise` / `e$assert` / `e$except*` / `e$ret` / `e$goto` now record traceback frames instead of printing immediately; flush with `e$traceback_print()` at the top-level sink
+- removed: `e$except_silent`, `e$traceback_fmt`, `uassertf*` family, `[ASSERT_ALWAYS]` label
 
 ## 0.21
 2026-06-07

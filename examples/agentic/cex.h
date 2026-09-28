@@ -46,6 +46,8 @@ cc ./cex.c -o ./cex                   # bootstrap once; cex then rebuilds itself
 | `./cex config` | show project/toolchain config (`./cex -DKEY config` sets flags) |
 | `./cex libfetch cexstd/` | fetch CEX std-lib dependencies |
 
+See the *CEX namespaces* and *Agentic workflow* sections below for symbol search
+and AGENTS.md generation.
 
 ## CEX namespaces
 
@@ -343,7 +345,7 @@ Principles:
 
 1. **Unambiguous** — only two states: OK or error, never mixed with valid return values
 2. **General purpose** — same pattern for allocation errors, IO, argument validation, etc.
-3. **Easy to report** — errors are printable strings; use `e$raise` to tag the origin location
+3. **Easy to report** — errors are printable strings; use `e$raise` for location-tagged logging
 4. **Bubbling up** — pass the same error pointer upward; no error-code translation needed
 5. **Extensible** — define custom error structs with your own string constants
 6. **Low overhead** — one pointer (one register), comparison is a single instruction
@@ -373,23 +375,6 @@ Standard errors:
 | Error.permission | "PermissionError"     | Permission denied                     |
 | Error.try_again | "TryAgainError"        | EAGAIN / EWOULDBLOCK analog           |
 
-Error handling macros:
-
-| Macro                       | Type      | Description                                          |
-| --------------------------- | --------- | ---------------------------------------------------- |
-| `e$raise(err, "msg")`       | origin    | return `err` (`msg` must be a literal)               |
-| `e$assert(cond)`            | origin    | return `Error.assert` when false                     |
-| `e$except_errno(expr) { }`  | origin    | error handler for `-1`+`errno`, with the errno text  |
-| `e$except_null(expr) { }`   | origin    | error handler for `NULL`, with `Error.null_or_empty` |
-| `e$except_true(expr) { }`   | origin    | error handler for non-zero, with `Error.runtime`     |
-| `e$except(err, expr) { }`   | handler   | bind `err` to `expr`, record a frame on error        |
-| `e$ret(expr)`               | handler   | record a frame and return `expr` on error            |
-| `e$goto(expr, label)`       | handler   | record a frame and `goto label` on error             |
-| `e$traceback_print(stream)` | traceback | print recorded frames to a `FILE*`                   |
-| `e$traceback_arr`           | traceback | recorded frames array, iterate with `for$each`       |
-| `e$traceback_len`           | traceback | number of recorded frames                            |
-| `e$traceback_reset()`       | traceback | drop all recorded frames                             |
-
 Examples:
 
 ```c
@@ -398,15 +383,13 @@ Exception
 remove_file(char* path)
 {
     if (path == NULL || path[0] == '\0') {
-        // WARNING: plain return doesn't register a traceback frame, prefer e$raise()
-        return Error.argument;  // returns a pointer to a static const string
+        return Error.argument;  // Empty path
     }
     if (!os.path.exists(path)) {
-        // WARNING: plain return doesn't register a traceback frame, prefer e$raise()
-        return "Not exists"; // literal errors are allowed, but must be handled as strcmp()
+        return "Not exists" // literal error are allowed, but must be handled as strcmp()
     }
     if (str.eq(path, "magic.file")) {
-        // Records an origin traceback frame tagged Error.integrity
+        // Returns an Error.integrity and logs error at current line to stdout
         return e$raise(Error.integrity, "Removing magic file is not allowed!");
     }
     if (remove(path) < 0) {
@@ -416,9 +399,9 @@ remove_file(char* path)
 }
 
 Exception
-read_file(char* filename, char* buf, usize buf_size)
+read_file(char* filename)
 {
-    e$assert(buf != NULL);
+    e$assert(buff != NULL);
 
     int fd = 0;
     e$except_errno(fd = open(filename, O_RDONLY)) { return Error.os; }
@@ -428,13 +411,11 @@ read_file(char* filename, char* buf, usize buf_size)
 Exception
 do_stuff(char* filename)
 {
-    char buf[256] = {0};
+    // return immediately with error + prints traceback
+    e$ret(read_file("foo.txt"));
 
-    // return immediately with error + records a traceback frame
-    e$ret(read_file(filename, buf, sizeof(buf)));
-
-    // jumps to label if read_file() fails + records a traceback frame
-    e$goto(read_file(filename, buf, sizeof(buf)), fail);
+    // jumps to label if read_file() fails + prints traceback
+    e$goto(read_file(NULL), fail);
 
     // error handling with tracebacks
     e$except (err, foo(0)) {
@@ -445,7 +426,7 @@ do_stuff(char* filename)
         // NOTE: `err` is address of char* compared with address Error.os (not by string contents!)
         if (err == Error.os) {
             // Special handing
-            io.printf("Ooops OS problem\n");
+            io.print("Ooops OS problem\n");
         } else {
             // propagate
             return err;
@@ -458,60 +439,6 @@ fail:
     return Error.io;
 }
 ```
-
-Tracebacks:
-
-`e$` macros record a traceback instead of printing it immediately. Verbosity is a
-compile-time knob `CEX_TRACEBACK_VERBOSITY` (0..3, default 2):
-
-| Level | Behavior                                              |
-| ----- | ----------------------------------------------------- |
-| 0     | No tracebacks, ring disabled (`e$traceback_len == 0`) |
-| 1     | Ring records `{err, file, line}`                      |
-| 2     | Ring records `{err, file, func, msg}` (default)       |
-| 3     | Immediate logging to stdout, no ring                  |
-
-Buffered levels (1, 2) are not printed automatically. Flush the ring at the top-level
-sink when `main()` gets a non-`EOK` result:
-
-```c
-int
-main(int argc, char** argv)
-{
-    e$except (err, app_main(argc, argv)) {
-        e$traceback_print(stderr);
-        return 1;
-    }
-    return 0;
-}
-```
-
-Ring capacity is `CEX_TRACEBACK_CAP` (default 32 frames): the oldest frames are kept
-and extra ones are dropped. Traceback read-back API:
-
-- `e$traceback_print(stream)` — print all recorded frames to a `FILE*`
-- `e$traceback_arr` — recorded frames array, use with `for$each`/`for$eachp`
-- `e$traceback_len` — number of recorded frames
-- `e$traceback_reset()` — drop all recorded frames
-
-A frame prints as `#N (file:line func()) [err] msg` at level 2, and as
-`#N (file:line) [err]` at level 1. `e$raise(err, "msg")` requires the message to be a
-string literal.
-
-Asserts and panics:
-
-Hard-fail assertions (`uassert()` / `uassert_always()`) are controlled by
-`CEX_PANIC_VERBOSITY` (0..2, default 1):
-
-| Level | Behavior                                       |
-| ----- | ---------------------------------------------- |
-| 0     | Trap with `__builtin_trap()`, no report        |
-| 1     | Print `file:line` (default)                    |
-| 2     | Print `file:line:func` + the failed expression |
-
-`uassert()` is stripped by `NDEBUG`; `uassert_always()` always terminates. In unit
-tests `uassert_disable()` / `uassert_enable()` toggle reporting, and a disabled
-`uassert()` returns instead of aborting.
 
 Caveats:
 
@@ -2947,13 +2874,28 @@ CEX_NAMESPACE struct __cex_namespace__io io;
 */
 
 /**
-Compile-time knobs for CEX error handling.
+Compile-time verbosity knobs for CEX error handling.
 
-- `CEX_TRACEBACK_VERBOSITY` (0..3, default 2) — buffered traceback ring (levels 1, 2) or
-  immediate logging (level 3); level 0 disables tracebacks.
-- `CEX_PANIC_VERBOSITY` (0..2, default 1) — `uassert()` / `uassert_always()` reporting.
+- `CEX_TRACEBACK_VERBOSITY` (0..3, default 2) — controls `e$raise`/`e$assert`/`e$except`/
+  `e$ret`/`e$goto` and the recorded traceback ring:
 
-Full reference: `e$` namespace docs (`./cex help e$`, `docs/_include/e.md`).
+    * 0 - no tracebacks, ring disabled (`e$traceback_len == 0`)
+    * 1 - ring records `{err, file, line}`
+    * 2 - ring records `{err, file, func, msg}`
+    * 3 - stock immediate logging, no ring
+
+  Buffered levels (1, 2) are not printed automatically: flush the ring at the top-level sink
+  with `e$traceback_print(stderr)` when `main()` gets a non-`EOK` result. The test runner does
+  this for each failing case.
+
+- `CEX_PANIC_VERBOSITY` (0..2, default 1) — controls `uassert()` and `uassert_always()`:
+
+    * 0 - `uassert*()` traps with `__builtin_trap()`
+    * 1 - `_cex_errors_panic_handler()` prints `file:line`
+    * 2 - `_cex_errors_panic_handler()` prints `file:line:func` + the failed expression
+
+  `uassert()` is stripped by `NDEBUG`; `uassert_always()` always terminates with `__builtin_trap()`.
+
 */
 
 /* ==== 1. Knobs & validation ==== */
@@ -3173,7 +3115,7 @@ extern
 
 #if CEX_TRACEBACK_VERBOSITY == 0
 
-/// raises an error, code: `return e$raise(Error.integrity, "ooops");`, msg must be a literal
+/// raises an error, code: `return e$raise(Error.integrity, "ooops");`
 #    define e$raise(return_uerr, error_msg) ((return_uerr))
 
 /// Non disposable assert, returns Error.assert CEX exception when failed
@@ -3182,11 +3124,11 @@ extern
             if (unlikely(!((A)))) { return Error.assert; }                                         \
         })
 
-/// catches the error of function inside scope + records a traceback frame
+/// catches the error of function inside scope + prints traceback
 #    define e$except(_var_name, _func)                                                             \
         for (Exc _var_name = _func; unlikely(_var_name != EOK); _var_name = EOK)
 
-/// catches the error of system function (if negative value + errno), records a frame
+/// catches the error of system function (if negative value + errno), prints errno error
 #    define e$except_errno(_expression)                                                            \
         for (int _tmp_errno = 0; unlikely(                                                         \
                  ((_tmp_errno == 0) && ((_expression) < 0) && ((_tmp_errno = errno), 1) &&         \
@@ -3200,14 +3142,14 @@ extern
 /// catches the error is expression returned true
 #    define e$except_true(_expression) if (unlikely(_expression))
 
-/// immediately returns from function with _func error + records a traceback frame
+/// immediately returns from function with _func error + prints traceback
 #    define e$ret(_func)                                                                           \
         for (Exc cex$tmpname(__cex_err_traceback_) = _func;                                        \
              unlikely(cex$tmpname(__cex_err_traceback_) != EOK);                                   \
              cex$tmpname(__cex_err_traceback_) = EOK)                                              \
         return cex$tmpname(__cex_err_traceback_)
 
-/// `goto _label` when _func returned error + records a traceback frame
+/// `goto _label` when _func returned error + prints traceback
 #    define e$goto(_func, _label)                                                                  \
         for (Exc cex$tmpname(__cex_err_traceback_) = _func;                                        \
              unlikely(cex$tmpname(__cex_err_traceback_) != EOK);                                   \
@@ -3403,24 +3345,24 @@ void _cex_errors_traceback_print(FILE* stream);
 
 #else
 
-/// Print the whole traceback to a FILE*
+/// Print the whole traceback to a FILE* (no-op without `cex$enable_io`)
 #define e$traceback_print(_stream) ((void)0)
 
 #endif // !defined(cex$enable_minimal) || defined(cex$enable_io)
 
 #if CEX_TRACEBACK_VERBOSITY >= 1 && CEX_TRACEBACK_VERBOSITY <= 2
-/// Recorded traceback frames array, use with for$each/for$eachp
+/// Recorded frames array, use with for$each/for$eachp
 #    define e$traceback_arr (_cex_errors_traceback_data_array.items)
-/// Number of recorded traceback frames
+/// Number of recorded frames
 #    define e$traceback_len (_cex_errors_traceback_data_array.len)
-/// Drop all recorded traceback frames
+/// Drop all recorded frames
 #    define e$traceback_reset() (_cex_errors_traceback_data_array.len = 0)
 #else
-/// Recorded traceback frames array, use with for$each/for$eachp
+/// Recorded frames array (always empty when buffering is disabled)
 #    define e$traceback_arr ((_cex_errors_traceback_s*)NULL)
-/// Number of recorded traceback frames
+/// Number of recorded frames (always 0 when buffering is disabled)
 #    define e$traceback_len 0
-/// Drop all recorded traceback frames
+/// Drop all recorded frames (no-op when buffering is disabled)
 #    define e$traceback_reset() ((void)0)
 #endif
 
