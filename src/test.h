@@ -41,7 +41,7 @@ struct _cex_test_context_s
 
 /**
 
-Unit Testing engine:
+## Unit testing
 
 - Running/building tests
 ```sh
