@@ -289,6 +289,90 @@ test$case(test_namespace_entities)
     return EOK;
 }
 
+test$case(test_help_idioms_only)
+{
+    char* out_path = TBUILDDIR "help_idioms.txt";
+    char* argv[] = { "help",
+                     "--idioms",
+                     "--filter",
+                     "./src/str.[hc]",
+                     "--out",
+                     out_path,
+                     "str$",
+                     NULL };
+    tassert_er(EOK, cexy.cmd.help(arr$len(argv) - 1, argv, NULL));
+    mem$scope(tmem$, _)
+    {
+        char* content = io.file.load(out_path, _);
+        tassert(content);
+        tassert(str.find(content, "Pattern matching 101"));
+        tassert(!str.find(content, "str.find("));
+        tassert(!str.find(content, "#define str$"));
+        tassert(!str.find(content, "namespace str"));
+    }
+    return EOK;
+}
+
+test$case(test_help_brief_idioms)
+{
+    char* out_path = TBUILDDIR "help_brief_idioms.txt";
+    char* argv[] = { "help",
+                     "--brief",
+                     "--idioms",
+                     "--filter",
+                     "./src/str.[hc]",
+                     "--out",
+                     out_path,
+                     "str$",
+                     NULL };
+    tassert_er(EOK, cexy.cmd.help(arr$len(argv) - 1, argv, NULL));
+    mem$scope(tmem$, _)
+    {
+        char* content = io.file.load(out_path, _);
+        tassert(content);
+        tassert(str.find(content, "Pattern matching 101"));
+        tassert(str.find(content, "namespace str"));
+        tassert(str.find(content, "str.find("));
+    }
+    return EOK;
+}
+
+test$case(test_help_idioms_rejects_symbol)
+{
+    char* argv[] = { "help", "--idioms", "str.find", NULL };
+    tassert_er(Error.argument, cexy.cmd.help(arr$len(argv) - 1, argv, NULL));
+    return EOK;
+}
+
+test$case(test_help_idioms_rejects_dot_form)
+{
+    char* argv[] = { "help", "--idioms", "str.", NULL };
+    tassert_er(Error.argument, cexy.cmd.help(arr$len(argv) - 1, argv, NULL));
+    return EOK;
+}
+
+test$case(test_help_idioms_rejects_list)
+{
+    char* argv[] = { "help", "--idioms", "--list", NULL };
+    tassert_er(Error.argument, cexy.cmd.help(arr$len(argv) - 1, argv, NULL));
+    return EOK;
+}
+
+test$case(test_help_idioms_no_docs)
+{
+    char* out_path = TBUILDDIR "help_idioms_nodocs.txt";
+    char* argv[] = { "help",
+                     "--idioms",
+                     "--filter",
+                     "./src/cexy.[hc]",
+                     "--out",
+                     out_path,
+                     "cexy$",
+                     NULL };
+    tassert_er(Error.not_found, cexy.cmd.help(arr$len(argv) - 1, argv, NULL));
+    return EOK;
+}
+
 #endif  // #if !defined(__EMSCRIPTEN__)
 
 test$main();

@@ -17739,6 +17739,18 @@ _cexy__process_make_brief_docs(cex_decl_s* decl)
     return brief_str;
 }
 
+static str_s
+_cexy__process_make_full_docs(cex_decl_s* decl)
+{
+    str_s docs = { 0 };
+    if (!decl->docs.buf) { return docs; }
+
+    docs = decl->docs;
+    if (str.slice.starts_with(docs, str$s("/**"))) { docs = str.slice.sub(docs, 3, 0); }
+    if (str.slice.ends_with(docs, str$s("*/"))) { docs = str.slice.sub(docs, 0, -2); }
+    return docs;
+}
+
 static inline str_s
 _cexy__fn_subnamespace(str_s fn_name, str_s ns_prefix)
 {
@@ -18602,6 +18614,7 @@ _cexy__display_full_info(
     char* base_ns,
     bool show_source,
     bool show_example,
+    bool show_idioms,
     bool brief,
     arr$(cex_decl_s*) cex_ns_decls,
     FILE* output
@@ -18626,6 +18639,12 @@ _cexy__display_full_info(
             }
         }
 
+        if (show_idioms) {
+            str_s full_docs = str.slice.strip(_cexy__process_make_full_docs(d));
+            if (full_docs.buf) { io.fprintf(output, "%S\n\n", full_docs); }
+            if (!brief) { goto end; }
+        }
+
         if (brief) {
             if (!cex_ns_decls) {
                 _cexy__print_brief_decl(d, name, output);
@@ -18634,17 +18653,12 @@ _cexy__display_full_info(
             io.fprintf(output, "namespace %S", base_name);
             if (d->file) { io.fprintf(output, "   // %s:%d", d->file, d->line + 1); }
             io.fprintf(output, "\n");
-            _cexy__print_brief_lines(_cexy__process_make_brief_docs(d), output);
+            if (!show_idioms) {
+                _cexy__print_brief_lines(_cexy__process_make_brief_docs(d), output);
+            }
         } else {
             if (d->docs.buf) {
-                // strip doxygen tags
-                if (str.slice.starts_with(d->docs, str$s("/**"))) {
-                    d->docs = str.slice.sub(d->docs, 3, 0);
-                }
-                if (str.slice.ends_with(d->docs, str$s("*/"))) {
-                    d->docs = str.slice.sub(d->docs, 0, -2);
-                }
-                _cexy__colorize_print(d->docs, name, output);
+                _cexy__colorize_print(_cexy__process_make_full_docs(d), name, output);
                 io.fprintf(output, "\n");
             }
 
@@ -18898,6 +18912,7 @@ _cexy__help_query(
     bool brief,
     bool show_source,
     bool show_example,
+    bool show_idioms,
     IAllocator arena,
     FILE* output
 )
@@ -18946,6 +18961,7 @@ _cexy__help_query(
                 base_ns,
                 show_source,
                 show_example,
+                show_idioms,
                 brief,
                 NULL,
                 output
@@ -19007,6 +19023,8 @@ _cexy__help_query(
         if (has_match) { hm$set(names, d->name, d); }
     }
 
+    if (show_idioms && (ns_decl == NULL || !ns_decl->docs.buf)) { return Error.not_found; }
+
     if (ns_decl) {
         char* ns_prefix = str.slice.clone(str.sub(query, 0, -1), arena);
         arr$(cex_decl_s*) ns_decls = arr$new(ns_decls, arena);
@@ -19030,6 +19048,7 @@ _cexy__help_query(
             ns_prefix,
             false,
             false,
+            show_idioms,
             brief,
             ns_decls,
             output
@@ -19094,11 +19113,14 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
         "./cex help --example str.find  - display random function use in codebase if exactly matched\n"
         "./cex help --brief str.        - compact agent-friendly namespace API\n"
         "./cex help --brief a b c       - batch query multiple symbols\n"
+        "./cex help --idioms str$       - print only namespace idioms/docs block\n"
+        "./cex help --brief --idioms str$ - namespace idioms + compact API\n"
     ;
     char* filter = "./*.[hc]";
     char* out_file = NULL;
     bool show_source = false;
     bool show_example = false;
+    bool show_idioms = false;
     bool brief = false;
     bool list = false;
 
@@ -19121,6 +19143,12 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
                 "example",
                 .help = "finds random example in source base"
             ),
+            argparse$opt(
+                &show_idioms,
+                'i',
+                "idioms",
+                .help = "print only the namespace idioms/docs block (e.g. 'str$')"
+            ),
             argparse$opt(&out_file, 'o', "out", .help = "write output of command to file"),
         ),
     };
@@ -19140,6 +19168,24 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
         arr$(char*) queries = arr$new(queries, arena);
         char* query;
         while ((query = argparse.next(&cmd_args)) != NULL) { arr$push(queries, query); }
+
+        if (show_idioms && list) {
+            argparse.usage(&cmd_args);
+            result = e$raise(Error.argument, "--idioms cannot be combined with --list");
+            goto end;
+        }
+        if (show_idioms) {
+            for$each (q, queries) {
+                if (!str.match(q, "[a-zA-Z0-9+]$")) {
+                    argparse.usage(&cmd_args);
+                    result = e$raise(
+                        Error.argument,
+                        "--idioms only works with namespace macro queries (e.g. 'str$')"
+                    );
+                    goto end;
+                }
+            }
+        }
 
         if (list && arr$len(queries) > 0) {
             argparse.usage(&cmd_args);
@@ -19252,6 +19298,7 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
                     brief,
                     show_source,
                     show_example,
+                    show_idioms,
                     arena,
                     output
                 );
