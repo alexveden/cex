@@ -524,31 +524,6 @@ int main(void)
 #    define log$trace(format, ...) __cex__fprintf_dummy()
 #endif
 
-#ifndef mem$asan_enabled
-#    if defined(__has_feature)
-#        if __has_feature(address_sanitizer)
-/// true - if program was compiled with address sanitizer support
-#            define mem$asan_enabled() 1
-#        else
-#            define mem$asan_enabled() 0
-#        endif
-#    else
-#        if defined(__SANITIZE_ADDRESS__)
-#            define mem$asan_enabled() 1
-#        else
-#            define mem$asan_enabled() 0
-#        endif
-#    endif
-#endif // mem$asan_enabled
-
-#if mem$asan_enabled()
-// This should be linked when gcc sanitizer enabled
-void __sanitizer_print_stack_trace();
-#    define sanitizer_stack_trace() __sanitizer_print_stack_trace()
-#else
-#    define sanitizer_stack_trace() ((void)(0))
-#endif
-
 /// Cross-platform debugger breakpoint.
 #if defined(_WIN32) || defined(_WIN64)
 #    define breakpoint() __debugbreak()

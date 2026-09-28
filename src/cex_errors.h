@@ -40,6 +40,18 @@ static_assert(
 /// suppressible check
 #define _cex_errors_assert_prefix "[ASSERT] "
 
+#if defined(mem$asan_enabled)
+#    if mem$asan_enabled()
+// This should be linked when gcc sanitizer enabled
+void __sanitizer_print_stack_trace();
+#        define sanitizer_stack_trace() __sanitizer_print_stack_trace()
+#    else
+#        define sanitizer_stack_trace() ((void)(0))
+#    endif
+#else
+#    define sanitizer_stack_trace() ((void)(0))
+#endif
+
 /* ==== 2. Panic axis: CEX_PANIC_VERBOSITY ==== */
 
 /* Hard-fail panic (asserts at levels > 0), default cex$platform_panic target */

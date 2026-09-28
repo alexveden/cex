@@ -725,31 +725,6 @@ int main(void)
 #    define log$trace(format, ...) __cex__fprintf_dummy()
 #endif
 
-#ifndef mem$asan_enabled
-#    if defined(__has_feature)
-#        if __has_feature(address_sanitizer)
-/// true - if program was compiled with address sanitizer support
-#            define mem$asan_enabled() 1
-#        else
-#            define mem$asan_enabled() 0
-#        endif
-#    else
-#        if defined(__SANITIZE_ADDRESS__)
-#            define mem$asan_enabled() 1
-#        else
-#            define mem$asan_enabled() 0
-#        endif
-#    endif
-#endif // mem$asan_enabled
-
-#if mem$asan_enabled()
-// This should be linked when gcc sanitizer enabled
-void __sanitizer_print_stack_trace();
-#    define sanitizer_stack_trace() __sanitizer_print_stack_trace()
-#else
-#    define sanitizer_stack_trace() ((void)(0))
-#endif
-
 /// Cross-platform debugger breakpoint.
 #if defined(_WIN32) || defined(_WIN64)
 #    define breakpoint() __debugbreak()
@@ -839,22 +814,20 @@ Mem cheat-sheet
 Global allocators:
 
 - `mem$` - heap based allocator, typically used for long-living data, requires explicit mem$free
-- `tmem$` - temporary allocator, based by ArenaAllocator, with 256kb page, requires `mem$scope`
+- `tmem$` - temporary allocator, backed by ArenaAllocator, with a 256KB page, requires `mem$scope`
 
 Memory management hints:
 
-- If function accept IAllocator as argument, it allocates memory
-- If class/object accept IAllocator in constructor it should track allocator's instance
-- `mem$scope()` - automatically free memory at scope exit by any reason (`return`, `goto` out,
-`break`)
+- If a function accepts IAllocator as an argument, it allocates memory
+- If a class/object accepts IAllocator in its constructor, it should track the allocator instance
+- `mem$scope()` - frees memory at scope exit for any reason (`return`, `goto` out, `break`)
 - consider `mem$malloc/mem$calloc/mem$realloc/mem$free/mem$new`
 - You can init arena scope with `mem$arena_scope(page_size, arena_var_name)`
 - AllocatorArena grows dynamically if there is no room in existing page, but be careful when you use
 many `realloc()`, it can grow arenas unexpectedly large.
-- Use temp allocator as `mem$scope(tmem$, _) {}` it's a common CEX pattern, `_` is `tmem$`
-short-alias
-- Nested `mem$scope` are allowed, but memory freed at nested scope exit. NOTE: don't share pointers
-across scopes.
+- Common CEX pattern: `mem$scope(tmem$, _) {}` — `_` is a short alias for `tmem$`
+- Nested `mem$scope` are allowed, but memory is freed at the nested scope exit. NOTE: don't share
+pointers across scopes.
 - Use address sanitizers as often as possible
 
 
@@ -914,27 +887,52 @@ mem$arena_scope(&(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true 
 - Arena Instance
 
 ```c
-IAllocator arena = AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true });
+// scoped arena (default): allocations are freed at mem$scope() exit
+IAllocator arena = AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 4096 });
 
-u8* p = mem$malloc(arena, 100); // direct use allowed (disable_scopes = true)
+u8* p = mem$malloc(arena, 100); // top-level allocation, freed at AllocatorArena.destroy()
 
 mem$scope(arena, tal)
 {
-    // NOTE: this scope will be freed after exit
-    u8* p2 = mem$malloc(tal, 100000);
+    u8* p2 = mem$malloc(tal, 100000); // freed at this scope exit
 
     mem$scope(arena, tal)
     {
-        u8* p3 = mem$malloc(tal, 100);
+        u8* p3 = mem$malloc(tal, 100); // freed at nested scope exit
     }
 }
 
-AllocatorArena.destroy(arena);
+AllocatorArena.destroy(arena); // must not be called inside mem$scope
+
+// manual mode: .disable_scopes = true makes mem$scope() a no-op, destroy() frees everything
+IAllocator arena_manual =
+    AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true });
+
+u8* p4 = mem$malloc(arena_manual, 100); // direct use allowed
+
+AllocatorArena.destroy(arena_manual);
 
 ```
 */
 
 #define __mem$
+
+#ifndef mem$asan_enabled
+#    if defined(__has_feature)
+#        if __has_feature(address_sanitizer)
+/// true - if program was compiled with address sanitizer support
+#            define mem$asan_enabled() 1
+#        else
+#            define mem$asan_enabled() 0
+#        endif
+#    else
+#        if defined(__SANITIZE_ADDRESS__)
+#            define mem$asan_enabled() 1
+#        else
+#            define mem$asan_enabled() 0
+#        endif
+#    endif
+#endif // mem$asan_enabled
 
 /// Temporary allocator arena (use only in `mem$scope(tmem$, _))`
 #define tmem$ ((IAllocator)(&_cex__default_global__allocator_temp.alloc))
@@ -1124,9 +1122,6 @@ void* __asan_region_is_poisoned(void* beg, size_t size);
 
 #    else // #if defined(__SANITIZE_ADDRESS__)
 
-#ifndef mem$asan_enabled
-#        define mem$asan_enabled() 0
-#endif
 #        define mem$asan_poison(addr, len) _mem$asan_poison_mark((addr), 0xf7, (len))
 #        define mem$asan_unpoison(addr, len) _mem$asan_poison_mark((addr), 0x00, (len))
 
@@ -2984,6 +2979,18 @@ static_assert(
 /// Assertion label, shared by uassert()/uassert_always() and _cex_errors_panic_handler()'s
 /// suppressible check
 #define _cex_errors_assert_prefix "[ASSERT] "
+
+#if defined(mem$asan_enabled)
+#    if mem$asan_enabled()
+// This should be linked when gcc sanitizer enabled
+void __sanitizer_print_stack_trace();
+#        define sanitizer_stack_trace() __sanitizer_print_stack_trace()
+#    else
+#        define sanitizer_stack_trace() ((void)(0))
+#    endif
+#else
+#    define sanitizer_stack_trace() ((void)(0))
+#endif
 
 /* ==== 2. Panic axis: CEX_PANIC_VERBOSITY ==== */
 
