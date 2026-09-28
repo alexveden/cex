@@ -3,8 +3,10 @@
 #if !defined(cex$enable_minimal) || defined(cex$enable_mem)
 
 
+/// Max single arena allocation size (page-size limit)
 #define CEX_ARENA_MAX_ALLOC \
     (mem$platform() > 32 ? ((1ULL << 40) - 1000) : ((usize)-1 - 1000))
+/// Max alignment supported by the arena allocator
 #define CEX_ARENA_MAX_ALIGN 64
 
 

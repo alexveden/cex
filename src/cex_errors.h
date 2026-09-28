@@ -14,10 +14,12 @@ Full reference: `e$` namespace docs (`./cex help e$`, `docs/_include/e.md`).
 /* ==== 1. Knobs & validation ==== */
 
 #ifndef CEX_TRACEBACK_VERBOSITY
+/// Traceback capture: 0 off, 1-2 buffered ring, 3 immediate logging (default 2)
 #    define CEX_TRACEBACK_VERBOSITY 2
 #endif
 
 #ifndef CEX_PANIC_VERBOSITY
+/// uassert() panic detail: 0 silent trap, 1 file:line, 2 expression (default 1)
 #    define CEX_PANIC_VERBOSITY 1
 #endif
 
@@ -31,8 +33,8 @@ static_assert(
     "CEX_PANIC_VERBOSITY must be 0, 1, or 2"
 );
 
-/// Max recorded traceback frames (buffered levels)
 #ifndef CEX_TRACEBACK_CAP
+/// Max recorded traceback frames (buffered levels)
 #    define CEX_TRACEBACK_CAP 32
 #endif
 

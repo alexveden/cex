@@ -5,6 +5,7 @@
 
 typedef Exception (*_cex_test_case_f)(void);
 
+/// Max captured test assertion message length, default 512
 #define CEX_TEST_AMSG_MAX_LEN 512
 struct _cex_test_case_s
 {

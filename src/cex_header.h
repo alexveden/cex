@@ -125,7 +125,11 @@ If the project has no agent instruction file (`AGENTS.md`, `CLAUDE.md`,
 #    pragma GCC diagnostic ignored "-Wunused-function"
 #endif
 
+/// CEX major version
 #define cex$version_major 0
+/// CEX minor version
 #define cex$version_minor 22
+/// CEX patch version
 #define cex$version_patch 0
+/// CEX build date (substituted at bundle time)
 #define cex$version_date "{date}"

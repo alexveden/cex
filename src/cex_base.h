@@ -441,6 +441,7 @@ int main(void)
 // 4 - allow log$debug  (default level if CEX_LOG_LVL is not set)
 // 5 - allow log$trace
 // NOTE: you may override this level to manage log$* verbosity
+/// Compile-time log level (0 mute .. 5 trace), default 4
 #    define CEX_LOG_LVL 4
 #endif
 

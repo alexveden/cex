@@ -130,9 +130,13 @@ If the project has no agent instruction file (`AGENTS.md`, `CLAUDE.md`,
 #    pragma GCC diagnostic ignored "-Wunused-function"
 #endif
 
+/// CEX major version
 #define cex$version_major 0
+/// CEX minor version
 #define cex$version_minor 22
+/// CEX patch version
 #define cex$version_patch 0
+/// CEX build date (substituted at bundle time)
 #define cex$version_date "2026-09-28"
 
 
@@ -642,6 +646,7 @@ int main(void)
 // 4 - allow log$debug  (default level if CEX_LOG_LVL is not set)
 // 5 - allow log$trace
 // NOTE: you may override this level to manage log$* verbosity
+/// Compile-time log level (0 mute .. 5 trace), default 4
 #    define CEX_LOG_LVL 4
 #endif
 
@@ -1799,6 +1804,7 @@ for$iter(u32, it, array_iterator(arr2, arr$len(arr2), &it.iterator))
 
 
 #ifndef CEX_FOREACH_MAX_COPY_SIZE
+/// Max element size (bytes) copied by for$each(), default 64
 #define CEX_FOREACH_MAX_COPY_SIZE 64
 #endif
 
@@ -2928,10 +2934,12 @@ Full reference: `e$` namespace docs (`./cex help e$`, `docs/_include/e.md`).
 /* ==== 1. Knobs & validation ==== */
 
 #ifndef CEX_TRACEBACK_VERBOSITY
+/// Traceback capture: 0 off, 1-2 buffered ring, 3 immediate logging (default 2)
 #    define CEX_TRACEBACK_VERBOSITY 2
 #endif
 
 #ifndef CEX_PANIC_VERBOSITY
+/// uassert() panic detail: 0 silent trap, 1 file:line, 2 expression (default 1)
 #    define CEX_PANIC_VERBOSITY 1
 #endif
 
@@ -2945,8 +2953,8 @@ static_assert(
     "CEX_PANIC_VERBOSITY must be 0, 1, or 2"
 );
 
-/// Max recorded traceback frames (buffered levels)
 #ifndef CEX_TRACEBACK_CAP
+/// Max recorded traceback frames (buffered levels)
 #    define CEX_TRACEBACK_CAP 32
 #endif
 
@@ -4509,6 +4517,7 @@ CEX_NAMESPACE struct __cex_namespace__os os;
 
 typedef Exception (*_cex_test_case_f)(void);
 
+/// Max captured test assertion message length, default 512
 #define CEX_TEST_AMSG_MAX_LEN 512
 struct _cex_test_case_s
 {
@@ -6666,6 +6675,7 @@ typedef struct cex_fuzz_s
 } cex_fuzz_s;
 
 #ifndef CEX_FUZZ_MAX_BUF
+/// Max fuzz input size (stack buffer), default 1024000
 #    define CEX_FUZZ_MAX_BUF 1024000
 #endif
 
@@ -7588,8 +7598,10 @@ _cex_allocator_heap__scope_depth(IAllocator self)
 #if !defined(cex$enable_minimal) || defined(cex$enable_mem)
 
 
+/// Max single arena allocation size (page-size limit)
 #define CEX_ARENA_MAX_ALLOC \
     (mem$platform() > 32 ? ((1ULL << 40) - 1000) : ((usize)-1 - 1000))
+/// Max alignment supported by the arena allocator
 #define CEX_ARENA_MAX_ALIGN 64
 
 

@@ -532,7 +532,7 @@ test$case(test_help_agents_out)
     {
         char* content = io.file.load(out_path, _);
         tassert(content);
-        tassert(str.find(content, "CEX string principles:"));
+        tassert(str.find(content, "all string functions are NULL resilient"));
         tassert(str.find(content, "Generic type-safe dynamic array backed by a heap header."));
         tassert(str.find(content, "CEX Exception-based error handling."));
         tassert(str.find(content, "Unified array / hashmap / slice iteration framework."));

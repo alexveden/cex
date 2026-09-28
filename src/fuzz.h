@@ -31,6 +31,7 @@ typedef struct cex_fuzz_s
 } cex_fuzz_s;
 
 #ifndef CEX_FUZZ_MAX_BUF
+/// Max fuzz input size (stack buffer), default 1024000
 #    define CEX_FUZZ_MAX_BUF 1024000
 #endif
 

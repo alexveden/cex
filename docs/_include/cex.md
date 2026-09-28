@@ -41,8 +41,6 @@ cc ./cex.c -o ./cex                   # bootstrap once; cex then rebuilds itself
 | `./cex config` | show project/toolchain config (`./cex -DKEY config` sets flags) |
 | `./cex libfetch cexstd/` | fetch CEX std-lib dependencies |
 
-See the *CEX namespaces* and *Agentic workflow* sections below for symbol search
-and AGENTS.md generation.
 
 ## CEX namespaces
 
@@ -108,18 +106,23 @@ If the project has no agent instruction file (`AGENTS.md`, `CLAUDE.md`,
 /// Default page size (256 KB) for the temp allocator arena
 #define CEX_ALLOCATOR_TEMP_PAGE_SIZE
 
+/// Max alignment supported by the arena allocator
 #define CEX_ARENA_MAX_ALIGN
 
+/// Max single arena allocation size (page-size limit)
 #define CEX_ARENA_MAX_ALLOC
 
 #define CEX_DISABLE_POISON
 
+/// Max element size (bytes) copied by for$each(), default 64
 #define CEX_FOREACH_MAX_COPY_SIZE
 
+/// Max fuzz input size (stack buffer), default 1024000
 #define CEX_FUZZ_MAX_BUF
 
 #define CEX_HEADER_H
 
+/// Compile-time log level (0 mute .. 5 trace), default 4
 #define CEX_LOG_LVL
 
 /// Marks a variable as a CEX namespace struct (visibility("hidden") on non-Win32)
@@ -127,16 +130,20 @@ If the project has no agent instruction file (`AGENTS.md`, `CLAUDE.md`,
 
 #define CEX_NAMESPACE_DEF
 
+/// uassert() panic detail: 0 silent trap, 1 file:line, 2 expression (default 1)
 #define CEX_PANIC_VERBOSITY
 
 #define CEX_PLATFORM_WIN32_H
 
 #define CEX_SPRINTF_MIN
 
+/// Max captured test assertion message length, default 512
 #define CEX_TEST_AMSG_MAX_LEN
 
+/// Max recorded traceback frames (buffered levels)
 #define CEX_TRACEBACK_CAP
 
+/// Traceback capture: 0 off, 1-2 buffered ring, 3 immediate logging (default 2)
 #define CEX_TRACEBACK_VERBOSITY
 
 /// Concatenate textually a##b
@@ -191,12 +198,16 @@ If the project has no agent instruction file (`AGENTS.md`, `CLAUDE.md`,
 /// makes a new variable with __cex__ prefix
 #define cex$varname(a, b)
 
+/// CEX build date (substituted at bundle time)
 #define cex$version_date
 
+/// CEX major version
 #define cex$version_major
 
+/// CEX minor version
 #define cex$version_minor
 
+/// CEX patch version
 #define cex$version_patch
 
 /// Code generator state: sbuf backing buffer, current indent level, and error state

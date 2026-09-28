@@ -497,6 +497,7 @@ for$iter(u32, it, array_iterator(arr2, arr$len(arr2), &it.iterator))
 
 
 #ifndef CEX_FOREACH_MAX_COPY_SIZE
+/// Max element size (bytes) copied by for$each(), default 64
 #define CEX_FOREACH_MAX_COPY_SIZE 64
 #endif
 
