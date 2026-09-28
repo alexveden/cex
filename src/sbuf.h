@@ -26,15 +26,17 @@ static_assert(alignof(sbuf_head_s) == alignof(u64), "align");
 
 /**
 
+## String builder
+
 Dynamic string builder class
 
 Key features:
 
-- Dynamically grown strings 
-- Supports CEX specific formats 
+- Dynamically grown strings
+- Supports CEX specific formats
 - Can be backed by allocator or static buffer
 - Error resilient - allows self as NULL
-- `sbuf_c` - is an alias of `char*`, always null terminated, compatible with any C strings 
+- `sbuf_c` - is an alias of `char*`, always null terminated, compatible with any C strings
 
 - Allocator driven dynamic string
 ```c
