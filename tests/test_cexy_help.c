@@ -33,6 +33,12 @@ test_brief_decl_to_str(cex_decl_s* d, IAllocator alloc)
     return io.file.load(path, alloc);
 }
 
+static char*
+test_help_example_make_path(IAllocator alloc)
+{
+    return os.path.normalize("./" TEXDIR "example.c", alloc);
+}
+
 static Exception
 test_help_example_make_fixture(void)
 {
@@ -602,7 +608,7 @@ test$case(test_help_example_shows_usage_location)
     {
         char* content = io.file.load(out_path, _);
         tassert(content);
-        tassert(str.find(content, "./" TEXDIR "example.c:3"));
+        tassert(str.find(content, str.fmt(_, "%s:3", test_help_example_make_path(_))));
         tassert(str.find(content, "int exf_caller(int x)"));
         tassert(str.find(content, "return exf_used(x)"));
     }
@@ -648,7 +654,7 @@ test$case(test_help_example_brief_locations)
         char* content = io.file.load(out_path, _);
         tassert(content);
         tassert(str.find(content, "Examples of 'exf_used'"));
-        tassert(str.find(content, "./" TEXDIR "example.c:3:"));
+        tassert(str.find(content, str.fmt(_, "%s:3:", test_help_example_make_path(_))));
         tassert(str.find(content, "return exf_used(x);"));
         tassert(!str.find(content, "exf_usedr"));
     }
@@ -672,7 +678,7 @@ test$case(test_help_example_word_boundary)
         char* content = io.file.load(out_path, _);
         tassert(content);
         tassert(str.find(content, "Examples of 'exf_used' (1)"));
-        tassert(str.find(content, "1) ./" TEXDIR "example.c:3"));
+        tassert(str.find(content, str.fmt(_, "1) %s:3", test_help_example_make_path(_))));
     }
     return EOK;
 }

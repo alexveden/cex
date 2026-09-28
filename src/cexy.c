@@ -1935,7 +1935,7 @@ _cexy__help_query(
         for$each (d, all_decls) {
             bool same_file = d->file == ns_decl->file;
             // namespace symbols may live outside the header: the bundle, or the <ns>.c impl
-            bool bundle = str.eq((char*)d->file, "./cex.h");
+            bool bundle = str.eq((char*)d->file, "cex.h");
             bool ns_impl = d->type == CexTkn__func_def &&
                            str.slice.eq(
                                str.slice.sub(
@@ -2141,6 +2141,11 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
         }
         arr$sort(sources, str.qscmp);
         arr$ins(sources, 0, cex_file);
+
+        for (u32 i = 0; i < arr$len(sources); i++) {
+            char* normalized = os.path.normalize(sources[i], arena);
+            if (normalized != NULL) { sources[i] = normalized; }
+        }
 
         char* build_path = os.path.absolute(cexy$build_dir, arena);
         char* test_path = os.path.absolute("./tests/", arena);
