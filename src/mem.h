@@ -54,24 +54,18 @@ switch `tmem$` to `mem$` to triage use-after-poison
 
 - Vanilla heap allocator
 ```c
-test$case(test_allocator_api)
-{
-    u8* p = mem$malloc(mem$, 100);
-    tassert(p != NULL);
+u8* p = mem$malloc(mem$, 100);
 
-    // mem$free always nullifies pointer
-    mem$free(mem$, p);
-    tassert(p == NULL);
+// mem$free always nullifies the pointer
+mem$free(mem$, p);
+// p == NULL
 
-    p = mem$calloc(mem$, 100, 100, 32); // malloc with 32-byte alignment
-    tassert(p != NULL);
+p = mem$calloc(mem$, 100, 100, 32); // zeroed, 32-byte alignment
+mem$free(mem$, p);
 
-    // Allocates new ZII struct based on given type
-    auto my_item = mem$new(mem$, struct my_type_s);
-
-    return EOK;
-}
-
+// Allocates a zero-initialized struct of the given type
+auto my_item = mem$new(mem$, struct my_type_s);
+mem$free(mem$, my_item);
 ```
 
 - Temporary memory scope
@@ -133,15 +127,6 @@ AllocatorArena.destroy(arena_manual);
 
 ```
 
-- Unit test allocator
-
-```c
-test$case(uses_test_alloc)
-{
-    int* buf = mem$malloc(test$alloc, 256 * sizeof(int)); // freed after the case
-    return EOK;
-}
-```
 */
 
 #define __mem$
