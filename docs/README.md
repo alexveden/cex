@@ -448,6 +448,7 @@ CEX provides several short aliases for primitive types and some extra types for 
 | mem\$\* | Memory management and allocators |
 | mem$ | Global variable for general purpose heap allocator |
 | tmem$ | Global variable for temporary arena allocator |
+| test$alloc | Per-test-case arena allocator (unit tests only) |
 | str | General purpose string / slice namespace | 
 | sbuf | String builder class |
 | arr$ | Type-safe, generic, dynamic array |
@@ -1250,7 +1251,7 @@ CEX tries to adopt allocator-centric approach to memory management, which helps 
 * **Transparent memory management.** All memory operations are provided by `IAllocator` interface, which can be an interchangeable allocator object of different type.
 * **Memory scoping**. When possible memory usage should be limited by scope, which naturally regulates lifetimes of allocated memory and automatically free it after exiting scope.
 * **Unit test friendly**. Allocators allow implementation of additional levels of memory safety when run in unit test environment. For example, CEX allocators add special poisoned areas around allocated blocks, which trigger address sanitizer when this region accesses with user code. Allocators open the door for memory leak checks, or extra memory error simulations for better out-of-memory error handling.
-* **Standard and Temporary allocators**. Sometimes it's useful to have initialized allocator under your belt for short-lived temporary operations. CEX provides two global allocators by default: `mem$` - is a standard heap allocator using `malloc/realloc/free`, and `tmem$` - is dynamic arena allocator of small size (about 256k of per page).
+* **Standard and Temporary allocators**. Sometimes it's useful to have initialized allocator under your belt for short-lived temporary operations. CEX provides two global allocators by default: `mem$` - is a standard heap allocator using `malloc/realloc/free`, and `tmem$` - is dynamic arena allocator of small size (about 256k of per page). Unit tests additionally get `test$alloc` - a per-test-case arena allocator.
 
 #### Example
 This is a small example of key memory management concepts in CEX:

@@ -1,29 +1,38 @@
 
-Mem cheat-sheet
+## Memory management
 
-Global allocators:
+### Global allocators
 
 - `mem$` - heap based allocator, typically used for long-living data, requires explicit mem$free
-- `tmem$` - temporary allocator, based by ArenaAllocator, with 256kb page, requires `mem$scope`
+- `tmem$` - temporary allocator, backed by ArenaAllocator, with a 256KB page, requires `mem$scope`
+- `test$alloc` - per-test-case arena (1 MB page, `disable_scopes`), created/destroyed by the test
+runner, no manual free; `mem$scope` is a no-op; OOM simulation via
+`test$alloc_set_oom_probability(prob)` (test mode only)
 
-Memory management hints:
+### Memory management hints
 
-- If function accept IAllocator as argument, it allocates memory
-- If class/object accept IAllocator in constructor it should track allocator's instance
-- `mem$scope()` - automatically free memory at scope exit by any reason (`return`, `goto` out,
-`break`)
+- If a function accepts IAllocator as an argument, it allocates memory
+- If a class/object accepts IAllocator in its constructor, it should track the allocator instance
+- `mem$scope()` - frees memory at scope exit for any reason (`return`, `goto` out, `break`)
 - consider `mem$malloc/mem$calloc/mem$realloc/mem$free/mem$new`
 - You can init arena scope with `mem$arena_scope(page_size, arena_var_name)`
 - AllocatorArena grows dynamically if there is no room in existing page, but be careful when you use
 many `realloc()`, it can grow arenas unexpectedly large.
-- Use temp allocator as `mem$scope(tmem$, _) {}` it's a common CEX pattern, `_` is `tmem$`
-short-alias
-- Nested `mem$scope` are allowed, but memory freed at nested scope exit. NOTE: don't share pointers
-across scopes.
+- Common CEX pattern: `mem$scope(tmem$, _) {}` — `_` is a short alias for `tmem$`
+- Nested `mem$scope` are allowed, but memory is freed at the nested scope exit. NOTE: don't share
+pointers across scopes.
+- Never return a pointer allocated inside `mem$scope` (it's freed at scope exit)
+- Never `realloc` a pointer from an outer scope inside a nested `mem$scope` (test mode asserts;
+`arr$`/`hm$` resizing triggers it too)
+- `mem$scope` is backed by a `for` loop: `break`/`continue` inside it exits the scope, not an outer
+loop
+- Arenas never reuse freed chunks; pre-allocate capacity instead of heavy `realloc`
+- In test mode `mem$` tracks leaks, allocations are filled with `0xf7`, arenas are ASAN-poisoned;
+switch `tmem$` to `mem$` to triage use-after-poison
 - Use address sanitizers as often as possible
 
 
-Examples:
+### Examples
 
 - Vanilla heap allocator
 ```c
@@ -79,23 +88,41 @@ mem$arena_scope(&(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true 
 - Arena Instance
 
 ```c
-IAllocator arena = AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true });
+// scoped arena (default): allocations are freed at mem$scope() exit
+IAllocator arena = AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 4096 });
 
-u8* p = mem$malloc(arena, 100); // direct use allowed (disable_scopes = true)
+u8* p = mem$malloc(arena, 100); // top-level allocation, freed at AllocatorArena.destroy()
 
 mem$scope(arena, tal)
 {
-    // NOTE: this scope will be freed after exit
-    u8* p2 = mem$malloc(tal, 100000);
+    u8* p2 = mem$malloc(tal, 100000); // freed at this scope exit
 
     mem$scope(arena, tal)
     {
-        u8* p3 = mem$malloc(tal, 100);
+        u8* p3 = mem$malloc(tal, 100); // freed at nested scope exit
     }
 }
 
-AllocatorArena.destroy(arena);
+AllocatorArena.destroy(arena); // must not be called inside mem$scope
 
+// manual mode: .disable_scopes = true makes mem$scope() a no-op, destroy() frees everything
+IAllocator arena_manual =
+    AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true });
+
+u8* p4 = mem$malloc(arena_manual, 100); // direct use allowed
+
+AllocatorArena.destroy(arena_manual);
+
+```
+
+- Unit test allocator
+
+```c
+test$case(uses_test_alloc)
+{
+    int* buf = mem$malloc(test$alloc, 256 * sizeof(int)); // freed after the case
+    return EOK;
+}
 ```
 
 

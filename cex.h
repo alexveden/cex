@@ -809,14 +809,17 @@ void _cex_allocator_memscope_cleanup(IAllocator* allc);
 void _cex_allocator_arena_cleanup(IAllocator* allc);
 
 /**
-Mem cheat-sheet
+## Memory management
 
-Global allocators:
+### Global allocators
 
 - `mem$` - heap based allocator, typically used for long-living data, requires explicit mem$free
 - `tmem$` - temporary allocator, backed by ArenaAllocator, with a 256KB page, requires `mem$scope`
+- `test$alloc` - per-test-case arena (1 MB page, `disable_scopes`), created/destroyed by the test
+runner, no manual free; `mem$scope` is a no-op; OOM simulation via
+`test$alloc_set_oom_probability(prob)` (test mode only)
 
-Memory management hints:
+### Memory management hints
 
 - If a function accepts IAllocator as an argument, it allocates memory
 - If a class/object accepts IAllocator in its constructor, it should track the allocator instance
@@ -828,10 +831,18 @@ many `realloc()`, it can grow arenas unexpectedly large.
 - Common CEX pattern: `mem$scope(tmem$, _) {}` — `_` is a short alias for `tmem$`
 - Nested `mem$scope` are allowed, but memory is freed at the nested scope exit. NOTE: don't share
 pointers across scopes.
+- Never return a pointer allocated inside `mem$scope` (it's freed at scope exit)
+- Never `realloc` a pointer from an outer scope inside a nested `mem$scope` (test mode asserts;
+`arr$`/`hm$` resizing triggers it too)
+- `mem$scope` is backed by a `for` loop: `break`/`continue` inside it exits the scope, not an outer
+loop
+- Arenas never reuse freed chunks; pre-allocate capacity instead of heavy `realloc`
+- In test mode `mem$` tracks leaks, allocations are filled with `0xf7`, arenas are ASAN-poisoned;
+switch `tmem$` to `mem$` to triage use-after-poison
 - Use address sanitizers as often as possible
 
 
-Examples:
+### Examples
 
 - Vanilla heap allocator
 ```c
@@ -912,6 +923,16 @@ u8* p4 = mem$malloc(arena_manual, 100); // direct use allowed
 
 AllocatorArena.destroy(arena_manual);
 
+```
+
+- Unit test allocator
+
+```c
+test$case(uses_test_alloc)
+{
+    int* buf = mem$malloc(test$alloc, 256 * sizeof(int)); // freed after the case
+    return EOK;
+}
 ```
 */
 
