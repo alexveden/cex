@@ -1,0 +1,9 @@
+#if A
+int main(int argc, char **argv){
+#else
+int wmain(int argc, wchar_t **wargv){
+  char **argv;
+#endif
+  return 0;
+}
+int trailing(void) { return 1; }

@@ -1,0 +1,4 @@
+void f(void) {
+  __asm__("	dcbtstt	0,%0" : : "b"(x) : "memory");
+}
+int after(void) { return 0; }

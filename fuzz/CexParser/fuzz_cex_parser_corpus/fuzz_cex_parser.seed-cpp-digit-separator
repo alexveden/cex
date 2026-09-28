@@ -1,0 +1,5 @@
+int f(int x) {
+  if ((x & 0b1100'0000) != 0b1000'0000) { return 0; }
+  return 1;
+}
+int after(void) { return 0; }
