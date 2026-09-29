@@ -29,7 +29,7 @@ jobs:
       - name: Install coverage tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y lcov llvm
+          sudo apt-get install -y lcov llvm clang gcc
 
       - name: Configure compiler
         run: |
@@ -37,7 +37,7 @@ jobs:
           cat > cex_config.h <<EOF
           #pragma once
           #define cexy\$cc "$CC"
-          #define cexy\$cex_self_cc "$CC"
+          #define cexy\$cex_self_cc "cc"
           #define cexy\$cc_args_sanitizer "-fstack-protector-strong"
           EOF
           cat cex_config.h
@@ -91,7 +91,7 @@ jobs:
           cat > cex_config.h <<EOF
           #pragma once
           #define cexy\$cc "$CC"
-          #define cexy\$cex_self_cc "$CC"
+          #define cexy\$cex_self_cc "cc"
           #define cexy\$cc_args_sanitizer "-fstack-protector-strong"
           EOF
           cat cex_config.h
@@ -152,7 +152,7 @@ jobs:
           cat > cex_config.h <<EOF
           #pragma once
           #define cexy\$cc "$CC"
-          #define cexy\$cex_self_cc "$CC"
+          #define cexy\$cex_self_cc "cc"
           #define cexy\$cc_args_sanitizer "-fstack-protector-strong"
           EOF
           cat cex_config.h

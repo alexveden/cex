@@ -14,14 +14,32 @@ _coverage__is_clang(void)
 }
 
 static Exception
-_coverage__check_tool(char* tool)
+_coverage__resolve_tool(arr$(char*)* out, char* tool, IAllocator allc)
 {
+    uassert(out != NULL);
     uassert(tool != NULL);
-    if (unlikely(!os.cmd.exists(tool))) {
-        log$error("Coverage requires '%s' in PATH\n", tool);
-        return e$raise(Error.runtime, "coverage tool not found");
+    (void)allc;
+
+    if (os.cmd.exists(tool)) {
+        arr$push(*out, tool);
+        return EOK;
     }
-    return EOK;
+#    ifdef _WIN32
+    if (os.cmd.exists("perl")) {
+        str_s path_env = str.sstr(os.env.get("PATH", NULL));
+        if (path_env.buf != NULL) {
+            for$iter (str_s, it, str.slice.iter_split(path_env, ";", &it.iterator)) {
+                char* script = str.fmt(allc, "%S/%s", it.val, tool);
+                if (os.path.exists(script)) {
+                    arr$pushm(*out, "perl", script);
+                    return EOK;
+                }
+            }
+        }
+    }
+#    endif
+    log$error("Coverage requires '%s' in PATH\n", tool);
+    return e$raise(Error.runtime, "coverage tool not found");
 }
 
 static Exception
@@ -75,7 +93,8 @@ _coverage__llvm_merge_profdata(char** out_profdata, IAllocator allc)
 
     char* profdata = str.fmt(allc, "%s/coverage.profdata", cexy$build_dir);
     arr$(char*) args = arr$new(args, allc);
-    arr$pushm(args, "llvm-profdata", "merge", "-sparse");
+    e$ret(_coverage__resolve_tool(&args, "llvm-profdata", allc));
+    arr$pushm(args, "merge", "-sparse");
     arr$pusha(args, profraw);
     arr$pushm(args, "-o", profdata, NULL);
     e$ret(os$cmda(args, arr$len(args)));
@@ -98,6 +117,19 @@ _coverage__capture_cmd(arr$(char*) args, char** out, IAllocator allc)
 }
 
 static Exception
+_coverage__add_lcov_gcov_tool(arr$(char*)* args, IAllocator allc)
+{
+    uassert(args != NULL);
+
+    if (!_coverage__is_clang()) { return EOK; }
+    char* wrapper = str.fmt(allc, "%s/llvm-gcov.sh", cexy$build_dir);
+    e$ret(io.file.save(wrapper, "#!/bin/sh\nexec llvm-cov gcov \"$@\"\n"));
+    if (os$cmd("chmod", "+x", wrapper)) {}
+    arr$pushm(*args, "--gcov-tool", wrapper);
+    return EOK;
+}
+
+static Exception
 _coverage__run_lcov_capture(char* output, IAllocator allc)
 {
     arr$(char*) gcda = os.fs.find(str.fmt(allc, "%s/*.gcda", cexy$build_dir), true, allc);
@@ -106,13 +138,14 @@ _coverage__run_lcov_capture(char* output, IAllocator allc)
     }
 
     arr$(char*) args = arr$new(args, allc);
-    arr$pushm(args, "lcov", "--capture", "--quiet", "--directory", cexy$build_dir);
+    e$ret(_coverage__resolve_tool(&args, "lcov", allc));
+    arr$pushm(args, "--capture", "--quiet", "--directory", cexy$build_dir);
     arr$pushm(
         args,
         "--ignore-errors",
         "inconsistent,inconsistent,empty,unused,source,format,unsupported,unsupported"
     );
-    if (_coverage__is_clang()) { arr$push(args, "--gcov-tool"); arr$push(args, "llvm-cov,gcov"); }
+    e$ret(_coverage__add_lcov_gcov_tool(&args, allc));
     arr$pushm(args, "--output-file", output, NULL);
     e$ret(os$cmda(args, arr$len(args)));
     return EOK;
@@ -146,14 +179,12 @@ coverage_report(char* engine, char* format, char* output, char* target)
     mem$scope(tmem$, _)
     {
         if (str.eq(engine, "llvm")) {
-            e$ret(_coverage__check_tool("llvm-cov"));
-            e$ret(_coverage__check_tool("llvm-profdata"));
-
             char* profdata = NULL;
             e$ret(_coverage__llvm_merge_profdata(&profdata, _));
 
             arr$(char*) args = arr$new(args, _);
-            arr$pushm(args, "llvm-cov", html ? "show" : "report");
+            e$ret(_coverage__resolve_tool(&args, "llvm-cov", _));
+            arr$pushm(args, html ? "show" : "report");
             e$ret(_coverage__llvm_add_objects(target, &args, _));
             arr$push(args, str.fmt(_, "-instr-profile=%s", profdata));
             if (html) {
@@ -162,17 +193,16 @@ coverage_report(char* engine, char* format, char* output, char* target)
             arr$push(args, NULL);
             e$ret(os$cmda(args, arr$len(args)));
         } else {
-            e$ret(_coverage__check_tool("lcov"));
-
             char* info = str.fmt(_, "%s/coverage.info", cexy$build_dir);
             e$ret(_coverage__run_lcov_capture(info, _));
 
             arr$(char*) args = arr$new(args, _);
             if (html) {
-                e$ret(_coverage__check_tool("genhtml"));
-                arr$pushm(args, "genhtml", "--quiet", info, "-o", output, NULL);
+                e$ret(_coverage__resolve_tool(&args, "genhtml", _));
+                arr$pushm(args, "--quiet", info, "-o", output, NULL);
             } else {
-                arr$pushm(args, "lcov", "--quiet", "--list", info, NULL);
+                e$ret(_coverage__resolve_tool(&args, "lcov", _));
+                arr$pushm(args, "--quiet", "--list", info, NULL);
             }
             e$ret(os$cmda(args, arr$len(args)));
         }
@@ -193,14 +223,12 @@ coverage_export(char* engine, char* output, char* target)
     mem$scope(tmem$, _)
     {
         if (str.eq(engine, "llvm")) {
-            e$ret(_coverage__check_tool("llvm-cov"));
-            e$ret(_coverage__check_tool("llvm-profdata"));
-
             char* profdata = NULL;
             e$ret(_coverage__llvm_merge_profdata(&profdata, _));
 
             arr$(char*) args = arr$new(args, _);
-            arr$pushm(args, "llvm-cov", "export", "--format=lcov");
+            e$ret(_coverage__resolve_tool(&args, "llvm-cov", _));
+            arr$pushm(args, "export", "--format=lcov");
             e$ret(_coverage__llvm_add_objects(target, &args, _));
             arr$push(args, str.fmt(_, "-instr-profile=%s", profdata));
             arr$push(args, NULL);
@@ -212,7 +240,6 @@ coverage_export(char* engine, char* output, char* target)
             }
             e$ret(io.file.save(output, content));
         } else {
-            e$ret(_coverage__check_tool("lcov"));
             e$ret(_coverage__run_lcov_capture(output, _));
         }
         log$info("Coverage exported: %s\n", output);
