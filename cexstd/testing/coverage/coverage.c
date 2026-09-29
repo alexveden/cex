@@ -135,7 +135,14 @@ _coverage__add_lcov_gcov_tool(arr$(char*)* args, IAllocator allc)
 
     if (!_coverage__is_clang()) { return EOK; }
     char* wrapper = str.fmt(allc, "%s/llvm-gcov.sh", cexy$build_dir);
-    e$ret(io.file.save(wrapper, "#!/bin/sh\nexec llvm-cov gcov \"$@\"\n"));
+    char* script = "#!/bin/sh\nexec llvm-cov gcov \"$@\"\n";
+    FILE* file = NULL;
+    e$ret(io.fopen(&file, wrapper, "wb"));
+    e$except (err, io.fwrite(file, script, str.len(script))) {
+        io.fclose(&file);
+        return err;
+    }
+    io.fclose(&file);
     if (os$cmd("chmod", "+x", wrapper)) {}
     arr$pushm(*args, "--gcov-tool", wrapper);
     return EOK;
