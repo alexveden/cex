@@ -42,19 +42,19 @@ runs:
         echo "---------------------------------------------------------------------"
         echo "           STEP: coverage export (${{ inputs.engine }})"
         echo "---------------------------------------------------------------------"
-        ./cex coverage --engine=${{ inputs.engine }} export -o coverage.info ${{ inputs.target }}
-        test -s coverage.info
+        ./cex coverage --engine=${{ inputs.engine }} export -o coverage-${{ inputs.label }}.info ${{ inputs.target }}
+        test -s coverage-${{ inputs.label }}.info
 
     - name: Verify coverage data
       shell: ${{ inputs.shell }}
       run: |
-        grep -q '^SF:' coverage.info
-        grep -q '^LF:' coverage.info
-        grep -q '^LH:' coverage.info
-        echo "coverage.info looks valid"
+        grep -q '^SF:' coverage-${{ inputs.label }}.info
+        grep -q '^LF:' coverage-${{ inputs.label }}.info
+        grep -q '^LH:' coverage-${{ inputs.label }}.info
+        echo "coverage-${{ inputs.label }}.info looks valid"
 
     - uses: actions/upload-artifact@v4
       with:
         name: coverage-${{ inputs.label }}
-        path: coverage.info
+        path: coverage-${{ inputs.label }}.info
         if-no-files-found: error

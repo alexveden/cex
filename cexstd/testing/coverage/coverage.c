@@ -181,6 +181,58 @@ _coverage__run_lcov_capture(char* output, IAllocator allc)
     return EOK;
 }
 
+static char*
+_coverage__relativize_path(char* path, char* cwd, IAllocator allc)
+{
+    uassert(path != NULL);
+    uassert(cwd != NULL);
+
+    char sep[2] = { os$PATH_SEP, '\0' };
+    char* p = str.replace(os.path.normalize(path, allc), sep, "/", allc);
+    char* c = str.replace(os.path.normalize(cwd, allc), sep, "/", allc);
+    if (p == NULL || c == NULL) { return p; }
+
+    if (str.len(p) >= 3 && p[1] == ':' && p[2] == '/') {
+        p = str.fmt(allc, "/%c/%s", (char)tolower((unsigned char)p[0]), p + 3);
+    }
+    if (str.len(c) >= 3 && c[1] == ':' && c[2] == '/') {
+        c = str.fmt(allc, "/%c/%s", (char)tolower((unsigned char)c[0]), c + 3);
+    }
+
+    str_s ps = str.sstr(p);
+    str_s cs = str.sstr(c);
+    if (!str.slice.starts_with(ps, cs)) { return p; }
+    if (ps.len > cs.len && ps.buf[cs.len] != '/') { return p; }
+
+    ps = str.slice.remove_prefix(ps, cs);
+    if (ps.len > 0 && ps.buf[0] == '/') { ps = str.slice.sub(ps, 1, (isize)ps.len); }
+    return str.slice.clone(ps, allc);
+}
+
+static Exception
+_coverage__relativize_info(char* info_path, IAllocator allc)
+{
+    uassert(info_path != NULL);
+
+    char* cwd = os.fs.getcwd(allc);
+    if (cwd == NULL) { return Error.os; }
+    char* content = io.file.load(info_path, allc);
+    if (content == NULL) { return Error.io; }
+
+    arr$(char*) lines = str.split_lines(content, allc);
+    if (lines == NULL) { return Error.memory; }
+    for$eachp (line, lines) {
+        if (!str.starts_with(*line, "SF:")) { continue; }
+        char* rel = _coverage__relativize_path(*line + 3, cwd, allc);
+        if (rel == NULL) { return Error.memory; }
+        *line = str.fmt(allc, "SF:%s", rel);
+    }
+
+    char* out = str.join(lines, arr$len(lines), "\n", allc);
+    if (out == NULL) { return Error.memory; }
+    return io.file.save(info_path, str.fmt(allc, "%s\n", out));
+}
+
 /// Builds and runs tests with coverage instrumentation
 Exception
 coverage_run(char* engine, char* target)
@@ -272,6 +324,7 @@ coverage_export(char* engine, char* output, char* target)
         } else {
             e$ret(_coverage__run_lcov_capture(output, _));
         }
+        e$ret(_coverage__relativize_info(output, _));
         log$info("Coverage exported: %s\n", output);
     }
     return EOK;

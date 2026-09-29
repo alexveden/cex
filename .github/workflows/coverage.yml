@@ -169,3 +169,53 @@ jobs:
           engine: ${{ matrix.engine }}
           label: windows-${{ matrix.label }}
           shell: 'msys2 {0}'
+
+  # Merge the per-engine tracefiles of each platform into one report. Runs on a
+  # single platform (ubuntu) and needs the exported paths to be repo-relative.
+  coverage-merge:
+    name: merge-${{ matrix.os }}
+    needs: [coverage-linux, coverage-macos, coverage-windows]
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [linux, macos, windows]
+
+    steps:
+      - name: Checkout cex
+        uses: actions/checkout@v4
+
+      - name: Install coverage tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lcov
+
+      - name: Download platform tracefiles
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-${{ matrix.os }}-*
+          merge-multiple: true
+          path: tracefiles
+
+      - name: Merge tracefiles
+        run: |
+          lcov --ignore-errors inconsistent,mismatch,empty,unused,source,format,unsupported,corrupt \
+            -a tracefiles/coverage-${{ matrix.os }}-*.info \
+            -o coverage-merged-${{ matrix.os }}.info
+          test -s coverage-merged-${{ matrix.os }}.info
+          grep -q '^SF:' coverage-merged-${{ matrix.os }}.info
+
+      - name: HTML report
+        run: |
+          genhtml --quiet --ignore-errors inconsistent,mismatch,empty,unused,source,format,unsupported \
+            coverage-merged-${{ matrix.os }}.info -o html-${{ matrix.os }}
+
+      - name: Upload merged report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-merged-${{ matrix.os }}
+          path: |
+            coverage-merged-${{ matrix.os }}.info
+            html-${{ matrix.os }}/
+          if-no-files-found: error

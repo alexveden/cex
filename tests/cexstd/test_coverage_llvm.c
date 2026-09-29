@@ -52,6 +52,16 @@ test$case(test_coverage_llvm_run_export_report_clean)
         e$ret(coverage.export("llvm", info, src));
         tassert(os.path.exists(info));
 
+        char* content = io.file.load(info, _);
+        tassert(content != NULL);
+        u32 sf_count = 0;
+        for$each (line, str.split_lines(content, _)) {
+            if (!str.starts_with(line, "SF:")) { continue; }
+            sf_count++;
+            tassert(line[3] != '/');
+        }
+        tassert(sf_count > 0);
+
         e$ret(coverage.report("llvm", "text", NULL, src));
 
         e$ret(coverage.clean(src));
