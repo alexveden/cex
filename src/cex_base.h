@@ -138,8 +138,6 @@ Errors are `char*` pointers:
 - `Exception` return type forces the caller to check (`warn_unused_result`)
 - Errors are compared by **address**, never by string content
 
-Principles:
-
 1. **Unambiguous** — only two states: OK or error, never mixed with valid return values
 2. **General purpose** — same pattern for allocation errors, IO, argument validation, etc.
 3. **Easy to report** — errors are printable strings; use `e$raise` to tag the origin location
@@ -149,7 +147,7 @@ Principles:
 7. **Natural** — regular `if` works; `e$` macros are optional helpers
 8. **Mandatory checking** — `Exception` return type triggers `-Werror=unused-result` if ignored
 
-Standard errors:
+### Standard errors
 
 | Error.*         | String Value           | Description                           |
 | --------------- | ---------------------- | ------------------------------------- |
@@ -172,7 +170,7 @@ Standard errors:
 | Error.permission | "PermissionError"     | Permission denied                     |
 | Error.try_again | "TryAgainError"        | EAGAIN / EWOULDBLOCK analog           |
 
-Error handling macros:
+### Error handling macros
 
 | Macro                       | Type      | Description                                          |
 | --------------------------- | --------- | ---------------------------------------------------- |
@@ -189,7 +187,7 @@ Error handling macros:
 | `e$traceback_len`           | traceback | number of recorded frames                            |
 | `e$traceback_reset()`       | traceback | drop all recorded frames                             |
 
-Examples:
+### Examples
 
 ```c
 
@@ -258,7 +256,34 @@ fail:
 }
 ```
 
-Tracebacks:
+### Making custom user exceptions
+
+For errors you must handle specifically, declare a global const struct of `Exc` fields:
+
+```c
+// myerr.h
+extern const struct _MyError_struct
+{
+    Exc foo;
+    Exc bar;
+} MyError;
+
+// myerr.c
+const struct _MyError_struct MyError = {
+    .foo = "FooError",
+    .bar = "BarError",
+};
+
+// other.c
+if (err == MyError.foo) { // pointer address comparison, not string content
+    // handle
+}
+```
+
+WARNING: all struct fields must be initialized — an uninitialized field is `NULL`, which is
+success (`EOK`).
+
+### Tracebacks
 
 `e$` macros record a traceback instead of printing it immediately. Verbosity is a
 compile-time knob `CEX_TRACEBACK_VERBOSITY` (0..3, default 2):
@@ -297,7 +322,7 @@ A frame prints as `#N (file:line func()) [err] msg` at level 2, and as
 `#N (file:line) [err]` at level 1. `e$raise(err, "msg")` requires the message to be a
 string literal.
 
-Asserts and panics:
+### Asserts and panics
 
 Hard-fail assertions (`uassert()` / `uassert_always()`) are controlled by
 `CEX_PANIC_VERBOSITY` (0..2, default 1):
@@ -312,7 +337,7 @@ Hard-fail assertions (`uassert()` / `uassert_always()`) are controlled by
 tests `uassert_disable()` / `uassert_enable()` toggle reporting, and a disabled
 `uassert()` returns instead of aborting.
 
-Caveats:
+### Caveats
 
 - Do NOT use `break` / `continue` inside `e$except` or `e$except_*` scopes when nested inside loops — these macros are backed by `for()` loops, so `break`/`continue` affects the error-handling loop, not the outer loop.
 
