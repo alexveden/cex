@@ -2,6 +2,7 @@
 #define TBUILDDIR "tests/build/cexytest/"
 #define cexy$cc_include "-I.", "-I" TBUILDDIR
 #define cexy$build_dir TBUILDDIR
+#define cexy$disable_cex_precompiling
 #include "src/all.c"
 
 test$setup_case()
@@ -583,6 +584,40 @@ test$case(test_find_app_target_src_null_out)
     tassert_er(Error.assert, cexy.app.find_app_target_src(mem$, "foo", NULL));
     return EOK;
 }
+
+test$case(test_coverage_bench_rejected)
+{
+    char* argv[] = { "test", "--coverage", "bench", "tests/test_cexy.c" };
+    tassert_er(Error.argument, cexy.cmd.simple_test(arr$len(argv), argv, NULL));
+    return EOK;
+}
+
+#if !defined(__clang__) && !defined(_WIN32)
+
+test$case(test_coverage_flag)
+{
+    mem$scope(tmem$, _)
+    {
+        char* cc[] = { cexy$cc };
+        if (str.find(cc[0], "clang")) { return EOK; }
+
+        char* src = TBUILDDIR "test_cov_tmp.c";
+        e$ret(io.file.save(src, "int main(void) { return 0; }\n"));
+
+        char* test_target = cexy.target_make(src, cexy$build_dir, ".test", _);
+        char* gcno_glob = str.fmt(_, "%s-*.gcno", test_target);
+
+        char* argv[] = { "test", "--coverage", "build", src };
+        e$ret(cexy.cmd.simple_test(arr$len(argv), argv, NULL));
+        tassert(arr$len(os.fs.find(gcno_glob, false, _)) > 0);
+
+        e$ret(cexy.test.clean(src));
+        tassert(arr$len(os.fs.find(gcno_glob, false, _)) == 0);
+    }
+    return EOK;
+}
+
+#endif  // #if !defined(__clang__) && !defined(_WIN32)
 
 #endif  // #if !defined(__EMSCRIPTEN__)
 

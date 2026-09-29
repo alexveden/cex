@@ -467,6 +467,13 @@ cexy__test__clean(char* target)
         {
             char* test_target = cexy.target_make(target, cexy$build_dir, ".test", _);
             e$ret(os.fs.remove(test_target));
+
+            char* cov_exts[] = { ".gcno", ".gcda" };
+            for$each (ext, cov_exts) {
+                for$each (cov_file, os.fs.find(str.fmt(_, "%s-*%s", test_target, ext), false, _)) {
+                    if (os.fs.remove(cov_file)) {}
+                }
+            }
         }
     }
     return EOK;
@@ -1768,6 +1775,8 @@ end:
 static Exception
 _cexy__add_precompiled_debug_cex_h(arr$(char*) * out_cc_args, IAllocator allc)
 {
+    (void)out_cc_args;
+    (void)allc;
 #        ifndef cexy$disable_cex_precompiling
     uassert(arr$len(*out_cc_args) > 2 && "too few compiler args");
 
@@ -2503,6 +2512,7 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
 {
     (void)user_ctx;
     i32 njobs = -1;
+    bool coverage = false;
     argparse_c cmd_args = {
         .program_name = "./cex",
         .usage = "test [options] {run,build,create,clean,debug,bench,watch} all|tests/test_file.c [--test-options]",
@@ -2516,6 +2526,12 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
                 .long_name = "jobs",
                 .help = "Number of compiler jobs for test building"
             ),
+            argparse$opt(
+                &coverage,
+                '\0',
+                "coverage",
+                .help = "Build tests with compiler --coverage flag"
+            ),
         ),
     };
 
@@ -2526,6 +2542,9 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
     if (unlikely(!str.match(cmd, "(run|build|create|clean|debug|bench|watch)") || target == NULL)) {
         argparse.usage(&cmd_args);
         return e$raise(Error.argsparse, "Invalid command or target");
+    }
+    if (unlikely(coverage && str.eq(cmd, "bench"))) {
+        return e$raise(Error.argument, "coverage is not supported for bench (uses -O3)");
     }
 
     if (str.eq(cmd, "create")) {
@@ -2576,7 +2595,8 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
                 log$trace("Test src: %s -> %s\n", test_src, test_target);
                 fflush(stdout); // typically for CI
                 n_tests++;
-                if (!single_test && !cexy.src_include_changed(test_target, test_src, NULL)) {
+                if (!coverage && !single_test &&
+                    !cexy.src_include_changed(test_target, test_src, NULL)) {
                     continue;
                 }
                 arr$(char*) args = arr$new(args, _);
@@ -2601,6 +2621,10 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
 
                 // Handling cex.h -> cex.obj for faster debug builds
                 e$ret(_cexy__add_precompiled_debug_cex_h(&args, _));
+
+                // NOTE: --coverage is added after the precompiled cex.h step, so the shared
+                // cex.obj stays uninstrumented and its hash stays coverage-independent
+                if (coverage) { arr$push(args, "--coverage"); }
 
                 arr$push(args, test_src);
                 arr$pusha(args, cc_ld_args);
@@ -2640,6 +2664,15 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
             );
         }
         fflush(stdout);
+
+        if (coverage && str.match(cmd, "(run|debug|watch)")) {
+            mem$scope(tmem$, _)
+            {
+                for$each (gcda, os.fs.find(str.fmt(_, "%s/*.gcda", cexy$build_dir), true, _)) {
+                    if (os.fs.remove(gcda)) {}
+                }
+            }
+        }
 
         if (str.match(cmd, "(run|debug|bench)")) {
             e$ret(cexy.test.run(target, cmd, cmd_args.argc, cmd_args.argv));

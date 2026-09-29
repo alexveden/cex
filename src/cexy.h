@@ -268,6 +268,13 @@ See `cex help str.match` for more information about patter syntax.
         "    return EOK;\n"\
         "}\n"\
         \
+        "\nCoverage:\n"\
+        "`cex test --coverage run all` builds tests with the compiler --coverage flag and\n"\
+        "runs them, leaving .gcno/.gcda next to the test binaries in cexy$build_dir for\n"\
+        "aggregation (gcov/llvm-cov). Project sources are instrumented; the precompiled\n"\
+        "cex.h object is not. Existing .gcda are reset before each coverage run.\n"\
+        "Not supported with `bench`.\n"\
+        \
         "\nIf you need more control you can build your own test runner. Just use cex help\n"\
         "and get source code `./cex help --source cexy.cmd.simple_test`\n")
         
@@ -282,7 +289,8 @@ See `cex help str.match` for more information about patter syntax.
         "cex test clean test/test_file.c          - delete specific test executable\n"\
         "cex test run tests/test_file.c [--help]  - run test with passing arguments to the test runner program\n" \
         "cex test watch tests/test_file.c         - watch test file and its includes' changes with perptual re-run\n" \
-        "cex test bench test/test_file.c          - run all test$bench() functions for timing\n"
+        "cex test bench test/test_file.c          - run all test$bench() functions for timing\n"\
+        "cex test --coverage run all               - build+run tests with --coverage data\n"
 
 
 // clang-format on
