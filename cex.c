@@ -18,6 +18,7 @@ Visit https://cex-c.org for more information
 #define CEX_IMPLEMENTATION
 #define CEX_BUILD
 #include "cex.h"
+#include "cexstd/testing/coverage/coverage.c"
 
 
 Exception cmd_custom_test(int argc, char** argv, void* user_ctx);
@@ -44,6 +45,9 @@ main(int argc, char** argv)
         argparse$cmd_list(
             cexy$cmd_all,
             { .name = "test", .func = cmd_custom_test, .help = "Test running" },
+            { .name = "coverage",
+              .func = coverage.cmd,
+              .help = "Test coverage build/run/report/clean" },
             { .name = "build-docs", .func = cmd_build_docs, .help = "Build CEX documentation " },
             cexy$cmd_fuzz,  /* feel free to make your own if needed */
             cexy$cmd_app,   /* feel free to make your own if needed */

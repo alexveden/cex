@@ -57,6 +57,7 @@ build/
 *.gcov
 core
 coverage/
+!cexstd/testing/coverage/
 *.log
 
 __pycache__/
