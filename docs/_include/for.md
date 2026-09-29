@@ -1,6 +1,6 @@
 
 
-## Iteration
+### Iteration
 
 Unified array / hashmap / slice iteration framework.
 
@@ -14,7 +14,7 @@ Unified array / hashmap / slice iteration framework.
 
 `for$each` and `for$eachp` work identically on `arr$`, `hm$`, static C arrays, and pointer+length slices.
 
-### Examples
+#### Examples
 
 - Using for$ as unified array iterator
 ```c

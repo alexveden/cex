@@ -1,6 +1,6 @@
 
 
-## Logging
+### Logging
 
 Simple console logging with file:line location prefix.
 

@@ -1,6 +1,6 @@
 
 
-## CEX Exception-based error handling.
+### CEX Exception-based error handling.
 
 Errors are `char*` pointers:
 - `EOK` (or `Error.ok`) = `NULL` → success

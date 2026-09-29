@@ -1,7 +1,7 @@
 
-## Memory management
+### Memory management
 
-### Global allocators
+#### Global allocators
 
 - `mem$` - heap based allocator, typically used for long-living data, requires explicit mem$free
 - `tmem$` - temporary allocator, backed by ArenaAllocator, with a 256KB page, requires `mem$scope`
@@ -9,7 +9,7 @@
 runner, no manual free; `mem$scope` is a no-op; OOM simulation via
 `test$alloc_set_oom_probability(prob)` (test mode only)
 
-### Memory management hints
+#### Memory management hints
 
 - If a function accepts IAllocator as an argument, it allocates memory
 - If a class/object accepts IAllocator in its constructor, it should track the allocator instance
@@ -32,7 +32,7 @@ switch `tmem$` to `mem$` to triage use-after-poison
 - Use address sanitizers as often as possible
 
 
-### Examples
+#### Examples
 
 - Vanilla heap allocator
 ```c

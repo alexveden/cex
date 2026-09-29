@@ -1,10 +1,10 @@
 
 
-## Input/Output
+### Input/Output
 
 Cross-platform IO namespace.
 
-### File load/save (easy api)
+#### File load/save (easy api)
 
 ```c
 e$ret(io.file.save("./myfile.txt", "Hello from CEX!\n"));
@@ -14,7 +14,7 @@ io.printf("%s", content); // Hello from CEX!
 mem$free(mem$, content);
 ```
 
-### Low-level file api
+#### Low-level file api
 
 - Read all content
 

@@ -1,6 +1,6 @@
 
 
-## Dynamic array
+### Dynamic array
 
 Generic type-safe dynamic array backed by a heap header.
 
@@ -8,7 +8,7 @@ Generic type-safe dynamic array backed by a heap header.
 pointer or fat-pointer indirection. The runtime header
 (`_cexds__array_header`) lives *before* the user pointer at a negative offset.
 
-### Principles
+#### Principles
 
 1. **Zero overhead** — `arr$(T)` = `T*`. Pass them to any function expecting a C pointer+length.
 2. **Allocator-backed** — Every array carries its `IAllocator`. Passed once at `arr$new`.
@@ -20,7 +20,7 @@ pointer or fat-pointer indirection. The runtime header
 7. **ASAN-aware** — The 8-byte poison area after the header is marked poisoned so ASAN catches
    underflow reads/writes.
 
-### Examples
+#### Examples
 
 - Creating array
 ```c

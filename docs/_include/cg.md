@@ -1,12 +1,12 @@
 
 
-## Code generation
+### Code generation
 
 Code generation macros for emitting formatted source code into an `sbuf_c`.
 
 `cg$init()` declares the shared `cg$var` in the current scope; `cg$init_scope()` keeps it local to a block.
 
-### Example
+#### Example
 
 ```c
 Exception

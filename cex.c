@@ -276,6 +276,32 @@ cex_bundle(void)
     }
 }
 
+static char*
+_docs_downscale_md_headers(str_s md, IAllocator allc)
+{
+    sbuf_c out = sbuf.create(md.len + 16, allc);
+    bool in_fence = false;
+    for$iter (str_s, line, str.slice.iter_split(str.slice.rstrip(md), "\n", &line.iterator)) {
+        str_s s = line.val;
+        str_s trimmed = str.slice.lstrip(s);
+        if (str.slice.starts_with(trimmed, str$s("```")) ||
+            str.slice.starts_with(trimmed, str$s("~~~"))) {
+            in_fence = !in_fence;
+        }
+        u32 hashes = 0;
+        while (hashes < s.len && s.buf[hashes] == '#') { hashes++; }
+        bool is_header = !in_fence && hashes >= 1 && hashes <= 5 &&
+                         (hashes == s.len || s.buf[hashes] == ' ');
+        if (is_header) { e$goto(sbuf.append(&out, "#"), fail); }
+        e$goto(sbuf.appendf(&out, "%S", s), fail);
+        e$goto(sbuf.append(&out, "\n"), fail);
+    }
+    return out;
+fail:
+    sbuf.destroy(&out);
+    return NULL;
+}
+
 Exception
 cmd_build_docs(int argc, char** argv, void* user_ctx)
 {
@@ -292,6 +318,7 @@ cmd_build_docs(int argc, char** argv, void* user_ctx)
     for$each (it, namespaces) {
         mem$scope(tmem$, _)
         {
+            char* out_path = str.fmt(_, "./docs/_include/%s.md", it);
             arr$(char*) args = arr$new(args, _);
             arr$pushm(
                 args,
@@ -299,11 +326,17 @@ cmd_build_docs(int argc, char** argv, void* user_ctx)
                 "--filter",
                 "./cex.h",
                 "--out",
-                str.fmt(_, "./docs/_include/%s.md", it),
+                out_path,
                 str.fmt(_, "%s$", it)
             );
             _os$args_print("Parse help: ", args, arr$len(args));
             e$ret(cexy.cmd.help(arr$len(args), args, NULL));
+
+            char* md = io.file.load(out_path, _);
+            if (md == NULL) { return e$raise(Error.io, "failed to load generated docs file"); }
+            char* shifted = _docs_downscale_md_headers(str.sstr(md), _);
+            if (shifted == NULL) { return e$raise(Error.memory, "failed to downscale headers"); }
+            e$ret(io.file.save(out_path, shifted));
         }
     }
     e$assert(!os.path.exists("_include/") && "should not exist, remove if it's quarto remainder");

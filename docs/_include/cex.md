@@ -5,7 +5,7 @@ A self-contained C language extension. Its only dependency is a C compiler
 (`cc`, or gcc/clang); `cex.h` bundles the build system, unit test runner, small
 standard library, and the `./cex` CLI. MIT License 2023-2026 (c) Alex Veden.
 
-## Getting started
+### Getting started
 
 New project (bare `cex.h`):
 
@@ -23,7 +23,7 @@ cc ./cex.c -o ./cex                   # bootstrap once; cex then rebuilds itself
 ./cex --help                          # list available commands
 ```
 
-## Common commands
+### Common commands
 
 | Command | Purpose |
 |---|---|
@@ -42,7 +42,7 @@ cc ./cex.c -o ./cex                   # bootstrap once; cex then rebuilds itself
 | `./cex libfetch cexstd/` | fetch CEX std-lib dependencies |
 
 
-## CEX namespaces
+### CEX namespaces
 
 CEX namespaces, each responds to `./cex help <ns>$`:
 
@@ -71,7 +71,7 @@ Help commands:
 * `./cex help str.find` — docs for an exact match
 * `./cex help <ns>$` — namespace cheat-sheet (docs, macros, types, examples)
 
-## Agentic workflow
+### Agentic workflow
 
 * `./cex help --list` — list all namespaces in the project (CEX + your own)
 * `./cex help --brief str$ [os$ e$ ...]` — compact namespace outline, one line per member

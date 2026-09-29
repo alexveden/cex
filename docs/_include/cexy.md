@@ -1,6 +1,6 @@
 
 
-## Build system
+### Build system
 
 Build system config (`cexy$*`) and the `./cex` CLI command API.
 

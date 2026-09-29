@@ -1,10 +1,10 @@
 
 
-## Argument parsing
+### Argument parsing
 
 Command line args parsing.
 
-### Commands
+#### Commands
 
 ```c
 // NOTE: Command example
@@ -34,7 +34,7 @@ cmd_build_docs(int argc, char** argv, void* user_ctx)
 }
 ```
 
-### Options
+#### Options
 
 ```c
 // Simple options example

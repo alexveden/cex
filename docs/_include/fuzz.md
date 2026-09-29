@@ -1,6 +1,6 @@
 
 
-## Fuzzing
+### Fuzzing
 
 libFuzzer (clang) and AFL++ harnesses with sanitizers enabled by default. The goal is
 to trigger `uassert()` / ASAN / UBSan failures, not to validate the target's error codes.
@@ -11,7 +11,7 @@ to trigger `uassert()` / ASAN / UBSan failures, not to validate the target's err
 - the `fuzz` namespace / `fuzz$` macros turn raw input bytes into typed values
 - return `-1` from `fuzz$case()` to skip an input (wrong size / uninteresting)
 
-### CLI
+#### CLI
 
 | Command | Purpose |
 | --- | --- |
@@ -30,7 +30,7 @@ Options:
 command to build AFL++ mode (adds `-DCEX_FUZZ_AFL`). AFL++ runs use `fuzz$main()` and
 cannot be launched with `fuzz debug`.
 
-### Corpus layout
+#### Corpus layout
 
 Corpus directories are named after the harness file and live next to it:
 
@@ -42,7 +42,7 @@ Corpus directories are named after the harness file and live next to it:
 On a crash, copy the offending case from `<harness>_corpus.out` into
 `<harness>_corpus` so it is kept as a regression seed.
 
-### Writing a case
+#### Writing a case
 
 ```c
 int
@@ -57,7 +57,7 @@ fuzz$case(const u8* data, usize size)
 }
 ```
 
-### Consuming typed values
+#### Consuming typed values
 
 `fuzz.create()` wraps the raw input; `fuzz.dget()` copies the next `sizeof(*ptr)` bytes
 and returns `false` once the input is exhausted. `fuzz.dprob()` consumes one byte as a
@@ -107,7 +107,7 @@ fuzz$case(const u8* data, usize size)
 }
 ```
 
-### Seeding a corpus
+#### Seeding a corpus
 
 `fuzz$setup()` runs before `main()` and writes seed files into `fuzz$corpus_dir`
 (derived from the calling source file). It is optional; skip it if random input is fine.

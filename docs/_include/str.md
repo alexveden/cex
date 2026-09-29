@@ -1,8 +1,8 @@
 
 
-## Strings
+### Strings
 
-### Principles
+#### Principles
 
 - `str` namespace is built for compatibility with C strings
 - all string functions are NULL resilient
@@ -10,7 +10,7 @@
 - you don't have to check every operation for NULL every time, just at the end
 - all string format operations support CEX-specific specifiers (see below)
 
-### String slices
+#### String slices
 
 - Slices are backed by `(str_s){.buf = s, .len = NNN}` struct
 - Slices are passed by value and allocated on stack
@@ -20,14 +20,14 @@
 - Slices support operations which are allowed by read-only string view representation
 - CEX formatting uses `%S` for slices: `io.printf("Hello %S\n", str$s("world"))`
 
-### String macros
+#### String macros
 
 - `str$s("hello")` - compile-time `str_s` from a string literal (literals only, not `char*`)
 - `str$eq(slice, "literal")` - fast slice-vs-literal comparison (no `strcmp`)
 - `str$join(alloc, ",", "a", "b", "c")` - join parts into a new string
 - `str$convert(str_or_slice, &out_var)` - parse a string/slice into a numeric or bool out variable
 
-### Dynamic strings
+#### Dynamic strings
 
 For mutable, growing strings use the `sbuf` namespace (`sbuf_c` is a `char*` alias, always
 null-terminated):
@@ -39,7 +39,7 @@ null-terminated):
 
 See `./cex help sbuf$` for the full API.
 
-### Examples
+#### Examples
 
 - Working with slices
 ```c

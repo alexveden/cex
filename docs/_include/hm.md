@@ -1,6 +1,6 @@
 
 
-## Hashmap
+### Hashmap
 
 Generic type-safe hashmap backed by open-addressing with quadratic probing.
 
@@ -8,7 +8,7 @@ The hashmap shares the same backing engine as `arr$` (same header, same allocato
 This means every `hm$` is also an `arr$` — you can iterate, index, and take its length
 just like a regular dynamic array.
 
-### Key features
+#### Key features
 
 1. **Open-addressing** with bucketed hash table (8 slots per cache-line-aligned bucket).
 2. **Quadratic probing** with tombstone tracking for efficient deletions.
@@ -23,7 +23,7 @@ just like a regular dynamic array.
    first delete). Hash table entries point into this array, so `arr$len()`,
    `for$each`, and bracket indexing all work transparently.
 
-### Principles
+#### Principles
 
 1. `hm$(K,V)` is a struct `{ K key; V value; }*`.
 2. `hm$s(S)` treats any struct with a `.key` field as a hashmap record.
@@ -32,7 +32,7 @@ just like a regular dynamic array.
    calls to `hm$del`.
 5. `hm$new` can return `NULL` on memory error — always check (or use `uassert`).
 
-### Examples
+#### Examples
 
 - Basic usage
 ```c
