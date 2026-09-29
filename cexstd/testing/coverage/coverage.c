@@ -150,7 +150,10 @@ _coverage__add_lcov_gcov_tool(arr$(char*)* args, IAllocator allc)
     io.fclose(&file);
     if (os$cmd("chmod", "+x", wrapper)) {}
 #    endif
-    arr$pushm(*args, "--gcov-tool", wrapper);
+    char* gcov_tool = os.path.absolute(wrapper, allc);
+    gcov_tool = str.replace(gcov_tool, "\\", "/", allc);
+    log$debug("Coverage gcov tool: %s (exists=%d)\n", gcov_tool, (int)os.path.exists(gcov_tool));
+    arr$pushm(*args, "--gcov-tool", gcov_tool);
     return EOK;
 }
 
