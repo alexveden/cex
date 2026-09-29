@@ -230,7 +230,17 @@ _coverage__relativize_info(char* info_path, IAllocator allc)
 
     char* out = str.join(lines, arr$len(lines), "\n", allc);
     if (out == NULL) { return Error.memory; }
-    return io.file.save(info_path, str.fmt(allc, "%s\n", out));
+    out = str.fmt(allc, "%s\n", out);
+    if (out == NULL) { return Error.memory; }
+
+    FILE* file = NULL;
+    e$ret(io.fopen(&file, info_path, "wb"));
+    e$except (err, io.fwrite(file, out, str.len(out))) {
+        io.fclose(&file);
+        return err;
+    }
+    io.fclose(&file);
+    return EOK;
 }
 
 /// Builds and runs tests with coverage instrumentation

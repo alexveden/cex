@@ -201,6 +201,7 @@ jobs:
       - name: Merge tracefiles
         run: |
           lcov --ignore-errors inconsistent,mismatch,empty,unused,source,format,unsupported,corrupt \
+            --include 'src/*' --include 'cexstd/*' \
             -a 'tracefiles/coverage-${{ matrix.os }}-*.info' \
             -o coverage-merged-${{ matrix.os }}.info
           test -s coverage-merged-${{ matrix.os }}.info
@@ -208,7 +209,8 @@ jobs:
 
       - name: HTML report
         run: |
-          genhtml --quiet --ignore-errors inconsistent,mismatch,empty,unused,source,format,unsupported \
+          genhtml --quiet --filter missing \
+            --ignore-errors inconsistent,mismatch,empty,unused,source,format,unsupported \
             coverage-merged-${{ matrix.os }}.info -o html-${{ matrix.os }}
 
       - name: Upload merged report
@@ -218,4 +220,49 @@ jobs:
           path: |
             coverage-merged-${{ matrix.os }}.info
             html-${{ matrix.os }}/
+          if-no-files-found: error
+
+  # Union the per-OS reports into one global report (runs on a single platform)
+  coverage-merge-all:
+    name: merge-all
+    needs: [coverage-merge]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout cex
+        uses: actions/checkout@v4
+
+      - name: Install coverage tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lcov
+
+      - name: Download per-OS reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-merged-*
+          merge-multiple: true
+          path: merged
+
+      - name: Merge all platforms
+        run: |
+          lcov --ignore-errors inconsistent,mismatch,empty,unused,source,format,unsupported,corrupt \
+            -a 'merged/coverage-merged-*.info' \
+            -o coverage-global.info
+          test -s coverage-global.info
+          grep -q '^SF:' coverage-global.info
+
+      - name: HTML report
+        run: |
+          genhtml --quiet --filter missing \
+            --ignore-errors inconsistent,mismatch,empty,unused,source,format,unsupported \
+            coverage-global.info -o html-global
+
+      - name: Upload global report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-global
+          path: |
+            coverage-global.info
+            html-global/
           if-no-files-found: error
