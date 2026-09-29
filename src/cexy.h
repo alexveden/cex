@@ -318,12 +318,9 @@ low-level compiler tools are exposed for custom builds.
 ```c
 // file: ./cex.c  (project root, next to cex.h)
 #if __has_include("cex_config.h")
-#    include "cex_config.h"                    // persisted config, takes priority
-#elif defined(MY_DEBUG)                        // enable with: ./cex -DMY_DEBUG config
-#    define cexy$cc_args "-Wall", "-Wextra", "-Werror", "-g3", "-O0"
-#    define CEX_LOG_LVL 5
+#    include "cex_config.h"                  // persisted config, takes priority
 #else
-#    define cexy$cc_include "-I.", "-I./lib"   // redefine any cexy$ setting
+#    define cexy$cc_include "-I.", "-I./lib" // redefine any cexy$ setting
 #    define CEX_LOG_LVL 4
 #endif
 

@@ -455,7 +455,7 @@ test$case(test_help_idioms_only)
     {
         char* content = io.file.load(out_path, _);
         tassert(content);
-        tassert(str.find(content, "Pattern matching 101"));
+        tassert(str.find(content, "## Strings"));
         tassert(!str.find(content, "str.find("));
         tassert(!str.find(content, "#define str$"));
         tassert(!str.find(content, "namespace str"));
@@ -480,7 +480,7 @@ test$case(test_help_brief_idioms)
     {
         char* content = io.file.load(out_path, _);
         tassert(content);
-        tassert(str.find(content, "Pattern matching 101"));
+        tassert(str.find(content, "## Strings"));
         tassert(str.find(content, "namespace str"));
         tassert(str.find(content, "str.find("));
     }

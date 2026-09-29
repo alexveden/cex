@@ -38,31 +38,19 @@ just like a regular dynamic array.
 ```c
 hm$(int, int) intmap = hm$new(intmap, mem$);
 
-// hm$set replaces the value if the key already exists
-hm$set(intmap, 15, 7);
+hm$set(intmap, 15, 7); // replaces the value if the key already exists
 hm$set(intmap, 11, 3);
-hm$set(intmap, 9, 5);
-
-// hm$len and arr$len are equivalent for hashmaps
-io.printf("len=%zu\n", hm$len(intmap));
 
 // get by value — returns a default (0 or custom) if key is missing
-io.printf("val for 9=%d\n", hm$get(intmap, 9, -1));
+int v = hm$get(intmap, 9, -1);
 
 // get by pointer — NULL if not found (no copy, direct pointer into storage)
 int* vp = hm$getp(intmap, 11);
-if (vp) io.printf("got %d\n", *vp);
 
-// deleting a non-existent key is safe (no-op)
-hm$del(intmap, 100);
+hm$del(intmap, 100); // deleting a non-existent key is safe (no-op)
+hm$clear(intmap);    // clear all entries (does not free the hashmap)
 
-// gotcha: hm$del may reorder the backing array — do not rely on
-// insertion order after deletions
-
-// clear all entries (does not free the hashmap itself)
-hm$clear(intmap);
-
-// iteration works just like arr$
+// hm$len and arr$len are equivalent; iteration works like arr$
 for$each (it, intmap) {
     io.printf("key=%d, value=%d\n", it.key, it.value);
 }
@@ -70,83 +58,41 @@ for$each (it, intmap) {
 hm$free(intmap);
 ```
 
-- Using hashmap as field of other struct
+- String keys (copy mode)
+
 ```c
-typedef hm$(char*, int) MyHashmap;
-
-struct my_hm_struct {
-    MyHashmap hm;
-};
-
-struct my_hm_struct hs = {0};
-
-// .copy_keys = true makes the hashmap duplicate char* keys internally
-// without it, the key pointer must outlive the hashmap
-hm$new(hs.hm, mem$, .copy_keys = true);
-
-// gotcha: "foo" is a string literal — with .copy_keys it is safe;
-// without .copy_keys, the literal pointer is stored directly (valid for
-// string literals, but not for stack buffers that go out of scope)
-hm$set(hs.hm, "foo", 3);
-
-hm$free(hs.hm);
-```
-
-- Storing string keys in the arena
-```c
-// .copy_keys_arena_pgsize = 1024 allocates key copies from an internal
-// arena with 1 KiB pages — avoids per-key malloc overhead
+// .copy_keys = true duplicates char* keys internally; otherwise the key
+// pointer must outlive the hashmap
+// .copy_keys_arena_pgsize = 1024 allocates key copies from an internal arena
 hm$(char*, int) smap = hm$new(smap, mem$, .copy_keys = true,
                                .copy_keys_arena_pgsize = 1024);
 
-char key2[10] = "foo";
+char key[10] = "foo";
+hm$set(smap, key, 3);
+memset(key, 0, sizeof(key)); // stored key is a copy, unaffected
 
-hm$set(smap, key2, 3);
-io.printf("len=%zu, val=%d\n", hm$len(smap), hm$get(smap, "foo", -1));
-
-// gotcha: after setting key2, the hashmap copied the string into the
-// arena. Overwriting the original buffer does NOT affect stored keys.
-memset(key2, 0, sizeof(key2));
-io.printf("after zero: key='%s' val=%d\n", smap[0].key, hm$get(smap, "foo", -1));
-
-hm$free(smap);   // also destroys the internal key arena
+hm$free(smap); // also destroys the internal key arena
 ```
 
-- Checking errors + custom struct backing
+- Custom struct backing via hm$s
+
 ```c
 struct my_rec_s
 {
-    usize key;    // .key field is mandatory for hm$s
+    usize key; // .key field is mandatory for hm$s (located via offsetof)
     usize foo;
     usize bar;
 };
 
-// hm$new returns NULL on memory error — always check in production code
-hm$(int, int) intmap;
-if (hm$new(intmap, mem$) == NULL) {
-    // initialization error
-    return;
-}
-
-// custom struct as hashmap backend via hm$s(S)
-// gotcha: the struct MUST have a `.key` field, hm$s(S) uses offsetof()
-// to locate it. The rest of the struct is the value payload.
+// hm$new returns NULL on memory error — always check (or use uassert)
 hm$s(struct my_rec_s) smap = hm$new(smap, mem$);
-if (smap == NULL) {
-    hm$free(intmap);
-    return;
-}
 
-// hm$sets writes a full record (struct with .key)
 hm$sets(smap, ((struct my_rec_s){ .key = 1, .foo = 10, .bar = 20 }));
-io.printf("len=%zu, foo=%zu\n", hm$len(smap), smap[0].foo);
 
-// hm$gets returns pointer to full record, NULL if not found
+// hm$gets returns a pointer to the full record, NULL if not found
 struct my_rec_s* r = hm$gets(smap, 1);
-if (r) io.printf("found: foo=%zu bar=%zu\n", r->foo, r->bar);
 
 hm$free(smap);
-hm$free(intmap);
 ```
 
 

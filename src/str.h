@@ -115,41 +115,34 @@ All CEX routines with format strings (`io.printf()`, `log$error()`, `str.fmt()`,
 - Working with slices
 ```c
 char* cstr = "hello";
-str_s s = str.sstr(cstr);   // (str_s){.buf = "hello", .len = 5}
-usize n = str.len(cstr);    // 5
+str_s s = str.sstr(cstr); // (str_s){.buf = "hello", .len = 5}
+usize n = str.len(cstr);  // 5
 ```
 
 - Getting substring as slices
 ```c
-str.sub("123456", 0, 0);      // slice: 123456
-str.sub("123456", 1, 0);      // slice: 23456
 str.sub("123456", 1, -1);     // slice: 2345
 str.sub("123456", -3, -1);    // slice: 45
 str.sub("123456", -30, 2000); // slice: 123456 (out-of-range clamps, no crash)
 
-// works with slices too
 str_s s = str.sstr("123456");
 str_s sub = str.slice.sub(s, 1, 2); // slice: 2
 ```
 
 - Splitting / iterating via tokens
 ```c
-// Working without mem allocation
+// zero-allocation iteration (it.val is a non-null-terminated slice — use %S)
 str_s s = str.sstr("123,456");
 for$iter (str_s, it, str.slice.iter_split(s, ",", &it.iterator)) {
-    io.printf("%S\n", it.val); // NOTE: it.val is non null-terminated slice
+    io.printf("%S\n", it.val);
 }
-// 123
-// 456
 
-// Mem allocating split
+// mem-allocating split: each item is a cloned C-string
 mem$scope(tmem$, _)
 {
-    // NOTE: each `res` item is a cloned C-string, use tmem$ or deallocate independently
     arr$(char*) res = str.split("123,456,789", ",", _); // NULL on error
-
     for$each (v, res) {
-        io.printf("%s\n", v); // NOTE: strings now cloned and null-terminated
+        io.printf("%s\n", v);
     }
 }
 ```
@@ -158,39 +151,25 @@ mem$scope(tmem$, _)
 ```c
 mem$scope(tmem$, _)
 {
-    char* s = str.fmt(_, "hi there"); // NULL on error
-    s = str.replace(s, "hi", "hello", _); // NULL tolerant, NULL on error
-    s = str.fmt(_, "result is: %s", s); // NULL tolerant, NULL on error
-    if (s == NULL) {
-        // TODO: oops error occurred, in one of three operations, but we don't need to check each one
-    }
-    // s == "result is: hello there"
+    // each op is NULL tolerant and returns NULL on error, so check once at the end
+    char* s = str.fmt(_, "hi there");
+    s = str.replace(s, "hi", "hello", _);
+    s = str.fmt(_, "result is: %s", s); // "result is: hello there"
+    if (s == NULL) { return; } // handle error
 }
 ```
 
 - Pattern matching
 ```c
-// Pattern matching 101
-// * - zero or more characters
-// ? - one character
-// [abc] - one character a or b or c
-// [!abc] - one character, but not a or b or c
-// [abc+] - one or more characters a or b or c
-// [a-cA-C0-9] - one character in a range of characters
-// \\* - escaping literal '*'
-// (abc|def|xyz) - matching combination of words abc or def or xyz
+// * zero+ chars | ? one char | [abc] one of | [!abc] none of | [abc+] one+
+// [a-c0-9] range | \\* literal | (abc|def|xyz) alternatives
 
 str.match("test.txt", "*?txt");                      // true
 str.match("image.png", "image.[jp][pn]g");           // true
 str.match("backup.txt", "[!a]*.txt");                // true
-str.match("D", "[a-cA-C0-9]");                       // false
-str.match("1234567890abcdefABCDEF", "[0-9a-fA-F+]"); // true
 str.match("create", "(run|build|create|clean)");     // true
 
-// Works with slices
 str_s src = str$s("my_test __String.txt");
-str.slice.match(src, "*");            // true
-str.slice.match(src, "*.txt*");       // true
 str.slice.match(src, "my_test*.txt"); // true
 ```
 

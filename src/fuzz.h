@@ -138,31 +138,7 @@ fuzz$case(const u8* data, usize size)
 `fuzz.create()` wraps the raw input; `fuzz.dget()` copies the next `sizeof(*ptr)` bytes
 and returns `false` once the input is exhausted. `fuzz.dprob()` consumes one byte as a
 probability (threshold must be `> 1/255` and `< 1.0`). The `fuzz$` macros are shortcuts
-over the same API.
-
-```c
-int
-fuzz$case(const u8* data, usize size)
-{
-    cex_fuzz_s fz = fuzz.create(data, size);
-    u16 val = 0;
-    my_struct_s st = { 0 };
-
-    while (fuzz.dget(&fz, &val, sizeof(val))) {
-        my_func(val);
-
-        // branch on input-driven probability (20% here)
-        if (fuzz.dprob(&fz, 0.2)) { my_func(val * 10); }
-
-        // whole structs can be filled too
-        if (fuzz.dget(&fz, &st, sizeof(st))) { my_func_struct(&st); }
-    }
-
-    return 0;
-}
-```
-
-The `fuzz$` macros drop the `fz` variable and `sizeof` bookkeeping:
+that drop the `fz` variable and `sizeof` bookkeeping:
 
 ```c
 int

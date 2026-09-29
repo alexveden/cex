@@ -2,7 +2,83 @@
 
 ### Build system
 
-Build system config (`cexy$*`) and the `./cex` CLI command API.
+`cexy$` is CEX's integrated build system (no CMake/Make/Ninja). The build script is C code
+in `./cex.c` — it must live in the project root next to `cex.h`. `./cex` is the project CLI
+for build/test/fuzz/app/process/help. Simple config-driven mode covers most projects;
+low-level compiler tools are exposed for custom builds.
+
+- Configure with `#define cexy$<var>` before `#include "cex.h"` (or in `cex_config.h`)
+- `./cex -DSOME config` rebuilds `./cex` with `-DSOME` baked in (gate overrides with `#ifdef SOME`);
+  `./cex -D config` resets. The `-D` flags must come before the `config` command.
+- Conventions: sources in `cexy$src_dir` (`./src`), app `main()` in `src/<name>.c` or
+  `src/<name>/main.c`, tests in `tests/test_<name>.c`; unity build (no objects/link stage)
+- Debug builds precompile `cex.h` into a cached `.obj`; disable with `#define cexy$disable_cex_precompiling`
+- CLI: `./cex {help,process,new,stats,config,libfetch,test,fuzz,app} [options]`
+
+#### Getting more help
+
+- `./cex help cexy$` — all `cexy$*` config vars + the `cexy` namespace API
+- `./cex config` — current `cexy$*` values and toolchain
+- `./cex help --source cexy.cmd.simple_app` — source of the built-in app build routine
+- `./cex help --source cexy.cmd.simple_test` — source of the built-in test runner
+- `./cex help --example cexy.utils.git_lib_fetch` — real usage examples from the codebase
+- `./cex test --help` / `./cex app --help` / `./cex fuzz --help` — per-command help
+- `./cex help --agents` — dump the CEX namespace idioms (AGENTS.md content)
+
+#### Example: `./cex.c` in the project root
+
+```c
+// file: ./cex.c  (project root, next to cex.h)
+#if __has_include("cex_config.h")
+#    include "cex_config.h"                  // persisted config, takes priority
+#else
+#    define cexy$cc_include "-I.", "-I./lib" // redefine any cexy$ setting
+#    define CEX_LOG_LVL 4
+#endif
+
+#define CEX_IMPLEMENTATION
+#define CEX_BUILD
+
+Exception cmd_mybuild(int argc, char** argv, void* user_ctx);
+
+int
+main(int argc, char** argv)
+{
+    cexy$initialize(); // rebuild ./cex when cex.h/cex.c change
+    argparse_c args = {
+        .description = cexy$description,
+        .epilog = cexy$epilog,
+        .usage = cexy$usage,
+        argparse$cmd_list(
+            cexy$cmd_all,
+            cexy$cmd_test, // built-in test runner
+            cexy$cmd_app,  // built-in app runner
+            { .name = "my-build", .func = cmd_mybuild, .help = "Custom build command" },
+        ),
+    };
+    if (argparse.parse(&args, argc, argv)) { return 1; }
+    e$except (err, argparse.run_command(&args, NULL)) {
+        e$traceback_print(stderr);
+        return 1;
+    }
+    return 0;
+}
+
+/// Custom command: run with `./cex my-build`
+Exception
+cmd_mybuild(int argc, char** argv, void* user_ctx)
+{
+    (void)argc;
+    (void)argv;
+    (void)user_ctx;
+    mem$scope(tmem$, _)
+    {
+        char* target = cexy.target_make("src/myapp.c", cexy$build_dir, "myapp", _);
+        e$ret(os$cmd(cexy$cc, "-o", target, "src/myapp.c"));
+    }
+    return EOK;
+}
+```
 
 
 

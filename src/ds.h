@@ -36,50 +36,24 @@ pointer or fat-pointer indirection. The runtime header
 // heap allocator — must call arr$free() later, or use mem$scope() for automatic cleanup
 arr$(i32) array = arr$new(array, mem$);
 
-arr$pushm(array, 1, 2, 3);   // multiple elements at once (compound-literal temp array)
-arr$push(array, 4);          // single element
+arr$pushm(array, 1, 2, 3); // multiple elements at once (compound-literal temp array)
+arr$push(array, 4);        // single element
 
-io.printf("len=%zu\n", arr$len(array));  // works on arr$, hm$, static C arrays, pointer+len
-
-// iteration by value — copies each element into `it` (≤ CEX_FOREACH_MAX_COPY_SIZE bytes)
-for$each(it, array) {
+for$each (it, array) {
     io.printf("el=%d\n", it);
 }
 
-// iteration by pointer — no copy, prefer for large structs
-// TIP: derive index from pointer subtraction
-for$eachp(it, array) {
-    io.printf("el[%zu]=%d\n", (usize)(it - array), *it);
-}
-
-// gotcha: memory not freed until arr$free() — safe to call on NULL (no-op)
-arr$free(array);
+arr$free(array); // safe to call on NULL (no-op)
 ```
 
 - Array of structs
-```c
-typedef struct
-{
-    int key;
-    float my_val;
-    char* my_string;
-    int value;
-} my_struct;
 
-// pre-allocate capacity to avoid early reallocs; .capacity is optional,
-// defaults to 16 if omitted
+```c
+// .capacity is optional, defaults to 16; pre-allocate to avoid early reallocs
 arr$(my_struct) array = arr$new(array, mem$, .capacity = 128);
 
-// gotcha: structs are copied by value into the array — the source can
-// be reused or stack-allocated. For pointer-heavy structs you may need
-// deep-copy semantics handled by your own code.
-arr$push(array, ((my_struct){ 20, 5.0f, "hello", 0 }));
-arr$push(array, ((my_struct){ 40, 2.5f, "world", 0 }));
-
-// arr$len() works on both arr$ and static C arrays
-for (usize i = 0; i < arr$len(array); ++i) {
-    io.printf("key: %d str: %s\n", array[i].key, array[i].my_string);
-}
+// structs are copied by value into the array — the source may be stack-allocated
+arr$push(array, ((my_struct){ .key = 20, .my_string = "hello" }));
 
 arr$free(array);
 ```
@@ -365,47 +339,23 @@ arr$(int) array = arr$new(array, mem$);
 arr$pushm(array, 1, 2, 3);
 
 // for$each copies elements by value (up to CEX_FOREACH_MAX_COPY_SIZE bytes)
-for$each(it, array) {
+for$each (it, array) {
     io.printf("el=%d\n", it);
 }
-// Prints:
-// el=1
-// el=2
-// el=3
 
 // for$eachp provides a pointer — no copy, prefer for large structs
-for$eachp(it, array) {
+for$eachp (it, array) {
     // TIP: derive index from pointer subtraction
     usize i = (usize)(it - array);
-
     io.printf("el[%zu]=%d\n", i, *it);
 }
-// Prints:
-// el[0]=1
-// el[1]=2
-// el[2]=3
 
-// Static C arrays work too — arr$len() inferred from sizeof
-i32 arr_int[] = {1, 2, 3, 4, 5};
-for$each(it, arr_int) {
-    io.printf("static=%d\n", it);
-}
-// Prints:
-// static=1
-// static=2
-// static=3
-// static=4
-// static=5
+arr$free(array);
+```
 
-// Pointer+length slice — pass len as third arg
-i32* slice = &arr_int[2];
-for$each(it, slice, 2) {
-    io.printf("slice=%d\n", it);
-}
-// Prints:
-// slice=3
-// slice=4
+- Custom iterator (tokens, generators, splitters)
 
+```c
 // for$iter uses a custom iterator function and cex_iterator_s
 // NOTE: str_s is passed by value (stack-allocated slice)
 str_s s = str.sstr("123,456");
@@ -413,11 +363,6 @@ for$iter (str_s, it, str.slice.iter_split(s, ",", &it.iterator)) {
     // gotcha: it.val is a non-null-terminated slice — use %S, not %s
     io.printf("it.val = %S\n", it.val);
 }
-// Prints:
-// it.val = 123
-// it.val = 456
-
-arr$free(array);
 ```
 
 */
@@ -579,31 +524,19 @@ just like a regular dynamic array.
 ```c
 hm$(int, int) intmap = hm$new(intmap, mem$);
 
-// hm$set replaces the value if the key already exists
-hm$set(intmap, 15, 7);
+hm$set(intmap, 15, 7); // replaces the value if the key already exists
 hm$set(intmap, 11, 3);
-hm$set(intmap, 9, 5);
-
-// hm$len and arr$len are equivalent for hashmaps
-io.printf("len=%zu\n", hm$len(intmap));
 
 // get by value — returns a default (0 or custom) if key is missing
-io.printf("val for 9=%d\n", hm$get(intmap, 9, -1));
+int v = hm$get(intmap, 9, -1);
 
 // get by pointer — NULL if not found (no copy, direct pointer into storage)
 int* vp = hm$getp(intmap, 11);
-if (vp) io.printf("got %d\n", *vp);
 
-// deleting a non-existent key is safe (no-op)
-hm$del(intmap, 100);
+hm$del(intmap, 100); // deleting a non-existent key is safe (no-op)
+hm$clear(intmap);    // clear all entries (does not free the hashmap)
 
-// gotcha: hm$del may reorder the backing array — do not rely on
-// insertion order after deletions
-
-// clear all entries (does not free the hashmap itself)
-hm$clear(intmap);
-
-// iteration works just like arr$
+// hm$len and arr$len are equivalent; iteration works like arr$
 for$each (it, intmap) {
     io.printf("key=%d, value=%d\n", it.key, it.value);
 }
@@ -611,83 +544,41 @@ for$each (it, intmap) {
 hm$free(intmap);
 ```
 
-- Using hashmap as field of other struct
+- String keys (copy mode)
+
 ```c
-typedef hm$(char*, int) MyHashmap;
-
-struct my_hm_struct {
-    MyHashmap hm;
-};
-
-struct my_hm_struct hs = {0};
-
-// .copy_keys = true makes the hashmap duplicate char* keys internally
-// without it, the key pointer must outlive the hashmap
-hm$new(hs.hm, mem$, .copy_keys = true);
-
-// gotcha: "foo" is a string literal — with .copy_keys it is safe;
-// without .copy_keys, the literal pointer is stored directly (valid for
-// string literals, but not for stack buffers that go out of scope)
-hm$set(hs.hm, "foo", 3);
-
-hm$free(hs.hm);
-```
-
-- Storing string keys in the arena
-```c
-// .copy_keys_arena_pgsize = 1024 allocates key copies from an internal
-// arena with 1 KiB pages — avoids per-key malloc overhead
+// .copy_keys = true duplicates char* keys internally; otherwise the key
+// pointer must outlive the hashmap
+// .copy_keys_arena_pgsize = 1024 allocates key copies from an internal arena
 hm$(char*, int) smap = hm$new(smap, mem$, .copy_keys = true,
                                .copy_keys_arena_pgsize = 1024);
 
-char key2[10] = "foo";
+char key[10] = "foo";
+hm$set(smap, key, 3);
+memset(key, 0, sizeof(key)); // stored key is a copy, unaffected
 
-hm$set(smap, key2, 3);
-io.printf("len=%zu, val=%d\n", hm$len(smap), hm$get(smap, "foo", -1));
-
-// gotcha: after setting key2, the hashmap copied the string into the
-// arena. Overwriting the original buffer does NOT affect stored keys.
-memset(key2, 0, sizeof(key2));
-io.printf("after zero: key='%s' val=%d\n", smap[0].key, hm$get(smap, "foo", -1));
-
-hm$free(smap);   // also destroys the internal key arena
+hm$free(smap); // also destroys the internal key arena
 ```
 
-- Checking errors + custom struct backing
+- Custom struct backing via hm$s
+
 ```c
 struct my_rec_s
 {
-    usize key;    // .key field is mandatory for hm$s
+    usize key; // .key field is mandatory for hm$s (located via offsetof)
     usize foo;
     usize bar;
 };
 
-// hm$new returns NULL on memory error — always check in production code
-hm$(int, int) intmap;
-if (hm$new(intmap, mem$) == NULL) {
-    // initialization error
-    return;
-}
-
-// custom struct as hashmap backend via hm$s(S)
-// gotcha: the struct MUST have a `.key` field, hm$s(S) uses offsetof()
-// to locate it. The rest of the struct is the value payload.
+// hm$new returns NULL on memory error — always check (or use uassert)
 hm$s(struct my_rec_s) smap = hm$new(smap, mem$);
-if (smap == NULL) {
-    hm$free(intmap);
-    return;
-}
 
-// hm$sets writes a full record (struct with .key)
 hm$sets(smap, ((struct my_rec_s){ .key = 1, .foo = 10, .bar = 20 }));
-io.printf("len=%zu, foo=%zu\n", hm$len(smap), smap[0].foo);
 
-// hm$gets returns pointer to full record, NULL if not found
+// hm$gets returns a pointer to the full record, NULL if not found
 struct my_rec_s* r = hm$gets(smap, 1);
-if (r) io.printf("found: foo=%zu bar=%zu\n", r->foo, r->bar);
 
 hm$free(smap);
-hm$free(intmap);
 ```
 
 */

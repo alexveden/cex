@@ -37,16 +37,12 @@ switch `tmem$` to `mem$` to triage use-after-poison
 - Vanilla heap allocator
 ```c
 u8* p = mem$malloc(mem$, 100);
-
-// mem$free always nullifies the pointer
-mem$free(mem$, p);
-// p == NULL
+mem$free(mem$, p); // mem$free always nullifies the pointer (p == NULL)
 
 p = mem$calloc(mem$, 100, 100, 32); // zeroed, 32-byte alignment
 mem$free(mem$, p);
 
-// Allocates a zero-initialized struct of the given type
-auto my_item = mem$new(mem$, struct my_type_s);
+auto my_item = mem$new(mem$, struct my_type_s); // zero-initialized struct
 mem$free(mem$, my_item);
 ```
 
@@ -63,50 +59,30 @@ mem$scope(tmem$, _)
 }
 ```
 
-- Arena Scope (two forms)
+- Arena scope
 
 ```c
-// form 1 — integer page_size
 mem$arena_scope(4096, arena)
-{
-    u8* p = mem$malloc(arena, 100);
-}
-
-// form 2 — AllocatorArena_kw pointer
-mem$arena_scope(&(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true }, arena)
 {
     u8* p = mem$malloc(arena, 100);
 }
 ```
 
-- Arena Instance
+- Arena instance
 
 ```c
-// scoped arena (default): allocations are freed at mem$scope() exit
+// scoped arena (default): mem$scope() frees its allocations, destroy() frees the rest
 IAllocator arena = AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 4096 });
 
-u8* p = mem$malloc(arena, 100); // top-level allocation, freed at AllocatorArena.destroy()
+u8* p = mem$malloc(arena, 100); // top-level allocation, freed at destroy()
 
 mem$scope(arena, tal)
 {
-    u8* p2 = mem$malloc(tal, 100000); // freed at this scope exit
-
-    mem$scope(arena, tal)
-    {
-        u8* p3 = mem$malloc(tal, 100); // freed at nested scope exit
-    }
+    u8* p2 = mem$malloc(tal, 100); // freed at this scope exit
 }
 
 AllocatorArena.destroy(arena); // must not be called inside mem$scope
-
-// manual mode: .disable_scopes = true makes mem$scope() a no-op, destroy() frees everything
-IAllocator arena_manual =
-    AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true });
-
-u8* p4 = mem$malloc(arena_manual, 100); // direct use allowed
-
-AllocatorArena.destroy(arena_manual);
-
+// .disable_scopes = true makes mem$scope() a no-op; destroy() frees everything
 ```
 
 

@@ -524,64 +524,43 @@ Errors are `char*` pointers:
 Exception
 remove_file(char* path)
 {
-    if (path == NULL || path[0] == '\0') {
-        // WARNING: plain return doesn't register a traceback frame, prefer e$raise()
-        return Error.argument;  // returns a pointer to a static const string
-    }
+    e$assert(path != NULL && path[0] != '\0');
+
     if (!os.path.exists(path)) {
-        // WARNING: plain return doesn't register a traceback frame, prefer e$raise()
-        return "Not exists"; // literal errors are allowed, but must be handled as strcmp()
-    }
-    if (str.eq(path, "magic.file")) {
-        // Records an origin traceback frame tagged Error.integrity
-        return e$raise(Error.integrity, "Removing magic file is not allowed!");
+        // records an origin traceback frame tagged Error.not_found
+        return e$raise(Error.not_found, "file does not exist");
     }
     if (remove(path) < 0) {
-        return strerror(errno); // using system error text (arbitrary!)
+        return strerror(errno); // plain return: no traceback frame
     }
     return EOK;
 }
 
 Exception
-read_file(char* filename, char* buf, usize buf_size)
+do_stuff(char* path)
 {
-    e$assert(buf != NULL);
-
     int fd = 0;
-    e$except_errno(fd = open(filename, O_RDONLY)) { return Error.os; }
-    return EOK;
-}
 
-Exception
-do_stuff(char* filename)
-{
-    char buf[256] = {0};
+    // return immediately with the error + record a traceback frame
+    e$ret(remove_file(path));
 
-    // return immediately with error + records a traceback frame
-    e$ret(read_file(filename, buf, sizeof(buf)));
+    // jump to `fail` on error + record a traceback frame
+    e$goto(remove_file(path), fail);
 
-    // jumps to label if read_file() fails + records a traceback frame
-    e$goto(read_file(filename, buf, sizeof(buf)), fail);
+    // origin error handler for -1 + errno
+    e$except_errno(fd = open(path, O_RDONLY)) { return Error.os; }
 
-    // error handling with tracebacks
-    e$except (err, foo(0)) {
-
-        // Nesting of error handlers is allowed
-        e$except (err, foo(2)) { return err; }
-
-        // NOTE: `err` is address of char* compared with address Error.os (not by string contents!)
-        if (err == Error.os) {
-            // Special handing
-            io.printf("Ooops OS problem\n");
+    // handle a specific error, propagate the rest; `err` compares by address
+    e$except (err, foo(path)) {
+        if (err == Error.not_found) {
+            io.printf("oops\n");
         } else {
-            // propagate
             return err;
         }
     }
     return EOK;
 
 fail:
-    // TODO: cleanup here
     return Error.io;
 }
 ```
@@ -1004,16 +983,12 @@ switch `tmem$` to `mem$` to triage use-after-poison
 - Vanilla heap allocator
 ```c
 u8* p = mem$malloc(mem$, 100);
-
-// mem$free always nullifies the pointer
-mem$free(mem$, p);
-// p == NULL
+mem$free(mem$, p); // mem$free always nullifies the pointer (p == NULL)
 
 p = mem$calloc(mem$, 100, 100, 32); // zeroed, 32-byte alignment
 mem$free(mem$, p);
 
-// Allocates a zero-initialized struct of the given type
-auto my_item = mem$new(mem$, struct my_type_s);
+auto my_item = mem$new(mem$, struct my_type_s); // zero-initialized struct
 mem$free(mem$, my_item);
 ```
 
@@ -1030,50 +1005,30 @@ mem$scope(tmem$, _)
 }
 ```
 
-- Arena Scope (two forms)
+- Arena scope
 
 ```c
-// form 1 — integer page_size
 mem$arena_scope(4096, arena)
-{
-    u8* p = mem$malloc(arena, 100);
-}
-
-// form 2 — AllocatorArena_kw pointer
-mem$arena_scope(&(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true }, arena)
 {
     u8* p = mem$malloc(arena, 100);
 }
 ```
 
-- Arena Instance
+- Arena instance
 
 ```c
-// scoped arena (default): allocations are freed at mem$scope() exit
+// scoped arena (default): mem$scope() frees its allocations, destroy() frees the rest
 IAllocator arena = AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 4096 });
 
-u8* p = mem$malloc(arena, 100); // top-level allocation, freed at AllocatorArena.destroy()
+u8* p = mem$malloc(arena, 100); // top-level allocation, freed at destroy()
 
 mem$scope(arena, tal)
 {
-    u8* p2 = mem$malloc(tal, 100000); // freed at this scope exit
-
-    mem$scope(arena, tal)
-    {
-        u8* p3 = mem$malloc(tal, 100); // freed at nested scope exit
-    }
+    u8* p2 = mem$malloc(tal, 100); // freed at this scope exit
 }
 
 AllocatorArena.destroy(arena); // must not be called inside mem$scope
-
-// manual mode: .disable_scopes = true makes mem$scope() a no-op, destroy() frees everything
-IAllocator arena_manual =
-    AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true });
-
-u8* p4 = mem$malloc(arena_manual, 100); // direct use allowed
-
-AllocatorArena.destroy(arena_manual);
-
+// .disable_scopes = true makes mem$scope() a no-op; destroy() frees everything
 ```
 
 */
@@ -1484,50 +1439,24 @@ pointer or fat-pointer indirection. The runtime header
 // heap allocator — must call arr$free() later, or use mem$scope() for automatic cleanup
 arr$(i32) array = arr$new(array, mem$);
 
-arr$pushm(array, 1, 2, 3);   // multiple elements at once (compound-literal temp array)
-arr$push(array, 4);          // single element
+arr$pushm(array, 1, 2, 3); // multiple elements at once (compound-literal temp array)
+arr$push(array, 4);        // single element
 
-io.printf("len=%zu\n", arr$len(array));  // works on arr$, hm$, static C arrays, pointer+len
-
-// iteration by value — copies each element into `it` (≤ CEX_FOREACH_MAX_COPY_SIZE bytes)
-for$each(it, array) {
+for$each (it, array) {
     io.printf("el=%d\n", it);
 }
 
-// iteration by pointer — no copy, prefer for large structs
-// TIP: derive index from pointer subtraction
-for$eachp(it, array) {
-    io.printf("el[%zu]=%d\n", (usize)(it - array), *it);
-}
-
-// gotcha: memory not freed until arr$free() — safe to call on NULL (no-op)
-arr$free(array);
+arr$free(array); // safe to call on NULL (no-op)
 ```
 
 - Array of structs
-```c
-typedef struct
-{
-    int key;
-    float my_val;
-    char* my_string;
-    int value;
-} my_struct;
 
-// pre-allocate capacity to avoid early reallocs; .capacity is optional,
-// defaults to 16 if omitted
+```c
+// .capacity is optional, defaults to 16; pre-allocate to avoid early reallocs
 arr$(my_struct) array = arr$new(array, mem$, .capacity = 128);
 
-// gotcha: structs are copied by value into the array — the source can
-// be reused or stack-allocated. For pointer-heavy structs you may need
-// deep-copy semantics handled by your own code.
-arr$push(array, ((my_struct){ 20, 5.0f, "hello", 0 }));
-arr$push(array, ((my_struct){ 40, 2.5f, "world", 0 }));
-
-// arr$len() works on both arr$ and static C arrays
-for (usize i = 0; i < arr$len(array); ++i) {
-    io.printf("key: %d str: %s\n", array[i].key, array[i].my_string);
-}
+// structs are copied by value into the array — the source may be stack-allocated
+arr$push(array, ((my_struct){ .key = 20, .my_string = "hello" }));
 
 arr$free(array);
 ```
@@ -1813,47 +1742,23 @@ arr$(int) array = arr$new(array, mem$);
 arr$pushm(array, 1, 2, 3);
 
 // for$each copies elements by value (up to CEX_FOREACH_MAX_COPY_SIZE bytes)
-for$each(it, array) {
+for$each (it, array) {
     io.printf("el=%d\n", it);
 }
-// Prints:
-// el=1
-// el=2
-// el=3
 
 // for$eachp provides a pointer — no copy, prefer for large structs
-for$eachp(it, array) {
+for$eachp (it, array) {
     // TIP: derive index from pointer subtraction
     usize i = (usize)(it - array);
-
     io.printf("el[%zu]=%d\n", i, *it);
 }
-// Prints:
-// el[0]=1
-// el[1]=2
-// el[2]=3
 
-// Static C arrays work too — arr$len() inferred from sizeof
-i32 arr_int[] = {1, 2, 3, 4, 5};
-for$each(it, arr_int) {
-    io.printf("static=%d\n", it);
-}
-// Prints:
-// static=1
-// static=2
-// static=3
-// static=4
-// static=5
+arr$free(array);
+```
 
-// Pointer+length slice — pass len as third arg
-i32* slice = &arr_int[2];
-for$each(it, slice, 2) {
-    io.printf("slice=%d\n", it);
-}
-// Prints:
-// slice=3
-// slice=4
+- Custom iterator (tokens, generators, splitters)
 
+```c
 // for$iter uses a custom iterator function and cex_iterator_s
 // NOTE: str_s is passed by value (stack-allocated slice)
 str_s s = str.sstr("123,456");
@@ -1861,11 +1766,6 @@ for$iter (str_s, it, str.slice.iter_split(s, ",", &it.iterator)) {
     // gotcha: it.val is a non-null-terminated slice — use %S, not %s
     io.printf("it.val = %S\n", it.val);
 }
-// Prints:
-// it.val = 123
-// it.val = 456
-
-arr$free(array);
 ```
 
 */
@@ -2027,31 +1927,19 @@ just like a regular dynamic array.
 ```c
 hm$(int, int) intmap = hm$new(intmap, mem$);
 
-// hm$set replaces the value if the key already exists
-hm$set(intmap, 15, 7);
+hm$set(intmap, 15, 7); // replaces the value if the key already exists
 hm$set(intmap, 11, 3);
-hm$set(intmap, 9, 5);
-
-// hm$len and arr$len are equivalent for hashmaps
-io.printf("len=%zu\n", hm$len(intmap));
 
 // get by value — returns a default (0 or custom) if key is missing
-io.printf("val for 9=%d\n", hm$get(intmap, 9, -1));
+int v = hm$get(intmap, 9, -1);
 
 // get by pointer — NULL if not found (no copy, direct pointer into storage)
 int* vp = hm$getp(intmap, 11);
-if (vp) io.printf("got %d\n", *vp);
 
-// deleting a non-existent key is safe (no-op)
-hm$del(intmap, 100);
+hm$del(intmap, 100); // deleting a non-existent key is safe (no-op)
+hm$clear(intmap);    // clear all entries (does not free the hashmap)
 
-// gotcha: hm$del may reorder the backing array — do not rely on
-// insertion order after deletions
-
-// clear all entries (does not free the hashmap itself)
-hm$clear(intmap);
-
-// iteration works just like arr$
+// hm$len and arr$len are equivalent; iteration works like arr$
 for$each (it, intmap) {
     io.printf("key=%d, value=%d\n", it.key, it.value);
 }
@@ -2059,83 +1947,41 @@ for$each (it, intmap) {
 hm$free(intmap);
 ```
 
-- Using hashmap as field of other struct
+- String keys (copy mode)
+
 ```c
-typedef hm$(char*, int) MyHashmap;
-
-struct my_hm_struct {
-    MyHashmap hm;
-};
-
-struct my_hm_struct hs = {0};
-
-// .copy_keys = true makes the hashmap duplicate char* keys internally
-// without it, the key pointer must outlive the hashmap
-hm$new(hs.hm, mem$, .copy_keys = true);
-
-// gotcha: "foo" is a string literal — with .copy_keys it is safe;
-// without .copy_keys, the literal pointer is stored directly (valid for
-// string literals, but not for stack buffers that go out of scope)
-hm$set(hs.hm, "foo", 3);
-
-hm$free(hs.hm);
-```
-
-- Storing string keys in the arena
-```c
-// .copy_keys_arena_pgsize = 1024 allocates key copies from an internal
-// arena with 1 KiB pages — avoids per-key malloc overhead
+// .copy_keys = true duplicates char* keys internally; otherwise the key
+// pointer must outlive the hashmap
+// .copy_keys_arena_pgsize = 1024 allocates key copies from an internal arena
 hm$(char*, int) smap = hm$new(smap, mem$, .copy_keys = true,
                                .copy_keys_arena_pgsize = 1024);
 
-char key2[10] = "foo";
+char key[10] = "foo";
+hm$set(smap, key, 3);
+memset(key, 0, sizeof(key)); // stored key is a copy, unaffected
 
-hm$set(smap, key2, 3);
-io.printf("len=%zu, val=%d\n", hm$len(smap), hm$get(smap, "foo", -1));
-
-// gotcha: after setting key2, the hashmap copied the string into the
-// arena. Overwriting the original buffer does NOT affect stored keys.
-memset(key2, 0, sizeof(key2));
-io.printf("after zero: key='%s' val=%d\n", smap[0].key, hm$get(smap, "foo", -1));
-
-hm$free(smap);   // also destroys the internal key arena
+hm$free(smap); // also destroys the internal key arena
 ```
 
-- Checking errors + custom struct backing
+- Custom struct backing via hm$s
+
 ```c
 struct my_rec_s
 {
-    usize key;    // .key field is mandatory for hm$s
+    usize key; // .key field is mandatory for hm$s (located via offsetof)
     usize foo;
     usize bar;
 };
 
-// hm$new returns NULL on memory error — always check in production code
-hm$(int, int) intmap;
-if (hm$new(intmap, mem$) == NULL) {
-    // initialization error
-    return;
-}
-
-// custom struct as hashmap backend via hm$s(S)
-// gotcha: the struct MUST have a `.key` field, hm$s(S) uses offsetof()
-// to locate it. The rest of the struct is the value payload.
+// hm$new returns NULL on memory error — always check (or use uassert)
 hm$s(struct my_rec_s) smap = hm$new(smap, mem$);
-if (smap == NULL) {
-    hm$free(intmap);
-    return;
-}
 
-// hm$sets writes a full record (struct with .key)
 hm$sets(smap, ((struct my_rec_s){ .key = 1, .foo = 10, .bar = 20 }));
-io.printf("len=%zu, foo=%zu\n", hm$len(smap), smap[0].foo);
 
-// hm$gets returns pointer to full record, NULL if not found
+// hm$gets returns a pointer to the full record, NULL if not found
 struct my_rec_s* r = hm$gets(smap, 1);
-if (r) io.printf("found: foo=%zu bar=%zu\n", r->foo, r->bar);
 
 hm$free(smap);
-hm$free(intmap);
 ```
 
 */
@@ -2577,41 +2423,34 @@ All CEX routines with format strings (`io.printf()`, `log$error()`, `str.fmt()`,
 - Working with slices
 ```c
 char* cstr = "hello";
-str_s s = str.sstr(cstr);   // (str_s){.buf = "hello", .len = 5}
-usize n = str.len(cstr);    // 5
+str_s s = str.sstr(cstr); // (str_s){.buf = "hello", .len = 5}
+usize n = str.len(cstr);  // 5
 ```
 
 - Getting substring as slices
 ```c
-str.sub("123456", 0, 0);      // slice: 123456
-str.sub("123456", 1, 0);      // slice: 23456
 str.sub("123456", 1, -1);     // slice: 2345
 str.sub("123456", -3, -1);    // slice: 45
 str.sub("123456", -30, 2000); // slice: 123456 (out-of-range clamps, no crash)
 
-// works with slices too
 str_s s = str.sstr("123456");
 str_s sub = str.slice.sub(s, 1, 2); // slice: 2
 ```
 
 - Splitting / iterating via tokens
 ```c
-// Working without mem allocation
+// zero-allocation iteration (it.val is a non-null-terminated slice — use %S)
 str_s s = str.sstr("123,456");
 for$iter (str_s, it, str.slice.iter_split(s, ",", &it.iterator)) {
-    io.printf("%S\n", it.val); // NOTE: it.val is non null-terminated slice
+    io.printf("%S\n", it.val);
 }
-// 123
-// 456
 
-// Mem allocating split
+// mem-allocating split: each item is a cloned C-string
 mem$scope(tmem$, _)
 {
-    // NOTE: each `res` item is a cloned C-string, use tmem$ or deallocate independently
     arr$(char*) res = str.split("123,456,789", ",", _); // NULL on error
-
     for$each (v, res) {
-        io.printf("%s\n", v); // NOTE: strings now cloned and null-terminated
+        io.printf("%s\n", v);
     }
 }
 ```
@@ -2620,39 +2459,25 @@ mem$scope(tmem$, _)
 ```c
 mem$scope(tmem$, _)
 {
-    char* s = str.fmt(_, "hi there"); // NULL on error
-    s = str.replace(s, "hi", "hello", _); // NULL tolerant, NULL on error
-    s = str.fmt(_, "result is: %s", s); // NULL tolerant, NULL on error
-    if (s == NULL) {
-        // TODO: oops error occurred, in one of three operations, but we don't need to check each one
-    }
-    // s == "result is: hello there"
+    // each op is NULL tolerant and returns NULL on error, so check once at the end
+    char* s = str.fmt(_, "hi there");
+    s = str.replace(s, "hi", "hello", _);
+    s = str.fmt(_, "result is: %s", s); // "result is: hello there"
+    if (s == NULL) { return; } // handle error
 }
 ```
 
 - Pattern matching
 ```c
-// Pattern matching 101
-// * - zero or more characters
-// ? - one character
-// [abc] - one character a or b or c
-// [!abc] - one character, but not a or b or c
-// [abc+] - one or more characters a or b or c
-// [a-cA-C0-9] - one character in a range of characters
-// \\* - escaping literal '*'
-// (abc|def|xyz) - matching combination of words abc or def or xyz
+// * zero+ chars | ? one char | [abc] one of | [!abc] none of | [abc+] one+
+// [a-c0-9] range | \\* literal | (abc|def|xyz) alternatives
 
 str.match("test.txt", "*?txt");                      // true
 str.match("image.png", "image.[jp][pn]g");           // true
 str.match("backup.txt", "[!a]*.txt");                // true
-str.match("D", "[a-cA-C0-9]");                       // false
-str.match("1234567890abcdefABCDEF", "[0-9a-fA-F+]"); // true
 str.match("create", "(run|build|create|clean)");     // true
 
-// Works with slices
 str_s src = str$s("my_test __String.txt");
-str.slice.match(src, "*");            // true
-str.slice.match(src, "*.txt*");       // true
 str.slice.match(src, "my_test*.txt"); // true
 ```
 
@@ -4711,82 +4536,53 @@ struct _cex_test_context_s
 
 - Unit Test structure
 ```c
-test$setup_case() {
-    // Optional: runs before each test case
-    return EOK;
-}
-test$teardown_case() {
-    // Optional: runs after each test case
-    return EOK;
-}
-test$setup_suite() {
-    // Optional: runs once before full test suite initialized
-    return EOK;
-}
-test$teardown_suite() {
-    // Optional: runs once after full test suite ended
-    return EOK;
+test$setup_case() { return EOK; }     // optional, runs before each case
+test$teardown_case() { return EOK; }  // optional, runs after each case
+test$setup_suite() { return EOK; }    // optional, runs once before the suite
+test$teardown_suite() { return EOK; } // optional, runs once after the suite
+
+test$case(my_test_case)
+{
+    e$ret(foo("raise")); // fails the test if foo() raises Exception
+    return EOK;          // must return EOK to pass
 }
 
-test$case(my_test_case){
-    e$ret(foo("raise")); // this test will fail if `foo()` raises Exception 
-    return EOK; // Must return EOK for passed
-}
-
-test$case(my_test_another_case){
-    tassert_eq(1, 0); //  tassert_ fails test, but not abort the program
-    return EOK; // Must return EOK for passed
-}
-
-test$main(); // mandatory at the end of each test
+test$main(); // mandatory at the end of each test file
 ```
 
 - Test checks
 ```c
-
-test$case(my_test_case){
-    // Generic type assertions, fails and print values of both arguments
-
+test$case(my_test_case)
+{
+    // generic type assertions — fail and print both values
     tassert_eq(1, 1);
     tassert_eq(str, "foo");
-    tassert_eq(num, 3.14);
-    tassert_eq(str_slice, str$s("expected") );
+    tassert_eq(str_slice, str$s("expected"));
 
     tassert(condition && "oops");
     tassertf(condition, "oops: %s", s);
 
-    tassert_er(EOK, raising_exc_foo(0));
-    tassert_er(Error.argument, raising_exc_foo(-1));
+    tassert_er(Error.argument, raising_exc_foo(-1)); // Exception result
+    tassert_eq_almost(PI, 3.14, 0.01);               // float tolerance
+    tassert_eq_ptr(a, b);                            // raw pointers
+    tassert_eq_mem(a, b);                            // raw buffers (same size)
+    tassert_eq_arr(a, b);                            // arrays (static or dynamic)
 
-    tassert_eq_almost(PI, 3.14, 0.01); // 0.01 is float tolerance
-    tassert_eq(3.4 * NAN, NAN); // NAN equality also works
-
-    tassert_eq_ptr(a, b); // raw pointer comparison
-    tassert_eq_mem(a, b); // raw buffer content comparison (a and b expected to be same size)
-
-    tassert_eq_arr(a, b); // compare two arrays (static or dynamic)
-
-
-    tassert_ne(1, 0); // not equal
-    tassert_le(a, b); // a <= b
-    tassert_lt(a, b); // a < b
-    tassert_gt(a, b); // a > b
-    tassert_ge(a, b); // a >= b
+    tassert_ne(1, 0);
+    tassert_le(a, b); // also: lt, gt, ge
 
     return EOK;
 }
-
 ```
 
 - Test allocator
 ```c
 test$case(my_test_case)
 {
-    // `test$alloc` is a per-case arena (1 MB page, always growing, scopes disabled),
-    // created before each case and destroyed after — no manual free needed
+    // `test$alloc` is a per-case arena (1 MB page, scopes disabled), created
+    // before each case and destroyed after — no manual free, not leak-tracked
     int* buf = mem$malloc(test$alloc, 256 * sizeof(int));
 
-    // allocations on test$alloc are not leak-tracked (freed with the case)
     return EOK;
 }
 ```
@@ -6655,12 +6451,9 @@ low-level compiler tools are exposed for custom builds.
 ```c
 // file: ./cex.c  (project root, next to cex.h)
 #if __has_include("cex_config.h")
-#    include "cex_config.h"                    // persisted config, takes priority
-#elif defined(MY_DEBUG)                        // enable with: ./cex -DMY_DEBUG config
-#    define cexy$cc_args "-Wall", "-Wextra", "-Werror", "-g3", "-O0"
-#    define CEX_LOG_LVL 5
+#    include "cex_config.h"                  // persisted config, takes priority
 #else
-#    define cexy$cc_include "-I.", "-I./lib"   // redefine any cexy$ setting
+#    define cexy$cc_include "-I.", "-I./lib" // redefine any cexy$ setting
 #    define CEX_LOG_LVL 4
 #endif
 
@@ -7072,31 +6865,7 @@ fuzz$case(const u8* data, usize size)
 `fuzz.create()` wraps the raw input; `fuzz.dget()` copies the next `sizeof(*ptr)` bytes
 and returns `false` once the input is exhausted. `fuzz.dprob()` consumes one byte as a
 probability (threshold must be `> 1/255` and `< 1.0`). The `fuzz$` macros are shortcuts
-over the same API.
-
-```c
-int
-fuzz$case(const u8* data, usize size)
-{
-    cex_fuzz_s fz = fuzz.create(data, size);
-    u16 val = 0;
-    my_struct_s st = { 0 };
-
-    while (fuzz.dget(&fz, &val, sizeof(val))) {
-        my_func(val);
-
-        // branch on input-driven probability (20% here)
-        if (fuzz.dprob(&fz, 0.2)) { my_func(val * 10); }
-
-        // whole structs can be filled too
-        if (fuzz.dget(&fz, &st, sizeof(st))) { my_func_struct(&st); }
-    }
-
-    return 0;
-}
-```
-
-The `fuzz$` macros drop the `fz` variable and `sizeof` bookkeeping:
+that drop the `fz` variable and `sizeof` bookkeeping:
 
 ```c
 int

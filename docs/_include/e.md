@@ -64,64 +64,43 @@ Errors are `char*` pointers:
 Exception
 remove_file(char* path)
 {
-    if (path == NULL || path[0] == '\0') {
-        // WARNING: plain return doesn't register a traceback frame, prefer e$raise()
-        return Error.argument;  // returns a pointer to a static const string
-    }
+    e$assert(path != NULL && path[0] != '\0');
+
     if (!os.path.exists(path)) {
-        // WARNING: plain return doesn't register a traceback frame, prefer e$raise()
-        return "Not exists"; // literal errors are allowed, but must be handled as strcmp()
-    }
-    if (str.eq(path, "magic.file")) {
-        // Records an origin traceback frame tagged Error.integrity
-        return e$raise(Error.integrity, "Removing magic file is not allowed!");
+        // records an origin traceback frame tagged Error.not_found
+        return e$raise(Error.not_found, "file does not exist");
     }
     if (remove(path) < 0) {
-        return strerror(errno); // using system error text (arbitrary!)
+        return strerror(errno); // plain return: no traceback frame
     }
     return EOK;
 }
 
 Exception
-read_file(char* filename, char* buf, usize buf_size)
+do_stuff(char* path)
 {
-    e$assert(buf != NULL);
-
     int fd = 0;
-    e$except_errno(fd = open(filename, O_RDONLY)) { return Error.os; }
-    return EOK;
-}
 
-Exception
-do_stuff(char* filename)
-{
-    char buf[256] = {0};
+    // return immediately with the error + record a traceback frame
+    e$ret(remove_file(path));
 
-    // return immediately with error + records a traceback frame
-    e$ret(read_file(filename, buf, sizeof(buf)));
+    // jump to `fail` on error + record a traceback frame
+    e$goto(remove_file(path), fail);
 
-    // jumps to label if read_file() fails + records a traceback frame
-    e$goto(read_file(filename, buf, sizeof(buf)), fail);
+    // origin error handler for -1 + errno
+    e$except_errno(fd = open(path, O_RDONLY)) { return Error.os; }
 
-    // error handling with tracebacks
-    e$except (err, foo(0)) {
-
-        // Nesting of error handlers is allowed
-        e$except (err, foo(2)) { return err; }
-
-        // NOTE: `err` is address of char* compared with address Error.os (not by string contents!)
-        if (err == Error.os) {
-            // Special handing
-            io.printf("Ooops OS problem\n");
+    // handle a specific error, propagate the rest; `err` compares by address
+    e$except (err, foo(path)) {
+        if (err == Error.not_found) {
+            io.printf("oops\n");
         } else {
-            // propagate
             return err;
         }
     }
     return EOK;
 
 fail:
-    // TODO: cleanup here
     return Error.io;
 }
 ```

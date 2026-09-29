@@ -27,50 +27,24 @@ pointer or fat-pointer indirection. The runtime header
 // heap allocator — must call arr$free() later, or use mem$scope() for automatic cleanup
 arr$(i32) array = arr$new(array, mem$);
 
-arr$pushm(array, 1, 2, 3);   // multiple elements at once (compound-literal temp array)
-arr$push(array, 4);          // single element
+arr$pushm(array, 1, 2, 3); // multiple elements at once (compound-literal temp array)
+arr$push(array, 4);        // single element
 
-io.printf("len=%zu\n", arr$len(array));  // works on arr$, hm$, static C arrays, pointer+len
-
-// iteration by value — copies each element into `it` (≤ CEX_FOREACH_MAX_COPY_SIZE bytes)
-for$each(it, array) {
+for$each (it, array) {
     io.printf("el=%d\n", it);
 }
 
-// iteration by pointer — no copy, prefer for large structs
-// TIP: derive index from pointer subtraction
-for$eachp(it, array) {
-    io.printf("el[%zu]=%d\n", (usize)(it - array), *it);
-}
-
-// gotcha: memory not freed until arr$free() — safe to call on NULL (no-op)
-arr$free(array);
+arr$free(array); // safe to call on NULL (no-op)
 ```
 
 - Array of structs
-```c
-typedef struct
-{
-    int key;
-    float my_val;
-    char* my_string;
-    int value;
-} my_struct;
 
-// pre-allocate capacity to avoid early reallocs; .capacity is optional,
-// defaults to 16 if omitted
+```c
+// .capacity is optional, defaults to 16; pre-allocate to avoid early reallocs
 arr$(my_struct) array = arr$new(array, mem$, .capacity = 128);
 
-// gotcha: structs are copied by value into the array — the source can
-// be reused or stack-allocated. For pointer-heavy structs you may need
-// deep-copy semantics handled by your own code.
-arr$push(array, ((my_struct){ 20, 5.0f, "hello", 0 }));
-arr$push(array, ((my_struct){ 40, 2.5f, "world", 0 }));
-
-// arr$len() works on both arr$ and static C arrays
-for (usize i = 0; i < arr$len(array); ++i) {
-    io.printf("key: %d str: %s\n", array[i].key, array[i].my_string);
-}
+// structs are copied by value into the array — the source may be stack-allocated
+arr$push(array, ((my_struct){ .key = 20, .my_string = "hello" }));
 
 arr$free(array);
 ```
