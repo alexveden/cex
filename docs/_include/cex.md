@@ -42,7 +42,59 @@ cc ./cex.c -o ./cex                   # bootstrap once; cex then rebuilds itself
 | `./cex libfetch cexstd/` | fetch CEX std-lib dependencies |
 
 
-### CEX namespaces
+### Basics
+
+#### Code Style Guidelines
+
+| Convention | Example | Meaning |
+|---|---|---|
+| `dollar$means_macros` | `e$ret`, `arr$push`, `test$case` | `$` marks a macro; the `first$` part links to its namespace |
+| `functions_are_snake_case()` | `os.fs.mkpath()` | functions and methods are lower case |
+| `*_c` suffix | `sbuf_c`, `KeyMap_c`, `AllocatorArena_c` | struct with a code namespace attached (container/object) |
+| `*_s` suffix | `str_s`, `cex_iterator_s` | plain data container, no attached logic |
+| `MyObj.method()` | `KeyMap.create()` | object-specific namespace mirrors the type name |
+| `namespace.func()` | `str.find()` | namespace names are lower case |
+| `Enums__double_underscore` | `MyEnum_e`, `MyEnum__foo` | enum type `_e`; elements use `Type__value` |
+| `CONSTANTS_ARE_UPPER` | `NAMESPACE_MY_CONST` / `namespace$CONST_NAME` | two constant notations |
+
+#### Types
+
+CEX provides short aliases for primitive types and a few extra types covering gaps in C.
+
+| Type | Description |
+|---|---|
+| auto | automatically inferred variable type |
+| bool | boolean type |
+| u8/i8 | 8-bit integer |
+| u16/i16 | 16-bit integer |
+| u32/i32 | 32-bit integer |
+| u64/i64 | 64-bit integer |
+| f32 | 32-bit floating point number (float) |
+| f64 | 64-bit floating point number (double) |
+| usize | maximum array size (size_t) |
+| isize | signed array size (ptrdiff_t) |
+| char* | core type for null-term strings |
+| sbuf_c | dynamic string builder; always null-terminated and compatible with native `char*` |
+| str_s | string slice (buf + len) |
+| Exc / Exception | error type in CEX |
+| Error.<some> | generic error collection |
+| IAllocator | memory allocator interface type |
+| arr$(T) | generic type dynamic array |
+| hm$(K, V) | generic type hashmap |
+
+#### Utility macros
+
+| Name | Description |
+|---|---|
+| uassert() | General purpose assert with tracebacks |
+| uassert_always() | Assert with tracebacks that is not stripped by `NDEBUG` |
+| unlikely() | Branch predictor management for unexpected conditions |
+| likely() | Branch predictor management for expected conditions |
+| breakpoint() | Cross-platform debugger breakpoint |
+| fallthrough() | Explicit fallthrough to the next switch case |
+| tassert_* | Unit-test assertions see `./cex help test$` |
+
+### CEX Core Namespaces
 
 CEX namespaces, each responds to `./cex help <ns>$`:
 
@@ -70,6 +122,79 @@ Help commands:
 * `./cex help <symbol>` — find any symbol containing `<symbol>`
 * `./cex help str.find` — docs for an exact match
 * `./cex help <ns>$` — namespace cheat-sheet (docs, macros, types, examples)
+
+### Namespaces
+
+CEX namespaces group functions under one global name, reducing C name collisions and keeping
+project structure navigable. They also add OOP-ish behavior to structs.
+
+#### Key features
+
+* generated from the `.c` file — no `.h` upkeep on signature changes
+* `.c`/`.h` filename must match the namespace name
+* only the namespace name is exposed globally (smaller collision surface)
+* sub-namespaces give a decision tree in LSP completion
+* `.` separator reads better and highlights namespace vs function
+
+#### In a nutshell
+
+A namespace is a global `const` struct of function pointers:
+
+```c
+#define CEX_NAMESPACE __attribute__((visibility("hidden"))) extern const
+
+struct __cex_namespace__KeyMap {
+    Exception (*create)(KeyMap_c* self, char* input_dev_or_name);
+    void      (*destroy)(KeyMap_c* self);
+    Exception (*handle_events)(KeyMap_c* self);
+};
+
+CEX_NAMESPACE struct __cex_namespace__KeyMap KeyMap;
+```
+
+Usage:
+
+```c
+KeyMap_c keymap = { 0 };
+e$goto(KeyMap.create(&keymap, file), end);
+e$goto(KeyMap.handle_events(&keymap), end);
+```
+
+`_c` on the struct hints it has a code namespace (a class/object); `_s` means plain data.
+
+#### Sub-namespaces
+
+One extra level groups large namespaces, e.g. `str.slice.*` for `str_s` operations,
+`str.convert.*` for conversions, and `str.find()` at the root. They let you type the
+function name as a decision tree (`str` → `slice` → function).
+
+#### How to make a namespace
+
+1. create `src/foo.c` and `src/foo.h`
+2. write `foo_fun1()`, `foo_fun2()`, `foo__bar__fun3()` — they become `foo.fun1()`,
+   `foo.fun2()`, `foo.bar.fun3()`
+3. run `./cex process src/foo.c`
+
+Caveats:
+
+* `.c` and `.h` must share the folder and the `foo` prefix
+* namespaced functions start with `foo_`; sub-namespace uses `foo__subname__`
+* only one level of sub-namespace is allowed
+* signatures need not be declared in the header — `.c` statics are enough
+* `static inline` functions are excluded
+* `foo__some` is treated as internal and excluded
+* use the exact `src/foo.c` argument to create a namespace; `all` only updates existing ones
+* the parser also accepts `cex_foo_fun1()` and strips the `cex_` prefix when building names
+
+CLI:
+
+```sh
+./cex process src/foo.c   # create or update one namespace
+./cex process all         # update all after signature changes
+```
+
+Note: function-pointer calls may be slower without optimization; `-O1` turns them into direct
+calls. For shared libraries, prefer plain C functions.
 
 ### Agentic workflow
 

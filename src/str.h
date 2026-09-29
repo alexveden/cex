@@ -97,6 +97,19 @@ null-terminated):
 
 See `./cex help sbuf$` for the full API.
 
+### String formatting in CEX
+
+All CEX routines with format strings (`io.printf()`, `log$error()`, `str.fmt()`,
+`sbuf.appendf()`) use the CEX formatting engine with extended features:
+
+* `%S` prints a `str_s` slice — `io.printf("%S\n", str$s("world"))`
+* `%S` has sanity checks: a plain `char*` in a `%S` slot prints `(%S-bad/overflow)`;
+  behavior is platform-dependent, do not rely on it
+* `%lu` / `%ld` — 64-bit integers, platform independent
+* `%u` / `%d` — 32-bit integers, platform independent
+* `%s` — standard null-terminated `char*`
+* other formats are compatible with vanilla libC
+
 ### Examples
 
 - Working with slices
