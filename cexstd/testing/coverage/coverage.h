@@ -1,9 +1,11 @@
 #pragma once
 
-#if __has_include("cex.h")
-#    include "cex.h"
-#else
-#error "./cex.h not found, check if exist or you should set compiler argument `-I.`"
+#if !defined(CEX_HEADER_H)
+#    if __has_include("cex.h")
+#        include "cex.h"
+#    else
+#        error "./cex.h not found, check if exist or you should set compiler argument `-I.`"
+#    endif
 #endif
 
 #if defined(CEX_BUILD) || defined(CEX_NEW)
