@@ -4,7 +4,7 @@
 #if defined(CEX_BUILD) || defined(CEX_NEW)
 
 #define _COVERAGE_INFO_DEFAULT "coverage.info"
-#define _COVERAGE_HTML_DEFAULT "coverage_html"
+#define _COVERAGE_HTML_DEFAULT cexy$build_dir "/coverage"
 
 static bool
 _coverage__is_clang(void)
@@ -418,4 +418,8 @@ CEX_NAMESPACE_DEF struct __cex_namespace__coverage coverage = {
 
     // clang-format on
 };
+
+#undef _COVERAGE_INFO_DEFAULT
+#undef _COVERAGE_HTML_DEFAULT
+
 #endif // #if defined(CEX_BUILD) || defined(CEX_NEW)
