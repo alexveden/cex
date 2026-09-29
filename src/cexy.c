@@ -2202,9 +2202,7 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
 
         bool any_not_found = false;
         if (agents) {
-            char* agents_ns[] = {
-                "cex", "e", "mem", "for", "arr", "hm", "str", "cexy", "test", "fuzz"
-            };
+            char* agents_ns[] = { "cex", "e", "mem", "for", "arr", "hm", "str", "test" };
             for$each (ns, agents_ns) {
                 char* q = str.fmt(arena, "%s$", ns);
                 Exc err = _cexy__help_query(

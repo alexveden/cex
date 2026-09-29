@@ -206,6 +206,18 @@ calls. For shared libraries, prefer plain C functions.
 * `./cex help --example str.find` — up to 3 real usages (file:line + code)
 * `./cex help --agents` — dump the key CEX namespace idioms (AGENTS.md content)
 * `./cex help --agents --out <file>` — write that content to an agent instruction file
+* Never edit `cex.h` directly — it is a generated single-header artifact; treat it
+  as read-only and regenerate it from source instead
+* When a task involves any of the following, fetch the docs first with
+  `./cex help --idioms --brief <ns>$`:
+  * build process / `./cex.c` → `./cex help --idioms --brief cexy$`
+  * fuzzing → `./cex help --idioms --brief fuzz$`
+  * files/paths, processes, env, time, random → `./cex help --idioms --brief os$`
+  * file IO → `./cex help --idioms --brief io$`
+  * dynamic string building → `./cex help --idioms --brief sbuf$`
+  * CLI args → `./cex help --idioms --brief argparse$`
+  * logging → `./cex help --idioms --brief log$`
+  * code generation → `./cex help --idioms --brief cg$`
 
 Prefer `./cex help` over grepping — it returns signatures, usage idioms, and
 real examples pulled from the codebase.
