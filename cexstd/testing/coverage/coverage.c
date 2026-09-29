@@ -134,7 +134,12 @@ _coverage__add_lcov_gcov_tool(arr$(char*)* args, IAllocator allc)
     uassert(args != NULL);
 
     if (!_coverage__is_clang()) { return EOK; }
-    char* wrapper = str.fmt(allc, "%s/llvm-gcov.sh", cexy$build_dir);
+    char* wrapper = NULL;
+#    ifdef _WIN32
+    wrapper = str.fmt(allc, "%s/llvm-gcov.bat", cexy$build_dir);
+    e$ret(io.file.save(wrapper, "@echo off\nllvm-cov gcov %*\n"));
+#    else
+    wrapper = str.fmt(allc, "%s/llvm-gcov.sh", cexy$build_dir);
     char* script = "#!/bin/sh\nexec llvm-cov gcov \"$@\"\n";
     FILE* file = NULL;
     e$ret(io.fopen(&file, wrapper, "wb"));
@@ -144,6 +149,7 @@ _coverage__add_lcov_gcov_tool(arr$(char*)* args, IAllocator allc)
     }
     io.fclose(&file);
     if (os$cmd("chmod", "+x", wrapper)) {}
+#    endif
     arr$pushm(*args, "--gcov-tool", wrapper);
     return EOK;
 }
