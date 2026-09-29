@@ -3,401 +3,355 @@
 
 #if defined(CEX_BUILD) || defined(CEX_NEW)
 
-typedef struct coverage_stat_s
-{
-    char* path;
-    u32 total;
-    arr$(u32) exec_lines;
-} coverage_stat_s;
-
-static int
-_coverage__cmp_stats(const void* a, const void* b)
-{
-    coverage_stat_s* x = (coverage_stat_s*)a;
-    coverage_stat_s* y = (coverage_stat_s*)b;
-    u32 xr = x->total ? (u32)((u64)arr$len(x->exec_lines) * 100000 / x->total) : 0;
-    u32 yr = y->total ? (u32)((u64)arr$len(y->exec_lines) * 100000 / y->total) : 0;
-    if (xr != yr) { return xr < yr ? -1 : 1; }
-    return strcmp(x->path, y->path);
-}
-
-static void
-_coverage__merge_lines(arr$(u32)* dst, arr$(u32) src, IAllocator allc)
-{
-    arr$(u32) res = arr$new(res, allc);
-    usize i = 0;
-    usize j = 0;
-    while (i < arr$len(*dst) || j < arr$len(src)) {
-        if (j >= arr$len(src) || (i < arr$len(*dst) && (*dst)[i] < src[j])) {
-            arr$push(res, (*dst)[i]);
-            i++;
-        } else if (i >= arr$len(*dst) || src[j] < (*dst)[i]) {
-            arr$push(res, src[j]);
-            j++;
-        } else {
-            arr$push(res, src[j]);
-            i++;
-            j++;
-        }
-    }
-    *dst = res;
-}
-
-static Exception
-_coverage__parse_gcov(
-    char* content,
-    char** out_src_path,
-    arr$(u32)* out_lines,
-    u32* out_total,
-    IAllocator allc
-)
-{
-    uassert(content != NULL);
-    uassert(out_src_path != NULL);
-    uassert(out_lines != NULL);
-    uassert(out_total != NULL);
-
-    *out_src_path = NULL;
-    *out_total = 0;
-
-    char* line_p = content;
-    while (line_p != NULL && *line_p != '\0') {
-        char* nl = strchr(line_p, '\n');
-        str_s line = { .buf = line_p, .len = nl ? (usize)(nl - line_p) : strlen(line_p) };
-
-        if (*out_src_path == NULL) {
-            isize src_idx = str.slice.index_of(line, str$s("Source:"));
-            if (src_idx >= 0) {
-                str_s path = str.slice.rstrip(str.slice.sub(line, src_idx + 7, 0));
-                *out_src_path = str.slice.clone(path, allc);
-            }
-        }
-
-        usize i = 0;
-        while (i < line.len && (line.buf[i] == ' ' || line.buf[i] == '\t')) { i++; }
-        if (i >= line.len || line.buf[i] == '-') { goto next_line; }
-
-        usize j = i;
-        while (j < line.len && line.buf[j] != ':') { j++; }
-        if (j == i) { goto next_line; }
-
-        bool is_count = false;
-        u64 count = 0;
-        usize k = i;
-        while (k < j && line.buf[k] >= '0' && line.buf[k] <= '9') {
-            count = count * 10 + (u64)(line.buf[k] - '0');
-            k++;
-        }
-        if (k > i) {
-            if (k < j && line.buf[k] == '*') { k++; }
-            if (k == j) { is_count = true; }
-        }
-
-        if (is_count) {
-            k = j + 1;
-            while (k < line.len && line.buf[k] == ' ') { k++; }
-            if (k >= line.len || line.buf[k] < '0' || line.buf[k] > '9') { goto next_line; }
-            u32 line_no = 0;
-            while (k < line.len && line.buf[k] >= '0' && line.buf[k] <= '9') {
-                line_no = line_no * 10 + (u32)(line.buf[k] - '0');
-                k++;
-            }
-            if (line_no == 0) { goto next_line; }
-            (*out_total)++;
-            if (count > 0) { arr$push(*out_lines, line_no); }
-        } else if (line.buf[i] == '#') {
-            (*out_total)++;
-        }
-
-    next_line:
-        if (nl == NULL) { break; }
-        line_p = nl + 1;
-    }
-
-    if (*out_src_path == NULL) { return e$raise(Error.integrity, "gcov source header not found"); }
-    return EOK;
-}
-
-static Exception
-_coverage__make_gcov_backend(arr$(char*)* out)
-{
-    uassert(out != NULL);
-
-    char* cc[] = { cexy$cc };
-    bool is_clang = arr$len(cc) > 0 && str.find(cc[0], "clang") != NULL;
-    if (is_clang) {
-        if (unlikely(!os.cmd.exists("llvm-cov"))) {
-            return e$raise(
-                Error.runtime, "llvm-cov not found in PATH, clang coverage needs llvm-cov"
-            );
-        }
-        arr$push(*out, "llvm-cov");
-        arr$push(*out, "gcov");
-    } else {
-        if (unlikely(!os.cmd.exists("gcov"))) {
-            return e$raise(Error.runtime, "gcov not found in PATH, gcc coverage needs gcov");
-        }
-        arr$push(*out, "gcov");
-    }
-    return EOK;
-}
-
-static Exception
-_coverage__run_gcov(arr$(char*) backend, char* gcno, char* gcda, IAllocator allc)
-{
-    arr$(char*) args = arr$new(args, allc);
-    arr$pusha(args, backend);
-    arr$pushm(args, "-o", gcno, gcda, NULL);
-
-    os_cmd_c cmd = { 0 };
-    e$ret(os.cmd.create(&cmd, args, arr$len(args), &(os_cmd_flags_s){ .combine_stdouterr = true }));
-    char* output = os.cmd.read_all(&cmd, allc);
-    e$except (err, os.cmd.wait(&cmd, 1, 0)) {
-        log$error("gcov failed for %s: %s\n", gcda, output);
-        return err;
-    }
-    return EOK;
-}
+#define _COVERAGE_INFO_DEFAULT "coverage.info"
+#define _COVERAGE_HTML_DEFAULT "coverage_html"
 
 static bool
-_coverage__is_project_source(char* path)
+_coverage__is_clang(void)
 {
-    if (path == NULL || !str.ends_with(path, ".c")) { return false; }
-    if (str.starts_with(path, "./")) { path += 2; }
-
-    char* dirs[] = { cexy$src_dir, "src" };
-    for$each (dir, dirs) {
-        if (str.starts_with(dir, "./")) { dir += 2; }
-        usize dir_len = strlen(dir);
-        if (strncmp(path, dir, dir_len) != 0) { continue; }
-        if (path[dir_len] == '\0' || path[dir_len] == '/' || path[dir_len] == '\\') { return true; }
-    }
-    return false;
-}
-
-static void
-_coverage__merge_stat(
-    arr$(coverage_stat_s)* stats,
-    char* path,
-    arr$(u32) lines,
-    u32 total,
-    IAllocator allc
-)
-{
-    for$eachp (st, *stats) {
-        if (str.eq(st->path, path)) {
-            if (total > st->total) { st->total = total; }
-            _coverage__merge_lines(&st->exec_lines, lines, allc);
-            return;
-        }
-    }
-    arr$push(
-        *stats,
-        (coverage_stat_s){ .path = str.clone(path, allc), .total = total, .exec_lines = lines }
-    );
-}
-
-static void
-_coverage__remove_gcov_files(void)
-{
-    mem$scope(tmem$, _)
-    {
-        for$each (gcov_file, os.fs.find("*.gcov", false, _)) {
-            if (os.fs.remove(gcov_file)) {}
-        }
-    }
+    char* cc[] = { cexy$cc };
+    return arr$len(cc) > 0 && str.find(cc[0], "clang") != NULL;
 }
 
 static Exception
-_coverage__find_gcda(char* target, arr$(char*)* out, IAllocator allc)
+_coverage__check_tool(char* tool)
+{
+    uassert(tool != NULL);
+    if (unlikely(!os.cmd.exists(tool))) {
+        log$error("Coverage requires '%s' in PATH\n", tool);
+        return e$raise(Error.runtime, "coverage tool not found");
+    }
+    return EOK;
+}
+
+static Exception
+_coverage__find_test_binaries(char* target, arr$(char*)* out, IAllocator allc)
 {
     uassert(out != NULL);
-    e$ret(cexy.test.make_target_pattern(&target));
 
-    if (str.ends_with(target, "test_*.c")) {
-        *out = os.fs.find(str.fmt(allc, "%s/*.gcda", cexy$build_dir), true, allc);
+    char* pattern = target;
+    e$ret(cexy.test.make_target_pattern(&pattern));
+
+    *out = arr$new(*out, allc);
+    if (str.ends_with(pattern, "test_*.c")) {
+        *out = os.fs.find(str.fmt(allc, "%s/tests/*.test*", cexy$build_dir), false, allc);
         return EOK;
     }
-    if (unlikely(!os.path.exists(target))) {
-        log$error("Test file not found: %s\n", target);
+    if (unlikely(!os.path.exists(pattern))) {
         return e$raise(Error.not_found, "test file not found");
     }
-    char* test_target = cexy.target_make(target, cexy$build_dir, ".test", allc);
-    if (unlikely(test_target == NULL)) {
-        return e$raise(Error.runtime, "failed to make test target");
+    char* bin = cexy.target_make(pattern, cexy$build_dir, ".test", allc);
+    if (unlikely(bin == NULL)) { return e$raise(Error.runtime, "failed to make test target"); }
+    arr$push(*out, bin);
+    return EOK;
+}
+
+static Exception
+_coverage__llvm_add_objects(char* target, arr$(char*)* args, IAllocator allc)
+{
+    uassert(args != NULL);
+
+    arr$(char*) bins = NULL;
+    e$ret(_coverage__find_test_binaries(target, &bins, allc));
+    if (unlikely(arr$len(bins) == 0)) {
+        return e$raise(Error.not_found, "no instrumented test binaries, run `cex coverage run`");
     }
-    *out = os.fs.find(str.fmt(allc, "%s-*.gcda", test_target), false, allc);
+    for$each (bin, bins) {
+        arr$push(*args, str.fmt(allc, "--object=%s", bin));
+    }
+    return EOK;
+}
+
+static Exception
+_coverage__llvm_merge_profdata(char** out_profdata, IAllocator allc)
+{
+    uassert(out_profdata != NULL);
+
+    *out_profdata = NULL;
+    arr$(char*) profraw = os.fs.find(str.fmt(allc, "%s/*.profraw", cexy$build_dir), true, allc);
+    if (unlikely(arr$len(profraw) == 0)) {
+        return e$raise(Error.not_found, "no .profraw data, run `cex coverage run` first");
+    }
+
+    char* profdata = str.fmt(allc, "%s/coverage.profdata", cexy$build_dir);
+    arr$(char*) args = arr$new(args, allc);
+    arr$pushm(args, "llvm-profdata", "merge", "-sparse");
+    arr$pusha(args, profraw);
+    arr$pushm(args, "-o", profdata, NULL);
+    e$ret(os$cmda(args, arr$len(args)));
+
+    *out_profdata = profdata;
+    return EOK;
+}
+
+static Exception
+_coverage__capture_cmd(arr$(char*) args, char** out, IAllocator allc)
+{
+    uassert(out != NULL);
+
+    *out = NULL;
+    os_cmd_c cmd = { 0 };
+    e$ret(os.cmd.create(&cmd, args, arr$len(args), NULL));
+    *out = os.cmd.read_all(&cmd, allc);
+    e$ret(os.cmd.wait(&cmd, 1, 0));
+    return EOK;
+}
+
+static Exception
+_coverage__run_lcov_capture(char* output, IAllocator allc)
+{
+    arr$(char*) gcda = os.fs.find(str.fmt(allc, "%s/*.gcda", cexy$build_dir), true, allc);
+    if (unlikely(arr$len(gcda) == 0)) {
+        return e$raise(Error.not_found, "no .gcda data, run `cex coverage run` first");
+    }
+
+    arr$(char*) args = arr$new(args, allc);
+    arr$pushm(args, "lcov", "--capture", "--quiet", "--directory", cexy$build_dir);
+    arr$pushm(args, "--ignore-errors", "inconsistent,empty,unused,source,format");
+    if (_coverage__is_clang()) { arr$push(args, "--gcov-tool"); arr$push(args, "llvm-cov,gcov"); }
+    arr$pushm(args, "--output-file", output, NULL);
+    e$ret(os$cmda(args, arr$len(args)));
     return EOK;
 }
 
 /// Builds and runs tests with coverage instrumentation
 Exception
-coverage_run(char* target)
+coverage_run(char* engine, char* target)
 {
+    uassert(engine != NULL);
     uassert(target != NULL);
-    char* argv[] = { "test", "--coverage", "run", target };
+
+    char* argv[] = { "test", "--coverage", "--coverage-engine", engine, "run", target };
     return cexy.cmd.simple_test(arr$len(argv), argv, NULL);
 }
 
-/// Aggregates gcov/llvm-cov data and prints source line coverage
+/// Aggregates coverage and prints a per-source report (text or html)
 Exception
-coverage_report(char* target)
+coverage_report(char* engine, char* format, char* output, char* target)
 {
+    uassert(engine != NULL);
     uassert(target != NULL);
+
+    if (format == NULL) { format = "text"; }
+    if (unlikely(!str.match(format, "(text|html)"))) {
+        return e$raise(Error.argument, "invalid report format, expected text|html");
+    }
+    bool html = str.eq(format, "html");
+    if (output == NULL) { output = _COVERAGE_HTML_DEFAULT; }
+
     mem$scope(tmem$, _)
     {
-        arr$(char*) backend = arr$new(backend, _);
-        e$ret(_coverage__make_gcov_backend(&backend));
+        if (str.eq(engine, "llvm")) {
+            e$ret(_coverage__check_tool("llvm-cov"));
+            e$ret(_coverage__check_tool("llvm-profdata"));
 
-        arr$(char*) gcda_files = NULL;
-        e$ret(_coverage__find_gcda(target, &gcda_files, _));
-        if (unlikely(arr$len(gcda_files) == 0)) {
-            log$error(
-                "No coverage data for '%s', run `./cex coverage run %s` first\n", target, target
-            );
-            return e$raise(Error.not_found, "no coverage data, run `./cex coverage run` first");
-        }
-        log$info("Aggregating coverage from %u gcda files\n", arr$len(gcda_files));
+            char* profdata = NULL;
+            e$ret(_coverage__llvm_merge_profdata(&profdata, _));
 
-        _coverage__remove_gcov_files();
-
-        arr$(coverage_stat_s) stats = arr$new(stats, _);
-        for$each (gcda_path, gcda_files) {
-            char* gcno_path = str.replace(gcda_path, ".gcda", ".gcno", _);
-            e$except (err, _coverage__run_gcov(backend, gcno_path, gcda_path, _)) { continue; }
-
-            for$each (gcov_file, os.fs.find("*.gcov", false, _)) {
-                char* content = io.file.load(gcov_file, _);
-                if (content == NULL) { continue; }
-
-                char* src_path = NULL;
-                arr$(u32) exec_lines = arr$new(exec_lines, _);
-                u32 total = 0;
-                Exc parse_err = _coverage__parse_gcov(content, &src_path, &exec_lines, &total, _);
-                if (parse_err == EOK && _coverage__is_project_source(src_path)) {
-                    _coverage__merge_stat(&stats, src_path, exec_lines, total, _);
-                }
-                if (os.fs.remove(gcov_file)) {}
+            arr$(char*) args = arr$new(args, _);
+            arr$pushm(args, "llvm-cov", html ? "show" : "report");
+            e$ret(_coverage__llvm_add_objects(target, &args, _));
+            arr$push(args, str.fmt(_, "-instr-profile=%s", profdata));
+            if (html) {
+                arr$pushm(args, "--format=html", str.fmt(_, "--output-dir=%s", output));
             }
+            arr$push(args, NULL);
+            e$ret(os$cmda(args, arr$len(args)));
+        } else {
+            e$ret(_coverage__check_tool("lcov"));
+
+            char* info = str.fmt(_, "%s/coverage.info", cexy$build_dir);
+            e$ret(_coverage__run_lcov_capture(info, _));
+
+            arr$(char*) args = arr$new(args, _);
+            if (html) {
+                e$ret(_coverage__check_tool("genhtml"));
+                arr$pushm(args, "genhtml", "--quiet", info, "-o", output, NULL);
+            } else {
+                arr$pushm(args, "lcov", "--quiet", "--list", info, NULL);
+            }
+            e$ret(os$cmda(args, arr$len(args)));
         }
 
-        if (arr$len(stats) == 0) {
-            log$info("No project source coverage collected\n");
-            return EOK;
-        }
-
-        qsort(stats, arr$len(stats), sizeof(coverage_stat_s), _coverage__cmp_stats);
-
-        u64 t_total = 0;
-        u64 t_exec = 0;
-        io.printf("\nCode coverage report (line coverage)\n");
-        io.printf("%8s %9s %9s  %s\n", "Covered", "Executed", "Total", "File");
-        for$eachp (st, stats) {
-            u64 executed = arr$len(st->exec_lines);
-            f64 pct = st->total ? (f64)executed * 100.0 / st->total : 0.0;
-            io.printf("%7.1f%% %9lu %9lu  %s\n", pct, executed, st->total, st->path);
-            t_total += st->total;
-            t_exec += executed;
-        }
-        io.printf(
-            "\nTotal: %0.1f%% (%lu/%lu lines, %u files)\n",
-            t_total ? (f64)t_exec * 100.0 / t_total : 0.0,
-            t_exec,
-            t_total,
-            arr$len(stats)
-        );
+        if (html) { log$info("Coverage report: %s\n", output); }
     }
     return EOK;
 }
 
-/// Removes coverage artifacts (.gcno/.gcda/.gcov) for all tests or a single file
+/// Exports aggregated coverage as an lcov .info tracefile
+Exception
+coverage_export(char* engine, char* output, char* target)
+{
+    uassert(engine != NULL);
+    uassert(target != NULL);
+
+    if (output == NULL) { output = _COVERAGE_INFO_DEFAULT; }
+    mem$scope(tmem$, _)
+    {
+        if (str.eq(engine, "llvm")) {
+            e$ret(_coverage__check_tool("llvm-cov"));
+            e$ret(_coverage__check_tool("llvm-profdata"));
+
+            char* profdata = NULL;
+            e$ret(_coverage__llvm_merge_profdata(&profdata, _));
+
+            arr$(char*) args = arr$new(args, _);
+            arr$pushm(args, "llvm-cov", "export", "--format=lcov");
+            e$ret(_coverage__llvm_add_objects(target, &args, _));
+            arr$push(args, str.fmt(_, "-instr-profile=%s", profdata));
+            arr$push(args, NULL);
+
+            char* content = NULL;
+            e$ret(_coverage__capture_cmd(args, &content, _));
+            if (unlikely(content == NULL || content[0] == '\0')) {
+                return e$raise(Error.runtime, "failed to export llvm coverage");
+            }
+            e$ret(io.file.save(output, content));
+        } else {
+            e$ret(_coverage__check_tool("lcov"));
+            e$ret(_coverage__run_lcov_capture(output, _));
+        }
+        log$info("Coverage exported: %s\n", output);
+    }
+    return EOK;
+}
+
+/// Removes coverage artifacts (.profraw/.profdata/.gcno/.gcda)
 Exception
 coverage_clean(char* target)
 {
     uassert(target != NULL);
+
     mem$scope(tmem$, _)
     {
-        char* original_target = str.clone(target, _);
-        e$ret(cexy.test.make_target_pattern(&target));
+        char* pattern = target;
+        e$ret(cexy.test.make_target_pattern(&pattern));
 
-        if (str.ends_with(target, "test_*.c")) {
-            char* patterns[] = { "%s/*.gcno", "%s/*.gcda" };
-            for$each (pattern, patterns) {
-                for$each (file, os.fs.find(str.fmt(_, pattern, cexy$build_dir), true, _)) {
-                    if (os.fs.remove(file)) {}
-                }
-            }
-            _coverage__remove_gcov_files();
+        arr$(char*) globs = arr$new(globs, _);
+        if (str.ends_with(pattern, "test_*.c")) {
+            arr$pushm(globs, "%s/*.gcno", "%s/*.gcda");
         } else {
-            if (unlikely(!os.path.exists(target))) {
-                log$error("Test file not found: %s\n", target);
+            if (unlikely(!os.path.exists(pattern))) {
                 return e$raise(Error.not_found, "test file not found");
             }
-            char* test_target = cexy.target_make(target, cexy$build_dir, ".test", _);
+            char* test_target = cexy.target_make(pattern, cexy$build_dir, ".test", _);
             if (unlikely(test_target == NULL)) {
                 return e$raise(Error.runtime, "failed to make test target");
             }
-            char* exts[] = { ".gcno", ".gcda" };
-            for$each (ext, exts) {
-                for$each (file, os.fs.find(str.fmt(_, "%s-*%s", test_target, ext), false, _)) {
-                    if (os.fs.remove(file)) {}
-                }
+            arr$pushm(
+                globs,
+                str.fmt(_, "%s-*.gcno", test_target),
+                str.fmt(_, "%s-*.gcda", test_target)
+            );
+        }
+        arr$pushm(globs, "%s/*.profraw", "%s/*.profdata");
+        for$each (glob, globs) {
+            for$each (file, os.fs.find(str.fmt(_, glob, cexy$build_dir), true, _)) {
+                if (os.fs.remove(file)) {}
             }
         }
-        log$info("Coverage artifacts cleaned: %s\n", original_target);
+        log$info("Coverage artifacts cleaned: %s\n", target);
     }
     return EOK;
 }
 
-/// CLI: build/run tests with coverage, then aggregate and report
+/// CLI: build/run tests with coverage, then report or export it
 Exception
 coverage_cmd(int argc, char** argv, void* user_ctx)
 {
     (void)user_ctx;
+    char* engine = NULL;
+    char* format = NULL;
+    char* output = NULL;
 
     // clang-format off
     char* process_help =
-        "Manage project test coverage (gcov for gcc, llvm-cov gcov for clang)\n"
-        "\n`run` builds and runs tests with the compiler --coverage flag, leaving\n"
-        ".gcno/.gcda next to the test binaries in cexy$build_dir. `report` aggregates\n"
-        "the data and prints per-source line coverage for cexy$src_dir. `clean` removes\n"
-        "the coverage artifacts only, leaving test binaries intact.\n";
+        "Manage project test coverage with two engines:\n"
+        "- `llvm`: clang only, source-based coverage via llvm-profdata + llvm-cov\n"
+        "- `lcov`: compiler --coverage + lcov/genhtml (gcc or clang)\n"
+        "\n`run` builds and runs tests with instrumentation, leaving raw data in\n"
+        "cexy$build_dir (.profraw for llvm, .gcno/.gcda for lcov). `report` aggregates\n"
+        "and prints per-source coverage. `export` writes an lcov .info tracefile for\n"
+        "external tools (merge several with `lcov -a a.info -o merged.info`). `clean`\n"
+        "removes the raw coverage artifacts only, leaving test binaries intact.\n";
     char* epilog_help =
         "\nCommand examples: \n"
-        "cex coverage run all                      - build+run all tests with coverage\n"
-        "cex coverage run tests/test_foo.c         - coverage for a single test file\n"
-        "cex coverage report all                   - aggregate and print coverage report\n"
-        "cex coverage report tests/test_foo.c      - report for a single test file\n"
-        "cex coverage clean all                    - remove all coverage artifacts\n"
-        "cex coverage clean tests/test_foo.c       - remove artifacts of one test file\n";
+        "cex coverage run all                          - build+run all tests with coverage\n"
+        "cex coverage report all                       - aggregate and print text report\n"
+        "cex coverage report --format=html all         - write html report\n"
+        "cex coverage export -o coverage.info all      - write lcov .info tracefile\n"
+        "cex coverage report --engine=lcov all         - force the lcov engine\n"
+        "cex coverage clean all                        - remove coverage artifacts\n";
     // clang-format on
 
     argparse_c cmd_args = {
         .program_name = "./cex",
-        .usage = "coverage {run,report,clean} all|tests/test_file.c",
+        .usage = "coverage {run,report,export,clean} [options] all|tests/test_file.c",
         .description = process_help,
         .epilog = epilog_help,
-        argparse$opt_list(argparse$opt_help(),),
+        argparse$opt_list(
+            argparse$opt_help(),
+            argparse$opt(&engine, '\0', "engine", .help = "Coverage engine: auto|llvm|lcov"),
+            argparse$opt(&format, '\0', "format", .help = "Report format: text|html"),
+            argparse$opt(&output, 'o', "output", .help = "Output file (.info) or dir (html)"),
+        ),
     };
 
     if (unlikely(argc < 2)) {
-        io.printf("Usage: ./cex coverage {run,report,clean} all|tests/test_file.c\n");
-        return e$raise(Error.argsparse, "coverage requires run|report|clean");
+        io.printf("Usage: ./cex coverage {run,report,export,clean} all|tests/test_file.c\n");
+        return e$raise(Error.argsparse, "coverage requires run|report|export|clean");
     }
-    e$ret(argparse.parse(&cmd_args, argc, argv));
 
-    char* subcmd = argparse.next(&cmd_args);
-    char* target = argparse.next(&cmd_args);
+    mem$scope(tmem$, _)
+    {
+        // argparse expects options before positionals; hoist them so both orders work
+        arr$(char*) opts = arr$new(opts, _);
+        arr$(char*) pos = arr$new(pos, _);
+        for (i32 i = 1; i < argc; i++) {
+            char* a = argv[i];
+            if (a[0] != '-') {
+                arr$push(pos, a);
+                continue;
+            }
+            arr$push(opts, a);
+            bool takes_value =
+                !str.eq(a, "-h") && !str.eq(a, "--help") && str.find(a, "=") == NULL;
+            if (takes_value && i + 1 < argc) { arr$push(opts, argv[++i]); }
+        }
+        arr$(char*) ordered = arr$new(ordered, _);
+        arr$push(ordered, argv[0]);
+        arr$pusha(ordered, opts);
+        arr$pusha(ordered, pos);
 
-    if (unlikely(subcmd == NULL || !str.match(subcmd, "(run|report|clean)"))) {
-        argparse.usage(&cmd_args);
-        return e$raise(Error.argsparse, "Invalid coverage command, expected run|report|clean");
+        e$ret(argparse.parse(&cmd_args, arr$len(ordered), ordered));
+
+        char* subcmd = argparse.next(&cmd_args);
+        char* target = argparse.next(&cmd_args);
+
+        if (unlikely(subcmd == NULL || !str.match(subcmd, "(run|report|export|clean)"))) {
+            argparse.usage(&cmd_args);
+            return e$raise(
+                Error.argsparse, "invalid coverage command, expected run|report|export|clean"
+            );
+        }
+        if (target == NULL) { target = "all"; }
+
+        bool is_clang = _coverage__is_clang();
+        if (engine == NULL || str.eq(engine, "auto")) { engine = is_clang ? "llvm" : "lcov"; }
+        if (unlikely(!str.match(engine, "(llvm|lcov)"))) {
+            argparse.usage(&cmd_args);
+            return e$raise(Error.argsparse, "invalid engine, expected auto|llvm|lcov");
+        }
+        if (unlikely(str.eq(engine, "llvm") && !is_clang)) {
+            return e$raise(Error.argument, "coverage engine 'llvm' requires clang compiler");
+        }
+
+        if (str.eq(subcmd, "run")) { return coverage_run(engine, target); }
+        if (str.eq(subcmd, "report")) { return coverage_report(engine, format, output, target); }
+        if (str.eq(subcmd, "export")) { return coverage_export(engine, output, target); }
+        return coverage_clean(target);
     }
-    if (target == NULL) { target = "all"; }
-
-    if (str.eq(subcmd, "run")) { return coverage_run(target); }
-    if (str.eq(subcmd, "report")) { return coverage_report(target); }
-    return coverage_clean(target);
+    return EOK;
 }
 
 CEX_NAMESPACE_DEF struct __cex_namespace__coverage coverage = {
@@ -406,6 +360,7 @@ CEX_NAMESPACE_DEF struct __cex_namespace__coverage coverage = {
 
     .clean = coverage_clean,
     .cmd = coverage_cmd,
+    .export = coverage_export,
     .report = coverage_report,
     .run = coverage_run,
 

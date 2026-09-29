@@ -19,61 +19,6 @@ test$teardown_case()
     return EOK;
 }
 
-test$case(test_coverage_parse_gcov)
-{
-    char* content = "        -:    0:Source:src/foo.c\n"
-                    "        -:    0:Runs:1\n"
-                    "        -:    1:int main(void) {\n"
-                    "        1:    2:  return 0;\n"
-                    "    #####:    3:  return 1;\n"
-                    "        -:    4:}\n";
-    mem$scope(tmem$, _)
-    {
-        char* src_path = NULL;
-        arr$(u32) lines = arr$new(lines, _);
-        u32 total = 0;
-        e$ret(_coverage__parse_gcov(content, &src_path, &lines, &total, _));
-
-        tassert_eq(src_path, "src/foo.c");
-        tassert_eq(total, 2);
-        tassert_eq(arr$len(lines), 1);
-        tassert_eq(lines[0], 2);
-    }
-    return EOK;
-}
-
-test$case(test_coverage_parse_gcov_no_source)
-{
-    mem$scope(tmem$, _)
-    {
-        char* src_path = NULL;
-        arr$(u32) lines = arr$new(lines, _);
-        u32 total = 0;
-        tassert_er(
-            Error.integrity,
-            _coverage__parse_gcov("        1:    1:int x;\n", &src_path, &lines, &total, _)
-        );
-    }
-    return EOK;
-}
-
-test$case(test_coverage_merge_lines)
-{
-    mem$scope(tmem$, _)
-    {
-        arr$(u32) dst = arr$new(dst, _);
-        arr$pushm(dst, 1, 3, 5);
-        arr$(u32) src = arr$new(src, _);
-        arr$pushm(src, 2, 3, 6);
-        _coverage__merge_lines(&dst, src, _);
-
-        tassert_eq(arr$len(dst), 5);
-        u32 expected[] = { 1, 2, 3, 5, 6 };
-        tassert_eq_arr(dst, expected);
-    }
-    return EOK;
-}
-
 test$case(test_coverage_cmd_invalid)
 {
     char* argv[] = { "coverage", "bogus", "all" };
@@ -84,35 +29,48 @@ test$case(test_coverage_cmd_invalid)
     return EOK;
 }
 
-#if !defined(__clang__) && !defined(_WIN32) && !defined(__EMSCRIPTEN__)
-
-test$case(test_coverage_run_report_clean)
+test$case(test_coverage_cmd_engine_invalid)
 {
+    char* argv[] = { "coverage", "--engine", "bogus", "report", "all" };
+    tassert_er(Error.argsparse, coverage.cmd(arr$len(argv), argv, NULL));
+    return EOK;
+}
+
+test$case(test_coverage_cmd_engine_llvm_requires_clang)
+{
+    if (_coverage__is_clang()) { return EOK; }
+
+    char* argv[] = { "coverage", "--engine", "llvm", "report", "all" };
+    tassert_er(Error.argument, coverage.cmd(arr$len(argv), argv, NULL));
+    return EOK;
+}
+
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+
+test$case(test_coverage_lcov_run_export_report_clean)
+{
+    if (!os.cmd.exists("lcov") || !os.cmd.exists("genhtml")) { return EOK; }
+
     mem$scope(tmem$, _)
     {
-        char* cc[] = { cexy$cc };
-        if (str.find(cc[0], "clang")) { return EOK; }
-
         char* src = TBUILDDIR "test_cov_tmp.c";
         e$ret(io.file.save(src, "int main(void) { return 0; }\n"));
 
-        char* test_target = cexy.target_make(src, cexy$build_dir, ".test", _);
-        char* gcno_glob = str.fmt(_, "%s-*.gcno", test_target);
-        char* gcda_glob = str.fmt(_, "%s-*.gcda", test_target);
+        e$ret(coverage.run("lcov", src));
 
-        e$ret(coverage.run(src));
-        tassert(arr$len(os.fs.find(gcno_glob, false, _)) > 0);
-        tassert(arr$len(os.fs.find(gcda_glob, false, _)) > 0);
+        char* info = TBUILDDIR "cov.info";
+        e$ret(coverage.export("lcov", info, src));
+        tassert(os.path.exists(info));
 
-        e$ret(coverage.report(src));
+        e$ret(coverage.report("lcov", "text", NULL, src));
 
         e$ret(coverage.clean(src));
-        tassert(arr$len(os.fs.find(gcno_glob, false, _)) == 0);
-        tassert(arr$len(os.fs.find(gcda_glob, false, _)) == 0);
+        char* gcda_glob = str.fmt(_, "%s/*.gcda", cexy$build_dir);
+        tassert(arr$len(os.fs.find(gcda_glob, true, _)) == 0);
     }
     return EOK;
 }
 
-#endif // #if !defined(__clang__) && !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+#endif // #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
 
 test$main();

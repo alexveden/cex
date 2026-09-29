@@ -592,6 +592,27 @@ test$case(test_coverage_bench_rejected)
     return EOK;
 }
 
+test$case(test_coverage_engine_invalid)
+{
+    char* argv[] = {
+        "test", "--coverage", "--coverage-engine", "bogus", "build", "tests/test_cexy.c"
+    };
+    tassert_er(Error.argument, cexy.cmd.simple_test(arr$len(argv), argv, NULL));
+    return EOK;
+}
+
+test$case(test_coverage_engine_llvm_requires_clang)
+{
+    char* cc[] = { cexy$cc };
+    if (str.find(cc[0], "clang")) { return EOK; }
+
+    char* argv[] = {
+        "test", "--coverage", "--coverage-engine", "llvm", "build", "tests/test_cexy.c"
+    };
+    tassert_er(Error.argument, cexy.cmd.simple_test(arr$len(argv), argv, NULL));
+    return EOK;
+}
+
 #if !defined(__clang__) && !defined(_WIN32)
 
 test$case(test_coverage_flag)

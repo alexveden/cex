@@ -269,11 +269,13 @@ See `cex help str.match` for more information about patter syntax.
         "}\n"\
         \
         "\nCoverage:\n"\
-        "`cex test --coverage run all` builds tests with the compiler --coverage flag and\n"\
-        "runs them, leaving .gcno/.gcda next to the test binaries in cexy$build_dir for\n"\
-        "aggregation (gcov/llvm-cov). Project sources are instrumented; the precompiled\n"\
-        "cex.h object is not. Existing .gcda are reset before each coverage run.\n"\
-        "Not supported with `bench`.\n"\
+        "`cex test --coverage run all` builds tests with coverage instrumentation and\n"\
+        "runs them, leaving raw data next to the test binaries in cexy$build_dir. The\n"\
+        "engine is auto (llvm for clang, lcov for gcc) or set with\n"\
+        "`--coverage-engine=llvm|lcov`: llvm uses -fprofile-instr-generate (profraw),\n"\
+        "lcov uses compiler --coverage (gcno/gcda). Project sources are instrumented;\n"\
+        "the precompiled cex.h object is not. Stale coverage data is reset before each\n"\
+        "run. Not supported with `bench`.\n"\
         \
         "\nIf you need more control you can build your own test runner. Just use cex help\n"\
         "and get source code `./cex help --source cexy.cmd.simple_test`\n")
@@ -290,7 +292,9 @@ See `cex help str.match` for more information about patter syntax.
         "cex test run tests/test_file.c [--help]  - run test with passing arguments to the test runner program\n" \
         "cex test watch tests/test_file.c         - watch test file and its includes' changes with perptual re-run\n" \
         "cex test bench test/test_file.c          - run all test$bench() functions for timing\n"\
-        "cex test --coverage run all               - build+run tests with --coverage data\n"
+        "cex test --coverage run all               - build+run tests with coverage data\n"\
+        "cex test --coverage --coverage-engine=llvm run all - coverage via llvm tools\n"\
+        "cex test --coverage --coverage-engine=lcov run all - coverage via lcov\n"
 
 
 // clang-format on

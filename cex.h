@@ -6414,11 +6414,13 @@ See `cex help str.match` for more information about patter syntax.
         "}\n"\
         \
         "\nCoverage:\n"\
-        "`cex test --coverage run all` builds tests with the compiler --coverage flag and\n"\
-        "runs them, leaving .gcno/.gcda next to the test binaries in cexy$build_dir for\n"\
-        "aggregation (gcov/llvm-cov). Project sources are instrumented; the precompiled\n"\
-        "cex.h object is not. Existing .gcda are reset before each coverage run.\n"\
-        "Not supported with `bench`.\n"\
+        "`cex test --coverage run all` builds tests with coverage instrumentation and\n"\
+        "runs them, leaving raw data next to the test binaries in cexy$build_dir. The\n"\
+        "engine is auto (llvm for clang, lcov for gcc) or set with\n"\
+        "`--coverage-engine=llvm|lcov`: llvm uses -fprofile-instr-generate (profraw),\n"\
+        "lcov uses compiler --coverage (gcno/gcda). Project sources are instrumented;\n"\
+        "the precompiled cex.h object is not. Stale coverage data is reset before each\n"\
+        "run. Not supported with `bench`.\n"\
         \
         "\nIf you need more control you can build your own test runner. Just use cex help\n"\
         "and get source code `./cex help --source cexy.cmd.simple_test`\n")
@@ -6435,7 +6437,9 @@ See `cex help str.match` for more information about patter syntax.
         "cex test run tests/test_file.c [--help]  - run test with passing arguments to the test runner program\n" \
         "cex test watch tests/test_file.c         - watch test file and its includes' changes with perptual re-run\n" \
         "cex test bench test/test_file.c          - run all test$bench() functions for timing\n"\
-        "cex test --coverage run all               - build+run tests with --coverage data\n"
+        "cex test --coverage run all               - build+run tests with coverage data\n"\
+        "cex test --coverage --coverage-engine=llvm run all - coverage via llvm tools\n"\
+        "cex test --coverage --coverage-engine=lcov run all - coverage via lcov\n"
 
 
 // clang-format on
@@ -19785,6 +19789,7 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
     (void)user_ctx;
     i32 njobs = -1;
     bool coverage = false;
+    char* coverage_engine = NULL;
     argparse_c cmd_args = {
         .program_name = "./cex",
         .usage = "test [options] {run,build,create,clean,debug,bench,watch} all|tests/test_file.c [--test-options]",
@@ -19802,7 +19807,13 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
                 &coverage,
                 '\0',
                 "coverage",
-                .help = "Build tests with compiler --coverage flag"
+                .help = "Build tests with coverage instrumentation"
+            ),
+            argparse$opt(
+                &coverage_engine,
+                '\0',
+                "coverage-engine",
+                .help = "Coverage engine: auto (default), llvm (clang), lcov"
             ),
         ),
     };
@@ -19817,6 +19828,22 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
     }
     if (unlikely(coverage && str.eq(cmd, "bench"))) {
         return e$raise(Error.argument, "coverage is not supported for bench (uses -O3)");
+    }
+
+    bool coverage_llvm = false;
+    if (coverage) {
+        char* cc[] = { cexy$cc };
+        bool is_clang = arr$len(cc) > 0 && str.find(cc[0], "clang") != NULL;
+        if (coverage_engine == NULL || str.eq(coverage_engine, "auto")) {
+            coverage_engine = is_clang ? "llvm" : "lcov";
+        }
+        if (unlikely(!str.match(coverage_engine, "(llvm|lcov)"))) {
+            return e$raise(Error.argument, "invalid coverage engine, expected auto|llvm|lcov");
+        }
+        if (unlikely(str.eq(coverage_engine, "llvm") && !is_clang)) {
+            return e$raise(Error.argument, "coverage engine 'llvm' requires clang compiler");
+        }
+        coverage_llvm = str.eq(coverage_engine, "llvm");
     }
 
     if (str.eq(cmd, "create")) {
@@ -19894,9 +19921,13 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
                 // Handling cex.h -> cex.obj for faster debug builds
                 e$ret(_cexy__add_precompiled_debug_cex_h(&args, _));
 
-                // NOTE: --coverage is added after the precompiled cex.h step, so the shared
+                // NOTE: coverage flags are added after the precompiled cex.h step, so the shared
                 // cex.obj stays uninstrumented and its hash stays coverage-independent
-                if (coverage) { arr$push(args, "--coverage"); }
+                if (coverage_llvm) {
+                    arr$pushm(args, "-fprofile-instr-generate", "-fcoverage-mapping");
+                } else if (coverage) {
+                    arr$push(args, "--coverage");
+                }
 
                 arr$push(args, test_src);
                 arr$pusha(args, cc_ld_args);
@@ -19940,8 +19971,14 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
         if (coverage && str.match(cmd, "(run|debug|watch)")) {
             mem$scope(tmem$, _)
             {
-                for$each (gcda, os.fs.find(str.fmt(_, "%s/*.gcda", cexy$build_dir), true, _)) {
-                    if (os.fs.remove(gcda)) {}
+                if (coverage_llvm) {
+                    e$ret(os.env.set(
+                        "LLVM_PROFILE_FILE", str.fmt(_, "%s/%%p.profraw", cexy$build_dir)
+                    ));
+                }
+                char* pattern = coverage_llvm ? "%s/*.profraw" : "%s/*.gcda";
+                for$each (file, os.fs.find(str.fmt(_, pattern, cexy$build_dir), true, _)) {
+                    if (os.fs.remove(file)) {}
                 }
             }
         }

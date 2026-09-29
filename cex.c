@@ -47,7 +47,7 @@ main(int argc, char** argv)
             { .name = "test", .func = cmd_custom_test, .help = "Test running" },
             { .name = "coverage",
               .func = coverage.cmd,
-              .help = "Test coverage build/run/report/clean" },
+              .help = "Test coverage run/report/export/clean" },
             { .name = "build-docs", .func = cmd_build_docs, .help = "Build CEX documentation " },
             cexy$cmd_fuzz,  /* feel free to make your own if needed */
             cexy$cmd_app,   /* feel free to make your own if needed */
