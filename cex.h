@@ -137,7 +137,7 @@ If the project has no agent instruction file (`AGENTS.md`, `CLAUDE.md`,
 /// CEX patch version
 #define cex$version_patch 0
 /// CEX build date (substituted at bundle time)
-#define cex$version_date "2026-09-28"
+#define cex$version_date "2026-09-29"
 
 
 
@@ -19379,18 +19379,15 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
 
         arr$(char*) sources = os.fs.find(filter, true, arena);
 
-        // Prioritize project files before cex.h
+        // Prioritize project files before cex.h, dropping all bundled cex.h/cex.c copies
         char* cex_file = "./cex.h";
-        for (u32 i = 0; i < arr$len(sources); i++) {
-            mem$scope(tmem$, _)
-            {
-                char* basename = os.path.basename(sources[i], _);
-
-                if (str.eq(basename, "cex.h") || str.eq(basename, "cex.c")) {
-                    arr$del(sources, i);
-                    break;
-                }
+        for (u32 i = 0; i < arr$len(sources);) {
+            char* basename = os.path.basename(sources[i], arena);
+            if (str.eq(basename, "cex.h") || str.eq(basename, "cex.c")) {
+                arr$del(sources, i);
+                continue;
             }
+            i++;
         }
         arr$sort(sources, str.qscmp);
         arr$ins(sources, 0, cex_file);
