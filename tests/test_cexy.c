@@ -3,6 +3,7 @@
 #define cexy$cc_include "-I.", "-I" TBUILDDIR
 #define cexy$build_dir TBUILDDIR
 #define cexy$disable_cex_precompiling
+#define cexy$cc_args_sanitizer "-fstack-protector-strong"
 #include "src/all.c"
 
 test$setup_case()

@@ -116,6 +116,18 @@ _coverage__capture_cmd(arr$(char*) args, char** out, IAllocator allc)
     return EOK;
 }
 
+static bool
+_coverage__lcov_can_ignore_errors(IAllocator allc)
+{
+    arr$(char*) args = arr$new(args, allc);
+    if (_coverage__resolve_tool(&args, "lcov", allc)) { return false; }
+    arr$pushm(args, "--version", NULL);
+
+    char* out = NULL;
+    if (_coverage__capture_cmd(args, &out, allc)) { return false; }
+    return out != NULL && str.find(out, "version 1.") == NULL;
+}
+
 static Exception
 _coverage__add_lcov_gcov_tool(arr$(char*)* args, IAllocator allc)
 {
@@ -140,11 +152,13 @@ _coverage__run_lcov_capture(char* output, IAllocator allc)
     arr$(char*) args = arr$new(args, allc);
     e$ret(_coverage__resolve_tool(&args, "lcov", allc));
     arr$pushm(args, "--capture", "--quiet", "--directory", cexy$build_dir);
-    arr$pushm(
-        args,
-        "--ignore-errors",
-        "inconsistent,inconsistent,empty,unused,source,format,unsupported,unsupported"
-    );
+    if (_coverage__lcov_can_ignore_errors(allc)) {
+        arr$pushm(
+            args,
+            "--ignore-errors",
+            "inconsistent,inconsistent,mismatch,mismatch,empty,unused,source,format,unsupported,unsupported"
+        );
+    }
     e$ret(_coverage__add_lcov_gcov_tool(&args, allc));
     arr$pushm(args, "--output-file", output, NULL);
     e$ret(os$cmda(args, arr$len(args)));
