@@ -535,7 +535,11 @@ int main(void)
 #if defined(_WIN32) || defined(_WIN64)
 #    define breakpoint() __debugbreak()
 #elif defined(__APPLE__)
-#    define breakpoint() __builtin_debugtrap()
+#    ifdef __clang__
+#        define breakpoint() __builtin_debugtrap()
+#    else
+#        define breakpoint() __builtin_trap()
+#    endif
 #elif defined(__linux__) || defined(__unix__)
 #    define breakpoint() __builtin_trap()
 #else

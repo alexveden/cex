@@ -877,7 +877,11 @@ int main(void)
 #if defined(_WIN32) || defined(_WIN64)
 #    define breakpoint() __debugbreak()
 #elif defined(__APPLE__)
-#    define breakpoint() __builtin_debugtrap()
+#    ifdef __clang__
+#        define breakpoint() __builtin_debugtrap()
+#    else
+#        define breakpoint() __builtin_trap()
+#    endif
 #elif defined(__linux__) || defined(__unix__)
 #    define breakpoint() __builtin_trap()
 #else
@@ -4074,6 +4078,9 @@ struct subprocess_s {
 #        include <sys/stat.h>
 #        include <sys/types.h>
 #        include <unistd.h>
+#        ifdef __APPLE__
+#            include <mach-o/dyld.h>
+#        endif
 #    endif
 
 /// Additional flags for os.cmd.create()
@@ -7325,8 +7332,7 @@ _cex_allocator_arena_cleanup(IAllocator* allc)
     AllocatorArena.destroy(*allc);
 }
 
-// NOTE: destructor(101) - 101 lowest priority for destructors
-__attribute__((destructor(101))) void
+__attribute__((destructor)) void
 _cex_global_allocators_destructor()
 {
     AllocatorArena_c* allc = (AllocatorArena_c*)tmem$;

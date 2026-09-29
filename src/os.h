@@ -27,6 +27,9 @@
 #        include <sys/stat.h>
 #        include <sys/types.h>
 #        include <unistd.h>
+#        ifdef __APPLE__
+#            include <mach-o/dyld.h>
+#        endif
 #    endif
 
 /// Additional flags for os.cmd.create()

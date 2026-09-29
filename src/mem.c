@@ -16,8 +16,7 @@ _cex_allocator_arena_cleanup(IAllocator* allc)
     AllocatorArena.destroy(*allc);
 }
 
-// NOTE: destructor(101) - 101 lowest priority for destructors
-__attribute__((destructor(101))) void
+__attribute__((destructor)) void
 _cex_global_allocators_destructor()
 {
     AllocatorArena_c* allc = (AllocatorArena_c*)tmem$;
