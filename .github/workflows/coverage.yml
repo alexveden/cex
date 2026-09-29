@@ -201,7 +201,7 @@ jobs:
       - name: Merge tracefiles
         run: |
           lcov --ignore-errors inconsistent,mismatch,empty,unused,source,format,unsupported,corrupt \
-            -a tracefiles/coverage-${{ matrix.os }}-*.info \
+            -a 'tracefiles/coverage-${{ matrix.os }}-*.info' \
             -o coverage-merged-${{ matrix.os }}.info
           test -s coverage-merged-${{ matrix.os }}.info
           grep -q '^SF:' coverage-merged-${{ matrix.os }}.info
