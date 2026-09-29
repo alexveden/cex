@@ -1,0 +1,171 @@
+name: Coverage
+
+on:
+  push:
+    branches: [ 'dev*', 'staging*', 'master', 'main*' ]
+  pull_request:
+    branches: [ 'dev*', 'staging*', 'master', 'main*' ]
+  workflow_dispatch:
+
+jobs:
+  # 3 engines: clang+llvm, gcc+lcov, clang+lcov
+  coverage-linux:
+    name: linux-${{ matrix.label }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      # Don't abort runners if a single one fails
+      fail-fast: false
+      matrix:
+        include:
+          - { label: clang-llvm, engine: llvm, cc: clang }
+          - { label: gcc-lcov,   engine: lcov, cc: gcc }
+          - { label: clang-lcov, engine: lcov, cc: clang }
+
+    steps:
+      - name: Checkout cex
+        uses: actions/checkout@v4
+
+      - name: Install coverage tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lcov llvm
+
+      - name: Configure compiler
+        run: |
+          CC="${{ matrix.cc }}"
+          cat > cex_config.h <<EOF
+          #pragma once
+          #define cexy\$cc "$CC"
+          #define cexy\$cex_self_cc "$CC"
+          #define cexy\$cc_args_sanitizer "-fstack-protector-strong"
+          EOF
+          cat cex_config.h
+
+      - name: Bootstrap ./cex
+        run: |
+          ulimit -c unlimited
+          cc -g ./cex.c -o ./cex
+          ./cex config
+
+      - uses: ./.github/actions/cex_coverage
+        name: cex coverage
+        with:
+          engine: ${{ matrix.engine }}
+          label: linux-${{ matrix.label }}
+
+  coverage-macos:
+    name: macos-${{ matrix.label }}
+    runs-on: macos-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { label: clang-llvm, engine: llvm }
+          - { label: gcc-lcov,   engine: lcov }
+          - { label: clang-lcov, engine: lcov }
+
+    steps:
+      - name: Checkout cex
+        uses: actions/checkout@v4
+
+      - name: Install coverage tools
+        run: |
+          brew install lcov llvm gcc
+          # Homebrew llvm is keg-only, expose llvm-cov / llvm-profdata
+          echo "$(brew --prefix llvm)/bin" >> $GITHUB_PATH
+          # Homebrew gcc installs versioned binaries only, expose plain `gcc`/`gcov`
+          mkdir -p "$HOME/.local/bin"
+          GCC_BIN="$(ls "$(brew --prefix gcc)"/bin/gcc-[0-9]* | head -n1)"
+          ln -sf "$GCC_BIN" "$HOME/.local/bin/gcc"
+          ln -sf "$(dirname "$GCC_BIN")/gcov-${GCC_BIN##*-}" "$HOME/.local/bin/gcov"
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Configure compiler
+        run: |
+          case "${{ matrix.label }}" in
+            gcc-lcov) CC="gcc" ;;
+            *)        CC="$(brew --prefix llvm)/bin/clang" ;;
+          esac
+          cat > cex_config.h <<EOF
+          #pragma once
+          #define cexy\$cc "$CC"
+          #define cexy\$cex_self_cc "$CC"
+          #define cexy\$cc_args_sanitizer "-fstack-protector-strong"
+          EOF
+          cat cex_config.h
+
+      - name: Bootstrap ./cex
+        run: |
+          ulimit -c unlimited
+          cc -g ./cex.c -o ./cex
+          ./cex config
+
+      - uses: ./.github/actions/cex_coverage
+        name: cex coverage
+        with:
+          engine: ${{ matrix.engine }}
+          label: macos-${{ matrix.label }}
+
+  coverage-windows:
+    name: windows-${{ matrix.label }}
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { label: clang-llvm, engine: llvm, cc: clang, msys: clang64, pacboy: 'toolchain:p llvm:p' }
+          - { label: gcc-lcov,   engine: lcov, cc: gcc,   msys: ucrt64,  pacboy: 'toolchain:p' }
+          - { label: clang-lcov, engine: lcov, cc: clang, msys: clang64, pacboy: 'toolchain:p llvm:p' }
+
+    steps:
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.msys }}
+          update: true
+          install: >-
+            git
+            lcov
+          pacboy: ${{ matrix.pacboy }}
+
+      - name: Test cc version
+        run: |
+          git config --global core.autocrlf input
+          cc --version
+
+      - name: Checkout cex
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Configure compiler
+        run: |
+          CC="${{ matrix.cc }}"
+          cat > cex_config.h <<EOF
+          #pragma once
+          #define cexy\$cc "$CC"
+          #define cexy\$cex_self_cc "$CC"
+          #define cexy\$cc_args_sanitizer "-fstack-protector-strong"
+          EOF
+          cat cex_config.h
+
+      - name: Bootstrap ./cex
+        run: |
+          ulimit -c unlimited
+          cc -g ./cex.c -o ./cex.exe
+          ./cex.exe config
+
+      - uses: ./.github/actions/cex_coverage
+        name: cex coverage
+        with:
+          engine: ${{ matrix.engine }}
+          label: windows-${{ matrix.label }}
+          shell: 'msys2 {0}'

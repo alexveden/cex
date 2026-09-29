@@ -1,0 +1,60 @@
+name: CEX coverage action
+description: Build/run tests with coverage, report, export and upload the tracefile
+inputs:
+  engine:
+    description: 'Coverage engine: llvm|lcov'
+    required: true
+  label:
+    description: 'Artifact label (e.g. linux-clang-llvm)'
+    required: true
+  target:
+    description: 'Test target to instrument'
+    required: false
+    default: 'tests/test_ci_coverage.c'
+  shell:
+    description: 'target shell'
+    required: false
+    default: 'bash'
+
+runs:
+  using: 'composite'
+
+  steps:
+    - name: Coverage run
+      shell: ${{ inputs.shell }}
+      run: |
+        echo "---------------------------------------------------------------------"
+        echo "           STEP: coverage run (${{ inputs.engine }})"
+        echo "---------------------------------------------------------------------"
+        ./cex coverage --engine=${{ inputs.engine }} run ${{ inputs.target }}
+
+    - name: Coverage report
+      shell: ${{ inputs.shell }}
+      run: |
+        echo "---------------------------------------------------------------------"
+        echo "           STEP: coverage report (${{ inputs.engine }})"
+        echo "---------------------------------------------------------------------"
+        ./cex coverage --engine=${{ inputs.engine }} report ${{ inputs.target }}
+
+    - name: Coverage export
+      shell: ${{ inputs.shell }}
+      run: |
+        echo "---------------------------------------------------------------------"
+        echo "           STEP: coverage export (${{ inputs.engine }})"
+        echo "---------------------------------------------------------------------"
+        ./cex coverage --engine=${{ inputs.engine }} export -o coverage.info ${{ inputs.target }}
+        test -s coverage.info
+
+    - name: Verify coverage data
+      shell: ${{ inputs.shell }}
+      run: |
+        grep -q '^SF:' coverage.info
+        grep -q '^LF:' coverage.info
+        grep -q '^LH:' coverage.info
+        echo "coverage.info looks valid"
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: coverage-${{ inputs.label }}
+        path: coverage.info
+        if-no-files-found: error

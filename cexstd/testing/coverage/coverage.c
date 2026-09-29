@@ -107,7 +107,11 @@ _coverage__run_lcov_capture(char* output, IAllocator allc)
 
     arr$(char*) args = arr$new(args, allc);
     arr$pushm(args, "lcov", "--capture", "--quiet", "--directory", cexy$build_dir);
-    arr$pushm(args, "--ignore-errors", "inconsistent,empty,unused,source,format");
+    arr$pushm(
+        args,
+        "--ignore-errors",
+        "inconsistent,inconsistent,empty,unused,source,format,unsupported,unsupported"
+    );
     if (_coverage__is_clang()) { arr$push(args, "--gcov-tool"); arr$push(args, "llvm-cov,gcov"); }
     arr$pushm(args, "--output-file", output, NULL);
     e$ret(os$cmda(args, arr$len(args)));
