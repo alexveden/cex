@@ -549,6 +549,7 @@ cexy__test__run(char* target, char* cmd, int argc, char** argv)
             if (os.cmd.run(args, arr$len(args), &cmd) || os.cmd.wait(&cmd, 1, 0)) {
                 n_failed++;
                 result = Error.runtime;
+                io.fprintf(stderr, "\n^^^^^\n%s [FAIL]\n", test_src);
             }
         }
     }

@@ -8507,7 +8507,7 @@ _cexds__arr_integrity(const void* arr, usize magic_num)
     (void)magic_num;
     (void)arr;
 
-#ifndef NDEBUG
+#ifdef CEX_TEST
     _cexds__array_header* hdr = _cexds__header(arr);
     (void)hdr;
 
@@ -17910,6 +17910,7 @@ cexy__test__run(char* target, char* cmd, int argc, char** argv)
             if (os.cmd.run(args, arr$len(args), &cmd) || os.cmd.wait(&cmd, 1, 0)) {
                 n_failed++;
                 result = Error.runtime;
+                io.fprintf(stderr, "\n^^^^^\n%s [FAIL]\n", test_src);
             }
         }
     }

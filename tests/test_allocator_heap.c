@@ -1,11 +1,14 @@
 #include <setjmp.h>
 #include <stdint.h>
 
-#define cex$platform_panic _heap_scope_panic
+#ifndef NDEBUG
+#    define cex$platform_panic _heap_scope_panic
 static void _heap_scope_panic(const char*, const char*, uint32_t, const char*, const char*);
+#endif
 
 #include "src/all.c"
 
+#ifndef NDEBUG
 static jmp_buf _heap_scope_panic_jmp;
 static bool _heap_scope_panic_armed = false;
 
@@ -15,6 +18,7 @@ _heap_scope_panic(const char* prefix, const char* file, u32 line, const char* fu
     if (_heap_scope_panic_armed) { longjmp(_heap_scope_panic_jmp, 1); }
     _cex_errors_panic_handler(prefix, file, line, func, msg);
 }
+#endif
 
 test$case(test_allocator_api)
 {
@@ -350,6 +354,7 @@ test$case(test_allocator_heap_invalid_args_return_null)
     return EOK;
 }
 
+#ifndef NDEBUG
 test$case(test_allocator_heap_scope_enter_panics)
 {
     _heap_scope_panic_armed = true;
@@ -371,5 +376,6 @@ test$case(test_allocator_heap_scope_exit_panics)
     _heap_scope_panic_armed = false;
     return EOK;
 }
+#endif
 
 test$main();
