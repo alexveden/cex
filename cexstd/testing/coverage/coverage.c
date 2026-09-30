@@ -52,7 +52,13 @@ _coverage__find_test_binaries(char* target, arr$(char*)* out, IAllocator allc)
 
     *out = arr$new(*out, allc);
     if (str.ends_with(pattern, "test_*.c")) {
-        *out = os.fs.find(str.fmt(allc, "%s/tests/*.test*", cexy$build_dir), true, allc);
+        // *.test* also matches lcov artifacts (.test-*.gcno/.gcda); keep only executables
+        arr$(char*) found = os.fs.find(str.fmt(allc, "%s/tests/*.test*", cexy$build_dir), true, allc);
+        for$each (bin, found) {
+            if (str.ends_with(bin, ".test") || str.ends_with(bin, ".test.exe")) {
+                arr$push(*out, bin);
+            }
+        }
         return EOK;
     }
     if (unlikely(!os.path.exists(pattern))) {
@@ -113,6 +119,32 @@ _coverage__capture_cmd(arr$(char*) args, char** out, IAllocator allc)
     e$ret(os.cmd.create(&cmd, args, arr$len(args), NULL));
     *out = os.cmd.read_all(&cmd, allc);
     e$ret(os.cmd.wait(&cmd, 1, 0));
+    return EOK;
+}
+
+static Exception
+_coverage__run_redirected(arr$(char*) args, char* out_file, char* err_file, IAllocator allc)
+{
+    uassert(args != NULL);
+    uassert(out_file != NULL);
+    uassert(err_file != NULL);
+
+    // os.cmd pipes stderr into a stream nobody drains (hides tool errors, can deadlock), so run
+    // the tool through a shell that redirects stdout/stderr straight to files.
+    arr$(char*) sh = arr$new(sh, allc);
+    arr$pushm(sh, "sh", "-c", "out=$1; err=$2; shift 2; \"$@\" > \"$out\" 2> \"$err\"", "_");
+    arr$pushm(sh, out_file, err_file);
+    arr$pusha(sh, args);
+
+    Exc err = os$cmda(sh, arr$len(sh));
+    if (err != EOK) {
+        char* err_txt = io.file.load(err_file, allc);
+        if (err_txt != NULL && err_txt[0] != '\0') {
+            log$error("Coverage tool failed:\n%s\n", err_txt);
+        }
+        return err;
+    }
+    if (os.path.exists(err_file)) { if (os.fs.remove(err_file)) {} }
     return EOK;
 }
 
@@ -219,28 +251,39 @@ _coverage__relativize_info(char* info_path, IAllocator allc)
     char* content = io.file.load(info_path, allc);
     if (content == NULL) { return Error.io; }
 
-    arr$(char*) lines = str.split_lines(content, allc);
-    if (lines == NULL) { return Error.memory; }
-    for$eachp (line, lines) {
-        if (!str.starts_with(*line, "SF:")) { continue; }
-        char* rel = _coverage__relativize_path(*line + 3, cwd, allc);
-        if (rel == NULL) { return Error.memory; }
-        *line = str.fmt(allc, "SF:%s", rel);
-    }
-
-    char* out = str.join(lines, arr$len(lines), "\n", allc);
-    if (out == NULL) { return Error.memory; }
-    out = str.fmt(allc, "%s\n", out);
-    if (out == NULL) { return Error.memory; }
-
+    // Stream line by line instead of split_lines + join: the latter clones every line, which
+    // blows up on large tracefiles.
     FILE* file = NULL;
     e$ret(io.fopen(&file, info_path, "wb"));
-    e$except (err, io.fwrite(file, out, str.len(out))) {
-        io.fclose(&file);
-        return err;
+
+    Exc err = EOK;
+    char* cur = content;
+    while (err == EOK && *cur != '\0') {
+        char* nl = str.find(cur, "\n");
+        usize len = (nl != NULL) ? (usize)(nl - cur) : str.len(cur);
+        if (len > 0 && cur[len - 1] == '\r') { len--; }
+
+        if (len >= 3 && cur[0] == 'S' && cur[1] == 'F' && cur[2] == ':') {
+            str_s sf = { .buf = cur + 3, .len = len - 3 };
+            char* path = str.slice.clone(sf, allc);
+            char* rel = (path != NULL) ? _coverage__relativize_path(path, cwd, allc) : NULL;
+            if (rel == NULL) {
+                err = Error.memory;
+                break;
+            }
+            err = io.fwrite(file, "SF:", 3);
+            if (err == EOK) { err = io.fwrite(file, rel, str.len(rel)); }
+        } else {
+            err = io.fwrite(file, cur, len);
+        }
+        if (err == EOK) { err = io.fwrite(file, "\n", 1); }
+
+        if (nl == NULL) { break; }
+        cur = nl + 1;
     }
+
     io.fclose(&file);
-    return EOK;
+    return err;
 }
 
 static Exception
@@ -261,12 +304,18 @@ _coverage__capture_info(char* engine, char* info_path, char* target, IAllocator 
         arr$push(args, str.fmt(allc, "-instr-profile=%s", profdata));
         arr$push(args, NULL);
 
-        char* content = NULL;
-        e$ret(_coverage__capture_cmd(args, &content, allc));
-        if (unlikely(content == NULL || content[0] == '\0')) {
-            return e$raise(Error.runtime, "failed to export llvm coverage");
+        if (os.cmd.exists("sh")) {
+            char* err_file = str.fmt(allc, "%s/coverage-llvm.stderr", cexy$build_dir);
+            if (unlikely(err_file == NULL)) { return Error.memory; }
+            e$ret(_coverage__run_redirected(args, info_path, err_file, allc));
+        } else {
+            char* content = NULL;
+            e$ret(_coverage__capture_cmd(args, &content, allc));
+            if (unlikely(content == NULL || content[0] == '\0')) {
+                return e$raise(Error.runtime, "failed to export llvm coverage");
+            }
+            e$ret(io.file.save(info_path, content));
         }
-        e$ret(io.file.save(info_path, content));
     } else {
         e$ret(_coverage__run_lcov_capture(info_path, allc));
     }
