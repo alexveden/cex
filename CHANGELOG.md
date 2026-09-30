@@ -12,6 +12,20 @@
 - feat: traceback read-back API `e$traceback_print` / `e$traceback_arr` / `e$traceback_len` / `e$traceback_reset` + top-level sink pattern
 - (breaking) `e$raise` / `e$assert` / `e$except*` / `e$ret` / `e$goto` now record traceback frames instead of printing immediately; flush with `e$traceback_print()` at the top-level sink
 - removed: `e$except_silent`, `e$traceback_fmt`, `uassertf*` family, `[ASSERT_ALWAYS]` label
+- feat: `./cex help` agentic workflow - `--brief` compact namespace API, `--idioms` namespace docs block, `--agents [--out <file>]` dumps idioms for agent instruction files, `--list` all namespaces, deterministic `--example`
+- feat: test coverage - `./cex test --coverage [--coverage-engine=auto|llvm|lcov]` builds tests instrumented (llvm source-based `.profraw`, or gcc/clang `--coverage` `.gcno`/`.gcda`); precompiled `cex.h` stays uninstrumented and raw data resets per target, so a single test can be re-run without losing the rest
+- feat(cexstd): `testing/coverage/` + `./cex coverage run|report|export|clean` - per-file text/json/html report with uncovered lines and functions, `--file` glob filter, lcov `.info` export
+- feat(ci): coverage aggregation workflow + coverage badge
+- refactor: `./cex build-docs` downscales generated markdown headers
+
+### Fixes
+- fix(coverage): covered functions reported incorrectly, merge OOM, recursive test executables, single-target run retaining data from a previous `all`
+- fix(cexy): `./cex help` private functions excluded, `ns$` includes constants, typedefs dropped from `--list`, win path normalization, bundled-vs-root `cex.h` conflicts
+- fix: CexParser errors on `#if`/`#else` branches; accepts tabs inside strings
+- fix: test suite error reported the wrong filename; empty suite prints SKIP instead of error
+- fix: app/boilerplate suppressed traceback output for `argparse` errors
+- fix: macOS gcc `breakpoint()`, destructor attribute, and `<mach-o/dyld.h>` include
+- test: 32-bit guards + 100% AllocatorHeap coverage
 
 ## 0.21
 2026-06-07
