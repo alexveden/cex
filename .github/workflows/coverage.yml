@@ -209,8 +209,8 @@ jobs:
 
       - name: HTML report
         run: |
-          genhtml --quiet --filter missing \
-            --ignore-errors inconsistent,mismatch,empty,unused,source,format,unsupported \
+          genhtml --quiet \
+            --ignore-errors inconsistent,mismatch,empty,unused,source,format,unsupported,missing \
             coverage-merged-${{ matrix.os }}.info -o html-${{ matrix.os }}
 
       - name: Upload merged report
@@ -254,8 +254,8 @@ jobs:
 
       - name: HTML report
         run: |
-          genhtml --quiet --filter missing \
-            --ignore-errors inconsistent,mismatch,empty,unused,source,format,unsupported \
+          genhtml --quiet \
+            --ignore-errors inconsistent,mismatch,empty,unused,source,format,unsupported,missing \
             coverage-global.info -o html-global
 
       - name: Upload global report
