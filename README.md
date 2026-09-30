@@ -5,6 +5,7 @@
 ![Fuzz Test](https://github.com/alexveden/cex/actions/workflows/fuzzing.yml/badge.svg)
 ![Multiarch support](https://github.com/alexveden/cex/actions/workflows/multiarch.yml/badge.svg)
 ![Examples](https://github.com/alexveden/cex/actions/workflows/examples.yml/badge.svg)
+![Coverage](https://img.shields.io/endpoint?url=https://cex-c.org/coverage.json)
 
 
 Cex.C (officially pronounced /ˈtsɛk.si/ "tsek-see") was born as an alternative answer to a plethora of brand new LLVM based languages which strive to replace old C. Cex.C still remains C language itself, with small, but important tweaks that bring a completely different development experience.

@@ -284,9 +284,194 @@ jobs:
         with:
           shell: 'alpine.sh {0}'
 
-  deploy-release:
+  # Full-suite coverage on each platform, merged via lcov in `coverage-merge` and
+  # published to gh-pages by `deploy-release`. Runs on master and staging; only the
+  # publish is master-gated.
+  coverage-full-linux:
+    name: coverage-full-linux
     runs-on: ubuntu-latest
-    needs: [tests-macos, tests-windows, linux-ubuntu2404]
+    steps:
+      - name: Checkout cex
+        uses: actions/checkout@v4
+
+      - name: Install coverage tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lcov llvm clang gcc
+
+      - name: Configure compiler
+        run: |
+          cat > cex_config.h <<EOF
+          #pragma once
+          #define cexy\$cc "clang"
+          #define cexy\$cex_self_cc "cc"
+          #define cexy\$cc_args_sanitizer "-fstack-protector-strong"
+          EOF
+          cat cex_config.h
+
+      - name: Bootstrap ./cex
+        run: |
+          ulimit -c unlimited
+          cc -g ./cex.c -o ./cex
+          ./cex config
+
+      - uses: ./.github/actions/cex_coverage
+        name: cex coverage
+        with:
+          engine: llvm
+          label: linux-full
+          target: all
+
+  coverage-full-macos:
+    name: coverage-full-macos
+    runs-on: macos-latest
+    steps:
+      - name: Checkout cex
+        uses: actions/checkout@v4
+
+      - name: Install coverage tools
+        run: |
+          brew install lcov llvm gcc
+          # Homebrew llvm is keg-only, expose llvm-cov / llvm-profdata
+          echo "$(brew --prefix llvm)/bin" >> $GITHUB_PATH
+          # Homebrew gcc installs versioned binaries only, expose plain `gcc`/`gcov`
+          mkdir -p "$HOME/.local/bin"
+          GCC_BIN="$(ls "$(brew --prefix gcc)"/bin/gcc-[0-9]* | head -n1)"
+          ln -sf "$GCC_BIN" "$HOME/.local/bin/gcc"
+          ln -sf "$(dirname "$GCC_BIN")/gcov-${GCC_BIN##*-}" "$HOME/.local/bin/gcov"
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Configure compiler
+        run: |
+          CC="$(brew --prefix llvm)/bin/clang"
+          cat > cex_config.h <<EOF
+          #pragma once
+          #define cexy\$cc "$CC"
+          #define cexy\$cex_self_cc "cc"
+          #define cexy\$cc_args_sanitizer "-fstack-protector-strong"
+          EOF
+          cat cex_config.h
+
+      - name: Bootstrap ./cex
+        run: |
+          ulimit -c unlimited
+          cc -g ./cex.c -o ./cex
+          ./cex config
+
+      - uses: ./.github/actions/cex_coverage
+        name: cex coverage
+        with:
+          engine: llvm
+          label: macos-full
+          target: all
+
+  coverage-full-windows:
+    name: coverage-full-windows
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: clang64
+          update: true
+          install: >-
+            git
+            lcov
+          pacboy: >-
+            toolchain:p llvm:p
+
+      - name: Checkout cex
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Configure compiler
+        run: |
+          cat > cex_config.h <<EOF
+          #pragma once
+          #define cexy\$cc "clang"
+          #define cexy\$cex_self_cc "cc"
+          #define cexy\$cc_args_sanitizer "-fstack-protector-strong"
+          EOF
+          cat cex_config.h
+
+      - name: Bootstrap ./cex
+        run: |
+          ulimit -c unlimited
+          cc -g ./cex.c -o ./cex.exe
+          ./cex.exe config
+
+      - uses: ./.github/actions/cex_coverage
+        name: cex coverage
+        with:
+          engine: llvm
+          label: windows-full
+          target: all
+          shell: 'msys2 {0}'
+
+  # Union the per-OS tracefiles into one global report, render HTML and build the
+  # shields.io badge JSON. Runs on a single platform (ubuntu).
+  coverage-merge:
+    name: coverage-merge
+    needs: [coverage-full-linux, coverage-full-macos, coverage-full-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout cex
+        uses: actions/checkout@v4
+
+      - name: Install coverage tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lcov
+
+      - name: Download platform tracefiles
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-*-full
+          merge-multiple: true
+          path: tracefiles
+
+      - name: Merge tracefiles
+        run: |
+          lcov --ignore-errors inconsistent,mismatch,empty,unused,source,format,unsupported,corrupt \
+            --include 'src/*' --include 'cexstd/*' \
+            -a 'tracefiles/coverage-*-full.info' \
+            -o coverage-global.info
+          test -s coverage-global.info
+          grep -q '^SF:' coverage-global.info
+
+      - name: HTML report
+        run: |
+          genhtml --quiet --synthesize-missing \
+            --ignore-errors inconsistent,mismatch,empty,unused,source,format,unsupported \
+            coverage-global.info -o coverage-html
+
+      - name: Build shields.io badge
+        run: |
+          PCT=$(awk -F: '/^LH:/{lh+=$2} /^LF:/{lf+=$2} END{ if (lf>0) printf "%.1f", lh/lf*100; else print "0.0" }' coverage-global.info)
+          COLOR=$(awk -v p="$PCT" 'BEGIN{ if (p>=90) print "green"; else if (p>=75) print "yellowgreen"; else if (p>=60) print "yellow"; else print "red" }')
+          printf '{"schemaVersion":1,"label":"coverage","message":"%s%%","color":"%s"}\n' "$PCT" "$COLOR" > coverage.json
+          cat coverage.json
+
+      - name: Upload merged report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-global
+          path: |
+            coverage-global.info
+            coverage-html/
+            coverage.json
+          if-no-files-found: error
+
+  deploy-release:
+    # Publish only from master; staging and PR runs build coverage artifacts but never deploy
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    needs: [coverage-merge, tests-macos, tests-windows, linux-ubuntu2404]
     permissions:
       contents: write  # This allows creating releases and uploading assets
     steps:
@@ -314,6 +499,12 @@ jobs:
           cp docs/docs.html docs.html
           zip cex.zip -r cexstd cex.h docs.html README.md
 
+      - name: Download coverage report
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-global
+          path: coverage-artifact
+
       - name: prepare web site
         run: |
           mkdir ./public
@@ -322,7 +513,12 @@ jobs:
           cp docs.html ./public/
           cp ./docs/index.html ./public/
           cp ./docs/install.sh ./public/
+          mkdir -p ./public/coverage
+          cp -r coverage-artifact/coverage-html/. ./public/coverage/
+          cp coverage-artifact/coverage-global.info ./public/coverage.info
+          cp coverage-artifact/coverage.json ./public/coverage.json
           echo "cex-c.org" > ./public/CNAME
+          touch ./public/.nojekyll
 
       - name: Deploy web site 🚀
         uses: peaceiris/actions-gh-pages@v3

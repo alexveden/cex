@@ -7,6 +7,8 @@ on:
     branches: [ 'dev*', 'staging*', 'master', 'main*' ]
   workflow_dispatch:
 
+# Toolchain probing only: smoke-test every engine on every OS with a small target.
+# Full-suite coverage, the merged report and the gh-pages badge live in main.yml.
 jobs:
   # 3 engines: clang+llvm, gcc+lcov, clang+lcov
   coverage-linux:
@@ -21,8 +23,6 @@ jobs:
           - { label: clang-llvm, engine: llvm, cc: clang }
           - { label: gcc-lcov,   engine: lcov, cc: gcc }
           - { label: clang-lcov, engine: lcov, cc: clang }
-          # Full-suite coverage (real report); the entries above smoke-test each engine
-          - { label: full, engine: llvm, cc: clang, target: all }
 
     steps:
       - name: Checkout cex
@@ -55,7 +55,7 @@ jobs:
         with:
           engine: ${{ matrix.engine }}
           label: linux-${{ matrix.label }}
-          target: ${{ matrix.target || 'tests/test_ci_coverage.c' }}
+          target: tests/test_ci_coverage.c
 
   coverage-macos:
     name: macos-${{ matrix.label }}
@@ -68,8 +68,6 @@ jobs:
           - { label: clang-llvm, engine: llvm }
           - { label: gcc-lcov,   engine: lcov }
           - { label: clang-lcov, engine: lcov }
-          # Full-suite coverage (real report); the entries above smoke-test each engine
-          - { label: full, engine: llvm, target: all }
 
     steps:
       - name: Checkout cex
@@ -112,7 +110,7 @@ jobs:
         with:
           engine: ${{ matrix.engine }}
           label: macos-${{ matrix.label }}
-          target: ${{ matrix.target || 'tests/test_ci_coverage.c' }}
+          target: tests/test_ci_coverage.c
 
   coverage-windows:
     name: windows-${{ matrix.label }}
@@ -129,8 +127,6 @@ jobs:
           - { label: clang-llvm, engine: llvm, cc: clang, msys: clang64, pacboy: 'toolchain:p llvm:p' }
           - { label: gcc-lcov,   engine: lcov, cc: gcc,   msys: ucrt64,  pacboy: 'toolchain:p' }
           - { label: clang-lcov, engine: lcov, cc: clang, msys: clang64, pacboy: 'toolchain:p llvm:p' }
-          # Full-suite coverage (real report); the entries above smoke-test each engine
-          - { label: full, engine: llvm, cc: clang, msys: clang64, pacboy: 'toolchain:p llvm:p', target: all }
 
     steps:
       - name: Setup MSYS2
@@ -176,102 +172,5 @@ jobs:
         with:
           engine: ${{ matrix.engine }}
           label: windows-${{ matrix.label }}
-          target: ${{ matrix.target || 'tests/test_ci_coverage.c' }}
+          target: tests/test_ci_coverage.c
           shell: 'msys2 {0}'
-
-  # Merge the full-suite tracefiles of each platform into one report. Runs on a
-  # single platform (ubuntu) and needs the exported paths to be repo-relative.
-  coverage-merge:
-    name: merge-${{ matrix.os }}
-    needs: [coverage-linux, coverage-macos, coverage-windows]
-    runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [linux, macos, windows]
-
-    steps:
-      - name: Checkout cex
-        uses: actions/checkout@v4
-
-      - name: Install coverage tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y lcov
-
-      - name: Download platform tracefiles
-        uses: actions/download-artifact@v4
-        with:
-          pattern: coverage-${{ matrix.os }}-full
-          merge-multiple: true
-          path: tracefiles
-
-      - name: Merge tracefiles
-        run: |
-          lcov --ignore-errors inconsistent,mismatch,empty,unused,source,format,unsupported,corrupt \
-            --include 'src/*' --include 'cexstd/*' \
-            -a 'tracefiles/coverage-${{ matrix.os }}-full.info' \
-            -o coverage-merged-${{ matrix.os }}.info
-          test -s coverage-merged-${{ matrix.os }}.info
-          grep -q '^SF:' coverage-merged-${{ matrix.os }}.info
-
-      - name: HTML report
-        run: |
-          genhtml --quiet --synthesize-missing \
-            --ignore-errors inconsistent,mismatch,empty,unused,source,format,unsupported \
-            coverage-merged-${{ matrix.os }}.info -o html-${{ matrix.os }}
-
-      - name: Upload merged report
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-merged-${{ matrix.os }}
-          path: |
-            coverage-merged-${{ matrix.os }}.info
-            html-${{ matrix.os }}/
-          if-no-files-found: error
-
-  # Union the per-OS reports into one global report (runs on a single platform)
-  coverage-merge-all:
-    name: merge-all
-    needs: [coverage-merge]
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout cex
-        uses: actions/checkout@v4
-
-      - name: Install coverage tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y lcov
-
-      - name: Download per-OS reports
-        uses: actions/download-artifact@v4
-        with:
-          pattern: coverage-merged-*
-          merge-multiple: true
-          path: merged
-
-      - name: Merge all platforms
-        run: |
-          lcov --ignore-errors inconsistent,mismatch,empty,unused,source,format,unsupported,corrupt \
-            -a 'merged/coverage-merged-*.info' \
-            -o coverage-global.info
-          test -s coverage-global.info
-          grep -q '^SF:' coverage-global.info
-
-      - name: HTML report
-        run: |
-          genhtml --quiet --synthesize-missing \
-            --ignore-errors inconsistent,mismatch,empty,unused,source,format,unsupported \
-            coverage-global.info -o html-global
-
-      - name: Upload global report
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-global
-          path: |
-            coverage-global.info
-            html-global/
-          if-no-files-found: error
