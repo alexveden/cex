@@ -1,4 +1,20 @@
+#include <setjmp.h>
+#include <stdint.h>
+
+#define cex$platform_panic _heap_scope_panic
+static void _heap_scope_panic(const char*, const char*, uint32_t, const char*, const char*);
+
 #include "src/all.c"
+
+static jmp_buf _heap_scope_panic_jmp;
+static bool _heap_scope_panic_armed = false;
+
+static void
+_heap_scope_panic(const char* prefix, const char* file, u32 line, const char* func, const char* msg)
+{
+    if (_heap_scope_panic_armed) { longjmp(_heap_scope_panic_jmp, 1); }
+    _cex_errors_panic_handler(prefix, file, line, func, msg);
+}
 
 test$case(test_allocator_api)
 {
@@ -309,6 +325,48 @@ test$case(test_allocator_heap_realloc_random_align)
         mem$free(mem$, b);
     }
 
+    return EOK;
+}
+
+test$case(test_allocator_heap_invalid_args_return_null)
+{
+    uassert_disable();
+
+    tassert(_cex_allocator_heap__hdr_make(0, 8) == 0);
+    if (sizeof(usize) == 8) { tassert(_cex_allocator_heap__hdr_make(0x1000000000000ULL, 8) == 0); }
+    tassert(_cex_allocator_heap__hdr_make(24, 16) == 0);
+
+    tassert(mem$->calloc(mem$, 0, 8, 0) == NULL);
+    tassert(mem$->calloc(mem$, 1, 0, 0) == NULL);
+    tassert(mem$->realloc(mem$, NULL, 16, 0) == NULL);
+
+    u8* p = mem$malloc(mem$, 32, 0);
+    tassert(p != NULL);
+    tassert(mem$->realloc(mem$, p, 64, 16) == NULL);
+
+    uassert_enable();
+    return EOK;
+}
+
+test$case(test_allocator_heap_scope_enter_panics)
+{
+    _heap_scope_panic_armed = true;
+    if (setjmp(_heap_scope_panic_jmp) == 0) {
+        (void)mem$->scope_enter(mem$);
+        tassert(false && "heap allocator scope_enter must panic");
+    }
+    _heap_scope_panic_armed = false;
+    return EOK;
+}
+
+test$case(test_allocator_heap_scope_exit_panics)
+{
+    _heap_scope_panic_armed = true;
+    if (setjmp(_heap_scope_panic_jmp) == 0) {
+        mem$->scope_exit(mem$);
+        tassert(false && "heap allocator scope_exit must panic");
+    }
+    _heap_scope_panic_armed = false;
     return EOK;
 }
 
