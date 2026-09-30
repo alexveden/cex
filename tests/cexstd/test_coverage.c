@@ -237,6 +237,53 @@ test$case(test_coverage_cmd_file_html_rejected)
     return EOK;
 }
 
+test$case(test_coverage_format_json_collapses_unity_funcs)
+{
+    char* info = "SF:src/a.c\n"
+                 "DA:1,1\n"
+                 "DA:2,0\n"
+                 "FNDA:0,test_x.c:foo\n"
+                 "FNDA:4,test_y.c:foo\n"
+                 "FNDA:0,test_z.c:bar\n"
+                 "end_of_record\n";
+    char* report = _coverage__format_json(info, NULL, test$alloc);
+    tassert_eq(
+        report,
+        "{\"total\":{\"lines_hit\":1,\"lines_found\":2,\"funcs_hit\":1,\"funcs_found\":2},"
+        "\"files\":[{\"path\":\"src/a.c\",\"lines_hit\":1,\"lines_found\":2,\"funcs_hit\":1,"
+        "\"funcs_found\":2,\"missed_lines\":[2],\"uncovered_funcs\":[\"bar\"]}]}\n"
+    );
+    return EOK;
+}
+
+test$case(test_coverage_normalize_collapses_unity_funcs)
+{
+    char* path = TBUILDDIR "dup.info";
+    char* info = "SF:src/a.c\n"
+                 "DA:1,1\n"
+                 "FN:10,test_x.c:foo\n"
+                 "FN:10,test_y.c:foo\n"
+                 "FN:20,bar\n"
+                 "FNDA:0,test_x.c:foo\n"
+                 "FNDA:3,test_y.c:foo\n"
+                 "FNDA:0,bar\n"
+                 "FNF:2\n"
+                 "FNH:1\n"
+                 "end_of_record\n";
+    e$ret(io.file.save(path, info));
+    e$ret(_coverage__normalize_info(path, test$alloc));
+
+    char* out = io.file.load(path, test$alloc);
+    tassert(out != NULL);
+    tassert(str.find(out, "test_x.c:") == NULL);
+    tassert(str.find(out, "test_y.c:") == NULL);
+    tassert(str.find(out, "FN:10,foo\n") != NULL);
+    tassert(str.find(out, "FNDA:3,foo\n") != NULL);
+    tassert(str.find(out, "FN:20,bar\n") != NULL);
+    tassert(str.find(out, "FNDA:0,bar\n") != NULL);
+    return EOK;
+}
+
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
 
 test$case(test_coverage_lcov_run_export_report_clean)

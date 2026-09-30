@@ -7,6 +7,7 @@
 #define _COVERAGE_HTML_DEFAULT cexy$build_dir "/coverage"
 
 static Exception _coverage__capture_cmd(arr$(char*) args, char** out, IAllocator allc);
+static i64 _coverage__parse_i64_prefix(char* s, char** out_rest);
 
 static bool
 _coverage__is_clang(void)
@@ -254,8 +255,86 @@ _coverage__relativize_path(char* path, char* cwd, IAllocator allc)
     return str.slice.clone(ps, allc);
 }
 
+/// One canonicalized function per source file: unity builds emit the same static
+/// function once per including TU (`test_x.c:foo`), so duplicates must be collapsed
+typedef struct
+{
+    str_s fn_prefix; // text before the canonical name, e.g. "FN:508," (len 0 if no FN line)
+    i64 count;
+    bool has_fnda;
+} _coverage__func_s;
+
+typedef struct
+{
+    str_s key;
+    _coverage__func_s value;
+} _coverage__func_rec_s;
+
+/// Collapses a unity-build function name (`test_x.c:foo`) to its canonical form (`foo`)
+static str_s
+_coverage__canonical_func_name(str_s name)
+{
+    isize colon = str.slice.index_of(name, str$s(":"));
+    if (colon < 0) { return name; }
+    return str.slice.sub(name, colon + 1, (isize)name.len);
+}
+
+/// Buffers one FN/FNDA line, keeping the first FN prefix and the max FNDA count per name
 static Exception
-_coverage__relativize_info(char* info_path, IAllocator allc)
+_coverage__store_func(_coverage__func_rec_s** funcs, str_s line, bool is_fnda)
+{
+    uassert(funcs != NULL);
+    if (*funcs == NULL) { return EOK; } // FN/FNDA outside of a SF record
+
+    char* comma = NULL;
+    if (is_fnda) {
+        comma = memchr(line.buf + 5, ',', line.len - 5);
+    } else {
+        for (char* p = line.buf + line.len; p > line.buf; p--) {
+            if (p[-1] == ',') { comma = p - 1; break; }
+        }
+    }
+    if (comma == NULL) { return EOK; }
+    str_s name = { .buf = comma + 1, .len = line.len - (usize)(comma + 1 - line.buf) };
+
+    str_s cname = _coverage__canonical_func_name(name);
+    _coverage__func_s* r = hm$getp(*funcs, cname);
+    if (r == NULL) {
+        r = hm$setp(*funcs, cname);
+        if (r == NULL) { return Error.memory; }
+        *r = (_coverage__func_s){ 0 };
+    }
+
+    if (is_fnda) {
+        i64 count = _coverage__parse_i64_prefix(line.buf + 5, NULL);
+        if (count > r->count) { r->count = count; }
+        r->has_fnda = true;
+    } else if (r->fn_prefix.len == 0) {
+        r->fn_prefix = (str_s){ .buf = line.buf, .len = (usize)(name.buf - line.buf) };
+    }
+    return EOK;
+}
+
+/// Writes the deduplicated FN then FNDA lines of one source file
+static Exception
+_coverage__write_funcs(FILE* file, _coverage__func_rec_s* funcs)
+{
+    for$each (it, funcs) {
+        if (it.value.fn_prefix.len == 0) { continue; }
+        e$ret(io.fwrite(file, it.value.fn_prefix.buf, it.value.fn_prefix.len));
+        e$ret(io.fwrite(file, it.key.buf, it.key.len));
+        e$ret(io.fwrite(file, "\n", 1));
+    }
+    for$each (it, funcs) {
+        if (!it.value.has_fnda) { continue; }
+        e$ret(io.fprintf(file, "FNDA:%ld,%S\n", it.value.count, it.key));
+    }
+    return EOK;
+}
+
+/// Rewrites a tracefile: relativizes SF paths and canonicalizes unity-build function records
+static Exception
+_coverage__normalize_info(char* info_path, IAllocator allc)
 {
     uassert(info_path != NULL);
 
@@ -270,6 +349,7 @@ _coverage__relativize_info(char* info_path, IAllocator allc)
     e$ret(io.fopen(&file, info_path, "wb"));
 
     Exc err = EOK;
+    _coverage__func_rec_s* funcs = NULL;
     char* cur = content;
     while (err == EOK && *cur != '\0') {
         char* nl = str.find(cur, "\n");
@@ -277,6 +357,7 @@ _coverage__relativize_info(char* info_path, IAllocator allc)
         if (len > 0 && cur[len - 1] == '\r') { len--; }
 
         if (len >= 3 && cur[0] == 'S' && cur[1] == 'F' && cur[2] == ':') {
+            hm$free(funcs); // malformed: previous record had no end_of_record
             str_s sf = { .buf = cur + 3, .len = len - 3 };
             char* path = str.slice.clone(sf, allc);
             char* rel = (path != NULL) ? _coverage__relativize_path(path, cwd, allc) : NULL;
@@ -286,14 +367,27 @@ _coverage__relativize_info(char* info_path, IAllocator allc)
             }
             err = io.fwrite(file, "SF:", 3);
             if (err == EOK) { err = io.fwrite(file, rel, str.len(rel)); }
+            if (err == EOK) { err = io.fwrite(file, "\n", 1); }
+            funcs = hm$new(funcs, allc);
+            if (funcs == NULL) { err = Error.memory; }
+        } else if (len >= 3 && cur[0] == 'F' && cur[1] == 'N' && cur[2] == ':') {
+            err = _coverage__store_func(&funcs, (str_s){ .buf = cur, .len = len }, false);
+        } else if (len >= 5 && memcmp(cur, "FNDA:", 5) == 0) {
+            err = _coverage__store_func(&funcs, (str_s){ .buf = cur, .len = len }, true);
+        } else if (len == 13 && memcmp(cur, "end_of_record", 13) == 0) {
+            err = _coverage__write_funcs(file, funcs);
+            hm$free(funcs);
+            if (err == EOK) { err = io.fwrite(file, cur, len); }
+            if (err == EOK) { err = io.fwrite(file, "\n", 1); }
         } else {
             err = io.fwrite(file, cur, len);
+            if (err == EOK) { err = io.fwrite(file, "\n", 1); }
         }
-        if (err == EOK) { err = io.fwrite(file, "\n", 1); }
 
         if (nl == NULL) { break; }
         cur = nl + 1;
     }
+    hm$free(funcs);
 
     io.fclose(&file);
     return err;
@@ -332,7 +426,7 @@ _coverage__capture_info(char* engine, char* info_path, char* target, IAllocator 
     } else {
         e$ret(_coverage__run_lcov_capture(info_path, allc));
     }
-    return _coverage__relativize_info(info_path, allc);
+    return _coverage__normalize_info(info_path, allc);
 }
 
 typedef struct
@@ -348,6 +442,7 @@ typedef struct
     i64 fna_hit;
     arr$(u32) missed;
     arr$(char*) uncovered_funcs;
+    hm$(str_s, i64) funcs;
 } _coverage__file_s;
 
 static i64
@@ -363,6 +458,39 @@ _coverage__parse_i64_prefix(char* s, char** out_rest)
     return v;
 }
 
+/// Records a function hit count by canonical name, keeping the max across duplicate records
+static Exception
+_coverage__record_func(_coverage__file_s* f, char* name, i64 count)
+{
+    uassert(f != NULL);
+    if (name == NULL) { return EOK; }
+
+    str_s cname = _coverage__canonical_func_name(str.sstr(name));
+    i64* p = hm$getp(f->funcs, cname);
+    if (p == NULL) {
+        p = hm$setp(f->funcs, cname);
+        if (p == NULL) { return Error.memory; }
+        *p = 0;
+    }
+    if (count > *p) { *p = count; }
+    return EOK;
+}
+
+static void
+_coverage__finalize_funcs(_coverage__file_s* f)
+{
+    f->fna_total = 0;
+    f->fna_hit = 0;
+    for$each (it, f->funcs) {
+        f->fna_total++;
+        if (it.value > 0) {
+            f->fna_hit++;
+        } else {
+            arr$push(f->uncovered_funcs, it.key.buf);
+        }
+    }
+}
+
 static Exception
 _coverage__parse_info(char* content, arr$(_coverage__file_s)* out, IAllocator allc)
 {
@@ -373,10 +501,15 @@ _coverage__parse_info(char* content, arr$(_coverage__file_s)* out, IAllocator al
     _coverage__file_s f = { 0 };
     for$each (line, str.split_lines(content, allc)) {
         if (str.starts_with(line, "SF:")) {
-            if (f.path != NULL) { arr$push(*out, f); }
+            if (f.path != NULL) {
+                _coverage__finalize_funcs(&f);
+                arr$push(*out, f);
+            }
             f = (_coverage__file_s){ .path = line + 3, .lf = -1, .lh = -1, .fnf = -1, .fnh = -1 };
             f.missed = arr$new(f.missed, allc);
             f.uncovered_funcs = arr$new(f.uncovered_funcs, allc);
+            f.funcs = hm$new(f.funcs, allc);
+            if (f.funcs == NULL) { return Error.memory; }
         } else if (f.path == NULL) {
             continue;
         } else if (str.starts_with(line, "DA:")) {
@@ -402,24 +535,17 @@ _coverage__parse_info(char* content, arr$(_coverage__file_s)* out, IAllocator al
             (void)_coverage__parse_i64_prefix(line + 4, &rest);
             char* name = NULL;
             i64 count = rest != NULL ? _coverage__parse_i64_prefix(rest, &name) : 0;
-            f.fna_total++;
-            if (count > 0) {
-                f.fna_hit++;
-            } else if (name != NULL) {
-                arr$push(f.uncovered_funcs, name);
-            }
+            e$ret(_coverage__record_func(&f, name, count));
         } else if (str.starts_with(line, "FNDA:")) {
             char* name = NULL;
             i64 count = _coverage__parse_i64_prefix(line + 5, &name);
-            f.fna_total++;
-            if (count > 0) {
-                f.fna_hit++;
-            } else if (name != NULL) {
-                arr$push(f.uncovered_funcs, name);
-            }
+            e$ret(_coverage__record_func(&f, name, count));
         }
     }
-    if (f.path != NULL) { arr$push(*out, f); }
+    if (f.path != NULL) {
+        _coverage__finalize_funcs(&f);
+        arr$push(*out, f);
+    }
     return EOK;
 }
 
