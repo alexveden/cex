@@ -243,6 +243,192 @@ _coverage__relativize_info(char* info_path, IAllocator allc)
     return EOK;
 }
 
+static Exception
+_coverage__capture_info(char* engine, char* info_path, char* target, IAllocator allc)
+{
+    uassert(engine != NULL);
+    uassert(info_path != NULL);
+    uassert(target != NULL);
+
+    if (str.eq(engine, "llvm")) {
+        char* profdata = NULL;
+        e$ret(_coverage__llvm_merge_profdata(&profdata, allc));
+
+        arr$(char*) args = arr$new(args, allc);
+        e$ret(_coverage__resolve_tool(&args, "llvm-cov", allc));
+        arr$pushm(args, "export", "--format=lcov");
+        e$ret(_coverage__llvm_add_objects(target, &args, allc));
+        arr$push(args, str.fmt(allc, "-instr-profile=%s", profdata));
+        arr$push(args, NULL);
+
+        char* content = NULL;
+        e$ret(_coverage__capture_cmd(args, &content, allc));
+        if (unlikely(content == NULL || content[0] == '\0')) {
+            return e$raise(Error.runtime, "failed to export llvm coverage");
+        }
+        e$ret(io.file.save(info_path, content));
+    } else {
+        e$ret(_coverage__run_lcov_capture(info_path, allc));
+    }
+    return _coverage__relativize_info(info_path, allc);
+}
+
+typedef struct
+{
+    char* path;
+    i64 lf;
+    i64 lh;
+    i64 fnf;
+    i64 fnh;
+    i64 da_total;
+    i64 da_hit;
+    i64 fna_total;
+    i64 fna_hit;
+    arr$(u32) missed;
+} _coverage__file_s;
+
+static char*
+_coverage__format_ranges(arr$(u32) lines, IAllocator allc)
+{
+    sbuf_c out = sbuf.create(64, allc);
+    bool first = true;
+    for (usize i = 0; i < arr$len(lines); i++) {
+        u32 start = lines[i];
+        u32 end = start;
+        while (i + 1 < arr$len(lines) && lines[i + 1] == end + 1) { end = lines[++i]; }
+
+        if (!first) { e$goto(sbuf.append(&out, ","), fail); }
+        first = false;
+        if (start == end) {
+            e$goto(sbuf.appendf(&out, "%u", start), fail);
+        } else {
+            e$goto(sbuf.appendf(&out, "%u-%u", start, end), fail);
+        }
+    }
+    return out;
+fail:
+    sbuf.destroy(&out);
+    return NULL;
+}
+
+static Exception
+_coverage__emit_file(
+    sbuf_c* out,
+    _coverage__file_s* f,
+    IAllocator allc,
+    u64* t_lf,
+    u64* t_lh,
+    u64* t_ff,
+    u64* t_fh
+)
+{
+    i64 lf = f->lf >= 0 ? f->lf : f->da_total;
+    i64 lh = f->lh >= 0 ? f->lh : f->da_hit;
+    i64 ff = f->fnf >= 0 ? f->fnf : f->fna_total;
+    i64 fh = f->fnh >= 0 ? f->fnh : f->fna_hit;
+    if (lf <= 0) { return EOK; }
+
+    *t_lf += (u64)lf;
+    *t_lh += (u64)lh;
+    *t_ff += (u64)ff;
+    *t_fh += (u64)fh;
+
+    f64 line_pct = 100.0 * (f64)lh / (f64)lf;
+    f64 func_pct = ff > 0 ? 100.0 * (f64)fh / (f64)ff : 0.0;
+    e$ret(sbuf.appendf(
+        out,
+        "%s  %.1f%% lines (%ld/%ld)  %.1f%% funcs (%ld/%ld)",
+        f->path,
+        line_pct,
+        lh,
+        lf,
+        func_pct,
+        fh,
+        ff
+    ));
+    if (arr$len(f->missed) > 0) {
+        char* ranges = _coverage__format_ranges(f->missed, allc);
+        if (ranges == NULL) { return Error.memory; }
+        e$ret(sbuf.appendf(out, "  missed: %s", ranges));
+    }
+    e$ret(sbuf.append(out, "\n"));
+    return EOK;
+}
+
+static char*
+_coverage__format_text(char* content, IAllocator allc)
+{
+    uassert(content != NULL);
+
+    sbuf_c out = sbuf.create(1024, allc);
+    _coverage__file_s f = { 0 };
+    u64 t_lf = 0, t_lh = 0, t_ff = 0, t_fh = 0;
+
+    for$each (line, str.split_lines(content, allc)) {
+        if (str.starts_with(line, "SF:")) {
+            if (f.path != NULL) {
+                e$goto(_coverage__emit_file(&out, &f, allc, &t_lf, &t_lh, &t_ff, &t_fh), fail);
+            }
+            f = (_coverage__file_s){ .path = line + 3, .lf = -1, .lh = -1, .fnf = -1, .fnh = -1 };
+            f.missed = arr$new(f.missed, allc);
+        } else if (f.path == NULL) {
+            continue;
+        } else if (str.starts_with(line, "DA:")) {
+            char* end = NULL;
+            long ln = strtol(line + 3, &end, 10);
+            long count = (end != NULL && *end == ',') ? strtol(end + 1, NULL, 10) : 0;
+            f.da_total++;
+            if (count > 0) {
+                f.da_hit++;
+            } else {
+                arr$push(f.missed, (u32)ln);
+            }
+        } else if (str.starts_with(line, "LF:")) {
+            f.lf = atoi(line + 3);
+        } else if (str.starts_with(line, "LH:")) {
+            f.lh = atoi(line + 3);
+        } else if (str.starts_with(line, "FNF:")) {
+            f.fnf = atoi(line + 4);
+        } else if (str.starts_with(line, "FNH:")) {
+            f.fnh = atoi(line + 4);
+        } else if (str.starts_with(line, "FNA:")) {
+            char* end = NULL;
+            strtol(line + 4, &end, 10);
+            long count = (end != NULL && *end == ',') ? strtol(end + 1, NULL, 10) : 0;
+            f.fna_total++;
+            if (count > 0) { f.fna_hit++; }
+        } else if (str.starts_with(line, "FNDA:")) {
+            long count = strtol(line + 5, NULL, 10);
+            f.fna_total++;
+            if (count > 0) { f.fna_hit++; }
+        }
+    }
+    if (f.path != NULL) {
+        e$goto(_coverage__emit_file(&out, &f, allc, &t_lf, &t_lh, &t_ff, &t_fh), fail);
+    }
+
+    f64 line_pct = t_lf > 0 ? 100.0 * (f64)t_lh / (f64)t_lf : 0.0;
+    f64 func_pct = t_ff > 0 ? 100.0 * (f64)t_fh / (f64)t_ff : 0.0;
+    e$goto(
+        sbuf.appendf(
+            &out,
+            "Total: %.1f%% lines (%lu/%lu)  %.1f%% funcs (%lu/%lu)\n",
+            line_pct,
+            t_lh,
+            t_lf,
+            func_pct,
+            t_fh,
+            t_ff
+        ),
+        fail
+    );
+
+    return out;
+fail:
+    sbuf.destroy(&out);
+    return NULL;
+}
+
 /// Builds and runs tests with coverage instrumentation
 Exception
 coverage_run(char* engine, char* target)
@@ -270,36 +456,39 @@ coverage_report(char* engine, char* format, char* output, char* target)
 
     mem$scope(tmem$, _)
     {
+        if (!html) {
+            char* info = str.fmt(_, "%s/coverage.info", cexy$build_dir);
+            e$ret(_coverage__capture_info(engine, info, target, _));
+
+            char* content = io.file.load(info, _);
+            if (content == NULL) { return Error.io; }
+            char* report = _coverage__format_text(content, _);
+            if (report == NULL) { return Error.memory; }
+            io.printf("%s", report);
+            return EOK;
+        }
+
         if (str.eq(engine, "llvm")) {
             char* profdata = NULL;
             e$ret(_coverage__llvm_merge_profdata(&profdata, _));
 
             arr$(char*) args = arr$new(args, _);
             e$ret(_coverage__resolve_tool(&args, "llvm-cov", _));
-            arr$pushm(args, html ? "show" : "report");
+            arr$pushm(args, "show");
             e$ret(_coverage__llvm_add_objects(target, &args, _));
             arr$push(args, str.fmt(_, "-instr-profile=%s", profdata));
-            if (html) {
-                arr$pushm(args, "--format=html", str.fmt(_, "--output-dir=%s", output));
-            }
-            arr$push(args, NULL);
+            arr$pushm(args, "--format=html", str.fmt(_, "--output-dir=%s", output), NULL);
             e$ret(os$cmda(args, arr$len(args)));
         } else {
             char* info = str.fmt(_, "%s/coverage.info", cexy$build_dir);
-            e$ret(_coverage__run_lcov_capture(info, _));
+            e$ret(_coverage__capture_info(engine, info, target, _));
 
             arr$(char*) args = arr$new(args, _);
-            if (html) {
-                e$ret(_coverage__resolve_tool(&args, "genhtml", _));
-                arr$pushm(args, "--quiet", info, "-o", output, NULL);
-            } else {
-                e$ret(_coverage__resolve_tool(&args, "lcov", _));
-                arr$pushm(args, "--quiet", "--list", info, NULL);
-            }
+            e$ret(_coverage__resolve_tool(&args, "genhtml", _));
+            arr$pushm(args, "--quiet", info, "-o", output, NULL);
             e$ret(os$cmda(args, arr$len(args)));
         }
-
-        if (html) { log$info("Coverage report: %s\n", output); }
+        log$info("Coverage report: %s\n", output);
     }
     return EOK;
 }
@@ -314,27 +503,7 @@ coverage_export(char* engine, char* output, char* target)
     if (output == NULL) { output = _COVERAGE_INFO_DEFAULT; }
     mem$scope(tmem$, _)
     {
-        if (str.eq(engine, "llvm")) {
-            char* profdata = NULL;
-            e$ret(_coverage__llvm_merge_profdata(&profdata, _));
-
-            arr$(char*) args = arr$new(args, _);
-            e$ret(_coverage__resolve_tool(&args, "llvm-cov", _));
-            arr$pushm(args, "export", "--format=lcov");
-            e$ret(_coverage__llvm_add_objects(target, &args, _));
-            arr$push(args, str.fmt(_, "-instr-profile=%s", profdata));
-            arr$push(args, NULL);
-
-            char* content = NULL;
-            e$ret(_coverage__capture_cmd(args, &content, _));
-            if (unlikely(content == NULL || content[0] == '\0')) {
-                return e$raise(Error.runtime, "failed to export llvm coverage");
-            }
-            e$ret(io.file.save(output, content));
-        } else {
-            e$ret(_coverage__run_lcov_capture(output, _));
-        }
-        e$ret(_coverage__relativize_info(output, _));
+        e$ret(_coverage__capture_info(engine, output, target, _));
         log$info("Coverage exported: %s\n", output);
     }
     return EOK;
@@ -395,8 +564,9 @@ coverage_cmd(int argc, char** argv, void* user_ctx)
         "- `lcov`: compiler --coverage + lcov/genhtml (gcc or clang)\n"
         "\n`run` builds and runs tests with instrumentation, leaving raw data in\n"
         "cexy$build_dir (.profraw for llvm, .gcno/.gcda for lcov). `report` aggregates\n"
-        "and prints per-source coverage. `export` writes an lcov .info tracefile for\n"
-        "external tools (merge several with `lcov -a a.info -o merged.info`). `clean`\n"
+        "and prints a per-file report with uncovered line ranges. `export` writes an\n"
+        "lcov .info tracefile for external tools (merge several with\n"
+        "`lcov -a a.info -o merged.info`). `clean`\n"
         "removes the raw coverage artifacts only, leaving test binaries intact.\n";
     char* epilog_help =
         "\nCommand examples: \n"
@@ -490,7 +660,6 @@ CEX_NAMESPACE_DEF struct __cex_namespace__coverage coverage = {
 
     // clang-format on
 };
-
 #undef _COVERAGE_INFO_DEFAULT
 #undef _COVERAGE_HTML_DEFAULT
 

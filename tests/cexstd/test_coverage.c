@@ -45,6 +45,71 @@ test$case(test_coverage_cmd_engine_llvm_requires_clang)
     return EOK;
 }
 
+test$case(test_coverage_format_text_line_report)
+{
+    char* info = "TN:\n"
+                 "SF:src/a.c\n"
+                 "DA:1,1\n"
+                 "DA:2,0\n"
+                 "DA:3,0\n"
+                 "DA:5,2\n"
+                 "LF:4\n"
+                 "LH:2\n"
+                 "FNF:1\n"
+                 "FNH:1\n"
+                 "end_of_record\n";
+    char* report = _coverage__format_text(info, test$alloc);
+    tassert_eq(
+        report,
+        "src/a.c  50.0% lines (2/4)  100.0% funcs (1/1)  missed: 2-3\n"
+        "Total: 50.0% lines (2/4)  100.0% funcs (1/1)\n"
+    );
+    return EOK;
+}
+
+test$case(test_coverage_format_text_derives_counts_without_totals)
+{
+    char* info = "SF:src/b.c\n"
+                 "DA:10,0\n"
+                 "DA:11,1\n"
+                 "DA:12,0\n"
+                 "FNA:0,1,foo\n"
+                 "FNA:1,0,bar\n"
+                 "end_of_record\n";
+    char* report = _coverage__format_text(info, test$alloc);
+    tassert_eq(
+        report,
+        "src/b.c  33.3% lines (1/3)  50.0% funcs (1/2)  missed: 10,12\n"
+        "Total: 33.3% lines (1/3)  50.0% funcs (1/2)\n"
+    );
+    return EOK;
+}
+
+test$case(test_coverage_format_text_compresses_ranges_and_skips_empty)
+{
+    char* info = "SF:src/c.c\n"
+                 "DA:1,0\n"
+                 "DA:2,0\n"
+                 "DA:3,0\n"
+                 "DA:7,0\n"
+                 "DA:8,1\n"
+                 "DA:20,0\n"
+                 "LF:6\n"
+                 "LH:1\n"
+                 "FNDA:3,foo\n"
+                 "FNDA:0,bar\n"
+                 "end_of_record\n"
+                 "SF:src/empty.h\n"
+                 "end_of_record\n";
+    char* report = _coverage__format_text(info, test$alloc);
+    tassert_eq(
+        report,
+        "src/c.c  16.7% lines (1/6)  50.0% funcs (1/2)  missed: 1-3,7,20\n"
+        "Total: 16.7% lines (1/6)  50.0% funcs (1/2)\n"
+    );
+    return EOK;
+}
+
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
 
 test$case(test_coverage_lcov_run_export_report_clean)
