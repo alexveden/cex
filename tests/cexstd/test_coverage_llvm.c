@@ -62,7 +62,7 @@ test$case(test_coverage_llvm_run_export_report_clean)
         }
         tassert(sf_count > 0);
 
-        e$ret(coverage.report("llvm", "text", NULL, src));
+        e$ret(coverage.report("llvm", "text", NULL, NULL, src));
 
         e$ret(coverage.clean(src));
         tassert(arr$len(os.fs.find(profraw_glob, true, _)) == 0);

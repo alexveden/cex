@@ -20,8 +20,8 @@ struct __cex_namespace__coverage {
     Exception       (*cmd)(int argc, char** argv, void* user_ctx);
     /// Exports aggregated coverage as an lcov .info tracefile
     Exception       (*export)(char* engine, char* output, char* target);
-    /// Aggregates coverage and prints a per-source report (text or html)
-    Exception       (*report)(char* engine, char* format, char* output, char* target);
+    /// Aggregates coverage and prints a per-source report (text, json or html)
+    Exception       (*report)(char* engine, char* format, char* output, char* file_filter, char* target);
     /// Builds and runs tests with coverage instrumentation
     Exception       (*run)(char* engine, char* target);
 

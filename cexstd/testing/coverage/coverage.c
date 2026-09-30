@@ -6,6 +6,8 @@
 #define _COVERAGE_INFO_DEFAULT "coverage.info"
 #define _COVERAGE_HTML_DEFAULT cexy$build_dir "/coverage"
 
+static Exception _coverage__capture_cmd(arr$(char*) args, char** out, IAllocator allc);
+
 static bool
 _coverage__is_clang(void)
 {
@@ -52,9 +54,11 @@ _coverage__find_test_binaries(char* target, arr$(char*)* out, IAllocator allc)
 
     *out = arr$new(*out, allc);
     if (str.ends_with(pattern, "test_*.c")) {
-        // *.test* also matches lcov artifacts (.test-*.gcno/.gcda); keep only executables
+        // *.test* also matches lcov artifacts (.test-*.gcno/.gcda) and the macOS .dSYM DWARF
+        // (a bundle whose inner file is named like the executable); keep only real executables
         arr$(char*) found = os.fs.find(str.fmt(allc, "%s/tests/*.test*", cexy$build_dir), true, allc);
         for$each (bin, found) {
+            if (str.find(bin, ".dSYM") != NULL) { continue; }
             if (str.ends_with(bin, ".test") || str.ends_with(bin, ".test.exe")) {
                 arr$push(*out, bin);
             }
@@ -103,7 +107,9 @@ _coverage__llvm_merge_profdata(char** out_profdata, IAllocator allc)
     arr$pushm(args, "merge", "-sparse");
     arr$pusha(args, profraw);
     arr$pushm(args, "-o", profdata, NULL);
-    e$ret(os$cmda(args, arr$len(args)));
+    char* merge_out = NULL;
+    e$ret(_coverage__capture_cmd(args, &merge_out, allc));
+    if (merge_out != NULL) { io.fprintf(stderr, "%s", merge_out); }
 
     *out_profdata = profdata;
     return EOK;
@@ -136,7 +142,8 @@ _coverage__run_redirected(arr$(char*) args, char* out_file, char* err_file, IAll
     arr$pushm(sh, out_file, err_file);
     arr$pusha(sh, args);
 
-    Exc err = os$cmda(sh, arr$len(sh));
+    char* sh_out = NULL;
+    Exc err = _coverage__capture_cmd(sh, &sh_out, allc);
     if (err != EOK) {
         char* err_txt = io.file.load(err_file, allc);
         if (err_txt != NULL && err_txt[0] != '\0') {
@@ -180,7 +187,10 @@ _coverage__add_lcov_gcov_tool(arr$(char*)* args, IAllocator allc)
         return err;
     }
     io.fclose(&file);
-    if (os$cmd("chmod", "+x", wrapper)) {}
+    arr$(char*) chmod_args = arr$new(chmod_args, allc);
+    arr$pushm(chmod_args, "chmod", "+x", wrapper, NULL);
+    char* chmod_out = NULL;
+    if (_coverage__capture_cmd(chmod_args, &chmod_out, allc)) {}
 #    endif
     char* gcov_tool = os.path.absolute(wrapper, allc);
     gcov_tool = str.replace(gcov_tool, "\\", "/", allc);
@@ -209,7 +219,10 @@ _coverage__run_lcov_capture(char* output, IAllocator allc)
     }
     e$ret(_coverage__add_lcov_gcov_tool(&args, allc));
     arr$pushm(args, "--output-file", output, NULL);
-    e$ret(os$cmda(args, arr$len(args)));
+    char* stdout_file = str.fmt(allc, "%s/coverage-lcov.stdout", cexy$build_dir);
+    char* err_file = str.fmt(allc, "%s/coverage-lcov.stderr", cexy$build_dir);
+    e$ret(_coverage__run_redirected(args, stdout_file, err_file, allc));
+    if (os.fs.remove(stdout_file)) {}
     return EOK;
 }
 
@@ -334,42 +347,72 @@ typedef struct
     i64 fna_total;
     i64 fna_hit;
     arr$(u32) missed;
+    arr$(char*) uncovered_funcs;
 } _coverage__file_s;
 
-static char*
-_coverage__format_ranges(arr$(u32) lines, IAllocator allc)
+static Exception
+_coverage__parse_info(char* content, arr$(_coverage__file_s)* out, IAllocator allc)
 {
-    sbuf_c out = sbuf.create(64, allc);
-    bool first = true;
-    for (usize i = 0; i < arr$len(lines); i++) {
-        u32 start = lines[i];
-        u32 end = start;
-        while (i + 1 < arr$len(lines) && lines[i + 1] == end + 1) { end = lines[++i]; }
+    uassert(content != NULL);
+    uassert(out != NULL);
 
-        if (!first) { e$goto(sbuf.append(&out, ","), fail); }
-        first = false;
-        if (start == end) {
-            e$goto(sbuf.appendf(&out, "%u", start), fail);
-        } else {
-            e$goto(sbuf.appendf(&out, "%u-%u", start, end), fail);
+    *out = arr$new(*out, allc);
+    _coverage__file_s f = { 0 };
+    for$each (line, str.split_lines(content, allc)) {
+        if (str.starts_with(line, "SF:")) {
+            if (f.path != NULL) { arr$push(*out, f); }
+            f = (_coverage__file_s){ .path = line + 3, .lf = -1, .lh = -1, .fnf = -1, .fnh = -1 };
+            f.missed = arr$new(f.missed, allc);
+            f.uncovered_funcs = arr$new(f.uncovered_funcs, allc);
+        } else if (f.path == NULL) {
+            continue;
+        } else if (str.starts_with(line, "DA:")) {
+            char* end = NULL;
+            long ln = strtol(line + 3, &end, 10);
+            long count = (end != NULL && *end == ',') ? strtol(end + 1, NULL, 10) : 0;
+            f.da_total++;
+            if (count > 0) {
+                f.da_hit++;
+            } else {
+                arr$push(f.missed, (u32)ln);
+            }
+        } else if (str.starts_with(line, "LF:")) {
+            f.lf = atoi(line + 3);
+        } else if (str.starts_with(line, "LH:")) {
+            f.lh = atoi(line + 3);
+        } else if (str.starts_with(line, "FNF:")) {
+            f.fnf = atoi(line + 4);
+        } else if (str.starts_with(line, "FNH:")) {
+            f.fnh = atoi(line + 4);
+        } else if (str.starts_with(line, "FNA:")) {
+            char* end = NULL;
+            strtol(line + 4, &end, 10);
+            long count = (end != NULL && *end == ',') ? strtol(end + 1, &end, 10) : 0;
+            char* name = (end != NULL && *end == ',') ? end + 1 : NULL;
+            f.fna_total++;
+            if (count > 0) {
+                f.fna_hit++;
+            } else if (name != NULL) {
+                arr$push(f.uncovered_funcs, name);
+            }
+        } else if (str.starts_with(line, "FNDA:")) {
+            char* end = NULL;
+            long count = strtol(line + 5, &end, 10);
+            char* name = (end != NULL && *end == ',') ? end + 1 : NULL;
+            f.fna_total++;
+            if (count > 0) {
+                f.fna_hit++;
+            } else if (name != NULL) {
+                arr$push(f.uncovered_funcs, name);
+            }
         }
     }
-    return out;
-fail:
-    sbuf.destroy(&out);
-    return NULL;
+    if (f.path != NULL) { arr$push(*out, f); }
+    return EOK;
 }
 
 static Exception
-_coverage__emit_file(
-    sbuf_c* out,
-    _coverage__file_s* f,
-    IAllocator allc,
-    u64* t_lf,
-    u64* t_lh,
-    u64* t_ff,
-    u64* t_fh
-)
+_coverage__emit_file(sbuf_c* out, _coverage__file_s* f, u64* t_lf, u64* t_lh, u64* t_ff, u64* t_fh)
 {
     i64 lf = f->lf >= 0 ? f->lf : f->da_total;
     i64 lh = f->lh >= 0 ? f->lh : f->da_hit;
@@ -395,65 +438,23 @@ _coverage__emit_file(
         fh,
         ff
     ));
-    if (arr$len(f->missed) > 0) {
-        char* ranges = _coverage__format_ranges(f->missed, allc);
-        if (ranges == NULL) { return Error.memory; }
-        e$ret(sbuf.appendf(out, "  missed: %s", ranges));
-    }
     e$ret(sbuf.append(out, "\n"));
     return EOK;
 }
 
 static char*
-_coverage__format_text(char* content, IAllocator allc)
+_coverage__format_text(char* content, char* file_filter, IAllocator allc)
 {
     uassert(content != NULL);
 
-    sbuf_c out = sbuf.create(1024, allc);
-    _coverage__file_s f = { 0 };
-    u64 t_lf = 0, t_lh = 0, t_ff = 0, t_fh = 0;
+    arr$(_coverage__file_s) files = NULL;
+    e$goto(_coverage__parse_info(content, &files, allc), fail);
 
-    for$each (line, str.split_lines(content, allc)) {
-        if (str.starts_with(line, "SF:")) {
-            if (f.path != NULL) {
-                e$goto(_coverage__emit_file(&out, &f, allc, &t_lf, &t_lh, &t_ff, &t_fh), fail);
-            }
-            f = (_coverage__file_s){ .path = line + 3, .lf = -1, .lh = -1, .fnf = -1, .fnh = -1 };
-            f.missed = arr$new(f.missed, allc);
-        } else if (f.path == NULL) {
-            continue;
-        } else if (str.starts_with(line, "DA:")) {
-            char* end = NULL;
-            long ln = strtol(line + 3, &end, 10);
-            long count = (end != NULL && *end == ',') ? strtol(end + 1, NULL, 10) : 0;
-            f.da_total++;
-            if (count > 0) {
-                f.da_hit++;
-            } else {
-                arr$push(f.missed, (u32)ln);
-            }
-        } else if (str.starts_with(line, "LF:")) {
-            f.lf = atoi(line + 3);
-        } else if (str.starts_with(line, "LH:")) {
-            f.lh = atoi(line + 3);
-        } else if (str.starts_with(line, "FNF:")) {
-            f.fnf = atoi(line + 4);
-        } else if (str.starts_with(line, "FNH:")) {
-            f.fnh = atoi(line + 4);
-        } else if (str.starts_with(line, "FNA:")) {
-            char* end = NULL;
-            strtol(line + 4, &end, 10);
-            long count = (end != NULL && *end == ',') ? strtol(end + 1, NULL, 10) : 0;
-            f.fna_total++;
-            if (count > 0) { f.fna_hit++; }
-        } else if (str.starts_with(line, "FNDA:")) {
-            long count = strtol(line + 5, NULL, 10);
-            f.fna_total++;
-            if (count > 0) { f.fna_hit++; }
-        }
-    }
-    if (f.path != NULL) {
-        e$goto(_coverage__emit_file(&out, &f, allc, &t_lf, &t_lh, &t_ff, &t_fh), fail);
+    sbuf_c out = sbuf.create(1024, allc);
+    u64 t_lf = 0, t_lh = 0, t_ff = 0, t_fh = 0;
+    for$eachp (f, files) {
+        if (file_filter != NULL && !str.match(f->path, file_filter)) { continue; }
+        e$goto(_coverage__emit_file(&out, f, &t_lf, &t_lh, &t_ff, &t_fh), fail);
     }
 
     f64 line_pct = t_lf > 0 ? 100.0 * (f64)t_lh / (f64)t_lf : 0.0;
@@ -478,6 +479,89 @@ fail:
     return NULL;
 }
 
+static char*
+_coverage__format_json(char* content, char* file_filter, IAllocator allc)
+{
+    uassert(content != NULL);
+
+    arr$(_coverage__file_s) files = NULL;
+    e$goto(_coverage__parse_info(content, &files, allc), fail);
+
+    sbuf_c out = sbuf.create(1024, allc);
+    sbuf_c body = sbuf.create(1024, allc);
+    u64 t_lf = 0, t_lh = 0, t_ff = 0, t_fh = 0;
+    bool first = true;
+    for$eachp (f, files) {
+        if (file_filter != NULL && !str.match(f->path, file_filter)) { continue; }
+
+        i64 lf = f->lf >= 0 ? f->lf : f->da_total;
+        i64 lh = f->lh >= 0 ? f->lh : f->da_hit;
+        i64 ff = f->fnf >= 0 ? f->fnf : f->fna_total;
+        i64 fh = f->fnh >= 0 ? f->fnh : f->fna_hit;
+        if (lf <= 0) { continue; }
+
+        t_lf += (u64)lf;
+        t_lh += (u64)lh;
+        t_ff += (u64)ff;
+        t_fh += (u64)fh;
+
+        if (!first) { e$goto(sbuf.append(&body, ","), fail); }
+        first = false;
+        e$goto(
+            sbuf.appendf(
+                &body,
+                "{\"path\":\"%s\",\"lines_hit\":%ld,\"lines_found\":%ld,"
+                "\"funcs_hit\":%ld,\"funcs_found\":%ld",
+                f->path,
+                lh,
+                lf,
+                fh,
+                ff
+            ),
+            fail
+        );
+        if (lh == 0) {
+            e$goto(sbuf.append(&body, ",\"fully_uncovered\":true"), fail);
+        } else {
+            e$goto(sbuf.append(&body, ",\"missed_lines\":["), fail);
+            for (usize i = 0; i < arr$len(f->missed); i++) {
+                e$goto(sbuf.appendf(&body, "%s%u", i > 0 ? "," : "", f->missed[i]), fail);
+            }
+            e$goto(sbuf.append(&body, "]"), fail);
+        }
+        e$goto(sbuf.append(&body, ",\"uncovered_funcs\":["), fail);
+        for (usize i = 0; i < arr$len(f->uncovered_funcs); i++) {
+            e$goto(
+                sbuf.appendf(&body, "%s\"%s\"", i > 0 ? "," : "", f->uncovered_funcs[i]),
+                fail
+            );
+        }
+        e$goto(sbuf.append(&body, "]}"), fail);
+    }
+
+    e$goto(
+        sbuf.appendf(
+            &out,
+            "{\"total\":{\"lines_hit\":%lu,\"lines_found\":%lu,\"funcs_hit\":%lu,"
+            "\"funcs_found\":%lu},\"files\":[",
+            t_lh,
+            t_lf,
+            t_fh,
+            t_ff
+        ),
+        fail
+    );
+    e$goto(sbuf.append(&out, body), fail);
+    e$goto(sbuf.append(&out, "]}\n"), fail);
+
+    sbuf.destroy(&body);
+    return out;
+fail:
+    sbuf.destroy(&body);
+    sbuf.destroy(&out);
+    return NULL;
+}
+
 /// Builds and runs tests with coverage instrumentation
 Exception
 coverage_run(char* engine, char* target)
@@ -489,18 +573,22 @@ coverage_run(char* engine, char* target)
     return cexy.cmd.simple_test(arr$len(argv), argv, NULL);
 }
 
-/// Aggregates coverage and prints a per-source report (text or html)
+/// Aggregates coverage and prints a per-source report (text, json or html)
 Exception
-coverage_report(char* engine, char* format, char* output, char* target)
+coverage_report(char* engine, char* format, char* output, char* file_filter, char* target)
 {
     uassert(engine != NULL);
     uassert(target != NULL);
 
     if (format == NULL) { format = "text"; }
-    if (unlikely(!str.match(format, "(text|html)"))) {
-        return e$raise(Error.argument, "invalid report format, expected text|html");
+    if (unlikely(!str.match(format, "(text|json|html)"))) {
+        return e$raise(Error.argument, "invalid report format, expected text|json|html");
     }
     bool html = str.eq(format, "html");
+    bool json = str.eq(format, "json");
+    if (unlikely(html && file_filter != NULL)) {
+        return e$raise(Error.argument, "file filter is not supported for html report");
+    }
     if (output == NULL) { output = _COVERAGE_HTML_DEFAULT; }
 
     mem$scope(tmem$, _)
@@ -511,7 +599,8 @@ coverage_report(char* engine, char* format, char* output, char* target)
 
             char* content = io.file.load(info, _);
             if (content == NULL) { return Error.io; }
-            char* report = _coverage__format_text(content, _);
+            char* report = json ? _coverage__format_json(content, file_filter, _)
+                                : _coverage__format_text(content, file_filter, _);
             if (report == NULL) { return Error.memory; }
             io.printf("%s", report);
             return EOK;
@@ -605,6 +694,7 @@ coverage_cmd(int argc, char** argv, void* user_ctx)
     char* engine = NULL;
     char* format = NULL;
     char* output = NULL;
+    char* file = NULL;
 
     // clang-format off
     char* process_help =
@@ -613,18 +703,22 @@ coverage_cmd(int argc, char** argv, void* user_ctx)
         "- `lcov`: compiler --coverage + lcov/genhtml (gcc or clang)\n"
         "\n`run` builds and runs tests with instrumentation, leaving raw data in\n"
         "cexy$build_dir (.profraw for llvm, .gcno/.gcda for lcov). `report` aggregates\n"
-        "and prints a per-file report with uncovered line ranges. `export` writes an\n"
-        "lcov .info tracefile for external tools (merge several with\n"
+        "and prints a per-file report (text, json) with uncovered lines and functions.\n"
+        "`export` writes an lcov .info tracefile for external tools (merge several with\n"
         "`lcov -a a.info -o merged.info`). `clean`\n"
         "removes the raw coverage artifacts only, leaving test binaries intact.\n";
     char* epilog_help =
         "\nCommand examples: \n"
         "cex coverage run all                          - build+run all tests with coverage\n"
         "cex coverage report all                       - aggregate and print text report\n"
+        "cex coverage report --format=json all         - machine-readable json report\n"
+        "cex coverage report --file 'src/str.c' all    - only sources matching the glob\n"
         "cex coverage report --format=html all         - write html report\n"
         "cex coverage export -o coverage.info all      - write lcov .info tracefile\n"
         "cex coverage report --engine=lcov all         - force the lcov engine\n"
-        "cex coverage clean all                        - remove coverage artifacts\n";
+        "cex coverage clean all                        - remove coverage artifacts\n"
+        "json fields: total{lines_hit,lines_found,funcs_hit,funcs_found} "
+        "files[]{path,lines_hit,lines_found,funcs_hit,funcs_found,missed_lines,uncovered_funcs,fully_uncovered}\n";
     // clang-format on
 
     argparse_c cmd_args = {
@@ -635,7 +729,8 @@ coverage_cmd(int argc, char** argv, void* user_ctx)
         argparse$opt_list(
             argparse$opt_help(),
             argparse$opt(&engine, '\0', "engine", .help = "Coverage engine: auto|llvm|lcov"),
-            argparse$opt(&format, '\0', "format", .help = "Report format: text|html"),
+            argparse$opt(&format, '\0', "format", .help = "Report format: text|json|html"),
+            argparse$opt(&file, '\0', "file", .help = "Only report sources matching this glob"),
             argparse$opt(&output, 'o', "output", .help = "Output file (.info) or dir (html)"),
         ),
     };
@@ -690,7 +785,9 @@ coverage_cmd(int argc, char** argv, void* user_ctx)
         }
 
         if (str.eq(subcmd, "run")) { return coverage_run(engine, target); }
-        if (str.eq(subcmd, "report")) { return coverage_report(engine, format, output, target); }
+        if (str.eq(subcmd, "report")) {
+            return coverage_report(engine, format, output, file, target);
+        }
         if (str.eq(subcmd, "export")) { return coverage_export(engine, output, target); }
         return coverage_clean(target);
     }

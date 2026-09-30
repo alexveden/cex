@@ -58,10 +58,10 @@ test$case(test_coverage_format_text_line_report)
                  "FNF:1\n"
                  "FNH:1\n"
                  "end_of_record\n";
-    char* report = _coverage__format_text(info, test$alloc);
+    char* report = _coverage__format_text(info, NULL, test$alloc);
     tassert_eq(
         report,
-        "src/a.c  50.0% lines (2/4)  100.0% funcs (1/1)  missed: 2-3\n"
+        "src/a.c  50.0% lines (2/4)  100.0% funcs (1/1)\n"
         "Total: 50.0% lines (2/4)  100.0% funcs (1/1)\n"
     );
     return EOK;
@@ -76,16 +76,16 @@ test$case(test_coverage_format_text_derives_counts_without_totals)
                  "FNA:0,1,foo\n"
                  "FNA:1,0,bar\n"
                  "end_of_record\n";
-    char* report = _coverage__format_text(info, test$alloc);
+    char* report = _coverage__format_text(info, NULL, test$alloc);
     tassert_eq(
         report,
-        "src/b.c  33.3% lines (1/3)  50.0% funcs (1/2)  missed: 10,12\n"
+        "src/b.c  33.3% lines (1/3)  50.0% funcs (1/2)\n"
         "Total: 33.3% lines (1/3)  50.0% funcs (1/2)\n"
     );
     return EOK;
 }
 
-test$case(test_coverage_format_text_compresses_ranges_and_skips_empty)
+test$case(test_coverage_format_text_skips_empty)
 {
     char* info = "SF:src/c.c\n"
                  "DA:1,0\n"
@@ -101,12 +101,139 @@ test$case(test_coverage_format_text_compresses_ranges_and_skips_empty)
                  "end_of_record\n"
                  "SF:src/empty.h\n"
                  "end_of_record\n";
-    char* report = _coverage__format_text(info, test$alloc);
+    char* report = _coverage__format_text(info, NULL, test$alloc);
     tassert_eq(
         report,
-        "src/c.c  16.7% lines (1/6)  50.0% funcs (1/2)  missed: 1-3,7,20\n"
+        "src/c.c  16.7% lines (1/6)  50.0% funcs (1/2)\n"
         "Total: 16.7% lines (1/6)  50.0% funcs (1/2)\n"
     );
+    return EOK;
+}
+
+test$case(test_coverage_format_text_file_filter)
+{
+    char* info = "SF:src/a.c\n"
+                 "DA:1,1\n"
+                 "DA:2,0\n"
+                 "LF:2\n"
+                 "LH:1\n"
+                 "FNF:1\n"
+                 "FNH:1\n"
+                 "end_of_record\n"
+                 "SF:src/b.c\n"
+                 "DA:1,1\n"
+                 "LF:1\n"
+                 "LH:1\n"
+                 "FNF:1\n"
+                 "FNH:1\n"
+                 "end_of_record\n";
+    char* report = _coverage__format_text(info, "src/a.c", test$alloc);
+    tassert_eq(
+        report,
+        "src/a.c  50.0% lines (1/2)  100.0% funcs (1/1)\n"
+        "Total: 50.0% lines (1/2)  100.0% funcs (1/1)\n"
+    );
+    return EOK;
+}
+
+test$case(test_coverage_format_text_file_filter_glob)
+{
+    char* info = "SF:src/a.c\n"
+                 "DA:1,1\n"
+                 "DA:2,0\n"
+                 "LF:2\n"
+                 "LH:1\n"
+                 "FNF:1\n"
+                 "FNH:1\n"
+                 "end_of_record\n"
+                 "SF:src/b.c\n"
+                 "DA:1,1\n"
+                 "LF:1\n"
+                 "LH:1\n"
+                 "FNF:1\n"
+                 "FNH:1\n"
+                 "end_of_record\n";
+    char* report = _coverage__format_text(info, "src/*.c", test$alloc);
+    tassert_eq(
+        report,
+        "src/a.c  50.0% lines (1/2)  100.0% funcs (1/1)\n"
+        "src/b.c  100.0% lines (1/1)  100.0% funcs (1/1)\n"
+        "Total: 66.7% lines (2/3)  100.0% funcs (2/2)\n"
+    );
+    return EOK;
+}
+
+test$case(test_coverage_format_json)
+{
+    char* info = "SF:src/a.c\n"
+                 "DA:1,1\n"
+                 "DA:2,0\n"
+                 "DA:3,0\n"
+                 "FNA:0,1,foo\n"
+                 "FNA:1,0,bar\n"
+                 "FNDA:0,baz\n"
+                 "end_of_record\n";
+    char* report = _coverage__format_json(info, NULL, test$alloc);
+    tassert_eq(
+        report,
+        "{\"total\":{\"lines_hit\":1,\"lines_found\":3,\"funcs_hit\":1,\"funcs_found\":3},"
+        "\"files\":[{\"path\":\"src/a.c\",\"lines_hit\":1,\"lines_found\":3,\"funcs_hit\":1,"
+        "\"funcs_found\":3,\"missed_lines\":[2,3],\"uncovered_funcs\":[\"bar\",\"baz\"]}]}\n"
+    );
+    return EOK;
+}
+
+test$case(test_coverage_format_json_fully_uncovered)
+{
+    char* info = "SF:src/z.c\n"
+                 "DA:1,0\n"
+                 "DA:2,0\n"
+                 "FNA:0,0,foo\n"
+                 "end_of_record\n";
+    char* report = _coverage__format_json(info, NULL, test$alloc);
+    tassert_eq(
+        report,
+        "{\"total\":{\"lines_hit\":0,\"lines_found\":2,\"funcs_hit\":0,\"funcs_found\":1},"
+        "\"files\":[{\"path\":\"src/z.c\",\"lines_hit\":0,\"lines_found\":2,\"funcs_hit\":0,"
+        "\"funcs_found\":1,\"fully_uncovered\":true,\"uncovered_funcs\":[\"foo\"]}]}\n"
+    );
+    return EOK;
+}
+
+test$case(test_coverage_format_json_file_filter)
+{
+    char* info = "SF:src/a.c\n"
+                 "DA:1,1\n"
+                 "LF:1\n"
+                 "LH:1\n"
+                 "end_of_record\n"
+                 "SF:src/b.c\n"
+                 "DA:1,1\n"
+                 "DA:2,0\n"
+                 "LF:2\n"
+                 "LH:1\n"
+                 "end_of_record\n";
+    char* report = _coverage__format_json(info, "src/b.c", test$alloc);
+    tassert_eq(
+        report,
+        "{\"total\":{\"lines_hit\":1,\"lines_found\":2,\"funcs_hit\":0,\"funcs_found\":0},"
+        "\"files\":[{\"path\":\"src/b.c\",\"lines_hit\":1,\"lines_found\":2,\"funcs_hit\":0,"
+        "\"funcs_found\":0,\"missed_lines\":[2],\"uncovered_funcs\":[]}]}\n"
+    );
+    return EOK;
+}
+
+test$case(test_coverage_cmd_format_invalid)
+{
+    char* argv[] = { "coverage", "--format=bogus", "report", "all" };
+    tassert_er(Error.argument, coverage.cmd(arr$len(argv), argv, NULL));
+    return EOK;
+}
+
+test$case(test_coverage_cmd_file_html_rejected)
+{
+    char* argv[] = { "coverage", "--format=html", "--file", "src/a.c", "report", "all" };
+    tassert_er(Error.argument, coverage.cmd(arr$len(argv), argv, NULL));
     return EOK;
 }
 
@@ -137,7 +264,8 @@ test$case(test_coverage_lcov_run_export_report_clean)
         }
         tassert(sf_count > 0);
 
-        e$ret(coverage.report("lcov", "text", NULL, src));
+        e$ret(coverage.report("lcov", "text", NULL, NULL, src));
+        e$ret(coverage.report("lcov", "json", NULL, NULL, src));
 
         e$ret(coverage.clean(src));
         char* gcda_glob = str.fmt(_, "%s/*.gcda", cexy$build_dir);
