@@ -84,6 +84,8 @@
 - `str$eq(slice, "literal")` - fast slice-vs-literal comparison (no `strcmp`)
 - `str$join(alloc, ",", "a", "b", "c")` - join parts into a new string
 - `str$convert(str_or_slice, &out_var)` - parse a string/slice into a numeric or bool out variable
+- Prefer `str$convert()` / `str.convert.*` over libc `atoi`/`atof`/`strtol`/`strtod`:
+  type-safe, overflow-checked, NULL resilient, works on both `char*` and `str_s`
 
 ### Dynamic strings
 

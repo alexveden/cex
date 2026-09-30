@@ -211,6 +211,8 @@ calls. For shared libraries, prefer plain C functions.
 * `./cex help --example str.find` — up to 3 real usages (file:line + code)
 * `./cex help --agents` — dump the key CEX namespace idioms (AGENTS.md content)
 * `./cex help --agents --out <file>` — write that content to an agent instruction file
+* Use CEX types instead of C primitives — `u64` not `unsigned long`, `u8` not
+  `unsigned char`, `i32` not `int`, `f64` not `double`, `usize` not `size_t`
 * Never edit `cex.h` directly — it is a generated single-header artifact; treat it
   as read-only and regenerate it from source instead
 * When a task involves any of the following, fetch the docs first with
@@ -2408,6 +2410,8 @@ CEXSP__PUBLICDEC void cexsp__set_separators(char comma, char period);
 - `str$eq(slice, "literal")` - fast slice-vs-literal comparison (no `strcmp`)
 - `str$join(alloc, ",", "a", "b", "c")` - join parts into a new string
 - `str$convert(str_or_slice, &out_var)` - parse a string/slice into a numeric or bool out variable
+- Prefer `str$convert()` / `str.convert.*` over libc `atoi`/`atof`/`strtol`/`strtod`:
+  type-safe, overflow-checked, NULL resilient, works on both `char*` and `str_s`
 
 ### Dynamic strings
 

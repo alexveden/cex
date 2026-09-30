@@ -206,6 +206,8 @@ calls. For shared libraries, prefer plain C functions.
 * `./cex help --example str.find` — up to 3 real usages (file:line + code)
 * `./cex help --agents` — dump the key CEX namespace idioms (AGENTS.md content)
 * `./cex help --agents --out <file>` — write that content to an agent instruction file
+* Use CEX types instead of C primitives — `u64` not `unsigned long`, `u8` not
+  `unsigned char`, `i32` not `int`, `f64` not `double`, `usize` not `size_t`
 * Never edit `cex.h` directly — it is a generated single-header artifact; treat it
   as read-only and regenerate it from source instead
 * When a task involves any of the following, fetch the docs first with
