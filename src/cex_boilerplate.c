@@ -35,7 +35,7 @@ main(int argc, char** argv)
     if (argparse.parse(&args, argc, argv)) { return 1; }
     void* my_user_ctx = NULL; // passed as `user_ctx` to command
     e$except (err, argparse.run_command(&args, my_user_ctx)) {
-        e$traceback_print(stderr);
+        if (err != Error.argsparse) { e$traceback_print(stderr); }
         return 1;
     }
     return 0;

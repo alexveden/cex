@@ -30,6 +30,7 @@ test$case(test_make_new_project)
         char* boilerplate = io.file.load(TBUILDDIR "cex.c", _);
         tassert(boilerplate != NULL);
         tassert(str.find(boilerplate, "e$traceback_print") != NULL);
+        tassert(str.find(boilerplate, "err != Error.argsparse") != NULL);
     }
 
     return EOK;

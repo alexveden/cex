@@ -6582,7 +6582,7 @@ main(int argc, char** argv)
     };
     if (argparse.parse(&args, argc, argv)) { return 1; }
     e$except (err, argparse.run_command(&args, NULL)) {
-        e$traceback_print(stderr);
+        if (err != Error.argsparse) { e$traceback_print(stderr); }
         return 1;
     }
     return 0;
@@ -7085,7 +7085,7 @@ CEX_NAMESPACE struct __cex_namespace__fuzz fuzz;
 "    if (argparse.parse(&args, argc, argv)) { return 1; }\n"\
 "    void* my_user_ctx = NULL; // passed as `user_ctx` to command\n"\
 "    e$except (err, argparse.run_command(&args, my_user_ctx)) {\n"\
-"        e$traceback_print(stderr);\n"\
+"        if (err != Error.argsparse) { e$traceback_print(stderr); }\n"\
 "        return 1;\n"\
 "    }\n"\
 "    return 0;\n"\
