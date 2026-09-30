@@ -333,7 +333,9 @@ test$case(test_allocator_heap_invalid_args_return_null)
     uassert_disable();
 
     tassert(_cex_allocator_heap__hdr_make(0, 8) == 0);
-    if (sizeof(usize) == 8) { tassert(_cex_allocator_heap__hdr_make(0x1000000000000ULL, 8) == 0); }
+#if mem$platform() == 64
+    tassert(_cex_allocator_heap__hdr_make(0x1000000000000ULL, 8) == 0);
+#endif
     tassert(_cex_allocator_heap__hdr_make(24, 16) == 0);
 
     tassert(mem$->calloc(mem$, 0, 8, 0) == NULL);
