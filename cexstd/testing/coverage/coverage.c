@@ -672,7 +672,7 @@ coverage_clean(char* target)
 
         arr$(char*) globs = arr$new(globs, _);
         if (str.ends_with(pattern, "test_*.c")) {
-            arr$pushm(globs, "%s/*.gcno", "%s/*.gcda");
+            arr$pushm(globs, "%s/*.gcno", "%s/*.gcda", "%s/*.profraw");
         } else {
             if (unlikely(!os.path.exists(pattern))) {
                 return e$raise(Error.not_found, "test file not found");
@@ -684,10 +684,11 @@ coverage_clean(char* target)
             arr$pushm(
                 globs,
                 str.fmt(_, "%s-*.gcno", test_target),
-                str.fmt(_, "%s-*.gcda", test_target)
+                str.fmt(_, "%s-*.gcda", test_target),
+                str.fmt(_, "%s.*.profraw", test_target)
             );
         }
-        arr$pushm(globs, "%s/*.profraw", "%s/*.profdata");
+        arr$pushm(globs, "%s/*.profdata");
         for$each (glob, globs) {
             for$each (file, os.fs.find(str.fmt(_, glob, cexy$build_dir), true, _)) {
                 if (os.fs.remove(file)) {}

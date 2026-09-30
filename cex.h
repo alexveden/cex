@@ -6494,8 +6494,12 @@ See `cex help str.match` for more information about patter syntax.
         "engine is auto (llvm for clang, lcov for gcc) or set with\n"\
         "`--coverage-engine=llvm|lcov`: llvm uses -fprofile-instr-generate (profraw),\n"\
         "lcov uses compiler --coverage (gcno/gcda). Project sources are instrumented;\n"\
-        "the precompiled cex.h object is not. Stale coverage data is reset before each\n"\
-        "run. Not supported with `bench`.\n"\
+        "the precompiled cex.h object is not. Raw data is reset per target before each\n"\
+        "run: `run all` wipes everything, a single file only its own counters, so you\n"\
+        "can `run all` once and re-run one test without losing the rest. llvm profiles\n"\
+        "are named <test_target>.<pid>.profraw. Editing a source shared by many tests\n"\
+        "and re-running one target can break the llvm merge - use `run all` after\n"\
+        "shared-source changes. Not supported with `bench`.\n"\
         \
         "\nIf you need more control you can build your own test runner. Just use cex help\n"\
         "and get source code `./cex help --source cexy.cmd.simple_test`\n")
@@ -17847,6 +17851,8 @@ cexy__test__make_target_pattern(char** target)
     return EOK;
 }
 
+static bool _cexy__coverage_llvm = false;
+
 /// Builds and runs/debugs/benches/watches a test target
 Exception
 cexy__test__run(char* target, char* cmd, int argc, char** argv)
@@ -17875,6 +17881,11 @@ cexy__test__run(char* target, char* cmd, int argc, char** argv)
         for$each (test_src, os.fs.find(target, true, _)) {
             n_tests++;
             char* test_target = cexy.target_make(test_src, cexy$build_dir, ".test", _);
+            if (_cexy__coverage_llvm) {
+                e$ret(os.env.set(
+                    "LLVM_PROFILE_FILE", str.fmt(_, "%s.%%p.profraw", test_target)
+                ));
+            }
             arr$(char*) args = arr$new(args, _);
 
             if (str.eq(cmd, "debug")) { arr$pushm(args, cexy$debug_cmd); }
@@ -19919,6 +19930,7 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
         }
         coverage_llvm = str.eq(coverage_engine, "llvm");
     }
+    _cexy__coverage_llvm = coverage_llvm;
 
     if (str.eq(cmd, "create")) {
         e$ret(cexy.test.create(target, false));
@@ -19928,6 +19940,7 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
         return EOK;
     }
     bool single_test = !str.eq(target, "all") && !str.eq(cmd, "watch");
+    bool reset_all = str.eq(target, "all");
     e$ret(cexy.test.make_target_pattern(&target)); // validation + convert 'all' -> "tests/test_*.c"
 
     log$info("Tests building: %s\n", target);
@@ -20045,14 +20058,19 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
         if (coverage && str.match(cmd, "(run|debug|watch)")) {
             mem$scope(tmem$, _)
             {
-                if (coverage_llvm) {
-                    e$ret(os.env.set(
-                        "LLVM_PROFILE_FILE", str.fmt(_, "%s/%%p.profraw", cexy$build_dir)
-                    ));
-                }
-                char* pattern = coverage_llvm ? "%s/*.profraw" : "%s/*.gcda";
-                for$each (file, os.fs.find(str.fmt(_, pattern, cexy$build_dir), true, _)) {
-                    if (os.fs.remove(file)) {}
+                if (reset_all) {
+                    char* pattern = coverage_llvm ? "%s/*.profraw" : "%s/*.gcda";
+                    for$each (file, os.fs.find(str.fmt(_, pattern, cexy$build_dir), true, _)) {
+                        if (os.fs.remove(file)) {}
+                    }
+                } else {
+                    char* pattern = coverage_llvm ? "%s.*.profraw" : "%s-*.gcda";
+                    for$each (test_src, os.fs.find(target, true, _)) {
+                        char* test_target = cexy.target_make(test_src, cexy$build_dir, ".test", _);
+                        for$each (file, os.fs.find(str.fmt(_, pattern, test_target), true, _)) {
+                            if (os.fs.remove(file)) {}
+                        }
+                    }
                 }
             }
         }

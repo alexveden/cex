@@ -268,8 +268,35 @@ test$case(test_coverage_lcov_run_export_report_clean)
         e$ret(coverage.report("lcov", "json", NULL, NULL, src));
 
         e$ret(coverage.clean(src));
-        char* gcda_glob = str.fmt(_, "%s/*.gcda", cexy$build_dir);
+        char* test_target = cexy.target_make(src, cexy$build_dir, ".test", _);
+        char* gcda_glob = str.fmt(_, "%s-*.gcda", test_target);
         tassert(arr$len(os.fs.find(gcda_glob, true, _)) == 0);
+    }
+    return EOK;
+}
+
+test$case(test_coverage_lcov_run_keeps_other_target_data)
+{
+    if (!os.cmd.exists("lcov")) { return EOK; }
+
+    mem$scope(tmem$, _)
+    {
+        char* src_a = TBUILDDIR "test_cov_a.c";
+        char* src_b = TBUILDDIR "test_cov_b.c";
+        e$ret(io.file.save(src_a, "int main(void) { return 0; }\n"));
+        e$ret(io.file.save(src_b, "int main(void) { return 0; }\n"));
+
+        e$ret(coverage.run("lcov", src_a));
+        e$ret(coverage.run("lcov", src_b));
+
+        char* tt_a = cexy.target_make(src_a, cexy$build_dir, ".test", _);
+        char* tt_b = cexy.target_make(src_b, cexy$build_dir, ".test", _);
+        tassert(arr$len(os.fs.find(str.fmt(_, "%s-*.gcda", tt_a), true, _)) > 0);
+        tassert(arr$len(os.fs.find(str.fmt(_, "%s-*.gcda", tt_b), true, _)) > 0);
+
+        e$ret(coverage.clean(src_a));
+        tassert(arr$len(os.fs.find(str.fmt(_, "%s-*.gcda", tt_a), true, _)) == 0);
+        tassert(arr$len(os.fs.find(str.fmt(_, "%s-*.gcda", tt_b), true, _)) > 0);
     }
     return EOK;
 }

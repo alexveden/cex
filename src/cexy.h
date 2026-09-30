@@ -274,8 +274,12 @@ See `cex help str.match` for more information about patter syntax.
         "engine is auto (llvm for clang, lcov for gcc) or set with\n"\
         "`--coverage-engine=llvm|lcov`: llvm uses -fprofile-instr-generate (profraw),\n"\
         "lcov uses compiler --coverage (gcno/gcda). Project sources are instrumented;\n"\
-        "the precompiled cex.h object is not. Stale coverage data is reset before each\n"\
-        "run. Not supported with `bench`.\n"\
+        "the precompiled cex.h object is not. Raw data is reset per target before each\n"\
+        "run: `run all` wipes everything, a single file only its own counters, so you\n"\
+        "can `run all` once and re-run one test without losing the rest. llvm profiles\n"\
+        "are named <test_target>.<pid>.profraw. Editing a source shared by many tests\n"\
+        "and re-running one target can break the llvm merge - use `run all` after\n"\
+        "shared-source changes. Not supported with `bench`.\n"\
         \
         "\nIf you need more control you can build your own test runner. Just use cex help\n"\
         "and get source code `./cex help --source cexy.cmd.simple_test`\n")
