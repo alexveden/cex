@@ -22,6 +22,7 @@ Visit https://cex-c.org for more information
 
 
 Exception cmd_custom_test(int argc, char** argv, void* user_ctx);
+Exception cmd_custom_coverage(int argc, char** argv, void* user_ctx);
 Exception cmd_build_docs(int argc, char** argv, void* user_ctx);
 
 void cex_bundle(void);
@@ -46,7 +47,7 @@ main(int argc, char** argv)
             cexy$cmd_all,
             { .name = "test", .func = cmd_custom_test, .help = "Test running" },
             { .name = "coverage",
-              .func = coverage.cmd,
+              .func = cmd_custom_coverage,
               .help = "Test coverage run/report/export/clean" },
             { .name = "build-docs", .func = cmd_build_docs, .help = "Build CEX documentation " },
             cexy$cmd_fuzz,  /* feel free to make your own if needed */
@@ -64,10 +65,9 @@ main(int argc, char** argv)
 }
 
 
-Exception
-cmd_custom_test(int argc, char** argv, void* user_ctx)
+static Exception
+build_os_test_apps(void)
 {
-    // Extended test runner
     mem$scope(tmem$, _)
     {
         e$ret(os.fs.mkpath("tests/build/"));
@@ -91,8 +91,25 @@ cmd_custom_test(int argc, char** argv, void* user_ctx)
             e$ret(os$cmd(cexy$cc, "-g", "-Wall", "-Wextra", "-o", target, src));
         }
     }
+    return EOK;
+}
+
+Exception
+cmd_custom_test(int argc, char** argv, void* user_ctx)
+{
+    // Extended test runner
+    e$ret(build_os_test_apps());
 
     return cexy.cmd.simple_test(argc, argv, user_ctx);
+}
+
+Exception
+cmd_custom_coverage(int argc, char** argv, void* user_ctx)
+{
+    // Coverage must build the same test prerequisites as the custom test runner
+    e$ret(build_os_test_apps());
+
+    return coverage.cmd(argc, argv, user_ctx);
 }
 
 static void
