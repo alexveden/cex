@@ -164,9 +164,13 @@ struct _cexds__arr_new_kwargs_s
 #define arr$del(a, i)                                                                              \
     ({                                                                                             \
         _cexds__arr_integrity(a, _CEXDS_ARR_MAGIC);                                                \
-        uassert((usize)i < _cexds__header(a)->length && "out of bounds");                          \
-        memmove(&(a)[i], &(a)[(i) + 1], sizeof *(a) * (_cexds__header(a)->length - 1 - (i)));      \
-        _cexds__header(a)->length--;                                                               \
+        usize _cexds__len = _cexds__header(a)->length;                                             \
+        uassert_always((usize)i < _cexds__len && "out of bounds");                                 \
+        if ((usize)i + 1 < _cexds__len) {                                                          \
+            memmove(&(a)[i], &(a)[(i) + 1], sizeof *(a) * (_cexds__len - 1 - (usize)i));           \
+        }                                                                                          \
+        _cexds__header(a)->length = _cexds__len - 1;                                               \
+        _cexds__len;                                                                               \
     })
 
 /// Deletes element at index `i` by swapping with the last element. Order NOT preserved, but O(1).
@@ -247,9 +251,12 @@ struct _cexds__arr_new_kwargs_s
 #define arr$ins(a, i, value...)                                                                    \
     do {                                                                                           \
         uassert_always(arr$grow_check(a, 1) && "arr$ins memory error");                            \
-        _cexds__header(a)->length++;                                                               \
-        uassert((usize)i < _cexds__header(a)->length && "i out of bounds");                        \
-        memmove(&(a)[(i) + 1], &(a)[i], sizeof(*(a)) * (_cexds__header(a)->length - 1 - (i)));     \
+        usize _cexds__len = _cexds__header(a)->length;                                             \
+        uassert_always((usize)i < _cexds__len + 1 && "i out of bounds");                           \
+        if ((usize)i < _cexds__len) {                                                              \
+            memmove(&(a)[(i) + 1], &(a)[i], sizeof(*(a)) * (_cexds__len - (usize)i));              \
+        }                                                                                          \
+        _cexds__header(a)->length = _cexds__len + 1;                                               \
         (a)[i] = (value);                                                                          \
     } while (0)
 
