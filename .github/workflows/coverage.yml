@@ -21,6 +21,8 @@ jobs:
           - { label: clang-llvm, engine: llvm, cc: clang }
           - { label: gcc-lcov,   engine: lcov, cc: gcc }
           - { label: clang-lcov, engine: lcov, cc: clang }
+          # Full-suite coverage (real report); the entries above smoke-test each engine
+          - { label: full, engine: llvm, cc: clang, target: all }
 
     steps:
       - name: Checkout cex
@@ -53,6 +55,7 @@ jobs:
         with:
           engine: ${{ matrix.engine }}
           label: linux-${{ matrix.label }}
+          target: ${{ matrix.target || 'tests/test_ci_coverage.c' }}
 
   coverage-macos:
     name: macos-${{ matrix.label }}
@@ -65,6 +68,8 @@ jobs:
           - { label: clang-llvm, engine: llvm }
           - { label: gcc-lcov,   engine: lcov }
           - { label: clang-lcov, engine: lcov }
+          # Full-suite coverage (real report); the entries above smoke-test each engine
+          - { label: full, engine: llvm, target: all }
 
     steps:
       - name: Checkout cex
@@ -107,6 +112,7 @@ jobs:
         with:
           engine: ${{ matrix.engine }}
           label: macos-${{ matrix.label }}
+          target: ${{ matrix.target || 'tests/test_ci_coverage.c' }}
 
   coverage-windows:
     name: windows-${{ matrix.label }}
@@ -123,6 +129,8 @@ jobs:
           - { label: clang-llvm, engine: llvm, cc: clang, msys: clang64, pacboy: 'toolchain:p llvm:p' }
           - { label: gcc-lcov,   engine: lcov, cc: gcc,   msys: ucrt64,  pacboy: 'toolchain:p' }
           - { label: clang-lcov, engine: lcov, cc: clang, msys: clang64, pacboy: 'toolchain:p llvm:p' }
+          # Full-suite coverage (real report); the entries above smoke-test each engine
+          - { label: full, engine: llvm, cc: clang, msys: clang64, pacboy: 'toolchain:p llvm:p', target: all }
 
     steps:
       - name: Setup MSYS2
@@ -168,9 +176,10 @@ jobs:
         with:
           engine: ${{ matrix.engine }}
           label: windows-${{ matrix.label }}
+          target: ${{ matrix.target || 'tests/test_ci_coverage.c' }}
           shell: 'msys2 {0}'
 
-  # Merge the per-engine tracefiles of each platform into one report. Runs on a
+  # Merge the full-suite tracefiles of each platform into one report. Runs on a
   # single platform (ubuntu) and needs the exported paths to be repo-relative.
   coverage-merge:
     name: merge-${{ matrix.os }}
@@ -194,7 +203,7 @@ jobs:
       - name: Download platform tracefiles
         uses: actions/download-artifact@v4
         with:
-          pattern: coverage-${{ matrix.os }}-*
+          pattern: coverage-${{ matrix.os }}-full
           merge-multiple: true
           path: tracefiles
 
@@ -202,7 +211,7 @@ jobs:
         run: |
           lcov --ignore-errors inconsistent,mismatch,empty,unused,source,format,unsupported,corrupt \
             --include 'src/*' --include 'cexstd/*' \
-            -a 'tracefiles/coverage-${{ matrix.os }}-*.info' \
+            -a 'tracefiles/coverage-${{ matrix.os }}-full.info' \
             -o coverage-merged-${{ matrix.os }}.info
           test -s coverage-merged-${{ matrix.os }}.info
           grep -q '^SF:' coverage-merged-${{ matrix.os }}.info
