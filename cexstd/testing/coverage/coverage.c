@@ -52,7 +52,7 @@ _coverage__find_test_binaries(char* target, arr$(char*)* out, IAllocator allc)
 
     *out = arr$new(*out, allc);
     if (str.ends_with(pattern, "test_*.c")) {
-        *out = os.fs.find(str.fmt(allc, "%s/tests/*.test*", cexy$build_dir), false, allc);
+        *out = os.fs.find(str.fmt(allc, "%s/tests/*.test*", cexy$build_dir), true, allc);
         return EOK;
     }
     if (unlikely(!os.path.exists(pattern))) {
