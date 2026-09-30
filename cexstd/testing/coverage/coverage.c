@@ -350,6 +350,19 @@ typedef struct
     arr$(char*) uncovered_funcs;
 } _coverage__file_s;
 
+static i64
+_coverage__parse_i64_prefix(char* s, char** out_rest)
+{
+    uassert(s != NULL);
+
+    char* comma = str.find(s, ",");
+    str_s num = { .buf = s, .len = comma != NULL ? (usize)(comma - s) : str.len(s) };
+    i64 v = 0;
+    if (str.convert.to_i64s(num, &v)) { v = 0; }
+    if (out_rest != NULL) { *out_rest = comma != NULL ? comma + 1 : NULL; }
+    return v;
+}
+
 static Exception
 _coverage__parse_info(char* content, arr$(_coverage__file_s)* out, IAllocator allc)
 {
@@ -367,9 +380,9 @@ _coverage__parse_info(char* content, arr$(_coverage__file_s)* out, IAllocator al
         } else if (f.path == NULL) {
             continue;
         } else if (str.starts_with(line, "DA:")) {
-            char* end = NULL;
-            long ln = strtol(line + 3, &end, 10);
-            long count = (end != NULL && *end == ',') ? strtol(end + 1, NULL, 10) : 0;
+            char* rest = NULL;
+            i64 ln = _coverage__parse_i64_prefix(line + 3, &rest);
+            i64 count = rest != NULL ? _coverage__parse_i64_prefix(rest, NULL) : 0;
             f.da_total++;
             if (count > 0) {
                 f.da_hit++;
@@ -377,18 +390,18 @@ _coverage__parse_info(char* content, arr$(_coverage__file_s)* out, IAllocator al
                 arr$push(f.missed, (u32)ln);
             }
         } else if (str.starts_with(line, "LF:")) {
-            f.lf = atoi(line + 3);
+            f.lf = _coverage__parse_i64_prefix(line + 3, NULL);
         } else if (str.starts_with(line, "LH:")) {
-            f.lh = atoi(line + 3);
+            f.lh = _coverage__parse_i64_prefix(line + 3, NULL);
         } else if (str.starts_with(line, "FNF:")) {
-            f.fnf = atoi(line + 4);
+            f.fnf = _coverage__parse_i64_prefix(line + 4, NULL);
         } else if (str.starts_with(line, "FNH:")) {
-            f.fnh = atoi(line + 4);
+            f.fnh = _coverage__parse_i64_prefix(line + 4, NULL);
         } else if (str.starts_with(line, "FNA:")) {
-            char* end = NULL;
-            strtol(line + 4, &end, 10);
-            long count = (end != NULL && *end == ',') ? strtol(end + 1, &end, 10) : 0;
-            char* name = (end != NULL && *end == ',') ? end + 1 : NULL;
+            char* rest = NULL;
+            (void)_coverage__parse_i64_prefix(line + 4, &rest);
+            char* name = NULL;
+            i64 count = rest != NULL ? _coverage__parse_i64_prefix(rest, &name) : 0;
             f.fna_total++;
             if (count > 0) {
                 f.fna_hit++;
@@ -396,9 +409,8 @@ _coverage__parse_info(char* content, arr$(_coverage__file_s)* out, IAllocator al
                 arr$push(f.uncovered_funcs, name);
             }
         } else if (str.starts_with(line, "FNDA:")) {
-            char* end = NULL;
-            long count = strtol(line + 5, &end, 10);
-            char* name = (end != NULL && *end == ',') ? end + 1 : NULL;
+            char* name = NULL;
+            i64 count = _coverage__parse_i64_prefix(line + 5, &name);
             f.fna_total++;
             if (count > 0) {
                 f.fna_hit++;
