@@ -237,11 +237,13 @@ test$case(uassert_disabled_returns)
 #endif
 
 #if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+#    ifndef NDEBUG
 test$case(uassert_fatal)
 {
     tassert(is_fatal_in_child(_run_uassert_panic));
     return EOK;
 }
+#    endif
 
 test$case(uassert_always_fatal)
 {

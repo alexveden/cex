@@ -7,7 +7,7 @@
 #include "src/all.c"
 #include "cex_errors_fork.h"
 
-#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__) && !defined(NDEBUG)
 static Exception
 assert_custom_panic_exit(void (*action)(void))
 {

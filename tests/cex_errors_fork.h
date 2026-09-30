@@ -10,8 +10,10 @@ run_child_status(void (*action)(void))
     pid_t pid = fork();
     if (pid < 0) { return -1; }
     if (pid == 0) {
-        (void)freopen("/dev/null", "w", stdout);
-        (void)freopen("/dev/null", "w", stderr);
+        FILE* out_sink = freopen("/dev/null", "w", stdout);
+        FILE* err_sink = freopen("/dev/null", "w", stderr);
+        (void)out_sink;
+        (void)err_sink;
         action();
         _exit(0);
     }
