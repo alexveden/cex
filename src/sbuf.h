@@ -10,11 +10,11 @@ typedef char* sbuf_c;
 /// Internal metadata header stored before the string buffer (magic, capacity, length, allocator)
 typedef struct
 {
-    struct
+    alignas(alignof(u64)) struct
     {
-        u64 magic : 32;   // used for sanity checks
-        u64 elsize : 8;   // maybe multibyte strings in the future?
-        u64 nullterm : 8; // always zero to prevent usage of direct buffer
+        u8 nullterm; // always zero to prevent usage of direct buffer
+        u8 elsize;   // maybe multibyte strings in the future?
+        u32 magic;   // used for sanity checks
     } header;
     Exc err;
     const Allocator_i* allocator;

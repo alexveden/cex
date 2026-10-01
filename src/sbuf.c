@@ -128,19 +128,23 @@ cex_sbuf_create_static(char* buf, usize buf_size)
         uassert(buf_size > 0);
         return NULL;
     }
-    if (unlikely(buf_size <= sizeof(sbuf_head_s) + 1)) {
-        uassert(buf_size > sizeof(sbuf_head_s) + 1);
+    char* aligned = mem$aligned_pointer(buf, alignof(sbuf_head_s));
+    usize offset = (usize)(aligned - buf);
+    if (unlikely(buf_size <= offset + sizeof(sbuf_head_s) + 1)) {
+        uassert(buf_size > offset + sizeof(sbuf_head_s) + 1);
         return NULL;
     }
 
-    sbuf_head_s* head = (sbuf_head_s*)buf;
+    buf[0] = '\0';
+
+    sbuf_head_s* head = (sbuf_head_s*)aligned;
     *head = (sbuf_head_s){
-        .header = { SBUF_MAGIC, .elsize = 1, .nullterm = '\0' },
+        .header = { .magic = SBUF_MAGIC, .elsize = 1, .nullterm = '\0' },
         .length = 0,
-        .capacity = buf_size - sizeof(sbuf_head_s) - 1,
+        .capacity = buf_size - offset - sizeof(sbuf_head_s) - 1,
         .allocator = NULL,
     };
-    sbuf_c self = buf + sizeof(sbuf_head_s);
+    sbuf_c self = aligned + sizeof(sbuf_head_s);
 
     // null terminate start of the string and capacity
     (self)[0] = '\0';
@@ -211,7 +215,7 @@ cex_sbuf_destroy(sbuf_c* self)
 
         // NOTE: null-terminate string to avoid future usage,
         // it will appear as empty string if references anywhere else
-        ((char*)head)[0] = '\0';
+        head->header.magic = 0;
         (*self)[0] = '\0';
         *self = NULL;
 

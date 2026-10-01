@@ -55,7 +55,7 @@ test$case(test_sbuf_new)
 
 test$case(test_sbuf_static)
 {
-    char buf[128] = { 'a' };
+    alignas(u64) char buf[128] = { 'a' };
     sbuf_c s = sbuf.create_static(buf, arr$len(buf));
     tassert(s != NULL);
     tassert(s != buf);
@@ -68,6 +68,8 @@ test$case(test_sbuf_static)
     tassert(head->allocator == NULL);
     tassert_eq(head->header.magic, SBUF_MAGIC);
     tassert_eq(head->header.nullterm, 0);
+    tassert_eq(buf[0], 0);
+    tassert_eq(((char*)head)[0], 0);
     tassert_eq(s[0], 0);
     tassert_eq(s[head->capacity], 0);
     tassert_eq(s, "");
@@ -187,14 +189,14 @@ test$case(test_sbuf_clear)
 
 test$case(test_sbuf_destroy)
 {
-    char buf[128];
+    alignas(u64) char buf[128];
     char* alt_s = buf + sizeof(sbuf_head_s);
     sbuf_c s = sbuf.create_static(buf, arr$len(buf));
-    tassert(buf[0] != '\0');
+    tassert(buf[0] == '\0');
     tassert_eq(EOK, sbuf.append(&s, "1234567890A"));
     tassert(*alt_s == '1');
     tassert_eq("1234567890A", s);
-    tassert(buf[0] != '\0');
+    tassert(buf[0] == '\0');
 
 
     sbuf.destroy(&s);
@@ -324,7 +326,7 @@ test$case(test_sbuf_appendf_long_growth_prebuild_buffer)
 }
 test$case(test_sbuf_appendf_static)
 {
-    char buf[64];
+    alignas(u64) char buf[64];
     sbuf_c s = sbuf.create_static(buf, arr$len(buf));
     tassert_eq(sbuf.capacity(&s), 64 - sizeof(sbuf_head_s) - 1);
 
@@ -447,7 +449,7 @@ test$case(test_sbuf__is_valid__null_pointer)
 
 test$case(test_sbuf_appendf_error_resilience)
 {
-    char buf[64];
+    alignas(u64) char buf[64];
     sbuf_c s = sbuf.create_static(buf, arr$len(buf));
     tassert_eq(sbuf.capacity(&s), 64 - sizeof(sbuf_head_s) - 1);
 
@@ -494,7 +496,7 @@ test$case(test_sbuf_appendf_error_resilience)
 
 test$case(test_sbuf_set_len_test)
 {
-    char buf[64];
+    alignas(u64) char buf[64];
     sbuf_c s = sbuf.create_static(buf, arr$len(buf));
     tassert_eq(sbuf.capacity(&s), 64 - sizeof(sbuf_head_s) - 1);
 
@@ -720,6 +722,90 @@ test$case(test_sbuf_null_self)
 {
     tassert_eq(Error.argument, sbuf.set_len(NULL, 0));
     tassert_eq(Error.argument, sbuf.append(NULL, "x"));
+    return EOK;
+}
+
+test$case(test_sbuf_static_aligned_no_slack)
+{
+    alignas(u64) char buf[128];
+    sbuf_c s = sbuf.create_static(buf, arr$len(buf));
+    sbuf_head_s* head = _sbuf__head(s);
+
+    tassert((char*)head == buf);
+    tassert_eq(buf[0], '\0');
+    tassert_eq(((char*)head)[0], 0);
+    tassert_eq(head->capacity, arr$len(buf) - sizeof(sbuf_head_s) - 1);
+
+    tassert_eq(EOK, sbuf.append(&s, "hello"));
+    tassert_eq("hello", s);
+    tassert_eq(buf[0], '\0');
+
+    sbuf.destroy(&s);
+    tassert(s == NULL);
+    tassert_eq(buf[0], '\0');
+    return EOK;
+}
+
+test$case(test_sbuf_static_misaligned)
+{
+    alignas(u64) char raw[136];
+    char* buf = raw + 1;
+    sbuf_c s = sbuf.create_static(buf, 128);
+    tassert(s != NULL);
+
+    sbuf_head_s* head = _sbuf__head(s);
+    usize offset = (usize)((char*)head - buf);
+
+    tassert_eq(offset, alignof(sbuf_head_s) - 1);
+    tassert((void*)head == mem$aligned_pointer(buf, alignof(sbuf_head_s)));
+    tassert_eq(buf[0], '\0');
+    tassert_eq(((char*)head)[0], 0);
+    tassert_eq(head->capacity, 128 - offset - sizeof(sbuf_head_s) - 1);
+    tassert(head->allocator == NULL);
+
+    tassert_eq(EOK, sbuf.append(&s, "hello"));
+    tassert_eq("hello", s);
+    tassert_eq(sbuf.len(&s), 5);
+    tassert_eq(s[sbuf.len(&s)], '\0');
+    tassert_eq(s[sbuf.capacity(&s)], '\0');
+    tassert_eq(buf[0], '\0');
+
+    tassert_eq(Error.overflow, sbuf.set_len(&s, sbuf.capacity(&s)));
+    tassert_eq(sbuf.capacity(&s), 0);
+    tassert_eq(buf[0], '\0');
+
+    sbuf.destroy(&s);
+    tassert(s == NULL);
+    tassert_eq(head->header.magic, 0);
+    tassert_eq(buf[0], '\0');
+    return EOK;
+}
+
+test$case(test_sbuf_static_too_small)
+{
+    alignas(u64) char buf[128];
+
+    uassert_disable();
+    tassert(sbuf.create_static(NULL, 128) == NULL);
+    tassert(sbuf.create_static(buf, 0) == NULL);
+    tassert(sbuf.create_static(buf, sizeof(sbuf_head_s) + 1) == NULL);
+    tassert(sbuf.create_static(buf + 1, sizeof(sbuf_head_s) + 1) == NULL);
+    uassert_enable();
+
+    return EOK;
+}
+
+test$case(test_sbuf_static_validate)
+{
+    alignas(u64) char buf[64];
+    sbuf_c s = sbuf.create_static(buf, arr$len(buf));
+
+    tassert_er(EOK, sbuf.validate(&s));
+    tassert_eq(EOK, sbuf.append(&s, "abc"));
+    tassert_er(EOK, sbuf.validate(&s));
+
+    sbuf.destroy(&s);
+    tassert_eq(false, sbuf.isvalid(&s));
     return EOK;
 }
 
