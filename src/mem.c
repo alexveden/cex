@@ -23,7 +23,7 @@ _cex_global_allocators_destructor()
     allocator_arena_page_s* page = allc->last_page;
     while (page) {
         auto tpage = page->prev_page;
-        mem$free(mem$, page);
+        mem$free(allc->backing_alloc, page);
         page = tpage;
     }
 }

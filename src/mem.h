@@ -90,6 +90,8 @@ mem$arena_scope(4096, arena)
 
 ```c
 // scoped arena (default): mem$scope() frees its allocations, destroy() frees the rest
+// .backing_alloc overrides where arena pages come from (default: mem$);
+// the backing allocator must outlive the arena
 IAllocator arena = AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 4096 });
 
 u8* p = mem$malloc(arena, 100); // top-level allocation, freed at destroy()

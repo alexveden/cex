@@ -1315,6 +1315,41 @@ test$case(test_allocator_arena_scope_stack_overflow)
     return EOK;
 }
 
+test$case(test_allocator_arena_backing_alloc)
+{
+    IAllocator backing = AllocatorArena.create(
+        &(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true }
+    );
+    tassert(backing != NULL);
+
+    IAllocator arena = AllocatorArena.create(
+        &(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true, .backing_alloc = backing }
+    );
+    tassert(arena != NULL);
+    AllocatorArena_c* allc = (AllocatorArena_c*)arena;
+    tassert(allc->backing_alloc == backing);
+
+    u8* p = mem$malloc(arena, 100);
+    tassert(p != NULL);
+    memset(p, 0xAB, 100);
+    tassert(((AllocatorArena_c*)backing)->stats.pages_created > 0);
+
+    AllocatorArena_sanitize(arena);
+    AllocatorArena_destroy(arena);
+    AllocatorArena_destroy(backing);
+    return EOK;
+}
+
+test$case(test_allocator_arena_backing_alloc_default)
+{
+    IAllocator arena = AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 4096 });
+    tassert(arena != NULL);
+    AllocatorArena_c* allc = (AllocatorArena_c*)arena;
+    tassert(allc->backing_alloc == mem$);
+    AllocatorArena_destroy(arena);
+    return EOK;
+}
+
 test$case(test_allocator_arena_create_invalid_page_size)
 {
     uassert_disable();

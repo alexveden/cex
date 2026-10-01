@@ -192,7 +192,7 @@ _cex_allocator_arena__request_page_size(
             return NULL;
         }
         allocator_arena_page_s*
-            page = mem$calloc(mem$, 1, page_size, alignof(allocator_arena_page_s));
+            page = mem$calloc(self->backing_alloc, 1, page_size, alignof(allocator_arena_page_s));
         if (page == NULL) {
             return NULL; // memory error
         }
@@ -489,7 +489,7 @@ _cex_allocator_arena__scope_exit(IAllocator allc)
             self->stats.bytes_free += free_len;
             self->last_page = page->prev_page;
             self->stats.pages_free++;
-            mem$free(mem$, page);
+            mem$free(self->backing_alloc, page);
         }
         page = tpage;
     }
@@ -509,9 +509,11 @@ AllocatorArena_create(const AllocatorArena_kw* kwargs)
     AllocatorArena_kw kw = {
         .page_size = CEX_ALLOCATOR_TEMP_PAGE_SIZE,
         .disable_scopes = false,
+        .backing_alloc = mem$,
     };
     if (kwargs != NULL) {
         if (kwargs->page_size != 0) { kw.page_size = kwargs->page_size; }
+        if (kwargs->backing_alloc != NULL) { kw.backing_alloc = kwargs->backing_alloc; }
         #ifdef CEX_TEST
         if (kwargs->test_oom_probability > 0) {
             uassert(kwargs->test_oom_probability > 0 && kwargs->test_oom_probability <= 1.0 && "test$alloc_set_oom_probability out of range"); \
@@ -545,12 +547,13 @@ AllocatorArena_create(const AllocatorArena_kw* kwargs)
         },
         .page_size = kw.page_size,
         .disable_scopes = kw.disable_scopes,
+        .backing_alloc = kw.backing_alloc,
     #ifdef CEX_TEST
         .test_oom_probability = kw.test_oom_probability,
     #endif
     };
 
-    AllocatorArena_c* self = mem$new(mem$, AllocatorArena_c);
+    AllocatorArena_c* self = mem$new(kw.backing_alloc, AllocatorArena_c);
     if (self == NULL) {
         return NULL; // memory error
     }
@@ -648,10 +651,10 @@ AllocatorArena_destroy(IAllocator self)
     allocator_arena_page_s* page = allc->last_page;
     while (page) {
         auto tpage = page->prev_page;
-        mem$free(mem$, page);
+        mem$free(allc->backing_alloc, page);
         page = tpage;
     }
-    mem$free(mem$, allc);
+    mem$free(allc->backing_alloc, allc);
 }
 
 #if !cex$is_freestanding
@@ -673,6 +676,7 @@ AllocatorArena_c _cex__default_global__allocator_temp = {
         }, 
     },
     .page_size = CEX_ALLOCATOR_TEMP_PAGE_SIZE,
+    .backing_alloc = mem$,
 };
 
 CEX_NAMESPACE_DEF struct __cex_namespace__AllocatorArena AllocatorArena = {
