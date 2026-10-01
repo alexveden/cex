@@ -1326,9 +1326,11 @@ You shouldn't use allocator interface directly (it's less convenient), so it's b
 
 * `mem$malloc(allocator, size, [alignment])` - allocates uninitialized memory with `allocator`, `size` in bytes, `alignment` parameter is optional, by default it's system specific alignment (up to 64 byte alignment is supported)
 * `mem$calloc(allocator, nmemb, size, [alignment])` - allocates zero-initialized memory with `allocator`, `nbemb` elements of `size` each, `alignment` parameter is optional, by default it's system specific alignment (up to 64 byte alignment is supported)
-* `mem$realloc(allocator, old_ptr, size, [alignment])` - reallocates previously initialized `old_ptr` with `allocator`, `alignment` parameter is optional and must match initial alignment of `old_ptr`
+* `mem$realloc(allocator, old_ptr, size, [alignment])` - reallocates previously initialized `old_ptr` with `allocator`, `alignment` parameter is optional and must match initial alignment of `old_ptr`. `old_ptr` must be a modifiable lvalue: it is always set to `NULL` on return (the old allocation may be freed or moved), so consume the returned pointer.
 * `mem$free(allocator, old_ptr)` - frees `old_ptr` and implicitly sets it to `NULL` to avoid use-after-free issues.
 * `mem$new(allocator, T)` - generic allocation of new instance of `T` (type), with respect of its size and alignment.
+
+> On failure `realloc` frees `old_ptr` and returns `NULL`; the `mem$realloc()` macro additionally sets `old_ptr` to `NULL`. Never keep using or freeing `old_ptr` after the call — always use the returned pointer.
 
 Allocator scoping:
 

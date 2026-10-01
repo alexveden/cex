@@ -133,4 +133,29 @@ test$case(test_global_mem_allocator_routes_to_test_alloc_oom)
     return EOK;
 }
 
+test$case(test_mem_realloc_nulls_old_ptr_on_success)
+{
+    u8* p = mem$malloc(test$alloc, 32);
+    tassert(p != NULL);
+
+    u8* q = mem$realloc(test$alloc, p, 64);
+    tassert(q != NULL);
+    tassert(p == NULL);
+    return EOK;
+}
+
+test$case(test_mem_realloc_nulls_old_ptr_on_oom)
+{
+    u8* p = mem$malloc(test$alloc, 32);
+    tassert(p != NULL);
+
+    test$alloc_set_oom_probability(1.0);
+    u8* q = mem$realloc(test$alloc, p, 64);
+    test$alloc_set_oom_probability(0.0);
+
+    tassert(q == NULL);
+    tassert(p == NULL);
+    return EOK;
+}
+
 test$main();

@@ -132,9 +132,10 @@ _cexds__arrgrowf(
         );
         // NOTE: we must unpoison to prevent false ASAN use-after-poison check if data is copied
         mem$asan_unpoison(hdr->__poison_area, sizeof(hdr->__poison_area));
+        void* base = _cexds__base(hdr);
         new_arr = mem$realloc(
             _cexds__header(arr)->allocator,
-            _cexds__base(hdr),
+            base,
             mem$aligned_round(elem_total + sizeof(_cexds__array_header), el_align),
             el_align
         );

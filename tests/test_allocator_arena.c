@@ -402,15 +402,16 @@ test$case(test_allocator_arena_realloc)
         tassert_eq(allc->used, 112 + 112);
         AllocatorArena_sanitize(arena);
 
+        char* p_saved = p;
         char* p3 = mem$realloc(arena, p, 200);
         tassert(p3 != NULL);
-        tassert(p3 != p);
+        tassert(p3 != p_saved);
         memset(p3, 0xAA, 100);
         tassert_eq(allc->stats.bytes_alloc, 112 + 112 + 216);
         tassert_eq(allc->used, 112 + 112 + 216);
         AllocatorArena_sanitize(arena);
 
-        allocator_arena_rec_s* rec = _cex_alloc_arena__get_rec(p);
+        allocator_arena_rec_s* rec = _cex_alloc_arena__get_rec(p_saved);
         tassert_eq(_cex_arena_rec_get_align(rec), 8);
         tassert_eq(_cex_arena_rec_get_size(rec), 100);
         tassert(_cex_arena_rec_is_free(rec));
@@ -422,10 +423,11 @@ test$case(test_allocator_arena_realloc)
         tassert(allc->last_page->last_alloc == p3);
 
         // Extending last pointer!
+        char* p3_saved = p3;
         char* p4 = mem$realloc(arena, p3, 300);
         tassert(p4 != NULL);
-        tassert(p3 == p4);
-        memset(p3, 0xAA, 300);
+        tassert(p3_saved == p4);
+        memset(p4, 0xAA, 300);
         AllocatorArena_sanitize(arena);
     }
 
@@ -529,9 +531,10 @@ test$case(test_allocator_arena_realloc_shrink)
         tassert(mem$asan_poison_check(p + rsize, rec->ptr_padding));
 
         // same size just ignored
+        char* p_saved = p;
         char* p2 = mem$realloc(arena, p, 100);
         tassert(p2 != NULL);
-        tassert(p2 == p);
+        tassert(p2 == p_saved);
         tassert_eq(allc->stats.bytes_alloc, 112);
         tassert_eq(allc->used, 112);
         tassert_eq(_cex_arena_rec_get_align(rec), 8);
@@ -539,13 +542,13 @@ test$case(test_allocator_arena_realloc_shrink)
         tassert_eq(rsize, 100);
         tassert_eq(rec->ptr_padding, 4);
         tassert(!_cex_arena_rec_is_free(rec));
-        tassert(mem$asan_poison_check(p + rsize, rec->ptr_padding));
+        tassert(mem$asan_poison_check(p_saved + rsize, rec->ptr_padding));
         AllocatorArena_sanitize(arena);
 
-        char* p3 = mem$realloc(arena, p, 50);
+        char* p2_saved = p2;
+        char* p3 = mem$realloc(arena, p2, 50);
         tassert(p3 != NULL);
-        tassert(p3 == p);
-        tassert(p3 == p2);
+        tassert(p3 == p2_saved);
         tassert_eq(allc->stats.bytes_alloc, 112);
         tassert_eq(allc->used, 112);
         // shrink is no-op — verify tail NOT poisoned after shrink
@@ -553,7 +556,7 @@ test$case(test_allocator_arena_realloc_shrink)
         //  on subsequent realloc growth that memcpy's rec->size bytes from old_ptr)
         rsize = _cex_arena_rec_get_size(rec);
 #if !CEX_DISABLE_POISON
-        tassert(!mem$asan_poison_check(p + 50, rsize - 50 + rec->ptr_padding));
+        tassert(!mem$asan_poison_check(p2_saved + 50, rsize - 50 + rec->ptr_padding));
 #endif
         tassert_eq(rsize, 100);
         tassert_eq(rec->ptr_padding, 4);
@@ -591,17 +594,19 @@ test$case(test_allocator_arena_realloc_shrink_then_grow)
 
         // shrink (no-op after fix)
         usize M = 50;
+        u8* p_saved = p;
         u8* shrunk = mem$realloc(arena, p, M);
-        tassert(shrunk == p);
+        tassert(shrunk == p_saved);
 
         // verify first M bytes preserved
-        for (u32 i = 0; i < M; i++) { tassert_eq(p[i], 0xAB); }
+        for (u32 i = 0; i < M; i++) { tassert_eq(shrunk[i], 0xAB); }
 
         // grow — triggers malloc+copy (p is not last_alloc)
         usize N2 = 150;
-        u8* grown = mem$realloc(arena, p, N2);
+        u8* shrunk_saved = shrunk;
+        u8* grown = mem$realloc(arena, shrunk, N2);
         tassert(grown != NULL);
-        tassert(grown != p); // must have moved
+        tassert(grown != shrunk_saved); // must have moved
 
         // verify first M bytes preserved via memcpy
         for (u32 i = 0; i < M; i++) { tassert_eq(grown[i], 0xAB); }
@@ -628,22 +633,24 @@ test$case(test_allocator_arena_realloc_shrink_then_grow)
 
         // shrink (no-op after fix)
         usize M = 50;
+        u8* p_saved = p;
         u8* shrunk = mem$realloc(arena, p, M);
-        tassert(shrunk == p);
+        tassert(shrunk == p_saved);
 
         // verify first M bytes preserved
-        for (u32 i = 0; i < M; i++) { tassert_eq(p[i], 0xCD); }
+        for (u32 i = 0; i < M; i++) { tassert_eq(shrunk[i], 0xCD); }
 
         // grow in-place (p IS last_alloc)
         usize N2 = 150;
-        u8* grown = mem$realloc(arena, p, N2);
-        tassert(grown == p); // same pointer, in-place extension
+        u8* shrunk_saved = shrunk;
+        u8* grown = mem$realloc(arena, shrunk, N2);
+        tassert(grown == shrunk_saved); // same pointer, in-place extension
 
         // KEY REGRESSION: read bytes [M, N) that old code poisoned during shrink.
         // In old code, in-place growth unpoisoned only [N, N2), leaving [M, N)
         // poisoned → ASAN use-after-poison on any read in that range.
         // After fix, shrink does nothing — all bytes accessible.
-        for (u32 i = M; i < N; i++) { tassert_eq(p[i], 0xCD); }
+        for (u32 i = M; i < N; i++) { tassert_eq(grown[i], 0xCD); }
 
         // verify entire extended allocation writable
         memset(grown, 0xDC, N2);
@@ -725,11 +732,13 @@ test$case(test_allocator_arena_realloc_last_pointer)
             tassert(p != NULL);
             *p = 0;
             for (u32 i = 1; i < 200; i++) {
+                u8* p_saved = p;
                 u8* new_p = mem$realloc(_, p, i + 1);
                 tassert(new_p != NULL);
-                tassert(new_p == p);
-                tassert_eq(p[i - 1], i - 1);
-                p[i] = i;
+                tassert(new_p == p_saved);
+                tassert_eq(new_p[i - 1], i - 1);
+                new_p[i] = i;
+                p = new_p;
             }
             for (u32 i = 0; i < 200; i++) { tassert_eq(p[i], i); }
         }
@@ -947,14 +956,16 @@ test$case(test_allocator_arena_disable_scopes_realloc)
     u8* p_guard = mem$malloc(arena, 16); // p isn't last_alloc
     tassert(p != NULL && p_guard != NULL);
 
+    u8* p_saved = p;
     u8* p2 = mem$realloc(arena, p, 128);
     tassert(p2 != NULL);
-    tassert(p2 != p); // new pointer
+    tassert(p2 != p_saved); // new pointer
     memset(p2, 0xEF, 128);
 
     // realloc shrink
+    u8* p2_saved = p2;
     u8* p3 = mem$realloc(arena, p2, 32);
-    tassert(p3 == p2);
+    tassert(p3 == p2_saved);
     for (u32 i = 0; i < 32; i++) { tassert(p3[i] == 0xEF); }
 
     // in-place growth on a fresh last-alloc
@@ -962,9 +973,11 @@ test$case(test_allocator_arena_disable_scopes_realloc)
     tassert(p4 != NULL);
     memset(p4, 0xAA, 33);
     for (usize sz = 33; sz < 200; sz++) {
+        u8* p4_saved = p4;
         u8* np = mem$realloc(arena, p4, sz + 1);
-        tassert(np == p4);
+        tassert(np == p4_saved);
         np[sz] = (u8)sz;
+        p4 = np;
     }
     for (u32 i = 0; i < 33; i++) { tassert(p4[i] == 0xAA); }
     for (usize sz = 33; sz < 200; sz++) { tassert(p4[sz] == (u8)sz); }

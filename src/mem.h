@@ -157,13 +157,17 @@ extern IAllocator _cex__default_global__allocator_mem;
         /* NOLINTEND*/                                                                             \
     })
 
-/// Reallocate chunk of memory using `allocator`
+/// Reallocate chunk of memory using `allocator`. `old_ptr` must be a modifiable lvalue; it is
+/// always set to NULL on return (the old allocation may be freed or moved), use the result
 #define mem$realloc(allocator, old_ptr, size, alignment...)                                        \
     ({                                                                                             \
         /* NOLINTBEGIN */                                                                          \
         usize _alignment[] = { alignment };                                                        \
-        (allocator)                                                                                \
-            ->realloc((allocator), old_ptr, size, (sizeof(_alignment) > 0) ? _alignment[0] : 0);   \
+        void* _cex_realloc_res = (allocator)->realloc(                                             \
+            (allocator), old_ptr, size, (sizeof(_alignment) > 0) ? _alignment[0] : 0               \
+        );                                                                                         \
+        (old_ptr) = NULL;                                                                          \
+        _cex_realloc_res;                                                                          \
         /* NOLINTEND*/                                                                             \
     })
 
