@@ -7,7 +7,7 @@
 /// Dynamic string builder type (alias for char*, always null-terminated)
 typedef char* sbuf_c;
 
-/// Internal metadata header stored before the string buffer (magic, capacity, length, allocator)
+/// Internal metadata header stored before the string buffer; the first byte (nullterm) is always 0
 typedef struct
 {
     alignas(alignof(u64)) struct
@@ -72,6 +72,7 @@ sbuf.destroy(&s);
 - Static buffer backed string
 ```c
 
+// `buf` may be unaligned: the header is placed at the first aligned address.
 // NOTE: `s` address is different, because `buf` will contain header and metadata, use only `s`
 char buf[64];
 sbuf_c s = sbuf.create_static(buf, arr$len(buf));
@@ -83,6 +84,13 @@ e$ret(sbuf.append(&s, "some string"));
 // It's not mandatory, but will clean up buffer data at the end
 sbuf.destroy(&s);
 ```
+
+- `buf` may have any alignment; the header goes to the first `alignof(sbuf_head_s)`-aligned address, so `capacity = buf_size - alignment_slack - sizeof(sbuf_head_s) - 1`
+- `buf_size` must be greater than `alignment_slack + sizeof(sbuf_head_s) + 1`, otherwise `create_static()` returns NULL
+- Reserve room: the header is `sizeof(sbuf_head_s)` (40 bytes on 64-bit), plus up to `alignof(sbuf_head_s) - 1` bytes of alignment slack, plus the null terminator — up to 48 extra bytes on 64-bit
+- `buf[0]` is always `\0`, so the raw buffer reads as an empty string even while `s` holds data
+- Static builders cannot grow: appending past capacity sets `Error.overflow` and resets capacity to 0
+- `destroy()` invalidates the header and null-terminates the data; a dynamic buffer is freed, a static buffer is not
 
 */
 struct __cex_namespace__sbuf {
@@ -101,9 +109,9 @@ struct __cex_namespace__sbuf {
     void            (*clear)(sbuf_c* self);
     /// Creates new dynamic string builder backed by allocator
     sbuf_c          (*create)(usize capacity, IAllocator allocator);
-    /// Creates dynamic string backed by static array
+    /// Creates string builder backed by a static buffer (aligned up; reserve up to 48 extra bytes for the header, alignment slack and null terminator)
     sbuf_c          (*create_static)(char* buf, usize buf_size);
-    /// Destroys the string, deallocates the memory, or nullify static buffer.
+    /// Destroys the string: frees the dynamic buffer, or invalidates the static buffer without freeing it; tolerates NULL self
     sbuf_c          (*destroy)(sbuf_c* self);
     /// Returns false if string invalid
     bool            (*isvalid)(sbuf_c* self);

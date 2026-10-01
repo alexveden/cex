@@ -26,6 +26,9 @@
 - fix: app/boilerplate suppressed traceback output for `argparse` errors
 - fix: macOS gcc `breakpoint()`, destructor attribute, and `<mach-o/dyld.h>` include
 - test: 32-bit guards + 100% AllocatorHeap coverage
+- fix(sbuf): static buffer is aligned up before the header; capacity accounts for the alignment slack; raw buffer always reads as an empty string
+- fix(sbuf): `sbuf.destroy()` tolerates `NULL` self, invalidates the header and null-terminates static data (removed redundant static `memset`)
+- (breaking) sbuf header layout: `nullterm` is the first byte (explicit fields instead of bitfields), magic moved to offset 4
 
 ## 0.21
 2026-06-07

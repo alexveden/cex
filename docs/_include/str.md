@@ -34,7 +34,7 @@
 For mutable, growing strings use the `sbuf` namespace (`sbuf_c` is a `char*` alias, always
 null-terminated):
 
-- `sbuf.create(cap, alloc)` / `sbuf.create_static(buf, n)` - allocator- or stack-backed builder
+- `sbuf.create(cap, alloc)` / `sbuf.create_static(buf, n)` - allocator- or stack-backed builder (static buffer is aligned up and cannot grow)
 - `sbuf.appendf(&s, "%s: %S", "x", slice)` / `sbuf.append(&s, "text")` - append
 - `sbuf.len(&s)` / `sbuf.capacity(&s)` / `sbuf.clear(&s)` - inspect/reset
 - `sbuf.destroy(&s)` - free (sets `s` to NULL)

@@ -1790,6 +1790,24 @@ sbuf.destroy(&s);
 >
 > If you need one-shot format for string try to use `str.fmt(allocator, format, ...)` inside temporary allocator `mem$scope(tmem$, _)`
 
+#### Static buffer backed string
+
+```c
+char buf[64];
+sbuf_c s = sbuf.create_static(buf, arr$len(buf)); /* <1> */
+
+e$ret(sbuf.append(&s, "hello")); /* <2> */
+
+sbuf.destroy(&s); /* <3> */
+```
+1. `buf` may be unaligned; the header is placed at the first aligned address, so capacity is `sizeof(buf) - alignment_slack - sizeof(sbuf_head_s) - 1`
+2. Static builders cannot grow; appending past capacity fails with `Error.overflow`
+3. `destroy()` invalidates the header and null-terminates the data; the dynamic buffer is freed, the static buffer is not
+
+Reserve up to 48 extra bytes (on 64-bit) for the header, alignment slack and null terminator — e.g. a `char buf[64]` yields a usable capacity of 23 bytes or less.
+
+`buf[0]` is always `\0`, so the raw buffer reads as an empty string even while `s` holds data.
+
 #### `sbuf` namespace
 
 ```c
@@ -1800,7 +1818,7 @@ sbuf.destroy(&s);
     /// Append format va (using CEX formatting engine), always null-terminating
     Exc             sbuf.appendfva(sbuf_c* self, char* format, va_list va);
     /// Returns string capacity from its metadata
-    u32             sbuf.capacity(sbuf_c* self);
+    usize           sbuf.capacity(sbuf_c* self);
     /// Clears string
     void            sbuf.clear(sbuf_c* self);
     /// Creates new dynamic string builder backed by allocator
@@ -1812,7 +1830,7 @@ sbuf.destroy(&s);
     /// Returns false if string invalid
     bool            sbuf.isvalid(sbuf_c* self);
     /// Returns string length from its metadata
-    u32             sbuf.len(sbuf_c* self);
+    usize           sbuf.len(sbuf_c* self);
     /// Sets the length of a string to any value, if new_length greater than capacity, re-allocates more
     /// space, always null-terminating. Newly allocated space is not ZII'ed, you must fill it yourself.
     Exc             sbuf.set_len(sbuf_c* self, usize new_length);

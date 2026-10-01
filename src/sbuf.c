@@ -116,7 +116,7 @@ cex_sbuf_create(usize capacity, IAllocator allocator)
 }
 
 
-/// Creates dynamic string backed by static array
+/// Creates string builder backed by a static buffer (aligned up; reserve up to 48 extra bytes for the header, alignment slack and null terminator)
 static sbuf_c
 cex_sbuf_create_static(char* buf, usize buf_size)
 {
@@ -204,7 +204,7 @@ cex_sbuf_capacity(sbuf_c* self)
     return head->capacity;
 }
 
-/// Destroys the string, deallocates the memory, or nullify static buffer.
+/// Destroys the string: frees the dynamic buffer, or invalidates the static buffer without freeing it; tolerates NULL self
 static sbuf_c
 cex_sbuf_destroy(sbuf_c* self)
 {
