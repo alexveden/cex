@@ -867,6 +867,24 @@ test$case(test_sbuf_grow_realloc_oom)
     return EOK;
 }
 
+test$case(test_sbuf_appendf_grow_oom)
+{
+    sbuf_c s = sbuf.create(5, test$alloc);
+    tassert(s != NULL);
+
+    char payload[256];
+    memset(payload, 'A', sizeof(payload) - 1);
+    payload[sizeof(payload) - 1] = '\0';
+
+    test$alloc_set_oom_probability(1.0);
+    tassert_er(Error.memory, sbuf.appendf(&s, "%s", payload));
+    tassert(s == NULL);
+    test$alloc_set_oom_probability(0.0);
+
+    sbuf.destroy(&s);
+    return EOK;
+}
+
 test$case(test_sbuf_create_null_allocator)
 {
     uassert_disable();

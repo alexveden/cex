@@ -13280,6 +13280,7 @@ _cex_sbuf_sprintf_callback(char* buf, void* user, u32 len)
         // sbuf likely changed after realloc
         e$except (err, _sbuf__grow_buffer(&sbuf, ctx->length + len + 1)) {
             ctx->err = err;
+            if (sbuf == NULL) { ctx->head = NULL; }
             return NULL;
         }
         // re-fetch head in case of realloc
@@ -13328,6 +13329,11 @@ cex_sbuf_appendfva(sbuf_c* self, char* format, va_list va)
         va
     );
 
+    if (unlikely(ctx.err)) {
+        if (ctx.head == NULL) { *self = NULL; }
+        return e$raise(ctx.err, "sbuf append failed");
+    }
+
     // re-fetch self in case of realloc in sbuf__sprintf_callback
     *self = ((char*)ctx.head + sizeof(sbuf_head_s));
 
@@ -13335,7 +13341,6 @@ cex_sbuf_appendfva(sbuf_c* self, char* format, va_list va)
     (*self)[ctx.head->length] = '\0';
     (*self)[ctx.head->capacity] = '\0';
 
-    if (unlikely(ctx.err)) { return e$raise(ctx.err, "sbuf append failed"); }
     return EOK;
 }
 
