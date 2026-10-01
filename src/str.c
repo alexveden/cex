@@ -1190,7 +1190,9 @@ _cex_str__fmt_callback(char* buf, void* user, u32 len)
     cexsp__context* ctx = user;
     if (unlikely(ctx->has_error)) { return NULL; }
 
-    if (unlikely(ctx->buf == NULL || ctx->length + len >= ctx->capacity)) {
+    if (unlikely(
+            ctx->buf == NULL || (u64)ctx->length + len + CEX_SPRINTF_MIN > ctx->capacity
+        )) {
 
         if ((u64)ctx->length + len > INT32_MAX) {
             ctx->has_error = true;

@@ -3417,6 +3417,22 @@ test$case(test_fmt_pure_literal_poc)
     return EOK;
 }
 
+test$case(test_fmt_long_pure_literal)
+{
+    mem$scope(tmem$, _)
+    {
+        char lit[2049];
+        memset(lit, 'a', 2048);
+        lit[2048] = '\0';
+
+        char* result = str.fmt(_, lit);
+        tassert(result != NULL);
+        tassert_eq(str.len(result), 2048);
+        for (usize i = 0; i < 2048; i++) { tassert(result[i] == 'a'); }
+    }
+    return EOK;
+}
+
 test$case(test_slice_sub_signed_overflow_poc)
 {
     // POC: cex_str__slice__sub (str.c:135) does `start += _len` for negative indices.
