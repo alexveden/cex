@@ -851,4 +851,63 @@ test$case(test_sbuf_static_validate)
     return EOK;
 }
 
+test$case(test_sbuf_grow_realloc_oom)
+{
+    sbuf_c s = sbuf.create(5, test$alloc);
+    tassert(s != NULL);
+    tassert_eq(sbuf.capacity(&s), 64 - sizeof(sbuf_head_s) - 1);
+
+    test$alloc_set_oom_probability(1.0);
+    tassert_er(Error.memory, sbuf.append(&s, "01234567890123456789012"));
+    tassert(s == NULL);
+    tassert_eq(false, sbuf.isvalid(&s));
+
+    test$alloc_set_oom_probability(0.0);
+    sbuf.destroy(&s);
+    return EOK;
+}
+
+test$case(test_sbuf_create_null_allocator)
+{
+    uassert_disable();
+    tassert(sbuf.create(64, NULL) == NULL);
+    uassert_enable();
+    return EOK;
+}
+
+test$case(test_sbuf_append_null_string)
+{
+    sbuf_c s = sbuf.create(20, mem$);
+    tassert(s != NULL);
+
+    tassert_er(Error.argument, sbuf.append(&s, NULL));
+    tassert_eq("sbuf.append s=NULL", sbuf.validate(&s));
+    tassert_eq(false, sbuf.isvalid(&s));
+
+    sbuf.destroy(&s);
+    return EOK;
+}
+
+test$case(test_sbuf_sprintf_callback_integrity_overflow)
+{
+    sbuf_c s = sbuf.create(20, mem$);
+    tassert(s != NULL);
+    sbuf_head_s* head = _sbuf__head(s);
+
+    struct _sbuf__sprintf_ctx ctx = {
+        .head = head,
+        .buf = s,
+        .err = EOK,
+        .count = head->capacity,
+        .length = (usize)INT32_MAX,
+    };
+    char tmp[4] = { 0 };
+
+    tassert(_cex_sbuf_sprintf_callback(tmp, &ctx, 1) == NULL);
+    tassert_eq(ctx.err, Error.integrity);
+
+    sbuf.destroy(&s);
+    return EOK;
+}
+
 test$main();
