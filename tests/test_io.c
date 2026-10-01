@@ -3,18 +3,6 @@
 #include "src/test.h"
 #include <stdio.h>
 
-static u64
-_test_io__find_oom_seed(f32 prob)
-{
-    for (u64 s = 0; s < 10000; s++) {
-        os.random.seed(s);
-        f32 r0 = os.random.f32();
-        f32 r1 = os.random.f32();
-        if (r0 >= prob && r1 < prob) { return s; }
-    }
-    return (u64)-1;
-}
-
 test$teardown_suite()
 {
     if (os.fs.remove("tests/data/text_file_write.txt")) {}
@@ -756,7 +744,8 @@ test$case(test_fread_all_oom)
     FILE* file;
     tassert_eq(Error.ok, io.fopen(&file, "tests/data/text_file_50b.txt", "r"));
 
-    test$alloc_set_oom_probability(1.0);
+    // 1st alloc = initial buffer
+    test$alloc_set_oom_on_call(1);
     str_s content;
     tassert_eq(Error.memory, io.fread_all(file, &content, test$alloc));
     tassert(content.buf == NULL);
@@ -772,7 +761,8 @@ test$case(test_fread_line_oom)
     FILE* file;
     tassert_eq(Error.ok, io.fopen(&file, "tests/data/text_file_50b.txt", "r"));
 
-    test$alloc_set_oom_probability(1.0);
+    // 1st alloc = initial buffer
+    test$alloc_set_oom_on_call(1);
     str_s content;
     tassert_eq(Error.memory, io.fread_line(file, &content, test$alloc));
     tassert(content.buf == NULL);
@@ -788,10 +778,8 @@ test$case(test_fread_all_realloc_oom)
     FILE* file;
     tassert_eq(Error.ok, io.fopen(&file, "tests/data/text_file_50b.txt", "r"));
 
-    u64 seed = _test_io__find_oom_seed(0.5f);
-    tassertf(seed != (u64)-1, "no oom seed found");
-    os.random.seed(seed);
-    test$alloc_set_oom_probability(0.5f);
+    // 1st alloc = initial buffer, 2nd = final realloc
+    test$alloc_set_oom_on_call(2);
 
     str_s content;
     tassert_eq(Error.memory, io.fread_all(file, &content, test$alloc));
@@ -808,10 +796,8 @@ test$case(test_fread_line_realloc_oom)
     FILE* file;
     tassert_eq(Error.ok, io.fopen(&file, "tests/data/text_file_line_4095.txt", "r"));
 
-    u64 seed = _test_io__find_oom_seed(0.5f);
-    tassertf(seed != (u64)-1, "no oom seed found");
-    os.random.seed(seed);
-    test$alloc_set_oom_probability(0.5f);
+    // 1st alloc = initial buffer, 2nd = first realloc
+    test$alloc_set_oom_on_call(2);
 
     str_s content;
     tassert_eq(Error.memory, io.fread_line(file, &content, test$alloc));
