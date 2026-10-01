@@ -149,7 +149,12 @@ struct _cexds__arr_new_kwargs_s
     })
 
 /// Frees the array memory and sets the pointer to NULL. Safe on NULL arrays (no-op).
-#define arr$free(a) (_cexds__arr_integrity(a, _CEXDS_ARR_MAGIC), _cexds__arrfreef((a)), (a) = NULL)
+#define arr$free(a)                                                                                \
+    ({                                                                                             \
+        if ((a) != NULL) { _cexds__arr_integrity(a, _CEXDS_ARR_MAGIC); }                           \
+        _cexds__arrfreef((a));                                                                     \
+        (a) = NULL;                                                                                \
+    })
 
 /// Resizes the array capacity to at least `n` elements. No-op if current capacity >= n.
 #define arr$setcap(a, n) (_cexds__arr_integrity(a, _CEXDS_ARR_MAGIC), arr$grow(a, 0, n))

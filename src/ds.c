@@ -95,15 +95,14 @@ _cexds__arrgrowf(
     // compute the minimum capacity needed
     if (min_len > min_cap) { min_cap = min_len; }
 
-    // increase needed capacity to guarantee O(1) amortized
-    {
+    // increase needed capacity to guarantee O(1) amortized on append
+    if (addlen > 0) {
         usize doubled;
         if (!mem$mul_overflow(arr$cap(arr), (usize)2, &doubled) && min_cap < doubled) {
             min_cap = doubled;
-        } else if (min_cap < 16) {
-            min_cap = 16;
         }
     }
+    if (min_cap < 16) { min_cap = 16; }
     uassert(min_cap < (usize)PTRDIFF_MAX && "negative or overflow after processing");
     uassert(addlen > 0 || min_cap > 0);
 
@@ -819,7 +818,6 @@ _cexds__hmput_key(
         );
 
         if (nt == NULL) {
-            uassert(nt != NULL && "new hash table memory error");
             *out_result = NULL;
             goto end;
         }
@@ -921,7 +919,6 @@ _cexds__hmput_key(
             if ((usize)i + 1 > arr$cap(a)) {
                 *(void**)&a = _cexds__arrgrowf(a, elemsize, 1, 0, _cexds__header(a)->el_align, NULL);
                 if (a == NULL) {
-                    uassert(a != NULL && "new array for table memory error");
                     if (table->key_arena != NULL) {
                         if (key_copy_allc == table->key_arena) { key_copy = NULL; }
                         AllocatorArena.destroy(table->key_arena);
