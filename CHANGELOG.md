@@ -21,6 +21,7 @@
 - refactor: `./cex build-docs` downscales generated markdown headers
 - feat(test): `test$alloc_set_oom_on_call(n)` - deterministic OOM simulation, fails on the n-th allocation call (`1` = next call)
 - (breaking) `AllocatorArena_kw.test_oom_probability` and `AllocatorArena_c.test_oom_probability` renamed to `test_oom_threshold`; one field now encodes probability (`(0,1)`), always-fail (`1`), or countdown (`>1`)
+- feat(fuzz): OOM fuzz harnesses for `hm$` and `arr$` (`fuzz/ds/fuzz_ds_hashmap_oom.c`, `fuzz/ds/fuzz_ds_array_oom.c`); inject `test_oom_threshold` failures at each operation and run under ASAN/UBSan
 
 ### Fixes
 - fix(test): `test$mock_scope` no longer clobbers the OOM setting; `test_oom_threshold` is saved and restored around the namespace snapshot
@@ -34,6 +35,17 @@
 - fix(sbuf): static buffer is aligned up before the header; capacity accounts for the alignment slack; raw buffer always reads as an empty string
 - fix(sbuf): `sbuf.destroy()` tolerates `NULL` self, invalidates the header and null-terminates static data (removed redundant static `memset`)
 - (breaking) sbuf header layout: `nullterm` is the first byte (explicit fields instead of bitfields), magic moved to offset 4
+- fix(ds): `hm$` OOM on hash-table grow or record-array grow no longer asserts; returns NULL and leaves the map consistent
+- fix(ds): `hm$del()` shrink/rebuild OOM no longer swaps in a NULL table (old table kept on allocation failure)
+- fix(ds): `hm$del()` swap-with-last back-pointer fixup used the wrong key pointer, corrupting `char*`/`str_s` keyed maps
+- fix(ds): `hm$set()` with `.copy_keys` leaked the previous key copy on replace; the copy is allocated before mutation so OOM leaves the map unchanged
+- fix(ds): `arr$free(NULL)` no longer asserts in `CEX_TEST`; the integrity check is skipped on NULL as documented
+- fix(ds): `arr$setcap(a, n)` doubled capacity even when `n <= capacity`, causing runaway growth; amortized doubling now applies only when appending (`addlen > 0`)
+- fix(mem): `mem$malloc`/`mem$calloc`/`mem$realloc`/`mem$free`/`mem$new` evaluate the allocator (and old-pointer) argument exactly once
+- fix(allocator): arena `realloc()` OOM now frees the old pointer instead of leaking it
+- fix(str): `str.fmt()` callback buffer growth could overflow when appending past capacity
+- fix(sbuf): use-after-free when an append operation failed
+- test(io): more deterministic OOM cases
 
 ## 0.21
 2026-06-07
