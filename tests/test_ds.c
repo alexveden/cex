@@ -1950,6 +1950,74 @@ test$case(test_hminit_oom_poc)
     return EOK;
 }
 
+test$case(test_hm_array_grow_oom_frees_table)
+{
+    hm$(int, int) m = hm$new(m, test$alloc);
+    tassert(m != NULL);
+
+    // cap=16, slot_count=16 (threshold 12). Inserts 0..15:
+    // #13 grows the hash table to slot_count=32 (threshold 24); the record
+    // array stays at cap 16. So insert #17 is the first alloc that must grow
+    // the record array, with no table grow pending.
+    for (int i = 0; i < 16; i++) { tassert(hm$set(m, i, i) != NULL); }
+    tassert(hm$len(m) == 16);
+
+    _cexds__hash_index* table = _cexds__header(m)->_hash_table;
+    tassert(table != NULL);
+
+    uassert_disable();             // _cexds__hmput_key asserts on grow failure
+    test$alloc_set_oom_on_call(1); // next alloc = the record-array realloc
+    void* r = hm$set(m, 16, 16);
+    test$alloc_set_oom_on_call(0);
+    uassert_enable();
+
+    tassert(r == NULL);
+    tassert(m == NULL);
+    // BEFORE: table never freed -> not poisoned -> FAILS
+    // AFTER:  freed via arena free -> poisoned
+    tassert(mem$asan_poison_check(table, sizeof(_cexds__hash_index)));
+    return EOK;
+}
+
+test$case(test_hm_array_grow_oom_frees_key_arena)
+{
+    hm$(char*, int) m = hm$new(
+        m,
+        test$alloc,
+        .copy_keys = true,
+        .copy_keys_arena_pgsize = 1024
+    );
+    tassert(m != NULL);
+
+    char keybuf[16];
+    for (int i = 0; i < 16; i++) {
+        snprintf(keybuf, sizeof(keybuf), "key%d", i);
+        tassert(hm$set(m, keybuf, i) != NULL);
+    }
+    tassert(hm$len(m) == 16);
+
+    _cexds__hash_index* table = _cexds__header(m)->_hash_table;
+    tassert(table != NULL);
+    tassert(table->key_arena != NULL);
+
+    char* copied_key = hm$gets(m, "key0")->key;
+    tassert(copied_key != NULL);
+    tassert_eq("key0", copied_key);
+
+    uassert_disable();             // _cexds__hmput_key asserts on grow failure
+    test$alloc_set_oom_on_call(1); // next alloc = the record-array realloc
+    void* r = hm$set(m, "key16", 16);
+    test$alloc_set_oom_on_call(0);
+    uassert_enable();
+
+    tassert(r == NULL);
+    tassert(m == NULL);
+    // BEFORE: key arena leaked -> copied key still readable -> not poisoned -> FAILS
+    // AFTER:  key arena destroyed -> backing region poisoned
+    tassert(mem$asan_poison_check(copied_key, strlen("key0") + 1));
+    return EOK;
+}
+
 test$case(test_arr_grow_len_overflow_poc)
 {
     // POC: _cexds__arrgrowf (ds.c:93) computes length + addlen without

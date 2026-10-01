@@ -9396,6 +9396,7 @@ _cexds__hmput_key(
 
     void** out_result = (void**)result;
     _cexds__hash_index* table = (_cexds__hash_index*)_cexds__header(a)->_hash_table;
+    IAllocator allc = _cexds__header(a)->allocator;
     uassert(table != NULL);
     if (table == NULL) { *out_result = NULL; goto end; }
     enum _CexDsKeyType_e key_type = table->key_type;
@@ -9519,6 +9520,8 @@ _cexds__hmput_key(
                 *(void**)&a = _cexds__arrgrowf(a, elemsize, 1, 0, _cexds__header(a)->el_align, NULL);
                 if (a == NULL) {
                     uassert(a != NULL && "new array for table memory error");
+                    if (table->key_arena != NULL) { AllocatorArena.destroy(table->key_arena); }
+                    allc->free(allc, table);
                     *out_result = NULL;
                     goto end;
                 }
