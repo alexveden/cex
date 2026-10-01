@@ -1090,7 +1090,8 @@ extern IAllocator _cex__default_global__allocator_mem;
     ({                                                                                             \
         /* NOLINTBEGIN*/                                                                           \
         usize _alignment[] = { alignment };                                                        \
-        (allocator)->malloc((allocator), size, (sizeof(_alignment) > 0) ? _alignment[0] : 0);      \
+        IAllocator _cex_allc = (allocator);                                                        \
+        _cex_allc->malloc(_cex_allc, size, (sizeof(_alignment) > 0) ? _alignment[0] : 0);          \
         /* NOLINTEND*/                                                                             \
     })
 
@@ -1099,8 +1100,8 @@ extern IAllocator _cex__default_global__allocator_mem;
     ({                                                                                             \
         /* NOLINTBEGIN */                                                                          \
         usize _alignment[] = { alignment };                                                        \
-        (allocator)                                                                                \
-            ->calloc((allocator), nmemb, size, (sizeof(_alignment) > 0) ? _alignment[0] : 0);      \
+        IAllocator _cex_allc = (allocator);                                                        \
+        _cex_allc->calloc(_cex_allc, nmemb, size, (sizeof(_alignment) > 0) ? _alignment[0] : 0);   \
         /* NOLINTEND*/                                                                             \
     })
 
@@ -1110,10 +1111,12 @@ extern IAllocator _cex__default_global__allocator_mem;
     ({                                                                                             \
         /* NOLINTBEGIN */                                                                          \
         usize _alignment[] = { alignment };                                                        \
-        void* _cex_realloc_res = (allocator)->realloc(                                             \
-            (allocator), old_ptr, size, (sizeof(_alignment) > 0) ? _alignment[0] : 0               \
+        IAllocator _cex_allc = (allocator);                                                        \
+        typeof(old_ptr)* _cex_oldp = &(old_ptr);                                                   \
+        void* _cex_realloc_res = _cex_allc->realloc(                                               \
+            _cex_allc, *_cex_oldp, size, (sizeof(_alignment) > 0) ? _alignment[0] : 0              \
         );                                                                                         \
-        (old_ptr) = NULL;                                                                          \
+        *_cex_oldp = NULL;                                                                         \
         _cex_realloc_res;                                                                          \
         /* NOLINTEND*/                                                                             \
     })
@@ -1121,15 +1124,20 @@ extern IAllocator _cex__default_global__allocator_mem;
 /// Free previously allocated chunk of memory, `ptr` implicitly set to NULL
 #define mem$free(allocator, ptr)                                                                   \
     ({                                                                                             \
-        (ptr) = (allocator)->free((allocator), ptr);                                               \
-        (ptr) = NULL;                                                                              \
-        (ptr);                                                                                     \
+        IAllocator _cex_allc = (allocator);                                                        \
+        typeof(ptr)* _cex_ptp = &(ptr);                                                            \
+        *_cex_ptp = _cex_allc->free(_cex_allc, *_cex_ptp);                                         \
+        *_cex_ptp = NULL;                                                                          \
+        *_cex_ptp;                                                                                 \
     })
 
 /// Allocates generic type instance using `allocator`, result is zero filled, size and alignment
 /// derived from type T
 #define mem$new(allocator, T)                                                                      \
-    (typeof(T)*)(allocator)->calloc((allocator), 1, sizeof(T), _Alignof(T))
+    ({                                                                                             \
+        IAllocator _cex_allc = (allocator);                                                        \
+        (typeof(T)*)_cex_allc->calloc(_cex_allc, 1, sizeof(T), _Alignof(T));                       \
+    })
 
 /// Overflow-checked addition: computes a + b, stores result through *res. Returns true on overflow.
 #define mem$add_overflow(a, b, res) __builtin_add_overflow((a), (b), (res))

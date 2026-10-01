@@ -158,4 +158,45 @@ test$case(test_mem_realloc_nulls_old_ptr_on_oom)
     return EOK;
 }
 
+static int _cex_test_allocator_evals = 0;
+
+static IAllocator
+_cex_test_eval_allocator(void)
+{
+    _cex_test_allocator_evals++;
+    return test$alloc;
+}
+
+test$case(test_mem_macros_eval_allocator_once)
+{
+    _cex_test_allocator_evals = 0;
+    u8* p = mem$malloc(_cex_test_eval_allocator(), 32);
+    tassert(p != NULL);
+    tassert_eq(_cex_test_allocator_evals, 1);
+
+    _cex_test_allocator_evals = 0;
+    p = mem$realloc(_cex_test_eval_allocator(), p, 64);
+    tassert(p != NULL);
+    tassert_eq(_cex_test_allocator_evals, 1);
+
+    _cex_test_allocator_evals = 0;
+    u8* c = mem$calloc(_cex_test_eval_allocator(), 1, 32);
+    tassert(c != NULL);
+    tassert_eq(_cex_test_allocator_evals, 1);
+
+    _cex_test_allocator_evals = 0;
+    u64* n = mem$new(_cex_test_eval_allocator(), u64);
+    tassert(n != NULL);
+    tassert_eq(_cex_test_allocator_evals, 1);
+
+    _cex_test_allocator_evals = 0;
+    mem$free(_cex_test_eval_allocator(), c);
+    tassert(c == NULL);
+    tassert_eq(_cex_test_allocator_evals, 1);
+
+    mem$free(test$alloc, p);
+    mem$free(test$alloc, n);
+    return EOK;
+}
+
 test$main();
