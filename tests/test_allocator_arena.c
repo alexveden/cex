@@ -1340,6 +1340,57 @@ test$case(test_allocator_arena_backing_alloc)
     return EOK;
 }
 
+test$case(test_allocator_arena_create_oom)
+{
+    mem$ = test$alloc;
+    test$alloc_set_oom_probability(1.0);
+
+    IAllocator arena = AllocatorArena.create(
+        &(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true }
+    );
+    tassert(arena == NULL);
+
+    test$alloc_set_oom_probability(0.0);
+    return EOK;
+}
+
+test$case(test_allocator_arena_request_page_oom)
+{
+    mem$ = test$alloc;
+
+    IAllocator arena = AllocatorArena.create(
+        &(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true }
+    );
+    tassert(arena != NULL);
+
+    test$alloc_set_oom_probability(1.0);
+    tassert(mem$malloc(arena, 100) == NULL);
+    test$alloc_set_oom_probability(0.0);
+
+    AllocatorArena_destroy(arena);
+    return EOK;
+}
+
+test$case(test_allocator_arena_request_page_oom_second_page)
+{
+    mem$ = test$alloc;
+
+    IAllocator arena = AllocatorArena.create(
+        &(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true }
+    );
+    tassert(arena != NULL);
+
+    u8* p = mem$malloc(arena, 100);
+    tassert(p != NULL);
+
+    test$alloc_set_oom_probability(1.0);
+    tassert(mem$malloc(arena, 64 * 1024) == NULL);
+    test$alloc_set_oom_probability(0.0);
+
+    AllocatorArena_destroy(arena);
+    return EOK;
+}
+
 test$case(test_allocator_arena_backing_alloc_default)
 {
     IAllocator arena = AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 4096 });
