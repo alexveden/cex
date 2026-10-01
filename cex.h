@@ -4717,6 +4717,39 @@ test$bench(my_bench)
 // output: my_bench........ cold: 282.000ns  hot: 30.000ns  [PASS]
 ```
 
+### Coverage
+
+```sh
+# whole suite
+./cex coverage run all                       # build+run all tests instrumented
+./cex coverage report all                    # aggregate + print text report
+./cex coverage report --format=json all      # machine-readable JSON report
+./cex coverage report --format=html all      # HTML report -> cexy$build_dir/coverage
+./cex coverage report --file 'src/foo*.c' all # only sources matching the glob
+./cex coverage export -o coverage.info all   # lcov .info tracefile for external tools
+./cex coverage clean all                     # remove raw coverage artifacts
+
+# one test file (target is any tests/test_*.c)
+./cex coverage run tests/test_foo.c          # instrument+run just this file
+./cex coverage report tests/test_foo.c       # report for that target
+./cex coverage export -o foo.info tests/test_foo.c
+```
+
+Engines: `auto` (default: llvm for clang, lcov for gcc) or `--engine=llvm|lcov`. llvm uses
+`-fprofile-instr-generate` + `llvm-profdata`/`llvm-cov` (.profraw); lcov uses compiler
+`--coverage` + `lcov`/`genhtml` (.gcno/.gcda). Raw data lives in `cexy$build_dir`. `run all`
+wipes all raw data; `run tests/test_foo.c` resets only that target's counters, so one test can
+be re-run without losing the rest. llvm scopes the report to the target's binaries, lcov
+aggregates every `.gcda` in `cexy$build_dir`. `export` writes an lcov tracefile (merge several
+with `lcov -a a.info -o merged.info`). The lower-level `./cex test --coverage run all` only
+leaves raw data (no report). Not supported with `bench`.
+
+JSON fields: `total{lines_hit,lines_found,funcs_hit,funcs_found}`,
+`files[]{path,lines_hit,lines_found,funcs_hit,funcs_found,missed_lines,uncovered_funcs,fully_uncovered}`.
+
+The `coverage` command ships in `cexstd/testing/coverage/`; wire it into `cex.c` per
+`cexstd/testing/coverage/README.md` (fetch with `./cex libfetch cexstd/`).
+
 ### Test runner args (single test file only)
 ```sh
 # args after the file path are forwarded to the built-in test runner
