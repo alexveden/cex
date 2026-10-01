@@ -356,7 +356,7 @@ _cex_allocator_arena__realloc(IAllocator allc, void* old_ptr, usize size, usize 
         && "arena allocation must be performed in mem$scope() block!"
     );
     #ifdef CEX_TEST
-    if (_cex_allocator_arena__should_fail_oom(self)) { return NULL; }
+    if (_cex_allocator_arena__should_fail_oom(self)) { goto fail; }
     #endif
 
     allocator_arena_rec_s* rec = _cex_alloc_arena__get_rec(old_ptr);

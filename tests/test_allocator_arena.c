@@ -1286,6 +1286,31 @@ test$case(arena_allocator_test_oom_on_call)
     return EOK;
 }
 
+test$case(arena_allocator_realloc_oom_frees_old_ptr)
+{
+    IAllocator arena = AllocatorArena.create(
+        &(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true }
+    );
+    tassert(arena != NULL);
+    AllocatorArena_c* allc = (AllocatorArena_c*)arena;
+
+    u8* p = mem$malloc(arena, 32);
+    tassert(p != NULL);
+    u8* saved = p;
+    memset(saved, 0xAA, 32);
+
+    allc->test_oom_threshold = 1.0;
+    u8* q = mem$realloc(arena, p, 64);
+    allc->test_oom_threshold = 0.0;
+
+    tassert(q == NULL);
+    tassert(p == NULL);
+    bool old_freed = mem$asan_poison_check(saved, 32);
+    AllocatorArena_destroy(arena);
+    tassert(old_freed);
+    return EOK;
+}
+
 test$case(test_allocator_arena_estimate_page_size_large)
 {
     usize alloc_size = 2 * 1024 * 1024;
