@@ -2059,6 +2059,30 @@ test$case(test_hm_copy_keys_oom_keeps_map_consistent)
     return EOK;
 }
 
+test$case(test_hm_del_shrink_oom_keeps_table)
+{
+    hm$(int, int) m = hm$new(m, test$alloc);
+    tassert(m != NULL);
+    for (int i = 0; i < 10; i++) { tassert(hm$set(m, i, i) != NULL); }
+
+    // slot_count=16, shrink_threshold=4; delete down to used_count=4
+    for (int i = 0; i < 6; i++) { hm$del(m, i); }
+    tassert(hm$len(m) == 4);
+
+    // 7th delete drops used_count to 3 -> shrink; fail the new-table calloc
+    test$alloc_set_oom_on_call(1);
+    hm$del(m, 6);
+    test$alloc_set_oom_on_call(0);
+
+    // BEFORE: _hash_table == NULL (old table freed) -> map unusable
+    // AFTER:  old table kept -> map still functional
+    tassert(_cexds__header(m)->_hash_table != NULL);
+    tassert_eq(hm$len(m), 3);
+    tassert_eq(hm$get(m, 9), 9);
+    hm$free(m);
+    return EOK;
+}
+
 test$case(test_arr_grow_len_overflow_poc)
 {
     // POC: _cexds__arrgrowf (ds.c:93) computes length + addlen without

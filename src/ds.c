@@ -1049,15 +1049,18 @@ _cexds__hmdel_key(void* a, usize elemsize, void* key, usize keysize, usize keyof
             hdr->allocator->scope_depth(hdr->allocator) == hdr->allocator_scope_depth &&
             "passing object between different mem$scope() will lead to use-after-free / ASAN poison issues"
         );
-        _cexds__header(a)->_hash_table = _cexds__make_hash_index(
+        _cexds__hash_index* nt = _cexds__make_hash_index(
             table->slot_count >> 1,
             table,
             _cexds__header(a)->allocator,
             table->seed,
             table->key_type
         );
-        _cexds__header(a)->allocator->free(_cexds__header(a)->allocator, table);
-        _CEXDS_STATS(++_cexds__hash_shrink);
+        if (nt != NULL) {
+            _cexds__header(a)->_hash_table = nt;
+            _cexds__header(a)->allocator->free(_cexds__header(a)->allocator, table);
+            _CEXDS_STATS(++_cexds__hash_shrink);
+        }
     } else if (table->tombstone_count > table->tombstone_count_threshold) {
         _cexds__array_header* hdr = _cexds__header(a);
         (void)hdr;
@@ -1065,15 +1068,18 @@ _cexds__hmdel_key(void* a, usize elemsize, void* key, usize keysize, usize keyof
             hdr->allocator->scope_depth(hdr->allocator) == hdr->allocator_scope_depth &&
             "passing object between different mem$scope() will lead to use-after-free / ASAN poison issues"
         );
-        _cexds__header(a)->_hash_table = _cexds__make_hash_index(
+        _cexds__hash_index* nt = _cexds__make_hash_index(
             table->slot_count,
             table,
             _cexds__header(a)->allocator,
             table->seed,
             table->key_type
         );
-        _cexds__header(a)->allocator->free(_cexds__header(a)->allocator, table);
-        _CEXDS_STATS(++_cexds__hash_rebuild);
+        if (nt != NULL) {
+            _cexds__header(a)->_hash_table = nt;
+            _cexds__header(a)->allocator->free(_cexds__header(a)->allocator, table);
+            _CEXDS_STATS(++_cexds__hash_rebuild);
+        }
     }
 
     return a;
