@@ -15,7 +15,7 @@ typedef struct
     bool disable_scopes; ///< If true, arena works without mem$scope() (manual destroy only)
     IAllocator backing_alloc; ///< Allocator backing arena pages (default: mem$)
     #ifdef CEX_TEST
-    f32 test_oom_probability; /// Probability of memory allocation failures, uses os.random.   
+    f32 test_oom_threshold; /// OOM simulation probability (0..1), uses os.random
     #endif
 } AllocatorArena_kw;
 
@@ -33,7 +33,7 @@ typedef struct
     IAllocator backing_alloc; // allocator backing arena pages (default: mem$)
 
     #ifdef CEX_TEST
-    f32 test_oom_probability;  // Probability of returned NULL by any arena allocation
+    f32 test_oom_threshold;  // OOM simulation: 0 disabled, (0,1) probability, 1 always fail, >1 fail after N-1 calls
     #endif
 
     struct

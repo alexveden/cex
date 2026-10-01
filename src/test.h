@@ -117,6 +117,12 @@ test$case(my_test_case)
     void* p = mem$malloc(test$alloc, 64);
     tassert(p == NULL); // exercise the OOM path of your code
 
+    // deterministic: fail on the 3rd allocation call (first two succeed)
+    test$alloc_set_oom_on_call(3);
+    tassert(mem$malloc(test$alloc, 64) != NULL);
+    tassert(mem$malloc(test$alloc, 64) != NULL);
+    tassert(mem$malloc(test$alloc, 64) == NULL);
+
     return EOK;
 }
 ```
@@ -280,7 +286,18 @@ extern
 /// Automatically reset to 0.0 before each test case.
 #define test$alloc_set_oom_probability(prob) ({ \
     uassert(prob >= 0 && prob <= 1.0 && "test$alloc_set_oom_probability out of range"); \
-    ((AllocatorArena_c*)_cex__default_global__allocator_test)->test_oom_probability = (f32)prob; \
+    ((AllocatorArena_c*)_cex__default_global__allocator_test)->test_oom_threshold = (f32)prob; \
+})
+
+/// Sets a deterministic simulated allocation failure for `test$alloc`, failing on the `n`-th call:
+/// - 0 = never fail (default)
+/// - 1 = next call fails
+/// - 2 = first call succeeds, second and all subsequent calls fail
+/// Use to test OOM paths in test cases. Only available in CEX_TEST mode.
+/// Automatically reset to 0 before each test case.
+#define test$alloc_set_oom_on_call(n) ({ \
+    uassert(n >= 0 && "test$alloc_set_oom_on_call out of range"); \
+    ((AllocatorArena_c*)_cex__default_global__allocator_test)->test_oom_threshold = (f32)(n); \
 })
 
 

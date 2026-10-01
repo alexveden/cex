@@ -5,7 +5,7 @@ test$setup_case()
     tassert(test$alloc != NULL);
 
     AllocatorArena_c* test_arena = (AllocatorArena_c*)test$alloc;
-    tassert_eq(test_arena->test_oom_probability, 0.0);
+    tassert_eq(test_arena->test_oom_threshold, 0.0);
 
     u8* p2 = mem$malloc(test$alloc, 10);
     tassert(p2);
@@ -17,7 +17,7 @@ test$teardown_case()
     tassert(test$alloc != NULL);
 
     AllocatorArena_c* test_arena = (AllocatorArena_c*)test$alloc;
-    tassert_eq(test_arena->test_oom_probability, 0.0);
+    tassert_eq(test_arena->test_oom_threshold, 0.0);
      
     u8* p2 = mem$malloc(test$alloc, 10);
     tassert(p2);
@@ -979,7 +979,7 @@ test$case(test_alloc_oom_probability)
     tassert(test$alloc != NULL);
     AllocatorArena_c* test_arena = (AllocatorArena_c*)test$alloc;
     tassert_eq(test_arena->stats.pages_created, 1);
-    tassert_eq(test_arena->test_oom_probability, 0.0);
+    tassert_eq(test_arena->test_oom_threshold, 0.0);
 
     // never fail
     for(u32 i = 0; i < 10000; i++){
@@ -1006,12 +1006,41 @@ test$case(test_alloc_oom_probability)
     return EOK;
 }
 
+test$case(test_alloc_oom_on_call)
+{
+    tassert(test$alloc != NULL);
+
+    // 0 = never fail
+    test$alloc_set_oom_on_call(0);
+    for(u32 i = 0; i < 100; i++){
+        tassert(mem$malloc(test$alloc, 10) != NULL);
+    }
+
+    // 3 = first two succeed, third and later fail
+    test$alloc_set_oom_on_call(3);
+    tassert(mem$malloc(test$alloc, 10) != NULL);
+    tassert(mem$malloc(test$alloc, 10) != NULL);
+    tassert(mem$malloc(test$alloc, 10) == NULL);
+    tassert(mem$malloc(test$alloc, 10) == NULL);
+
+    return EOK;
+}
+
+test$case(test_alloc_oom_on_call_always_reset)
+{
+    tassert(test$alloc != NULL);
+    AllocatorArena_c* test_arena = (AllocatorArena_c*)test$alloc;
+    tassert_eq(test_arena->test_oom_threshold, 0.0);
+    tassert(mem$malloc(test$alloc, 10) != NULL);
+    return EOK;
+}
+
 test$case(test_alloc_oom_probability_always_reset)
 {
     tassert(test$alloc != NULL);
     AllocatorArena_c* test_arena = (AllocatorArena_c*)test$alloc;
     tassert_eq(test_arena->stats.pages_created, 1);
-    tassert_eq(test_arena->test_oom_probability, 0.0);
+    tassert_eq(test_arena->test_oom_threshold, 0.0);
     return EOK;
 }
 

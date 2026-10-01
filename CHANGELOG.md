@@ -19,8 +19,11 @@
 - feat(cexstd): `testing/coverage/` + `./cex coverage run|report|export|clean` - per-file text/json/html report with uncovered lines and functions, `--file` glob filter, lcov `.info` export
 - feat(ci): coverage aggregation workflow + coverage badge
 - refactor: `./cex build-docs` downscales generated markdown headers
+- feat(test): `test$alloc_set_oom_on_call(n)` - deterministic OOM simulation, fails on the n-th allocation call (`1` = next call)
+- (breaking) `AllocatorArena_kw.test_oom_probability` and `AllocatorArena_c.test_oom_probability` renamed to `test_oom_threshold`; one field now encodes probability (`(0,1)`), always-fail (`1`), or countdown (`>1`)
 
 ### Fixes
+- fix(test): `test$mock_scope` no longer clobbers the OOM setting; `test_oom_threshold` is saved and restored around the namespace snapshot
 - fix(coverage): covered functions reported incorrectly, merge OOM, recursive test executables, single-target run retaining data from a previous `all`
 - fix(cexy): `./cex help` private functions excluded, `ns$` includes constants, typedefs dropped from `--list`, win path normalization, bundled-vs-root `cex.h` conflicts
 - fix: CexParser errors on `#if`/`#else` branches; accepts tabs inside strings

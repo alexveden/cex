@@ -1412,7 +1412,7 @@ There are three general purpose allocators globally available out of the box for
 
 * `mem$` — heap allocator backed by `malloc`/`free` with extra alignment support. In unit tests this allocator provides simple memory leak checks even without address sanitizer enabled.
 * `tmem$` — dynamic arena with 256 KB page size, used for short-lived temporary operations, cleans up pages automatically at program exit. Does page allocation only at the first allocation, otherwise remains a global static struct instance (about 128 bytes size). Thread safe, uses `thread_local`.
-* `test$alloc` — dedicated per-test-case arena (1 MB page, `disable_scopes=true`). Created fresh before each test case, destroyed afterward with no manual free needed. Supports OOM simulation via `test$alloc_set_oom_probability()` in test mode. Only available in unit tests.
+* `test$alloc` — dedicated per-test-case arena (1 MB page, `disable_scopes=true`). Created fresh before each test case, destroyed afterward with no manual free needed. Supports OOM simulation via `test$alloc_set_oom_probability()` (probabilistic) and `test$alloc_set_oom_on_call()` (deterministic, fails on the n-th allocation call) in test mode. Only available in unit tests.
 
 
 #### Caveats
@@ -1451,7 +1451,7 @@ When run in test mode (or specifically `#ifdef CEX_TEST` is true) the memory all
 2. `mem$malloc()` - return uninitialized memory with `0xf7` byte pattern
 3. If Address Sanitizer is available all allocations for arenas and heap will be surrounded by poisoned areas. If you see use-after-poison errors, it's likely a sign of use-after-free or out of bounds access in `tmem$`. Try to switch your code to the `mem$` allocator if possible to triage the exact reason of the error.
 4. Allocators do sanity checks at the end of each unit test case
-5. **OOM (Out-of-Memory) simulation** — `test$alloc` supports synthetic allocation failure via `test$alloc_set_oom_probability(prob)`. Setting `prob` to `1.0` causes subsequent `malloc`/`calloc`/`realloc` calls on `test$alloc` to return `NULL`; `0.0` restores normal behavior. Automatically reset to `0.0` before the next test case.
+5. **OOM (Out-of-Memory) simulation** — `test$alloc` supports synthetic allocation failure via `test$alloc_set_oom_probability(prob)` (probabilistic: `1.0` = always fail, `0.5` = ~50%) and `test$alloc_set_oom_on_call(n)` (deterministic: succeeds `n-1` calls, then fails on every subsequent call; `n=1` fails immediately). Both write the same `test_oom_threshold` field (`0` disables, `(0,1)` probability, `1` always fail, `>1` countdown). Setting `prob`/`n` to `0` restores normal behavior. Automatically reset to `0` before the next test case.
 6. **Deterministic random values** — `os.random.seed(0)` is called before each test case, ensuring repeatable random sequences. This is essential for OOM simulation and any test using `os.random.*`.
 
 > [!NOTE]

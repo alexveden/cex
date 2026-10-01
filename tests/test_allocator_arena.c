@@ -1186,13 +1186,13 @@ test$case(arena_allocator_test_oom_probability)
 {
     // page_size = 0 (ZII), disable_scopes = true → page_size should default
     IAllocator arena = AllocatorArena.create(
-        &(AllocatorArena_kw){ .page_size = 0, .disable_scopes = true, .test_oom_probability = 1.0 }
+        &(AllocatorArena_kw){ .page_size = 0, .disable_scopes = true, .test_oom_threshold = 1.0 }
     );
     tassert(arena != NULL);
     AllocatorArena_c* allc = (AllocatorArena_c*)arena;
-    tassert_eq(allc->test_oom_probability, 1.0);
+    tassert_eq(allc->test_oom_threshold, 1.0);
 
-    // test_oom_probability = 1.0, always fail
+    // test_oom_threshold = 1.0, always fail
     for(u32 i = 0; i < 10000; i++){
         u8* p = mem$malloc(arena, 10);
         tassert(p == NULL);
@@ -1202,21 +1202,21 @@ test$case(arena_allocator_test_oom_probability)
 
     // never fail
     for(u32 i = 0; i < 10000; i++){
-        allc->test_oom_probability = 0.0;
+        allc->test_oom_threshold = 0.0;
         u8* p = mem$malloc(arena, 10);
         tassert(p != NULL);
         p = mem$calloc(arena, 1, 10);
         tassert(p != NULL);
 
         // realloc is affected too
-        allc->test_oom_probability = 1.0;
+        allc->test_oom_threshold = 1.0;
         p = mem$realloc(arena, p, 10);
         tassert(p == NULL);
     }
 
     // 50/50% fail
     u32 nfails = 0;
-    allc->test_oom_probability = 0.5;
+    allc->test_oom_threshold = 0.5;
     for(u32 i = 0; i < 10000; i++){
         u8* p = mem$malloc(arena, 10);
         if (p == NULL) {nfails++;}
@@ -1224,7 +1224,7 @@ test$case(arena_allocator_test_oom_probability)
     tassertf(nfails > 4500 && nfails < 5500, "nfails=%d", nfails);
 
     nfails = 0;
-    allc->test_oom_probability = 0.5;
+    allc->test_oom_threshold = 0.5;
     for(u32 i = 0; i < 10000; i++){
         u8* p = mem$calloc(arena, 1, 10);
         if (p == NULL) {nfails++;}
@@ -1233,16 +1233,55 @@ test$case(arena_allocator_test_oom_probability)
 
     nfails = 0;
     for(u32 i = 0; i < 10000; i++){
-        allc->test_oom_probability = 0.0;
+        allc->test_oom_threshold = 0.0;
         u8* p = mem$calloc(arena, 1, 10);
         tassert(p);
 
-        allc->test_oom_probability = 0.5;
+        allc->test_oom_threshold = 0.5;
         p = mem$realloc(arena, p, 10);
         if (p == NULL) {nfails++;}
     }
     tassertf(nfails > 4500 && nfails < 5500, "nfails=%d", nfails);
 
+    AllocatorArena_destroy(arena);
+    return EOK;
+}
+
+test$case(arena_allocator_test_oom_on_call)
+{
+    IAllocator arena = AllocatorArena.create(
+        &(AllocatorArena_kw){ .page_size = 0, .disable_scopes = true }
+    );
+    tassert(arena != NULL);
+    AllocatorArena_c* allc = (AllocatorArena_c*)arena;
+
+    // fail on the 2nd call: 1st succeeds, 2nd and every later one fail
+    allc->test_oom_threshold = 2.0;
+    tassert(mem$malloc(arena, 10) != NULL);
+    tassert(mem$malloc(arena, 10) == NULL);
+    tassert(mem$malloc(arena, 10) == NULL);
+
+    // reset disables it
+    allc->test_oom_threshold = 0.0;
+    tassert(mem$malloc(arena, 10) != NULL);
+
+    // 1 = next call fails
+    allc->test_oom_threshold = 1.0;
+    tassert(mem$malloc(arena, 10) == NULL);
+
+    // calloc counts as one call too
+    allc->test_oom_threshold = 2.0;
+    tassert(mem$calloc(arena, 1, 10) != NULL);
+    tassert(mem$calloc(arena, 1, 10) == NULL);
+
+    // realloc is affected
+    allc->test_oom_threshold = 0.0;
+    u8* p = mem$malloc(arena, 10);
+    tassert(p != NULL);
+    allc->test_oom_threshold = 1.0;
+    tassert(mem$realloc(arena, p, 10) == NULL);
+
+    allc->test_oom_threshold = 0.0;
     AllocatorArena_destroy(arena);
     return EOK;
 }

@@ -25,7 +25,8 @@ void _cex_allocator_arena_cleanup(IAllocator* allc);
 - `tmem$` - temporary allocator, backed by ArenaAllocator, with a 256KB page, requires `mem$scope`
 - `test$alloc` - per-test-case arena (1 MB page, `disable_scopes`), created/destroyed by the test
 runner, no manual free; `mem$scope` is a no-op; OOM simulation via
-`test$alloc_set_oom_probability(prob)` (test mode only)
+`test$alloc_set_oom_probability(prob)` or deterministic `test$alloc_set_oom_on_call(n)`
+(test mode only)
 
 ### Memory management hints
 

@@ -7,7 +7,8 @@
 - `tmem$` - temporary allocator, backed by ArenaAllocator, with a 256KB page, requires `mem$scope`
 - `test$alloc` - per-test-case arena (1 MB page, `disable_scopes`), created/destroyed by the test
 runner, no manual free; `mem$scope` is a no-op; OOM simulation via
-`test$alloc_set_oom_probability(prob)` (test mode only)
+`test$alloc_set_oom_probability(prob)` or deterministic `test$alloc_set_oom_on_call(n)`
+(test mode only)
 
 #### Memory management hints
 
@@ -146,7 +147,8 @@ AllocatorArena.destroy(arena); // must not be called inside mem$scope
 /// Returns 32 for 32-bit platform, or 64 for 64-bit platform
 #define mem$platform()
 
-/// Reallocate chunk of memory using `allocator`
+/// Reallocate chunk of memory using `allocator`. `old_ptr` must be a modifiable lvalue; it is
+/// always set to NULL on return (the old allocation may be freed or moved), use the result
 #define mem$realloc(allocator, old_ptr, size, alignment...)
 
 /// Opens new memory scope using Arena-like allocator, frees all memory after scope exit

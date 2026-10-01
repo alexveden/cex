@@ -460,10 +460,10 @@ _cex_test_mockns_s _cex_test_ns_save(void* ns, usize ns_size){
     uassert(ns_size > 0);
 
     AllocatorArena_c* test_arena = (AllocatorArena_c*)test$alloc;
+    f32 prev_oom_threshold = test_arena->test_oom_threshold;
     test$alloc_set_oom_probability(0.0);
-    f32 prev_oom_prob = test_arena->test_oom_probability;
     void* orig_ns = mem$malloc(test$alloc, ns_size);
-    test$alloc_set_oom_probability(prev_oom_prob);
+    test$alloc_set_oom_probability(prev_oom_threshold);
     uassert(orig_ns);
     memcpy(orig_ns, ns, ns_size);
     return (_cex_test_mockns_s){.ns_ptr = ns, .ns_size = ns_size, .orig_ns = orig_ns};
@@ -687,7 +687,7 @@ _cex_test_main_fn(int argc, char** argv)
         test$alloc = AllocatorArena.create(&(AllocatorArena_kw){
             .page_size = 1024 * 1024,
             .disable_scopes = true,
-            .test_oom_probability = 0.0,
+            .test_oom_threshold = 0.0,
             .backing_alloc = &_cex__default_global__allocator_heap.alloc,
         });
         AllocatorArena_c* test_arena = (AllocatorArena_c*)test$alloc;

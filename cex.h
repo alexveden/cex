@@ -971,7 +971,8 @@ void _cex_allocator_arena_cleanup(IAllocator* allc);
 - `tmem$` - temporary allocator, backed by ArenaAllocator, with a 256KB page, requires `mem$scope`
 - `test$alloc` - per-test-case arena (1 MB page, `disable_scopes`), created/destroyed by the test
 runner, no manual free; `mem$scope` is a no-op; OOM simulation via
-`test$alloc_set_oom_probability(prob)` (test mode only)
+`test$alloc_set_oom_probability(prob)` or deterministic `test$alloc_set_oom_on_call(n)`
+(test mode only)
 
 ### Memory management hints
 
@@ -1333,7 +1334,7 @@ typedef struct
     bool disable_scopes; ///< If true, arena works without mem$scope() (manual destroy only)
     IAllocator backing_alloc; ///< Allocator backing arena pages (default: mem$)
     #ifdef CEX_TEST
-    f32 test_oom_probability; /// Probability of memory allocation failures, uses os.random.   
+    f32 test_oom_threshold; /// OOM simulation probability (0..1), uses os.random
     #endif
 } AllocatorArena_kw;
 
@@ -1351,7 +1352,7 @@ typedef struct
     IAllocator backing_alloc; // allocator backing arena pages (default: mem$)
 
     #ifdef CEX_TEST
-    f32 test_oom_probability;  // Probability of returned NULL by any arena allocation
+    f32 test_oom_threshold;  // OOM simulation: 0 disabled, (0,1) probability, 1 always fail, >1 fail after N-1 calls
     #endif
 
     struct
@@ -4650,6 +4651,12 @@ test$case(my_test_case)
     void* p = mem$malloc(test$alloc, 64);
     tassert(p == NULL); // exercise the OOM path of your code
 
+    // deterministic: fail on the 3rd allocation call (first two succeed)
+    test$alloc_set_oom_on_call(3);
+    tassert(mem$malloc(test$alloc, 64) != NULL);
+    tassert(mem$malloc(test$alloc, 64) != NULL);
+    tassert(mem$malloc(test$alloc, 64) == NULL);
+
     return EOK;
 }
 ```
@@ -4813,7 +4820,18 @@ extern
 /// Automatically reset to 0.0 before each test case.
 #define test$alloc_set_oom_probability(prob) ({ \
     uassert(prob >= 0 && prob <= 1.0 && "test$alloc_set_oom_probability out of range"); \
-    ((AllocatorArena_c*)_cex__default_global__allocator_test)->test_oom_probability = (f32)prob; \
+    ((AllocatorArena_c*)_cex__default_global__allocator_test)->test_oom_threshold = (f32)prob; \
+})
+
+/// Sets a deterministic simulated allocation failure for `test$alloc`, failing on the `n`-th call:
+/// - 0 = never fail (default)
+/// - 1 = next call fails
+/// - 2 = first call succeeds, second and all subsequent calls fail
+/// Use to test OOM paths in test cases. Only available in CEX_TEST mode.
+/// Automatically reset to 0 before each test case.
+#define test$alloc_set_oom_on_call(n) ({ \
+    uassert(n >= 0 && "test$alloc_set_oom_on_call out of range"); \
+    ((AllocatorArena_c*)_cex__default_global__allocator_test)->test_oom_threshold = (f32)(n); \
 })
 
 
@@ -5664,10 +5682,10 @@ _cex_test_mockns_s _cex_test_ns_save(void* ns, usize ns_size){
     uassert(ns_size > 0);
 
     AllocatorArena_c* test_arena = (AllocatorArena_c*)test$alloc;
+    f32 prev_oom_threshold = test_arena->test_oom_threshold;
     test$alloc_set_oom_probability(0.0);
-    f32 prev_oom_prob = test_arena->test_oom_probability;
     void* orig_ns = mem$malloc(test$alloc, ns_size);
-    test$alloc_set_oom_probability(prev_oom_prob);
+    test$alloc_set_oom_probability(prev_oom_threshold);
     uassert(orig_ns);
     memcpy(orig_ns, ns, ns_size);
     return (_cex_test_mockns_s){.ns_ptr = ns, .ns_size = ns_size, .orig_ns = orig_ns};
@@ -5891,7 +5909,7 @@ _cex_test_main_fn(int argc, char** argv)
         test$alloc = AllocatorArena.create(&(AllocatorArena_kw){
             .page_size = 1024 * 1024,
             .disable_scopes = true,
-            .test_oom_probability = 0.0,
+            .test_oom_threshold = 0.0,
             .backing_alloc = &_cex__default_global__allocator_heap.alloc,
         });
         AllocatorArena_c* test_arena = (AllocatorArena_c*)test$alloc;
@@ -8078,6 +8096,22 @@ _cex_allocator_arena__request_page_size(
     return self->last_page;
 }
 
+#ifdef CEX_TEST
+static bool
+_cex_allocator_arena__should_fail_oom(AllocatorArena_c* self)
+{
+    f32 t = self->test_oom_threshold;
+    uassert(t >= 0 && "test_oom_threshold out of range");
+    if (t <= 0) { return false; }
+    if (t > 1.0f) {
+        self->test_oom_threshold = t - 1.0f;
+        return false;
+    }
+    if (t >= 1.0f) { return true; }
+    return os.random.f32() < t;
+}
+#endif
+
 static void*
 _cex_allocator_arena__malloc(IAllocator allc, usize size, usize alignment)
 {
@@ -8089,10 +8123,7 @@ _cex_allocator_arena__malloc(IAllocator allc, usize size, usize alignment)
     );
 
     #ifdef CEX_TEST
-    uassert(self->test_oom_probability >= 0 && self->test_oom_probability <= 1.0 && "test$alloc_set_oom_probability out of range"); \
-    if(self->test_oom_probability > 0 && os.random.f32() < self->test_oom_probability) {
-        return NULL;
-    }
+    if (_cex_allocator_arena__should_fail_oom(self)) { return NULL; }
     #endif
 
     allocator_arena_rec_s rec = _cex_alloc_estimate_alloc_size(size, alignment);
@@ -8207,10 +8238,7 @@ _cex_allocator_arena__realloc(IAllocator allc, void* old_ptr, usize size, usize 
         && "arena allocation must be performed in mem$scope() block!"
     );
     #ifdef CEX_TEST
-    uassert(self->test_oom_probability >= 0 && self->test_oom_probability <= 1.0 && "test$alloc_set_oom_probability out of range"); \
-    if(self->test_oom_probability > 0 && os.random.f32() < self->test_oom_probability) {
-        return NULL;
-    }
+    if (_cex_allocator_arena__should_fail_oom(self)) { return NULL; }
     #endif
 
     allocator_arena_rec_s* rec = _cex_alloc_arena__get_rec(old_ptr);
@@ -8379,9 +8407,9 @@ AllocatorArena_create(const AllocatorArena_kw* kwargs)
         if (kwargs->page_size != 0) { kw.page_size = kwargs->page_size; }
         if (kwargs->backing_alloc != NULL) { kw.backing_alloc = kwargs->backing_alloc; }
         #ifdef CEX_TEST
-        if (kwargs->test_oom_probability > 0) {
-            uassert(kwargs->test_oom_probability > 0 && kwargs->test_oom_probability <= 1.0 && "test$alloc_set_oom_probability out of range"); \
-            kw.test_oom_probability = kwargs->test_oom_probability;
+        if (kwargs->test_oom_threshold > 0) {
+            uassert(kwargs->test_oom_threshold > 0 && kwargs->test_oom_threshold <= 1.0 && "test$alloc_set_oom_probability out of range"); \
+            kw.test_oom_threshold = kwargs->test_oom_threshold;
         }
         #endif
         kw.disable_scopes = kwargs->disable_scopes;
@@ -8413,7 +8441,7 @@ AllocatorArena_create(const AllocatorArena_kw* kwargs)
         .disable_scopes = kw.disable_scopes,
         .backing_alloc = kw.backing_alloc,
     #ifdef CEX_TEST
-        .test_oom_probability = kw.test_oom_probability,
+        .test_oom_threshold = kw.test_oom_threshold,
     #endif
     };
 
