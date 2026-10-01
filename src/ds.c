@@ -583,35 +583,6 @@ _cexds__is_key_equal(
     uassert_always(false && "unhandled key type");
 }
 
-static inline void*
-_cexds__hmkey_ptr(void* a, usize elemsize, usize index, usize keyoffset)
-{
-    _cexds__hash_index* table = (_cexds__hash_index*)_cexds__header(a)->_hash_table;
-    void* key_data_p = NULL;
-    switch (table->key_type) {
-        case _CexDsKeyType__generic:
-            key_data_p = (char*)a + elemsize * index + keyoffset;
-            break;
-
-        case _CexDsKeyType__charbuf:
-            key_data_p = (char*)((char*)a + elemsize * index + keyoffset);
-            break;
-
-        case _CexDsKeyType__charptr:
-            key_data_p = *(char**)((char*)a + elemsize * index + keyoffset);
-            break;
-
-        case _CexDsKeyType__cexstr: {
-            str_s* s = (str_s*)((char*)a + elemsize * index + keyoffset);
-            key_data_p = s;
-            break;
-        }
-        default:
-            uassert_always(false && "unhandled key type");
-    }
-    return key_data_p;
-}
-
 void
 _cexds__hmfree_keys_func(void* a, usize elemsize, usize keyoffset)
 {
@@ -1030,8 +1001,7 @@ _cexds__hmdel_key(void* a, usize elemsize, void* key, usize keysize, usize keyof
         // Replacing deleted element by last one, and update hashmap buckets for last element
         memmove((char*)a + elemsize * old_index, (char*)a + elemsize * final_index, elemsize);
 
-        void* key_data_p = _cexds__hmkey_ptr(a, elemsize, old_index, keyoffset);
-        uassert(key_data_p != NULL);
+        void* key_data_p = _cexds__item_ptr(a, old_index, elemsize) + keyoffset;
         slot = _cexds__hm_find_slot(a, elemsize, key_data_p, keysize, keyoffset);
         uassert(slot >= 0);
         b = &table->storage[slot >> _CEXDS_BUCKET_SHIFT];

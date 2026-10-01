@@ -2083,6 +2083,28 @@ test$case(test_hm_del_shrink_oom_keeps_table)
     return EOK;
 }
 
+test$case(test_hm_string_del_backpointer_fixup)
+{
+    hm$(char*, int) smap = hm$new(smap, test$alloc, .copy_keys = true);
+    tassert(smap != NULL);
+
+    tassert(hm$set(smap, "a", 1) != NULL);
+    tassert(hm$set(smap, "b", 2) != NULL);
+    tassert(hm$set(smap, "c", 3) != NULL);
+    tassert(hm$len(smap) == 3);
+
+    // deleting "a" is not the last record -> memmove + back-pointer fixup for the
+    // moved key; find_slot must receive the key-field address, not the char*
+    tassert_eq(hm$del(smap, "a"), 1);
+    tassert_eq(hm$len(smap), 2);
+    tassert_eq(hm$get(smap, "b"), 2);
+    tassert_eq(hm$get(smap, "c"), 3);
+    tassert_eq(hm$get(smap, "a"), 0);
+
+    hm$free(smap);
+    return EOK;
+}
+
 test$case(test_arr_grow_len_overflow_poc)
 {
     // POC: _cexds__arrgrowf (ds.c:93) computes length + addlen without
