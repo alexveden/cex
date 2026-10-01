@@ -80,6 +80,28 @@ test$case(my_test_case)
 }
 ```
 
+#### Replacing the global allocator (CEX_TEST mode)
+
+In `CEX_TEST` builds `mem$` is an assignable global: point it at any `IAllocator` and all code
+using `mem$` will use it. The runner saves `mem$` before each case and restores it after, so no
+manual cleanup is needed. A common use is routing `mem$` through `test$alloc` to OOM-test code
+that allocates with `mem$`.
+
+```c
+test$case(my_test_case)
+{
+    // route every mem$ allocation through the per-case arena, and make it fail on demand
+    mem$ = test$alloc;
+    test$alloc_set_oom_probability(1.0);
+
+    // any function allocating via mem$ now exercises its OOM path
+    tassert(mem$malloc(mem$, 64) == NULL);
+
+    // no manual restore needed - the runner restores mem$ after the case
+    return EOK;
+}
+```
+
 #### Test file & rebuild requirements
 ```c
 // tests/ folder only, name test_*.c, include sources directly (unity build)

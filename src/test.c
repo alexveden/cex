@@ -682,16 +682,21 @@ _cex_test_main_fn(int argc, char** argv)
 
         // NOTE: test$alloc is always growing arena, freed after test end
         uassert(test$alloc == NULL && "initialized somewhere else?");
-        test$alloc = AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 1024 * 1024,
-                                                                 .disable_scopes = true, 
-                                                                 .test_oom_probability = 0.0 });
+        // Save mem$ so a test may replace it and the runner restores it after the case
+        IAllocator saved_mem = mem$;
+        test$alloc = AllocatorArena.create(&(AllocatorArena_kw){
+            .page_size = 1024 * 1024,
+            .disable_scopes = true,
+            .test_oom_probability = 0.0,
+            .backing_alloc = &_cex__default_global__allocator_heap.alloc,
+        });
         AllocatorArena_c* test_arena = (AllocatorArena_c*)test$alloc;
         uassert(test$alloc != NULL && "Memory error");
 
         // Always set random generator to 0 seed, for reproducible tests
         os.random.seed(0);
 
-        AllocatorHeap_c* alloc_heap = (AllocatorHeap_c*)mem$;
+        AllocatorHeap_c* alloc_heap = &_cex__default_global__allocator_heap;
         alloc_heap->stats.n_allocs = 0;
         alloc_heap->stats.n_free = 0;
 
@@ -706,6 +711,7 @@ _cex_test_main_fn(int argc, char** argv)
                 ctx->suite_file
             );
             if (e$traceback_len > 0) { e$traceback_print(stderr); }
+            mem$ = saved_mem;
             return 1;
         }
 
@@ -770,9 +776,12 @@ _cex_test_main_fn(int argc, char** argv)
                 ctx->suite_file
             );
             if (e$traceback_len > 0) { e$traceback_print(stderr); }
+            mem$ = saved_mem;
             return 1;
         }
 
+        // Restore the allocator a test may have replaced before the runner touches its own arena
+        mem$ = saved_mem;
 
         if (err == EOK && alloc_heap->stats.n_allocs - test_arena->stats.pages_created !=
                               alloc_heap->stats.n_free - test_arena->stats.pages_free) {

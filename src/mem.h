@@ -129,8 +129,14 @@ AllocatorArena.destroy(arena); // must not be called inside mem$scope
 /// Temporary allocator arena (use only in `mem$scope(tmem$, _))`
 #define tmem$ ((IAllocator)(&_cex__default_global__allocator_temp.alloc))
 
+#ifdef CEX_TEST
+extern IAllocator _cex__default_global__allocator_mem;
+/// General purpose heap allocator, assignable in tests to swap in a custom allocator
+#define mem$ _cex__default_global__allocator_mem
+#else
 /// General purpose heap allocator
 #define mem$ _cex__default_global__allocator_heap__allc
+#endif
 
 /// Allocate uninitialized chunk of memory using `allocator`
 #define mem$malloc(allocator, size, alignment...)                                                  \

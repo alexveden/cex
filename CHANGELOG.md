@@ -4,6 +4,8 @@
 2026-09-27
 
 ### Changes / improvements
+- feat(test): `mem$` is assignable in `CEX_TEST` builds, so a test can swap in a custom global allocator; the runner saves it before each case and restores it after
+- feat: `AllocatorArena_kw.backing_alloc` - arena pages can be backed by a custom allocator (default `mem$`)
 - feat: `uassert_always()` - assertion that is not stripped by `NDEBUG` and traps instead
 - removed: `unreachable()` macro, use `uassert_always(false && "...")` instead
 - ds/allocator hard-fail paths migrated to `uassert_always()`

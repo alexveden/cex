@@ -99,4 +99,38 @@ test$case(test_mem_mul_overflow)
     return EOK;
 }
 
+test$case(test_global_mem_allocator_replaceable)
+{
+    IAllocator saved_mem = mem$;
+    AllocatorHeap_c custom = _cex__default_global__allocator_heap;
+    memset(&custom.stats, 0, sizeof(custom.stats));
+
+    mem$ = &custom.alloc;
+    tassert(mem$ == &custom.alloc);
+
+    u8* p = mem$malloc(mem$, 100);
+    tassert(p != NULL);
+    tassert_eq(custom.stats.n_allocs, 1);
+
+    mem$free(mem$, p);
+    tassert_eq(custom.stats.n_free, 1);
+
+    mem$ = saved_mem;
+    tassert(mem$ == &_cex__default_global__allocator_heap.alloc);
+    return EOK;
+}
+
+test$case(test_global_mem_allocator_routes_to_test_alloc_oom)
+{
+    // route every mem$ allocation through the per-case arena, and make it fail on demand
+    mem$ = test$alloc;
+    test$alloc_set_oom_probability(1.0);
+
+    // any function allocating via mem$ now exercises its OOM path
+    tassert(mem$malloc(mem$, 64) == NULL);
+
+    // no manual restore needed - the runner restores mem$ after the case
+    return EOK;
+}
+
 test$main();

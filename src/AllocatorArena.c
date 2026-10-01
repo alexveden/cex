@@ -676,7 +676,7 @@ AllocatorArena_c _cex__default_global__allocator_temp = {
         }, 
     },
     .page_size = CEX_ALLOCATOR_TEMP_PAGE_SIZE,
-    .backing_alloc = mem$,
+    .backing_alloc = &_cex__default_global__allocator_heap.alloc,
 };
 
 CEX_NAMESPACE_DEF struct __cex_namespace__AllocatorArena AllocatorArena = {

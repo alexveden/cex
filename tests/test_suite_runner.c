@@ -64,6 +64,15 @@ test$case(runner_case_failure_prints_traceback)
     return EOK;
 }
 
+test$case(runner_restores_global_mem_allocator)
+{
+    char* out = run_fixture("alloc_replace", test$alloc);
+    tassert(out != NULL);
+    tassert(str.find(out, "MEM_REPLACED") != NULL);
+    tassert(str.find(out, "MEM_RESTORED") != NULL);
+    return EOK;
+}
+
 test$case(runner_tassert_failure_resets_traceback)
 {
     char* out = run_fixture("tassert", test$alloc);

@@ -1075,8 +1075,14 @@ AllocatorArena.destroy(arena); // must not be called inside mem$scope
 /// Temporary allocator arena (use only in `mem$scope(tmem$, _))`
 #define tmem$ ((IAllocator)(&_cex__default_global__allocator_temp.alloc))
 
+#ifdef CEX_TEST
+extern IAllocator _cex__default_global__allocator_mem;
+/// General purpose heap allocator, assignable in tests to swap in a custom allocator
+#define mem$ _cex__default_global__allocator_mem
+#else
 /// General purpose heap allocator
 #define mem$ _cex__default_global__allocator_heap__allc
+#endif
 
 /// Allocate uninitialized chunk of memory using `allocator`
 #define mem$malloc(allocator, size, alignment...)                                                  \
@@ -4644,6 +4650,28 @@ test$case(my_test_case)
 }
 ```
 
+### Replacing the global allocator (CEX_TEST mode)
+
+In `CEX_TEST` builds `mem$` is an assignable global: point it at any `IAllocator` and all code
+using `mem$` will use it. The runner saves `mem$` before each case and restores it after, so no
+manual cleanup is needed. A common use is routing `mem$` through `test$alloc` to OOM-test code
+that allocates with `mem$`.
+
+```c
+test$case(my_test_case)
+{
+    // route every mem$ allocation through the per-case arena, and make it fail on demand
+    mem$ = test$alloc;
+    test$alloc_set_oom_probability(1.0);
+
+    // any function allocating via mem$ now exercises its OOM path
+    tassert(mem$malloc(mem$, 64) == NULL);
+
+    // no manual restore needed - the runner restores mem$ after the case
+    return EOK;
+}
+```
+
 ### Test file & rebuild requirements
 ```c
 // tests/ folder only, name test_*.c, include sources directly (unity build)
@@ -5821,16 +5849,21 @@ _cex_test_main_fn(int argc, char** argv)
 
         // NOTE: test$alloc is always growing arena, freed after test end
         uassert(test$alloc == NULL && "initialized somewhere else?");
-        test$alloc = AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 1024 * 1024,
-                                                                 .disable_scopes = true, 
-                                                                 .test_oom_probability = 0.0 });
+        // Save mem$ so a test may replace it and the runner restores it after the case
+        IAllocator saved_mem = mem$;
+        test$alloc = AllocatorArena.create(&(AllocatorArena_kw){
+            .page_size = 1024 * 1024,
+            .disable_scopes = true,
+            .test_oom_probability = 0.0,
+            .backing_alloc = &_cex__default_global__allocator_heap.alloc,
+        });
         AllocatorArena_c* test_arena = (AllocatorArena_c*)test$alloc;
         uassert(test$alloc != NULL && "Memory error");
 
         // Always set random generator to 0 seed, for reproducible tests
         os.random.seed(0);
 
-        AllocatorHeap_c* alloc_heap = (AllocatorHeap_c*)mem$;
+        AllocatorHeap_c* alloc_heap = &_cex__default_global__allocator_heap;
         alloc_heap->stats.n_allocs = 0;
         alloc_heap->stats.n_free = 0;
 
@@ -5845,6 +5878,7 @@ _cex_test_main_fn(int argc, char** argv)
                 ctx->suite_file
             );
             if (e$traceback_len > 0) { e$traceback_print(stderr); }
+            mem$ = saved_mem;
             return 1;
         }
 
@@ -5909,9 +5943,12 @@ _cex_test_main_fn(int argc, char** argv)
                 ctx->suite_file
             );
             if (e$traceback_len > 0) { e$traceback_print(stderr); }
+            mem$ = saved_mem;
             return 1;
         }
 
+        // Restore the allocator a test may have replaced before the runner touches its own arena
+        mem$ = saved_mem;
 
         if (err == EOK && alloc_heap->stats.n_allocs - test_arena->stats.pages_created !=
                               alloc_heap->stats.n_free - test_arena->stats.pages_free) {
@@ -7409,6 +7446,10 @@ const struct _CEX_Error_struct Error = {
 #if !defined(cex$enable_minimal) || defined(cex$enable_mem)
 
 
+#ifdef CEX_TEST
+IAllocator _cex__default_global__allocator_mem = &_cex__default_global__allocator_heap.alloc;
+#endif
+
 void
 _cex_allocator_memscope_cleanup(IAllocator* allc)
 {
@@ -8462,7 +8503,7 @@ AllocatorArena_c _cex__default_global__allocator_temp = {
         }, 
     },
     .page_size = CEX_ALLOCATOR_TEMP_PAGE_SIZE,
-    .backing_alloc = mem$,
+    .backing_alloc = &_cex__default_global__allocator_heap.alloc,
 };
 
 CEX_NAMESPACE_DEF struct __cex_namespace__AllocatorArena AllocatorArena = {

@@ -22,8 +22,8 @@ _heap_scope_panic(const char* prefix, const char* file, u32 line, const char* fu
 
 test$case(test_allocator_api)
 {
-    // mem$->scope_enter = NULL; // GOOD: compiler error
-    // mem$ = NULL; // GOOD: compiler error
+    // mem$->scope_enter = NULL; // GOOD: compiler error (const vtable)
+    // NOTE: mem$ is an assignable global in CEX_TEST builds, so `mem$ = NULL;` is allowed there
     u8* p = mem$malloc(mem$, 100);
     tassert(_cex__default_global__allocator_heap.stats.n_allocs > 0);
     tassert_eq(mem$->scope_depth(mem$), 1);

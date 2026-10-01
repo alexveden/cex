@@ -50,4 +50,31 @@ test$case(regular_fail)
     return EOK;
 }
 
+test$case(replace_global_mem_allocator)
+{
+    if (fail_hook("alloc_replace")) {
+        AllocatorHeap_c custom = _cex__default_global__allocator_heap;
+        memset(&custom.stats, 0, sizeof(custom.stats));
+        // NOTE: deliberately not restored here - the runner must restore it
+        mem$ = &custom.alloc;
+
+        u8* p = mem$malloc(mem$, 64);
+        if (p == NULL) { return e$raise(Error.runtime, "custom alloc failed"); }
+        mem$free(mem$, p);
+        fprintf(stderr, "MEM_REPLACED\n");
+    }
+    return EOK;
+}
+
+test$case(global_mem_allocator_restored)
+{
+    if (fail_hook("alloc_replace")) {
+        if (mem$ != &_cex__default_global__allocator_heap.alloc) {
+            return e$raise(Error.runtime, "mem$ not restored by the runner");
+        }
+        fprintf(stderr, "MEM_RESTORED\n");
+    }
+    return EOK;
+}
+
 test$main();
