@@ -752,6 +752,7 @@ test$case(test_sbuf_static_misaligned)
     char* buf = raw + 1;
     sbuf_c s = sbuf.create_static(buf, 128);
     tassert(s != NULL);
+    char* data = s;
 
     sbuf_head_s* head = _sbuf__head(s);
     usize offset = (usize)((char*)head - buf);
@@ -777,7 +778,48 @@ test$case(test_sbuf_static_misaligned)
     sbuf.destroy(&s);
     tassert(s == NULL);
     tassert_eq(head->header.magic, 0);
+    tassert_eq(head->header.nullterm, 0);
+    tassert_eq(((char*)head)[0], 0);
+    tassert_eq(data[0], 0);
     tassert_eq(buf[0], '\0');
+    return EOK;
+}
+
+test$case(test_sbuf_destroy_null)
+{
+    tassert(sbuf.destroy(NULL) == NULL);
+
+    sbuf_c s = { 0 };
+    tassert(sbuf.destroy(&s) == NULL);
+    tassert(s == NULL);
+    return EOK;
+}
+
+test$case(test_sbuf_destroy_static_nullifies)
+{
+    alignas(u64) char buf[64];
+    sbuf_c s = sbuf.create_static(buf, arr$len(buf));
+    sbuf_head_s* head = _sbuf__head(s);
+    char* data = s;
+
+    tassert_eq(EOK, sbuf.append(&s, "secret"));
+    tassert_eq("secret", data);
+
+    sbuf.destroy(&s);
+    tassert(s == NULL);
+
+    // initial buffer byte == header null term
+    tassert_eq(((char*)head)[0], 0);
+    tassert_eq(head->header.nullterm, 0);
+    tassert_eq(buf[0], '\0');
+
+    // header invalidated
+    tassert_eq(head->header.magic, 0);
+
+    // sbuf data nullified
+    tassert_eq(data[0], 0);
+    tassert_eq(strlen(data), 0);
+    tassert_eq("", buf);
     return EOK;
 }
 

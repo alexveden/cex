@@ -13118,24 +13118,20 @@ cex_sbuf_capacity(sbuf_c* self)
 static sbuf_c
 cex_sbuf_destroy(sbuf_c* self)
 {
-    uassert(self != NULL);
+    if (unlikely(self == NULL)) { return NULL; }
 
     sbuf_head_s* head = _sbuf__head(*self);
-    if (head != NULL) {
+    if (head == NULL) { return NULL; }
 
-        // NOTE: null-terminate string to avoid future usage,
-        // it will appear as empty string if references anywhere else
-        head->header.magic = 0;
-        (*self)[0] = '\0';
-        *self = NULL;
+    // NOTE: null-terminate string to avoid future usage,
+    // it will appear as empty string if references anywhere else
+    head->header.magic = 0;
+    (*self)[0] = '\0';
+    *self = NULL;
 
-        if (head->allocator != NULL) {
-            // allocator is NULL for static sbuf
-            mem$free(head->allocator, head);
-        } else {
-            // static buffer
-            memset(self, 0, sizeof(*self));
-        }
+    if (head->allocator != NULL) {
+        // allocator is NULL for static sbuf
+        mem$free(head->allocator, head);
     }
     return NULL;
 }
