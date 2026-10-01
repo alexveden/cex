@@ -683,4 +683,92 @@ test$case(test_fload)
     return EOK;
 }
 
+test$case(test_fflush)
+{
+    FILE* file;
+    tassert_eq(Error.ok, io.fopen(&file, "tests/data/text_file_50b.txt", "r"));
+    tassert_eq(Error.ok, io.fflush(file));
+    io.fclose(&file);
+    return EOK;
+}
+
+test$case(test_fseek_invalid_whence)
+{
+    FILE* file;
+    tassert_eq(Error.ok, io.fopen(&file, "tests/data/text_file_50b.txt", "r"));
+    tassert_eq(Error.argument, io.fseek(file, 0, 12345));
+    io.fclose(&file);
+    return EOK;
+}
+
+test$case(test_fread_overflow_guard)
+{
+    FILE* file;
+    tassert_eq(Error.ok, io.fopen(&file, "tests/data/text_file_50b.txt", "r"));
+
+    char buf[8];
+    uassert_disable();
+    tassert_eq(-1, io.fread(file, buf, PTRDIFF_MAX));
+    uassert_enable();
+
+    io.fclose(&file);
+    return EOK;
+}
+
+test$case(test_readln_null_file)
+{
+    tassert(io.file.readln(NULL, mem$) == NULL);
+    tassert_eq(EINVAL, errno);
+    return EOK;
+}
+
+test$case(test_read_all_eof)
+{
+    FILE* file;
+    tassert_eq(Error.ok, io.fopen(&file, "tests/data/text_file_empty.txt", "r"));
+
+    str_s content;
+    tassert_eq(Error.ok, io.fread_all(file, &content, mem$));
+    mem$free(mem$, content.buf);
+
+    tassert_eq(Error.ok, io.fread_all(file, &content, mem$));
+    tassert(content.buf == NULL);
+    tassert_eq(content.len, 0);
+
+    io.fclose(&file);
+    return EOK;
+}
+
+test$case(test_fread_all_oom)
+{
+    FILE* file;
+    tassert_eq(Error.ok, io.fopen(&file, "tests/data/text_file_50b.txt", "r"));
+
+    test$alloc_set_oom_probability(1.0);
+    str_s content;
+    tassert_eq(Error.memory, io.fread_all(file, &content, test$alloc));
+    tassert(content.buf == NULL);
+    tassert_eq(content.len, 0);
+    test$alloc_set_oom_probability(0.0);
+
+    io.fclose(&file);
+    return EOK;
+}
+
+test$case(test_fread_line_oom)
+{
+    FILE* file;
+    tassert_eq(Error.ok, io.fopen(&file, "tests/data/text_file_50b.txt", "r"));
+
+    test$alloc_set_oom_probability(1.0);
+    str_s content;
+    tassert_eq(Error.memory, io.fread_line(file, &content, test$alloc));
+    tassert(content.buf == NULL);
+    tassert_eq(content.len, 0);
+    test$alloc_set_oom_probability(0.0);
+
+    io.fclose(&file);
+    return EOK;
+}
+
 test$main();
