@@ -1234,4 +1234,99 @@ test$case(arena_allocator_test_oom_probability)
     return EOK;
 }
 
+test$case(test_allocator_arena_estimate_page_size_large)
+{
+    usize alloc_size = 2 * 1024 * 1024;
+    usize est = _cex_alloc_estimate_page_size(1024, alloc_size);
+
+    tassert(est > alloc_size);
+    tassert(est % alignof(allocator_arena_page_s) == 0);
+    return EOK;
+}
+
+test$case(test_allocator_arena_estimate_alloc_size_misaligned)
+{
+    uassert_disable();
+
+    allocator_arena_rec_s r = _cex_alloc_estimate_alloc_size(17, 16);
+    tassert_eq(r.size_low, 0);
+    tassert_eq(r.size_high, 0);
+
+    uassert_enable();
+    return EOK;
+}
+
+test$case(test_allocator_arena_request_page_size_too_big)
+{
+    IAllocator arena = AllocatorArena.create(
+        &(AllocatorArena_kw){ .page_size = 1024, .disable_scopes = true }
+    );
+    tassert(arena != NULL);
+    AllocatorArena_c* allc = (AllocatorArena_c*)arena;
+
+    allocator_arena_rec_s rec = { 0 };
+    _cex_arena_rec_set_size(&rec, CEX_ARENA_MAX_ALLOC - 1024);
+
+    uassert_disable();
+    allocator_arena_page_s* page = _cex_allocator_arena__request_page_size(allc, rec, NULL);
+    tassert(page == NULL);
+    uassert_enable();
+
+    AllocatorArena_destroy(arena);
+    return EOK;
+}
+
+test$case(test_allocator_arena_check_pointer_valid_foreign)
+{
+    IAllocator arena = AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 4096 });
+    tassert(arena != NULL);
+    AllocatorArena_c* allc = (AllocatorArena_c*)arena;
+
+    u8 foreign[64] = { 0 };
+    foreign[7] = 8;
+
+    mem$scope(arena, _)
+    {
+        u8* p = mem$malloc(_, 100);
+        tassert(p != NULL);
+        tassert(_cex_allocator_arena__check_pointer_valid(allc, p));
+        tassert(!_cex_allocator_arena__check_pointer_valid(allc, &foreign[8]));
+    }
+
+    AllocatorArena_destroy(arena);
+    return EOK;
+}
+
+test$case(test_allocator_arena_scope_stack_overflow)
+{
+    IAllocator arena = AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 4096 });
+    tassert(arena != NULL);
+    AllocatorArena_c* allc = (AllocatorArena_c*)arena;
+
+    u32 max_depth = sizeof(allc->scope_stack) / sizeof(allc->scope_stack[0]);
+
+    for (u32 i = 0; i < max_depth + 2; i++) { arena->scope_enter(arena); }
+    tassert_eq(allc->scope_depth, max_depth + 3);
+
+    for (u32 i = 0; i < max_depth + 2; i++) { arena->scope_exit(arena); }
+    tassert_eq(allc->scope_depth, 1);
+
+    AllocatorArena_destroy(arena);
+    return EOK;
+}
+
+test$case(test_allocator_arena_create_invalid_page_size)
+{
+    uassert_disable();
+
+    tassert(AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 512 }) == NULL);
+
+#if mem$platform() > 32
+    tassert(AllocatorArena.create(&(AllocatorArena_kw){ .page_size = CEX_ARENA_MAX_ALLOC }) == NULL);
+#endif
+
+    uassert_enable();
+    return EOK;
+}
+
 test$main();
