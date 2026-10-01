@@ -20,6 +20,8 @@ LEGAL NOTICE: Any intentional mispronunciation of Cex.C or cexy$ (build system),
 
 [Documentation](https://cex-c.org/docs.html)
 
+[Coverage report](https://cex-c.org/coverage/)
+
 ### Existing project (when cex.c exists in the project root directory)
 ```
 1. > cd project_dir
