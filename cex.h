@@ -9405,10 +9405,28 @@ _cexds__hmput_key(
     void** out_result = (void**)result;
     _cexds__hash_index* table = (_cexds__hash_index*)_cexds__header(a)->_hash_table;
     IAllocator allc = _cexds__header(a)->allocator;
+    char* key_copy = NULL;
+    IAllocator key_copy_allc = NULL;
+    bool is_replace = false;
+
     uassert(table != NULL);
     if (table == NULL) { *out_result = NULL; goto end; }
     enum _CexDsKeyType_e key_type = table->key_type;
     *out_result = NULL;
+
+    if (table->copy_keys) {
+        uassert(key_type == _CexDsKeyType__charptr);
+        char* src = *(char**)key;
+        if (src != NULL) {
+            key_copy_allc = table->key_arena ? table->key_arena : allc;
+            usize slen = strlen(src);
+            key_copy = mem$malloc(key_copy_allc, slen + 1);
+            if (key_copy == NULL) { *out_result = NULL; goto end; }
+            memcpy(key_copy, src, slen);
+            key_copy[slen] = '\0';
+        }
+    }
+
     if (table->used_count >= table->used_count_threshold) {
 
         usize slot_count = (table == NULL) ? _CEXDS_BUCKET_LENGTH : table->slot_count * 2;
@@ -9470,6 +9488,7 @@ _cexds__hmput_key(
                         )) {
 
                         *out_result = _cexds__item_ptr(a, bucket->index[i], elemsize);
+                        is_replace = true;
                         goto process_key;
                     }
                 } else if (bucket->hash[i] == 0) {
@@ -9496,6 +9515,7 @@ _cexds__hmput_key(
                             bucket->index[i]
                         )) {
                         *out_result = _cexds__item_ptr(a, bucket->index[i], elemsize);
+                        is_replace = true;
                         goto process_key;
                     }
                 } else if (bucket->hash[i] == 0) {
@@ -9528,7 +9548,10 @@ _cexds__hmput_key(
                 *(void**)&a = _cexds__arrgrowf(a, elemsize, 1, 0, _cexds__header(a)->el_align, NULL);
                 if (a == NULL) {
                     uassert(a != NULL && "new array for table memory error");
-                    if (table->key_arena != NULL) { AllocatorArena.destroy(table->key_arena); }
+                    if (table->key_arena != NULL) {
+                        if (key_copy_allc == table->key_arena) { key_copy = NULL; }
+                        AllocatorArena.destroy(table->key_arena);
+                    }
                     allc->free(allc, table);
                     *out_result = NULL;
                     goto end;
@@ -9547,34 +9570,23 @@ _cexds__hmput_key(
 
 process_key:
     uassert(*out_result != NULL);
+    if (table->copy_keys && is_replace && table->key_arena == NULL) {
+        char** old_key_p = (char**)(*out_result + keyoffset);
+        if (*old_key_p != NULL) { allc->free(allc, *old_key_p); }
+    }
     if (full_elem) {
         memcpy(((char*)*out_result), full_elem, elemsize);
     } else {
         memcpy(((char*)*out_result) + keyoffset, key, keysize);
     }
     if (table->copy_keys) {
-        uassert(key_type == _CexDsKeyType__charptr);
         uassert(keysize == sizeof(usize) && "expected pointer size");
-        char** key_data_p = (char**)(*out_result + keyoffset);
-
-        // Naive reimplementation of str.close() for optional isolation
-        if (*key_data_p) {
-            usize slen = strlen(*key_data_p);
-            uassert(slen < PTRDIFF_MAX);
-            IAllocator _allc = (table->key_arena) ? table->key_arena : _cexds__header(a)->allocator;
-
-            char* result = mem$malloc(_allc, slen + 1);
-            if (result) {
-                memcpy(result, *key_data_p, slen);
-                result[slen] = '\0';
-            }
-            *key_data_p = result;
-        }
-        
-
+        *(char**)(*out_result + keyoffset) = key_copy;
+        key_copy = NULL;
     }
 
 end:
+    if (key_copy != NULL) { key_copy_allc->free(key_copy_allc, key_copy); }
     return a;
 }
 

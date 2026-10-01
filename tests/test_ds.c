@@ -2018,6 +2018,47 @@ test$case(test_hm_array_grow_oom_frees_key_arena)
     return EOK;
 }
 
+test$case(test_hm_copy_keys_replace_frees_old_copy)
+{
+    hm$(char*, int) smap = hm$new(smap, test$alloc, .copy_keys = true);
+    tassert(smap != NULL);
+
+    tassert(hm$set(smap, "foo", 3) != NULL);
+    tassert_eq(smap[0].key, "foo");
+    char* old_copy = smap[0].key;
+
+    tassert(hm$set(smap, "foo", 4) != NULL); // replace existing key
+    tassert_eq(hm$len(smap), 1);
+    tassert_eq(hm$get(smap, "foo"), 4);
+    tassert(smap[0].key != old_copy);
+
+    // BEFORE: old copy leaked -> not poisoned -> FAILS
+    // AFTER:  freed before storing the new copy
+    tassert(mem$asan_poison_check(old_copy, strlen("foo") + 1));
+
+    hm$free(smap);
+    return EOK;
+}
+
+test$case(test_hm_copy_keys_oom_keeps_map_consistent)
+{
+    hm$(char*, int) smap = hm$new(smap, test$alloc, .copy_keys = true);
+    tassert(smap != NULL);
+
+    test$alloc_set_oom_on_call(1); // first alloc in hm$set = the key copy
+    void* r = hm$set(smap, "foo", 3);
+    test$alloc_set_oom_on_call(0);
+
+    // BEFORE: r != NULL, stored key NULL -> hm$get below would crash
+    // AFTER:  r == NULL, map unchanged
+    tassert(r == NULL);
+    tassert(hm$len(smap) == 0);
+    tassert_eq(hm$get(smap, "foo", -1), -1);
+
+    hm$free(smap);
+    return EOK;
+}
+
 test$case(test_arr_grow_len_overflow_poc)
 {
     // POC: _cexds__arrgrowf (ds.c:93) computes length + addlen without
