@@ -84,3 +84,4 @@ tests/lib/serde/serdegen.h
 tests/lib/serde/serdegen.c
 tags
 AGENTS.md
+gh.token.env
