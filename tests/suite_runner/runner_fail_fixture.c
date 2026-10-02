@@ -74,10 +74,11 @@ test$case(regular_fail)
 test$case(replace_global_mem_allocator)
 {
     if (fail_hook("alloc_replace")) {
-        AllocatorHeap_c custom = _cex__default_global__allocator_heap;
-        memset(&custom.stats, 0, sizeof(custom.stats));
+        AllocatorHeap_c* custom = mem$malloc(test$alloc, sizeof(AllocatorHeap_c));
+        memcpy(custom, &_cex__default_global__allocator_heap, sizeof(*custom));
+        memset(&custom->stats, 0, sizeof(custom->stats));
         // NOTE: deliberately not restored here - the runner must restore it
-        mem$ = &custom.alloc;
+        mem$ = &custom->alloc;
 
         u8* p = mem$malloc(mem$, 64);
         if (p == NULL) { return e$raise(Error.runtime, "custom alloc failed"); }

@@ -102,18 +102,19 @@ test$case(test_mem_mul_overflow)
 test$case(test_global_mem_allocator_replaceable)
 {
     IAllocator saved_mem = mem$;
-    AllocatorHeap_c custom = _cex__default_global__allocator_heap;
-    memset(&custom.stats, 0, sizeof(custom.stats));
+    AllocatorHeap_c* custom = mem$malloc(test$alloc, sizeof(AllocatorHeap_c));
+    memcpy(custom, &_cex__default_global__allocator_heap, sizeof(*custom));
+    memset(&custom->stats, 0, sizeof(custom->stats));
 
-    mem$ = &custom.alloc;
-    tassert(mem$ == &custom.alloc);
+    mem$ = &custom->alloc;
+    tassert(mem$ == &custom->alloc);
 
     u8* p = mem$malloc(mem$, 100);
     tassert(p != NULL);
-    tassert_eq(custom.stats.n_allocs, 1);
+    tassert_eq(custom->stats.n_allocs, 1);
 
     mem$free(mem$, p);
-    tassert_eq(custom.stats.n_free, 1);
+    tassert_eq(custom->stats.n_free, 1);
 
     mem$ = saved_mem;
     tassert(mem$ == &_cex__default_global__allocator_heap.alloc);
