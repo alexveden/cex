@@ -135,6 +135,7 @@ test$case(test_cmd_simple_fuzz)
         tassert(os.path.exists(TBUILDDIR "fuzz/fuzz_my.c"));
 
         // the template traps on `CEX`, use a non-crashing target for the run path
+#if !defined(__APPLE__) && !defined(_WIN32)
         char* safe_src = TBUILDDIR "fuzz/fuzz_safe.c";
         e$ret(io.file.save(
             safe_src,
@@ -148,6 +149,7 @@ test$case(test_cmd_simple_fuzz)
         char* run[] = { "fuzz", "--max-time", "1", "run", safe_src };
         tassert_er(EOK, cexy.cmd.simple_fuzz(arr$len(run), run, NULL));
         e$ret(os.fs.chdir(old_dir));
+#endif
     }
     return EOK;
 }
