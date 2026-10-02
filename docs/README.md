@@ -1342,7 +1342,10 @@ Allocator scoping:
 
 By default heap allocation failure is **fatal**: `mem$` panics via `cex$platform_oom_panic`,
 which defaults to `cex$platform_panic` and prints `[MEMORY] file:line reason` before aborting.
-The same applies to anything backed by the heap, including `tmem$` page growth.
+The same applies to anything backed by the heap, including `tmem$` page growth. Arena
+argument/limit violations — invalid page size, zero or oversized allocation, misalignment — also
+panic by default. Only synthetic `test$alloc` OOM and allocation failure from a custom backing
+allocator still return `NULL`.
 
 Out-of-memory is rarely recoverable, and checking every allocation result for `NULL` adds noise
 to code that can't do anything useful about the failure anyway. Failing fast keeps the common

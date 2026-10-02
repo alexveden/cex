@@ -27,6 +27,7 @@
 - feat(ds): most `arr$`/`hm$` macros tolerate a `NULL` container as their first argument (`hm$get` returns the default, appends/inserts return `NULL`, deletes return `false`)
 - (breaking) ds: `arr$at`/`arr$last`/`arr$pop` now assert on a `NULL` array instead of returning a zero value
 - (breaking) mem$: heap allocation failure now panics via `cex$platform_oom_panic` (default `cex$platform_panic`); define it as an empty function-like macro (`#define cex$platform_oom_panic(...)`) before including CEX to restore `NULL` returns
+- (breaking) arena: argument/limit violations (invalid page size, zero or oversized allocation, misalignment) now panic via `cex$platform_oom_panic`; synthetic `test$alloc` OOM and custom-backing allocation failures still return `NULL`
 - feat: `CEX_PANIC_VERBOSITY` level 1 now prints the panic message when present; `_cex_errors_panic_handler` is always compiled (minimal trap under `NDEBUG` / verbosity 0)
 
 ### Fixes

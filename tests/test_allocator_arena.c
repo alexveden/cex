@@ -1,3 +1,6 @@
+// opt out of allocation-failure panics: this file asserts the NULL-return contract
+#define cex$platform_oom_panic(...) (void)0
+
 #include "src/all.c"
 
 #define alloc_cmp(alloc_size, align, exp_size, exp_padding, exp_align)                              \

@@ -41,8 +41,12 @@ Define the hook as an empty function-like macro before including CEX to restore 
 #define cex$platform_oom_panic(...)
 ```
 
-`test$alloc` synthetic OOM still returns `NULL` — it fails allocations before they reach the
-heap — so `NULL` / `Error.memory` error paths remain testable.
+Arena argument/limit violations (invalid page size, zero or oversized allocation, misalignment)
+also panic by default. Only synthetic `test$alloc` OOM and allocation failure from a custom
+backing allocator still return `NULL`.
+
+`test$alloc` synthetic OOM fails allocations before they reach the heap, so `NULL` /
+`Error.memory` error paths remain testable.
 
 ### Memory management hints
 

@@ -10,6 +10,17 @@ cmp_int(const void* a, const void* b)
     return (*(const int*)a > *(const int*)b) - (*(const int*)a < *(const int*)b);
 }
 
+static int
+find_int_key_at_probe_pos(u64 seed, usize slot_count, usize pos, int start_from)
+{
+    for (int k = start_from; k < start_from + 100000; k++) {
+        u64 h = _cexds__hash(_CexDsKeyType__generic, &k, sizeof(k), seed);
+        if (h < 2) { h += 2; }
+        if (_cexds__probe_position(h, slot_count, _cexds__log2(slot_count)) == pos) { return k; }
+    }
+    return -1;
+}
+
 static void
 add_to_arr(arr$(int) * arr)
 {
@@ -2269,6 +2280,136 @@ test$case(test_arr_hm_validate)
     tassert_eq(hm$validate(a), Error.integrity);
 
     arr$free(a);
+    hm$free(m);
+    return EOK;
+}
+
+test$case(test_arr_integrity_bad_magic)
+{
+    arr$(int) a = arr$new(a, mem$);
+    tassert(a != NULL);
+
+    u32 saved = _cexds__header(a)->magic_num;
+    _cexds__header(a)->magic_num = 0xDEADBEEF;
+    tassert_eq(_cexds__arr_integrity(a, 0), Error.integrity);
+    _cexds__header(a)->magic_num = saved;
+
+    arr$free(a);
+    return EOK;
+}
+
+test$case(test_hmclear_null_noop)
+{
+    _cexds__hmclear_func(NULL, NULL);
+    return EOK;
+}
+
+test$case(test_hm_find_slot_zero_hash)
+{
+    hm$(int, int) m = hm$new(m, test$alloc);
+    tassert(m != NULL);
+
+    int k = 0;
+    // keysize 0 => generic hash of empty data is 0 => bumped to 2
+    tassert_eq(_cexds__hm_find_slot(m, sizeof(*m), &k, 0, offsetof(typeof(*m), key)), -1);
+
+    hm$free(m);
+    return EOK;
+}
+
+test$case(test_hminit_arr_oom_returns_null)
+{
+    mem$ = test$alloc;
+    test$alloc_set_oom_on_call(1); // first alloc = the record array
+    hm$(int, int) m = hm$new(m, test$alloc);
+    test$alloc_set_oom_on_call(0);
+
+    tassert(m == NULL);
+    return EOK;
+}
+
+test$case(test_hm_grow_table_oom_keeps_map)
+{
+    hm$(int, int) m = hm$new(m, test$alloc);
+    tassert(m != NULL);
+    for (int i = 0; i < 12; i++) { tassert(hm$set(m, i, i) != NULL); }
+    tassert_eq(hm$len(m), 12);
+
+    _cexds__hash_index* table = _cexds__header(m)->_hash_table;
+    tassert(table != NULL);
+
+    uassert_disable();
+    test$alloc_set_oom_on_call(1); // next alloc = the grown hash table
+    void* r = hm$set(m, 12, 12);
+    test$alloc_set_oom_on_call(0);
+    uassert_enable();
+
+    tassert(r == NULL);
+    tassert(m != NULL);
+    tassert(_cexds__header(m)->_hash_table == table);
+    tassert_eq(hm$get(m, 11), 11);
+    hm$free(m);
+    return EOK;
+}
+
+test$case(test_hm_tombstone_reuse_first_loop)
+{
+    const u64 seed = 0x5eed1234u;
+    hm$(int, int) m = hm$new(m, test$alloc, .seed = seed);
+    tassert(m != NULL);
+    usize slot_count = _cexds__header(m)->_hash_table->slot_count;
+    tassert_eq(slot_count, 16);
+
+    // keep used_count >= shrink threshold (4) after the delete, or the
+    // tombstone is dropped by a table shrink
+    int keys[6];
+    for (usize pos = 0; pos < 6; pos++) {
+        keys[pos] = find_int_key_at_probe_pos(seed, slot_count, pos, 1);
+        tassert(keys[pos] > 0);
+        tassert(hm$set(m, keys[pos], (int)pos) != NULL);
+    }
+    tassert_eq(hm$len(m), 6);
+
+    tassert(hm$del(m, keys[1])); // tombstone at bucket slot 1
+    tassert_eq(hm$len(m), 5);
+
+    // probes through the tombstone in the first bucket scan, then reuses it
+    int probe = find_int_key_at_probe_pos(seed, slot_count, 0, keys[0] + 1);
+    tassert(probe > 0);
+    tassert(hm$set(m, probe, 13) != NULL);
+    tassert_eq(hm$len(m), 6);
+    tassert_eq(hm$get(m, probe), 13);
+    tassert_eq(hm$get(m, keys[0]), 0);
+    tassert_eq(hm$get(m, keys[2]), 2);
+
+    hm$free(m);
+    return EOK;
+}
+
+test$case(test_hm_tombstone_reuse_second_loop)
+{
+    const u64 seed = 0x5eed1234u;
+    hm$(int, int) m = hm$new(m, test$alloc, .seed = seed);
+    tassert(m != NULL);
+    usize slot_count = _cexds__header(m)->_hash_table->slot_count;
+
+    // fill every slot of the first bucket, one key per probe position
+    int keys[8];
+    for (usize pos = 0; pos < 8; pos++) {
+        keys[pos] = find_int_key_at_probe_pos(seed, slot_count, pos, 1);
+        tassert(keys[pos] > 0);
+        tassert(hm$set(m, keys[pos], (int)pos) != NULL);
+    }
+    tassert_eq(hm$len(m), 8);
+
+    tassert(hm$del(m, keys[0])); // tombstone at bucket slot 0
+
+    // first scan (slot 7 only) finds no empty, second scan records the tombstone
+    int probe = find_int_key_at_probe_pos(seed, slot_count, 7, keys[7] + 1);
+    tassert(probe > 0);
+    tassert(hm$set(m, probe, 99) != NULL);
+    tassert_eq(hm$get(m, probe), 99);
+
     hm$free(m);
     return EOK;
 }

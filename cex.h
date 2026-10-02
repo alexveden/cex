@@ -997,8 +997,12 @@ Define the hook as an empty function-like macro before including CEX to restore 
 #define cex$platform_oom_panic(...)
 ```
 
-`test$alloc` synthetic OOM still returns `NULL` — it fails allocations before they reach the
-heap — so `NULL` / `Error.memory` error paths remain testable.
+Arena argument/limit violations (invalid page size, zero or oversized allocation, misalignment)
+also panic by default. Only synthetic `test$alloc` OOM and allocation failure from a custom
+backing allocator still return `NULL`.
+
+`test$alloc` synthetic OOM fails allocations before they reach the heap, so `NULL` /
+`Error.memory` error paths remain testable.
 
 ### Memory management hints
 
@@ -8195,6 +8199,10 @@ _cex_allocator_arena__request_page_size(
         if (page_size == 0 || page_size > CEX_ARENA_MAX_ALLOC) {
             uassert(page_size > 0 && "page_size is zero");
             uassert(page_size <= CEX_ARENA_MAX_ALLOC && "page_size is to big");
+            cex$platform_oom_panic(
+                _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+                "arena page size is too large"
+            );
             return NULL;
         }
         allocator_arena_page_s*
@@ -8251,7 +8259,13 @@ _cex_allocator_arena__malloc(IAllocator allc, usize size, usize alignment)
     #endif
 
     allocator_arena_rec_s rec = _cex_alloc_estimate_alloc_size(size, alignment);
-    if (rec.size_low == 0 && rec.size_high == 0) { return NULL; }
+    if (rec.size_low == 0 && rec.size_high == 0) {
+        cex$platform_oom_panic(
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+            "invalid allocation size or alignment"
+        );
+        return NULL;
+    }
 
     allocator_arena_page_s* page = _cex_allocator_arena__request_page_size(self, rec, NULL);
     if (page == NULL) { return NULL; }
@@ -8308,10 +8322,16 @@ _cex_allocator_arena__calloc(IAllocator allc, usize nmemb, usize size, usize ali
     _cex_allocator_arena__validate(allc);
     if (nmemb > CEX_ARENA_MAX_ALLOC) {
         uassert(nmemb < CEX_ARENA_MAX_ALLOC);
+        cex$platform_oom_panic(
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "invalid element count"
+        );
         return NULL;
     }
     if (size > CEX_ARENA_MAX_ALLOC) {
         uassert(size < CEX_ARENA_MAX_ALLOC);
+        cex$platform_oom_panic(
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "invalid element size"
+        );
         return NULL;
     }
     usize alloc_size = nmemb * size;
@@ -8353,6 +8373,9 @@ _cex_allocator_arena__realloc(IAllocator allc, void* old_ptr, usize size, usize 
     uassert(size > 0);
     if (size > CEX_ARENA_MAX_ALLOC) {
         uassert(size <= CEX_ARENA_MAX_ALLOC);
+        cex$platform_oom_panic(
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "invalid realloc size"
+        );
         goto fail;
     }
 
@@ -8395,7 +8418,12 @@ _cex_allocator_arena__realloc(IAllocator allc, void* old_ptr, usize size, usize 
     if (unlikely(self->last_page && self->last_page->last_alloc == old_ptr)) {
         // Faster path, when last allocation is current item for resizing
         allocator_arena_rec_s nrec = _cex_alloc_estimate_alloc_size(size, alignment);
-        if (nrec.size_low == 0 && nrec.size_high == 0) { goto fail; }
+        if (nrec.size_low == 0 && nrec.size_high == 0) {
+            cex$platform_oom_panic(
+                _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "invalid realloc size"
+            );
+            goto fail;
+        }
         bool is_created = false;
         allocator_arena_page_s* page = _cex_allocator_arena__request_page_size(
             self,
@@ -8543,6 +8571,9 @@ AllocatorArena_create(const AllocatorArena_kw* kwargs)
     if (kw.page_size < 1024 || kw.page_size >= CEX_ARENA_MAX_ALLOC) {
         uassert(kw.page_size >= 1024 && "page size is too small");
         uassert(kw.page_size < CEX_ARENA_MAX_ALLOC && "page size is too big");
+        cex$platform_oom_panic(
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "invalid arena page size"
+        );
         return NULL;
     }
 
