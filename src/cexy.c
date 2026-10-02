@@ -328,7 +328,6 @@ cexy_target_make(char* src_path, char* build_dir, char* name_or_extension, IAllo
             name_or_extension,
             cexy$build_ext_exe
         );
-        uassert(result != NULL && "memory error");
     } else {
         // probably a program name, make full path: build_dir/name_or_extension[.exe]
         result = str.fmt(
@@ -339,8 +338,8 @@ cexy_target_make(char* src_path, char* build_dir, char* name_or_extension, IAllo
             name_or_extension,
             cexy$build_ext_exe
         );
-        uassert(result != NULL && "memory error");
     }
+    if (unlikely(result == NULL)) { return NULL; }
     e$except (err, os.fs.mkpath(result)) { mem$free(allocator, result); }
 
     return result;

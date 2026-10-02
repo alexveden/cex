@@ -43,6 +43,21 @@ test$case(test_target_make)
     return EOK;
 }
 
+test$case(test_target_make_oom)
+{
+    mem$scope(tmem$, _)
+    {
+        char* src = TBUILDDIR "my_src.c";
+        e$ret(io.file.save(src, "#include <my_src2.c>"));
+
+        test$alloc_set_oom_on_call(1);
+        char* tgt_file = cexy.target_make(src, TBUILDDIR "my_tgt_dir", "my_tgt", test$alloc);
+        test$alloc_set_oom_on_call(0);
+        tassert(tgt_file == NULL);
+    }
+    return EOK;
+}
+
 test$case(test_target_make_with_ext)
 {
     mem$scope(tmem$, _)
