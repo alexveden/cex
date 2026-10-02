@@ -12572,11 +12572,18 @@ static arr$(char*) cex_str_split(char* s, char* split_by, IAllocator allc)
     if (result == NULL) { return NULL; }
 
     for$iter (str_s, it, cex_str__slice__iter_split(src, split_by, &it.iterator)) {
+        if (unlikely(!arr$grow_check(result, 1))) { goto fail; }
         char* tok = cex_str__slice__clone(it.val, allc);
+        if (unlikely(tok == NULL)) { goto fail; }
         arr$push(result, tok);
     }
 
     return result;
+
+fail:
+    for$each (p, result) { mem$free(allc, p); }
+    arr$free(result);
+    return NULL;
 }
 
 /// Splits string by lines, result allocated by allc, as dynamic array of cloned lines, Returns NULL
@@ -12601,7 +12608,9 @@ static arr$(char*) cex_str_split_lines(char* s, IAllocator allc)
             case '\f': {
                 str_s line = { .buf = (char*)line_start, .len = cur - line_start };
                 if (line.len > 0 && line.buf[line.len - 1] == '\r') { line.len--; }
+                if (unlikely(!arr$grow_check(result, 1))) { goto fail; }
                 char* tok = cex_str__slice__clone(line, allc);
+                if (unlikely(tok == NULL)) { goto fail; }
                 arr$push(result, tok);
                 line_start = cur + 1;
             }
@@ -12614,11 +12623,18 @@ static arr$(char*) cex_str_split_lines(char* s, IAllocator allc)
     if (line_start <= cur) {
         str_s line = { .buf = (char*)line_start, .len = cur - line_start };
         if (line.len > 0) {
+            if (unlikely(!arr$grow_check(result, 1))) { goto fail; }
             char* tok = cex_str__slice__clone(line, allc);
+            if (unlikely(tok == NULL)) { goto fail; }
             arr$push(result, tok);
         }
     }
     return result;
+
+fail:
+    for$each (p, result) { mem$free(allc, p); }
+    arr$free(result);
+    return NULL;
 }
 
 /// Joins string using a separator (join_by), NULL tolerant, returns NULL on error.

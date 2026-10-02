@@ -2047,6 +2047,29 @@ test$case(test_tsplit)
 
     return EOK;
 }
+
+test$case(test_tsplit_oom)
+{
+    for (i32 n = 1; n <= 3; n++) {
+        test$alloc_set_oom_on_call(n);
+        arr$(char*) res = str.split("123,456", ",", test$alloc);
+        test$alloc_set_oom_on_call(0);
+        tassert(res == NULL);
+    }
+    return EOK;
+}
+
+test$case(test_split_lines_oom)
+{
+    for (i32 n = 1; n <= 3; n++) {
+        test$alloc_set_oom_on_call(n);
+        arr$(char*) res = str.split_lines("123\n456", test$alloc);
+        test$alloc_set_oom_on_call(0);
+        tassert(res == NULL);
+    }
+    return EOK;
+}
+
 test$case(test_split_lines)
 {
     mem$scope(tmem$, _)
