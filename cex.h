@@ -1505,11 +1505,6 @@ arr$free(array);
 */
 #define __arr$
 
-// this is a simple string arena allocator, initialize with e.g. 'cexds_string_arena my_arena={0}'.
-typedef struct _cexds__string_arena _cexds__string_arena;
-extern char* _cexds__stralloc(_cexds__string_arena* a, char* str);
-extern void _cexds__strreset(_cexds__string_arena* a);
-
 ///////////////
 //
 // Everything below here is implementation details
@@ -2203,30 +2198,6 @@ struct _cexds__hm_new_kwargs_s
         if (t != NULL) { _cexds__arr_integrity(t, _CEXDS_HM_MAGIC); }                              \
         (t) ? _cexds__header((t))->length : 0;                                                     \
     })
-
-typedef struct _cexds__string_block
-{
-    struct _cexds__string_block* next;
-    char storage[8];
-} _cexds__string_block;
-
-struct _cexds__string_arena
-{
-    _cexds__string_block* storage;
-    usize remaining;
-    unsigned char block;
-    unsigned char mode; // this isn't used by the string arena itself
-};
-
-enum
-{
-    _CEXDS_SH_NONE,
-    _CEXDS_SH_DEFAULT,
-    _CEXDS_SH_STRDUP,
-    _CEXDS_SH_ARENA
-};
-
-#define _cexds__shmode_func_wrapper(t, e, m) _cexds__shmode_func(e, m)
 
 u64 _cexds__hash_bytes(const void* p, usize len, u64 seed);
 
