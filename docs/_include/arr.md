@@ -15,13 +15,14 @@ pointer or fat-pointer indirection. The runtime header
 3. **O(1) amortized growth** — Capacity doubles when full (minimum 16).
 4. **Unified length** — `arr$len()` works on dynamic `arr$`, static C arrays, and hashmaps.
 5. **Unified iteration** — `for$each` / `for$eachp` iterate any array (arr$, static, pointer+len, hm$).
-6. **Debug integrity** — Each array header has a magic number checked by every mutating macro
-   (`_CEXDS_ARR_MAGIC = 0xC001DAAD`). Wrong magic triggers an assertion.
+6. **Debug integrity** — Each array header has a magic number (`_CEXDS_ARR_MAGIC = 0xC001DAAD`).
+   Validate an explicit handle with `arr$validate()` / `hm$validate()`; wrong magic or a NULL
+   handle returns an `Exception` (`Error.integrity` / `Error.memory`).
 7. **ASAN-aware** — The 8-byte poison area after the header is marked poisoned so ASAN catches
    underflow reads/writes.
 8. **OOM-resilient** — mutating macros return a pointer to the item slot or `NULL` on memory
-   error (never abort); a grow-OOM frees the array and sets its variable to `NULL`. Every macro
-   tolerates a `NULL` array.
+   error (never abort); a grow-OOM frees the array and sets its variable to `NULL`. Most macros
+   tolerate a `NULL` array; the accessors `arr$last()`, `arr$at()`, `arr$pop()` assert on it.
 
 #### Examples
 
@@ -58,7 +59,7 @@ arr$free(array);
 /// Declares a dynamic array variable. `arr$(int) myarr` = `int* myarr`. Zero overhead, fully C-compatible.
 #define arr$(T)
 
-/// Returns element at index `i` (by value) with bounds checking via `uassert()`. Also works on `hm$`. Returns zero value for a NULL array.
+/// Returns element at index `i` (by value) with bounds checking via `uassert()`. Also works on `hm$`. Asserts on NULL array.
 #define arr$at(a, i)
 
 /// Returns the current allocated capacity (in elements). Returns 0 if array is NULL.
@@ -85,7 +86,7 @@ arr$free(array);
 /// Inserts element at index `i`, shifting subsequent elements right. Order preserved. O(n). Returns pointer to the inserted slot, or NULL on memory error / NULL array.
 #define arr$ins(a, i, value...)
 
-/// Returns the last element (by value). Asserts that the array is not empty. Returns zero value for a NULL array.
+/// Returns the last element (by value). Asserts that the array is not NULL or empty.
 #define arr$last(a)
 
 /// Returns the number of elements. Works on `arr$`, `hm$`, static C arrays, and pointer+length slices.
@@ -94,7 +95,7 @@ arr$free(array);
 /// Initializes a dynamic array. Pass the array variable, an `IAllocator`, and optional `.capacity = N`. Returns the new pointer on success, NULL on memory error.
 #define arr$new(a, allocator, kwargs...)
 
-/// Pops and returns the last element (by value), asserts non-empty array. Returns zero value for a NULL array.
+/// Pops and returns the last element (by value). Asserts that the array is not NULL or empty.
 #define arr$pop(a)
 
 /// Appends a single element to the end. Automatically grows capacity if needed. Returns pointer to the new slot, or NULL on memory error / NULL array.

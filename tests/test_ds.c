@@ -2228,9 +2228,6 @@ test$case(test_ds_null_tolerant)
     arr$(int) a = NULL;
     tassert(arr$len(a) == 0);
     tassert(arr$cap(a) == 0);
-    tassert(arr$at(a, 0) == 0);
-    tassert(arr$last(a) == 0);
-    tassert(arr$pop(a) == 0);
     tassert(arr$push(a, 1) == NULL);
     tassert(arr$ins(a, 0, 1) == NULL);
     tassert(arr$pushm(a, 1, 2) == NULL);

@@ -1474,8 +1474,8 @@ pointer or fat-pointer indirection. The runtime header
 7. **ASAN-aware** — The 8-byte poison area after the header is marked poisoned so ASAN catches
    underflow reads/writes.
 8. **OOM-resilient** — mutating macros return a pointer to the item slot or `NULL` on memory
-   error (never abort); a grow-OOM frees the array and sets its variable to `NULL`. Every macro
-   tolerates a `NULL` array.
+   error (never abort); a grow-OOM frees the array and sets its variable to `NULL`. Most macros
+   tolerate a `NULL` array; the accessors `arr$last()`, `arr$at()`, `arr$pop()` assert on it.
 
 ### Examples
 
@@ -1640,38 +1640,29 @@ struct _cexds__arr_new_kwargs_s
         }                                                                                          \
     })
 
-/// Returns the last element (by value). Asserts that the array is not empty. Returns zero value for a NULL array.
+/// Returns the last element (by value). Asserts that the array is not NULL or empty.
 #define arr$last(a)                                                                                \
     ({                                                                                             \
-        typeof(*a) _cexds__ret = { 0 };                                                            \
-        if ((a) != NULL) {                                                                         \
-            uassert(_cexds__header(a)->length > 0 && "empty array");                               \
-            _cexds__ret = (a)[_cexds__header(a)->length - 1];                                      \
-        }                                                                                          \
-        _cexds__ret;                                                                               \
+        uassert((a) != NULL && "NULL array");                                                      \
+        uassert(_cexds__header(a)->length > 0 && "empty array");                                   \
+        (a)[_cexds__header(a)->length - 1];                                                        \
     })
 
-/// Returns element at index `i` (by value) with bounds checking via `uassert()`. Also works on `hm$`. Returns zero value for a NULL array.
+/// Returns element at index `i` (by value) with bounds checking via `uassert()`. Also works on `hm$`. Asserts on NULL array.
 #define arr$at(a, i)                                                                               \
     ({                                                                                             \
-        typeof(*a) _cexds__ret = { 0 };                                                            \
-        if ((a) != NULL) {                                                                         \
-            uassert((usize)i < _cexds__header(a)->length && "out of bounds");                      \
-            _cexds__ret = (a)[i];                                                                  \
-        }                                                                                          \
-        _cexds__ret;                                                                               \
+        uassert((a) != NULL && "NULL array");                                                      \
+        uassert((usize)i < _cexds__header(a)->length && "out of bounds");                          \
+        (a)[i];                                                                                    \
     })
 
-/// Pops and returns the last element (by value), asserts non-empty array. Returns zero value for a NULL array.
+/// Pops and returns the last element (by value). Asserts that the array is not NULL or empty.
 #define arr$pop(a)                                                                                 \
     ({                                                                                             \
-        typeof(*a) _cexds__ret = { 0 };                                                            \
-        if ((a) != NULL) {                                                                         \
-            uassert(_cexds__header(a)->length > 0 && "empty array");                               \
-            if (_cexds__header(a)->length > 0) { _cexds__header(a)->length--; }                    \
-            _cexds__ret = (a)[_cexds__header(a)->length];                                          \
-        }                                                                                          \
-        _cexds__ret;                                                                               \
+        uassert((a) != NULL && "NULL array");                                                      \
+        uassert(_cexds__header(a)->length > 0 && "empty array");                                   \
+        if (_cexds__header(a)->length > 0) { _cexds__header(a)->length--; }                        \
+        (a)[_cexds__header(a)->length];                                                            \
     })
 
 /// Appends a single element to the end. Automatically grows capacity if needed. Returns pointer to the new slot, or NULL on memory error / NULL array.
