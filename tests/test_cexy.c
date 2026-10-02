@@ -656,6 +656,248 @@ test$case(test_coverage_flag)
 
 #endif  // #if !defined(__clang__) && !defined(_WIN32)
 
+static bool
+test_cexy_mock_isatty_true(FILE* file)
+{
+    (void)file;
+    return true;
+}
+
+test$case(test_colorize_ansi_branches)
+{
+    tassert_eq((char*)_cexy__colorize_ansi((str_s){ 0 }, str$s("foo"), 0), "\033[0m");
+    tassert_eq((char*)_cexy__colorize_ansi(str$s("foo"), str$s("foo"), 0), "\033[1;31m");
+    tassert_eq((char*)_cexy__colorize_ansi(str$s("return"), str$s("foo"), 0), "\033[1;33m");
+    tassert_eq((char*)_cexy__colorize_ansi(str$s("i32"), str$s("foo"), 0), "\033[1;32m");
+    tassert_eq((char*)_cexy__colorize_ansi(str$s("bar"), str$s("foo"), '('), "\033[1;34m");
+    tassert_eq((char*)_cexy__colorize_ansi(str$s("my_s"), str$s("foo"), 0), "\033[1;32m");
+    tassert_eq((char*)_cexy__colorize_ansi(str$s("my_e"), str$s("foo"), 0), "\033[1;32m");
+    tassert_eq((char*)_cexy__colorize_ansi(str$s("my_c"), str$s("foo"), 0), "\033[1;32m");
+    tassert_eq((char*)_cexy__colorize_ansi(str$s("my_kw"), str$s("foo"), 0), "\033[1;32m");
+    tassert_eq((char*)_cexy__colorize_ansi(str$s("#define"), str$s("foo"), 0), "\033[1;35m");
+    tassert_eq((char*)_cexy__colorize_ansi(str$s("mem$"), str$s("foo"), 0), "\033[1;33m");
+    tassert_eq((char*)_cexy__colorize_ansi(str$s("some$thing"), str$s("foo"), 0), "\033[33m");
+    tassert_eq((char*)_cexy__colorize_ansi(str$s("blah"), str$s("foo"), 0), "\033[0m");
+    return EOK;
+}
+
+test$case(test_colorize_print_tty)
+{
+    mem$scope(tmem$, _)
+    {
+        char* path = TBUILDDIR "colorize_out.txt";
+        FILE* out = NULL;
+        e$ret(io.fopen(&out, path, "w"));
+        test$mock_scope(io) {
+            io.isatty = test_cexy_mock_isatty_true;
+            _cexy__colorize_print(str$s("i32 foo(int x);"), str$s("target"), out);
+        }
+        io.fclose(&out);
+
+        char* got = io.file.load(path, _);
+        tassert(got != NULL);
+        tassert(str.find(got, "\033[1;32mi32\033[0m") != NULL);
+        tassert(str.find(got, "\033[1;34mfoo\033[0m") != NULL);
+
+        // non-tty path prints plain text
+        FILE* plain = NULL;
+        e$ret(io.fopen(&plain, path, "w"));
+        _cexy__colorize_print(str$s("plain text"), str$s("plain"), plain);
+        io.fclose(&plain);
+        got = io.file.load(path, _);
+        tassert_eq(got, "plain text");
+    }
+    return EOK;
+}
+
+test$case(test_pkgconf_parse_tokens)
+{
+    mem$scope(tmem$, _)
+    {
+        arr$(char*) args = arr$new(args, _);
+
+        tassert_er(EOK, _cexy__utils__pkgconf_parse(_, &args, "-I/foo  -DBAR\tbaz\n"));
+        tassert_eq((int)arr$len(args), 3);
+        tassert_eq(args[0], "-I/foo");
+        tassert_eq(args[1], "-DBAR");
+        tassert_eq(args[2], "baz");
+
+        arr$clear(args);
+        tassert_er(EOK, _cexy__utils__pkgconf_parse(_, &args, "-I\"a b\" -DSINGLE='x y'"));
+        tassert_eq((int)arr$len(args), 2);
+        tassert_eq(args[0], "-I\"a b\"");
+        tassert_eq(args[1], "-DSINGLE='x y'");
+
+        arr$clear(args);
+        tassert_er(EOK, _cexy__utils__pkgconf_parse(_, &args, "a\\ b c"));
+        tassert_eq((int)arr$len(args), 2);
+        tassert_eq(args[0], "a\\ b");
+        tassert_eq(args[1], "c");
+
+        arr$clear(args);
+        tassert_er(EOK, _cexy__utils__pkgconf_parse(_, &args, "   "));
+        tassert_eq((int)arr$len(args), 0);
+
+        tassert_er(Error.assert, _cexy__utils__pkgconf_parse(_, &args, NULL));
+    }
+    return EOK;
+}
+
+test$case(test_make_compile_flags)
+{
+    mem$scope(tmem$, _)
+    {
+        char* flags_file = TBUILDDIR "compile_flags.txt";
+
+        tassert_er(
+            Error.assert,
+            cexy.utils.make_compile_flags(TBUILDDIR "not_flags.txt", false, NULL)
+        );
+        tassert_er(Error.null_or_empty, cexy.utils.make_compile_flags(flags_file, false, NULL));
+
+        arr$(char*) flags = arr$new(flags, _);
+        arr$pushm(flags, "-Wall", "-fsanitize=address", "-I./foo");
+        tassert_er(EOK, cexy.utils.make_compile_flags(flags_file, false, flags));
+
+        char* content = io.file.load(flags_file, _);
+        tassert(content != NULL);
+        tassert(str.find(content, "-Wall") != NULL);
+        tassert(str.find(content, "-I./foo") != NULL);
+        tassert(str.find(content, "-fsanitize") == NULL);
+
+        tassert_er(EOK, cexy.utils.make_compile_flags(flags_file, true, NULL));
+        content = io.file.load(flags_file, _);
+        tassert(content != NULL);
+        tassert(str.len(content) > 0);
+    }
+    return EOK;
+}
+
+test$case(test_cmd_config)
+{
+    char* argv[] = { "config" };
+    tassert_er(EOK, cexy.cmd.config(arr$len(argv), argv, NULL));
+    return EOK;
+}
+
+test$case(test_cmd_stats)
+{
+    mem$scope(tmem$, _)
+    {
+        e$ret(io.file.save(TBUILDDIR "stat_src.c", "// comment\nint foo(void) { return 1; }\n"));
+        e$ret(io.file.save(
+            TBUILDDIR "stat_test.c", "int test_foo(void) { uassert(1); return 1; }\n"
+        ));
+
+        char* argv[] = { "stats", "-v", TBUILDDIR "stat_*.c" };
+        tassert_er(EOK, cexy.cmd.stats(arr$len(argv), argv, NULL));
+    }
+    return EOK;
+}
+
+test$case(test_cmd_libfetch_error)
+{
+    char* argv[] = { "libfetch", "-u", "", "some.h" };
+    tassert_er(Error.argument, cexy.cmd.libfetch(arr$len(argv), argv, NULL));
+    return EOK;
+}
+
+test$case(test_target_make_errors)
+{
+    mem$scope(tmem$, _)
+    {
+        tassert(cexy.target_make(NULL, TBUILDDIR, "x", _) == NULL);
+        tassert(cexy.target_make("", TBUILDDIR, "x", _) == NULL);
+        tassert(cexy.target_make(TBUILDDIR "nope.c", NULL, "x", _) == NULL);
+        tassert(cexy.target_make(TBUILDDIR "nope.c", TBUILDDIR, NULL, _) == NULL);
+        tassert(cexy.target_make(TBUILDDIR "nope.c", TBUILDDIR, "", _) == NULL);
+        tassert(cexy.target_make(TBUILDDIR "nope.c", TBUILDDIR, "x", _) == NULL);
+    }
+    return EOK;
+}
+
+test$case(test_create_errors)
+{
+    char* target = TBUILDDIR "test_cexytest_created.c";
+    e$ret(cexy.test.create(target, false));
+    tassert(os.path.exists(target));
+    tassert_er(Error.exists, cexy.test.create(target, false));
+    tassert_er(Error.argument, cexy.test.create("all", false));
+    tassert_er(Error.argument, cexy.test.create(TBUILDDIR "test_*.c", false));
+    return EOK;
+}
+
+test$case(test_clean_errors)
+{
+    e$ret(os.fs.mkpath(TBUILDDIR "tests/"));
+    tassert_er(EOK, cexy.test.clean("all"));
+    tassert_er(Error.exists, cexy.test.clean(TBUILDDIR "test_nonexistent_xyz.c"));
+    return EOK;
+}
+
+test$case(test_make_target_pattern_errors)
+{
+    tassert_er(Error.argsparse, cexy.test.make_target_pattern(NULL));
+
+    char* bad = "src/foo.c";
+    tassert_er(Error.argsparse, cexy.test.make_target_pattern(&bad));
+
+    char* all = "all";
+    tassert_er(EOK, cexy.test.make_target_pattern(&all));
+    tassert_eq(all, "tests/test_*.c");
+    return EOK;
+}
+
+test$case(test_test_run_unsupported_cmd)
+{
+    tassert_er(Error.argument, cexy.test.run("tests/test_cexy.c", "bogus", 0, NULL));
+    return EOK;
+}
+
+test$case(test_process_errors)
+{
+    char* noarg[] = { "process", NULL };
+    tassert_er(Error.argsparse, cexy.cmd.process(arr$len(noarg) - 1, noarg, NULL));
+
+    char* missing[] = { "process", TBUILDDIR "nope.c" };
+    tassert_er(Error.not_found, cexy.cmd.process(arr$len(missing), missing, NULL));
+    return EOK;
+}
+
+test$case(test_pkgconf)
+{
+    mem$scope(tmem$, _)
+    {
+        char* pc_dir = TBUILDDIR "pc/";
+        e$ret(os.fs.mkpath(pc_dir));
+        e$ret(io.file.save(
+            os$path_join(_, pc_dir, "cextest.pc"),
+            "prefix=/usr\n"
+            "Name: cextest\n"
+            "Description: test\n"
+            "Version: 1.0\n"
+            "Cflags: -I/foo/include\n"
+            "Libs: -lcextest\n"
+        ));
+
+        char* old_pc_path = os.env.get("PKG_CONFIG_PATH", NULL);
+        if (old_pc_path) { old_pc_path = str.clone(old_pc_path, _); }
+        e$ret(os.env.set("PKG_CONFIG_PATH", pc_dir));
+
+        arr$(char*) out = arr$new(out, _);
+        tassert_er(EOK, cexy$pkgconf(_, &out, "--cflags", "cextest"));
+        tassert(arr$len(out) > 0);
+        tassert(str.find(out[0], "-I/foo/include") != NULL);
+
+        if (old_pc_path) {
+            e$ret(os.env.set("PKG_CONFIG_PATH", old_pc_path));
+        } else {
+            e$ret(os.env.unset("PKG_CONFIG_PATH"));
+        }
+    }
+    return EOK;
+}
+
 #endif  // #if !defined(__EMSCRIPTEN__)
 
 test$main();
