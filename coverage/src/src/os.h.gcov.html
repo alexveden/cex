@@ -1,0 +1,522 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage-global.info - src/src/os.h</title>
+  <link rel="stylesheet" type="text/css" href="../../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../../index.html">top level</a> - <a href="index.html">src/src</a> - os.h<span style="font-size: 80%;"> (source / <a href="os.h.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage-global.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryHi">95.7&nbsp;%</td>
+            <td class="headerCovTableEntry">47</td>
+            <td class="headerCovTableEntry">45</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2026-10-02 14:29:11</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryHi">-</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">0</td>
+          </tr>
+                  <tr><td><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : #pragma once</span>
+<span id="L2"><span class="lineNum">       2</span>              : #if !defined(cex$enable_minimal) || defined(cex$enable_os)</span>
+<span id="L3"><span class="lineNum">       3</span>              : </span>
+<span id="L4"><span class="lineNum">       4</span>              : #if defined(cex$enable_minimal)</span>
+<span id="L5"><span class="lineNum">       5</span>              : #    if !defined(cex$enable_mem)</span>
+<span id="L6"><span class="lineNum">       6</span>              : #error &quot;CEX os namespace depends on `#define cex$enable_mem`&quot;</span>
+<span id="L7"><span class="lineNum">       7</span>              : #    elif !defined(cex$enable_ds)</span>
+<span id="L8"><span class="lineNum">       8</span>              : #error &quot;CEX os namespace depends on `#define cex$enable_ds`&quot;</span>
+<span id="L9"><span class="lineNum">       9</span>              : #    elif !defined(cex$enable_str)</span>
+<span id="L10"><span class="lineNum">      10</span>              : #error &quot;CEX os namespace depends on `#define cex$enable_str`&quot;</span>
+<span id="L11"><span class="lineNum">      11</span>              : #    elif !defined(cex$enable_io)</span>
+<span id="L12"><span class="lineNum">      12</span>              : #error &quot;CEX os namespace depends on `#define cex$enable_io`&quot;</span>
+<span id="L13"><span class="lineNum">      13</span>              : #    endif</span>
+<span id="L14"><span class="lineNum">      14</span>              : #endif</span>
+<span id="L15"><span class="lineNum">      15</span>              : </span>
+<span id="L16"><span class="lineNum">      16</span>              : #    include &quot;all.h&quot;</span>
+<span id="L17"><span class="lineNum">      17</span>              : </span>
+<span id="L18"><span class="lineNum">      18</span>              : </span>
+<span id="L19"><span class="lineNum">      19</span>              : #    ifdef _WIN32</span>
+<span id="L20"><span class="lineNum">      20</span>              : #        include &lt;direct.h&gt;</span>
+<span id="L21"><span class="lineNum">      21</span>              : #        include &lt;limits.h&gt;</span>
+<span id="L22"><span class="lineNum">      22</span>              : #        include &lt;sys/stat.h&gt;</span>
+<span id="L23"><span class="lineNum">      23</span>              : #    else</span>
+<span id="L24"><span class="lineNum">      24</span>              : #        include &lt;dirent.h&gt;</span>
+<span id="L25"><span class="lineNum">      25</span>              : #        include &lt;fcntl.h&gt;</span>
+<span id="L26"><span class="lineNum">      26</span>              : #        include &lt;limits.h&gt;</span>
+<span id="L27"><span class="lineNum">      27</span>              : #        include &lt;sys/stat.h&gt;</span>
+<span id="L28"><span class="lineNum">      28</span>              : #        include &lt;sys/types.h&gt;</span>
+<span id="L29"><span class="lineNum">      29</span>              : #        include &lt;unistd.h&gt;</span>
+<span id="L30"><span class="lineNum">      30</span>              : #        ifdef __APPLE__</span>
+<span id="L31"><span class="lineNum">      31</span>              : #            include &lt;mach-o/dyld.h&gt;</span>
+<span id="L32"><span class="lineNum">      32</span>              : #        endif</span>
+<span id="L33"><span class="lineNum">      33</span>              : #    endif</span>
+<span id="L34"><span class="lineNum">      34</span>              : </span>
+<span id="L35"><span class="lineNum">      35</span>              : /// Additional flags for os.cmd.create()</span>
+<span id="L36"><span class="lineNum">      36</span>              : typedef struct os_cmd_flags_s</span>
+<span id="L37"><span class="lineNum">      37</span>              : {</span>
+<span id="L38"><span class="lineNum">      38</span>              :     u32 combine_stdouterr : 1; // if 1 - combines output from stderr to stdout</span>
+<span id="L39"><span class="lineNum">      39</span>              :     u32 no_inherit_env : 1;    // if 1 - disables using existing env variable of parent process</span>
+<span id="L40"><span class="lineNum">      40</span>              :     u32 no_search_path : 1;    // if 1 - disables propagating PATH= env to command line</span>
+<span id="L41"><span class="lineNum">      41</span>              :     u32 no_window : 1;         // if 1 - disables creation of new window if OS supported</span>
+<span id="L42"><span class="lineNum">      42</span>              : } os_cmd_flags_s;</span>
+<span id="L43"><span class="lineNum">      43</span>              : static_assert(sizeof(os_cmd_flags_s) == sizeof(u32), &quot;size?&quot;);</span>
+<span id="L44"><span class="lineNum">      44</span>              : </span>
+<span id="L45"><span class="lineNum">      45</span>              : /// Command container (current state of subprocess)</span>
+<span id="L46"><span class="lineNum">      46</span>              : typedef struct os_cmd_c</span>
+<span id="L47"><span class="lineNum">      47</span>              : {</span>
+<span id="L48"><span class="lineNum">      48</span>              :     struct subprocess_s _subpr;</span>
+<span id="L49"><span class="lineNum">      49</span>              :     os_cmd_flags_s _flags;</span>
+<span id="L50"><span class="lineNum">      50</span>              :     bool _is_subprocess;</span>
+<span id="L51"><span class="lineNum">      51</span>              :     i32 _ret_code;</span>
+<span id="L52"><span class="lineNum">      52</span>              : } os_cmd_c;</span>
+<span id="L53"><span class="lineNum">      53</span>              : </span>
+<span id="L54"><span class="lineNum">      54</span>              : /// File stats metadata (cross-platform), returned by os.fs.stats</span>
+<span id="L55"><span class="lineNum">      55</span>              : typedef struct os_fs_stat_s</span>
+<span id="L56"><span class="lineNum">      56</span>              : {</span>
+<span id="L57"><span class="lineNum">      57</span>              :     u64 is_valid : 1;</span>
+<span id="L58"><span class="lineNum">      58</span>              :     u64 is_directory : 1;</span>
+<span id="L59"><span class="lineNum">      59</span>              :     u64 is_symlink : 1;</span>
+<span id="L60"><span class="lineNum">      60</span>              :     u64 is_file : 1;</span>
+<span id="L61"><span class="lineNum">      61</span>              :     u64 is_other : 1;</span>
+<span id="L62"><span class="lineNum">      62</span>              :     u64 size : 48;</span>
+<span id="L63"><span class="lineNum">      63</span>              :     union</span>
+<span id="L64"><span class="lineNum">      64</span>              :     {</span>
+<span id="L65"><span class="lineNum">      65</span>              :         Exc error;</span>
+<span id="L66"><span class="lineNum">      66</span>              :         time_t mtime;</span>
+<span id="L67"><span class="lineNum">      67</span>              :     };</span>
+<span id="L68"><span class="lineNum">      68</span>              : } os_fs_stat_s;</span>
+<span id="L69"><span class="lineNum">      69</span>              : static_assert(sizeof(os_fs_stat_s) &lt;= sizeof(u64) * 2, &quot;size?&quot;);</span>
+<span id="L70"><span class="lineNum">      70</span>              : </span>
+<span id="L71"><span class="lineNum">      71</span>              : /// Directory walk callback: receives path, file stats, and user context</span>
+<span id="L72"><span class="lineNum">      72</span>              : typedef Exception os_fs_dir_walk_f(char* path, os_fs_stat_s ftype, void* user_ctx);</span>
+<span id="L73"><span class="lineNum">      73</span>              : </span>
+<span id="L74"><span class="lineNum">      74</span>              : #    define _CexOSPlatformList                                                                     \</span>
+<span id="L75"><span class="lineNum">      75</span>              :         X(linux)                                                                                   \</span>
+<span id="L76"><span class="lineNum">      76</span>              :         X(win)                                                                                     \</span>
+<span id="L77"><span class="lineNum">      77</span>              :         X(macos)                                                                                   \</span>
+<span id="L78"><span class="lineNum">      78</span>              :         X(wasm)                                                                                    \</span>
+<span id="L79"><span class="lineNum">      79</span>              :         X(android)                                                                                 \</span>
+<span id="L80"><span class="lineNum">      80</span>              :         X(freebsd)                                                                                 \</span>
+<span id="L81"><span class="lineNum">      81</span>              :         X(openbsd)</span>
+<span id="L82"><span class="lineNum">      82</span>              : </span>
+<span id="L83"><span class="lineNum">      83</span>              : #    define _CexOSArchList                                                                         \</span>
+<span id="L84"><span class="lineNum">      84</span>              :         X(x86_32)                                                                                  \</span>
+<span id="L85"><span class="lineNum">      85</span>              :         X(x86_64)                                                                                  \</span>
+<span id="L86"><span class="lineNum">      86</span>              :         X(arm)                                                                                     \</span>
+<span id="L87"><span class="lineNum">      87</span>              :         X(wasm32)                                                                                  \</span>
+<span id="L88"><span class="lineNum">      88</span>              :         X(wasm64)                                                                                  \</span>
+<span id="L89"><span class="lineNum">      89</span>              :         X(aarch64)                                                                                 \</span>
+<span id="L90"><span class="lineNum">      90</span>              :         X(riscv32)                                                                                 \</span>
+<span id="L91"><span class="lineNum">      91</span>              :         X(riscv64)                                                                                 \</span>
+<span id="L92"><span class="lineNum">      92</span>              :         X(xtensa)</span>
+<span id="L93"><span class="lineNum">      93</span>              : </span>
+<span id="L94"><span class="lineNum">      94</span>              : /// Known OS platforms (linux, win, macos, wasm, android, freebsd, openbsd)</span>
+<span id="L95"><span class="lineNum">      95</span>              : #    define X(name) OSPlatform__##name,</span>
+<span id="L96"><span class="lineNum">      96</span>              : typedef enum OSPlatform_e</span>
+<span id="L97"><span class="lineNum">      97</span>              : {</span>
+<span id="L98"><span class="lineNum">      98</span>              :     OSPlatform__unknown,</span>
+<span id="L99"><span class="lineNum">      99</span>              :     _CexOSPlatformList OSPlatform__count,</span>
+<span id="L100"><span class="lineNum">     100</span>              : } OSPlatform_e;</span>
+<span id="L101"><span class="lineNum">     101</span>              : #    undef X</span>
+<span id="L102"><span class="lineNum">     102</span>              : </span>
+<span id="L103"><span class="lineNum">     103</span>              : __attribute__((unused)) static const char* OSPlatform_str[] = {</span>
+<span id="L104"><span class="lineNum">     104</span>              : #    define X(name) #name,</span>
+<span id="L105"><span class="lineNum">     105</span>              :     NULL,</span>
+<span id="L106"><span class="lineNum">     106</span>              :     _CexOSPlatformList</span>
+<span id="L107"><span class="lineNum">     107</span>              : #    undef X</span>
+<span id="L108"><span class="lineNum">     108</span>              : };</span>
+<span id="L109"><span class="lineNum">     109</span>              : </span>
+<span id="L110"><span class="lineNum">     110</span>              : /// Known CPU architectures (x86_32, x86_64, arm, wasm32, aarch64, riscv32/64, xtensa)</span>
+<span id="L111"><span class="lineNum">     111</span>              : typedef enum OSArch_e</span>
+<span id="L112"><span class="lineNum">     112</span>              : {</span>
+<span id="L113"><span class="lineNum">     113</span>              : #    define X(name) OSArch__##name,</span>
+<span id="L114"><span class="lineNum">     114</span>              :     OSArch__unknown,</span>
+<span id="L115"><span class="lineNum">     115</span>              :     _CexOSArchList OSArch__count,</span>
+<span id="L116"><span class="lineNum">     116</span>              : #    undef X</span>
+<span id="L117"><span class="lineNum">     117</span>              : } OSArch_e;</span>
+<span id="L118"><span class="lineNum">     118</span>              : </span>
+<span id="L119"><span class="lineNum">     119</span>              : __attribute__((unused)) static const char* OSArch_str[] = {</span>
+<span id="L120"><span class="lineNum">     120</span>              : #    define X(name) cex$stringize(name),</span>
+<span id="L121"><span class="lineNum">     121</span>              :     NULL,</span>
+<span id="L122"><span class="lineNum">     122</span>              :     _CexOSArchList</span>
+<span id="L123"><span class="lineNum">     123</span>              : #    undef X</span>
+<span id="L124"><span class="lineNum">     124</span>              : };</span>
+<span id="L125"><span class="lineNum">     125</span>              : </span>
+<span id="L126"><span class="lineNum">     126</span>              : #    ifdef _WIN32</span>
+<span id="L127"><span class="lineNum">     127</span>              : /// OS path separator, generally '\' for Windows, '/' otherwise</span>
+<span id="L128"><span class="lineNum">     128</span> <span class="tlaGNC tlaBgGNC">       18059 : #        define os$PATH_SEP '\\'</span></span>
+<span id="L129"><span class="lineNum">     129</span>              : #    else</span>
+<span id="L130"><span class="lineNum">     130</span> <span class="tlaGNC">       40711 : #        define os$PATH_SEP '/'</span></span>
+<span id="L131"><span class="lineNum">     131</span>              : #    endif</span>
+<span id="L132"><span class="lineNum">     132</span>              : </span>
+<span id="L133"><span class="lineNum">     133</span>              : #    if defined(CEX_BUILD) &amp;&amp; CEX_LOG_LVL &gt; 3</span>
+<span id="L134"><span class="lineNum">     134</span>              : #        define _os$args_print(msg, args, args_len)                                                \</span>
+<span id="L135"><span class="lineNum">     135</span> <span class="tlaGNC">          15 :             log$debug(msg &quot;&quot;);                                                                     \</span></span>
+<span id="L136"><span class="lineNum">     136</span> <span class="tlaGNC">         402 :             for (usize i = 0; i + 1 &lt; args_len; i++) {                                             \</span></span>
+<span id="L137"><span class="lineNum">     137</span> <span class="tlaGNC">         201 :                 char* a = args[i];                                                                 \</span></span>
+<span id="L138"><span class="lineNum">     138</span> <span class="tlaGNC">         201 :                 io.printf(&quot; &quot;);                                                                    \</span></span>
+<span id="L139"><span class="lineNum">     139</span> <span class="tlaGNC">         201 :                 if (str.find(a, &quot; &quot;)) {                                                            \</span></span>
+<span id="L140"><span class="lineNum">     140</span> <span class="tlaUNC tlaBgUNC">           0 :                     io.printf(&quot;\'%s\'&quot;, a);                                                        \</span></span>
+<span id="L141"><span class="lineNum">     141</span> <span class="tlaGNC tlaBgGNC">         201 :                 } else if (a == NULL || *a == '\0') {                                              \</span></span>
+<span id="L142"><span class="lineNum">     142</span> <span class="tlaUNC tlaBgUNC">           0 :                     io.printf(&quot;\'%s\'&quot;, a);                                                        \</span></span>
+<span id="L143"><span class="lineNum">     143</span> <span class="tlaGNC tlaBgGNC">         201 :                 } else {                                                                           \</span></span>
+<span id="L144"><span class="lineNum">     144</span> <span class="tlaGNC">         201 :                     io.printf(&quot;%s&quot;, a);                                                            \</span></span>
+<span id="L145"><span class="lineNum">     145</span> <span class="tlaGNC">         201 :                 }                                                                                  \</span></span>
+<span id="L146"><span class="lineNum">     146</span> <span class="tlaGNC">         201 :             }                                                                                      \</span></span>
+<span id="L147"><span class="lineNum">     147</span> <span class="tlaGNC">          12 :             io.printf(&quot;\n&quot;);                                                                       \</span></span>
+<span id="L148"><span class="lineNum">     148</span> <span class="tlaGNC">          12 :             fflush(stdout);</span></span>
+<span id="L149"><span class="lineNum">     149</span>              : </span>
+<span id="L150"><span class="lineNum">     150</span>              : #    else</span>
+<span id="L151"><span class="lineNum">     151</span>              : #        define _os$args_print(msg, args, args_len)</span>
+<span id="L152"><span class="lineNum">     152</span>              : #    endif</span>
+<span id="L153"><span class="lineNum">     153</span>              : </span>
+<span id="L154"><span class="lineNum">     154</span>              : /// Run command by dynamic or static array (returns Exc, but error check is not mandatory). Pipes</span>
+<span id="L155"><span class="lineNum">     155</span>              : /// all IO to stdout/err/in into current terminal, feels totally interactive.</span>
+<span id="L156"><span class="lineNum">     156</span>              : #    define os$cmda(args, args_len...)                                                             \</span>
+<span id="L157"><span class="lineNum">     157</span> <span class="tlaGNC">           3 :         ({                                                                                         \</span></span>
+<span id="L158"><span class="lineNum">     158</span> <span class="tlaGNC">           3 :             /* NOLINTBEGIN */                                                                      \</span></span>
+<span id="L159"><span class="lineNum">     159</span> <span class="tlaGNC">           3 :             static_assert(sizeof(args) &gt; 0, &quot;You must pass at least one item&quot;);                    \</span></span>
+<span id="L160"><span class="lineNum">     160</span> <span class="tlaGNC">           3 :             usize _args_len_va[] = { args_len };                                                   \</span></span>
+<span id="L161"><span class="lineNum">     161</span> <span class="tlaGNC">           3 :             (void)_args_len_va;                                                                    \</span></span>
+<span id="L162"><span class="lineNum">     162</span> <span class="tlaGNC">           3 :             usize _args_len = (sizeof(_args_len_va) &gt; 0) ? _args_len_va[0] : arr$len(args);        \</span></span>
+<span id="L163"><span class="lineNum">     163</span> <span class="tlaGNC">           3 :             uassert(_args_len &lt; PTRDIFF_MAX &amp;&amp; &quot;negative length or overflow&quot;);                     \</span></span>
+<span id="L164"><span class="lineNum">     164</span> <span class="tlaGNC">           3 :             _os$args_print(&quot;CMD:&quot;, args, _args_len);                                               \</span></span>
+<span id="L165"><span class="lineNum">     165</span> <span class="tlaGNC">           3 :             os_cmd_c _cmd = { 0 };                                                                 \</span></span>
+<span id="L166"><span class="lineNum">     166</span> <span class="tlaGNC">           3 :             Exc result = os.cmd.run(args, _args_len, &amp;_cmd);                                       \</span></span>
+<span id="L167"><span class="lineNum">     167</span> <span class="tlaGNC">           3 :             if (result == EOK) { result = os.cmd.wait(&amp;_cmd, 1, 0); };                             \</span></span>
+<span id="L168"><span class="lineNum">     168</span> <span class="tlaGNC">           3 :             result;                                                                                \</span></span>
+<span id="L169"><span class="lineNum">     169</span> <span class="tlaGNC">           3 :             /* NOLINTEND */                                                                        \</span></span>
+<span id="L170"><span class="lineNum">     170</span> <span class="tlaGNC">           3 :         })</span></span>
+<span id="L171"><span class="lineNum">     171</span>              : </span>
+<span id="L172"><span class="lineNum">     172</span>              : /// Run command by arbitrary set of arguments (returns Exc, but error check is not mandatory). Pipes</span>
+<span id="L173"><span class="lineNum">     173</span>              : /// all IO to stdout/err/in into current terminal, feels totally interactive.</span>
+<span id="L174"><span class="lineNum">     174</span>              : /// Example: e$ret(os$cmd(&quot;cat&quot;, &quot;./cex.c&quot;))</span>
+<span id="L175"><span class="lineNum">     175</span>              : #    define os$cmd(args...)                                                                        \</span>
+<span id="L176"><span class="lineNum">     176</span> <span class="tlaGNC">           3 :         ({                                                                                         \</span></span>
+<span id="L177"><span class="lineNum">     177</span> <span class="tlaGNC">           3 :             char* _args[] = { args, NULL };                                                        \</span></span>
+<span id="L178"><span class="lineNum">     178</span> <span class="tlaGNC">           3 :             usize _args_len = arr$len(_args);                                                      \</span></span>
+<span id="L179"><span class="lineNum">     179</span> <span class="tlaGNC">           3 :             os$cmda(_args, _args_len);                                                             \</span></span>
+<span id="L180"><span class="lineNum">     180</span> <span class="tlaGNC">           3 :         })</span></span>
+<span id="L181"><span class="lineNum">     181</span>              : </span>
+<span id="L182"><span class="lineNum">     182</span>              : /// Path parts join by variable set of args: os$path_join(mem$, &quot;foo&quot;, &quot;bar&quot;, &quot;cex.c&quot;)</span>
+<span id="L183"><span class="lineNum">     183</span>              : #    define os$path_join(allocator, path_parts...)                                                 \</span>
+<span id="L184"><span class="lineNum">     184</span> <span class="tlaGNC">         576 :         ({                                                                                         \</span></span>
+<span id="L185"><span class="lineNum">     185</span> <span class="tlaGNC">         576 :             char* _args[] = { path_parts };                                                        \</span></span>
+<span id="L186"><span class="lineNum">     186</span> <span class="tlaGNC">         576 :             usize _args_len = arr$len(_args);                                                      \</span></span>
+<span id="L187"><span class="lineNum">     187</span> <span class="tlaGNC">         576 :             os.path.join(_args, _args_len, allocator);                                             \</span></span>
+<span id="L188"><span class="lineNum">     188</span> <span class="tlaGNC">         576 :         })</span></span>
+<span id="L189"><span class="lineNum">     189</span>              : </span>
+<span id="L190"><span class="lineNum">     190</span>              : </span>
+<span id="L191"><span class="lineNum">     191</span>              : void _cex_os_time_scope_cleanup(f64* timer);</span>
+<span id="L192"><span class="lineNum">     192</span>              : </span>
+<span id="L193"><span class="lineNum">     193</span>              : /// Takes time measurement of code inside the scope, prints timings into stdout via log$debug()</span>
+<span id="L194"><span class="lineNum">     194</span>              : #    define os$time_scope()                                                                        \</span>
+<span id="L195"><span class="lineNum">     195</span> <span class="tlaGNC">          12 :         for (f64 cex$tmpname(scope_timer)                                                          \</span></span>
+<span id="L196"><span class="lineNum">     196</span> <span class="tlaGNC">          12 :                  __attribute__((__cleanup__(_cex_os_time_scope_cleanup))) = os.timer(),            \</span></span>
+<span id="L197"><span class="lineNum">     197</span> <span class="tlaGNC">          12 :                  cex$tmpname(scope_cntr) = 0;                                                      \</span></span>
+<span id="L198"><span class="lineNum">     198</span> <span class="tlaGNC">          21 :              cex$tmpname(scope_cntr) &lt; 1;                                                          \</span></span>
+<span id="L199"><span class="lineNum">     199</span> <span class="tlaGNC">          12 :              cex$tmpname(scope_timer) = (os.timer() - cex$tmpname(scope_timer)) * -1,              \</span></span>
+<span id="L200"><span class="lineNum">     200</span> <span class="tlaGNC">           9 :                  cex$tmpname(scope_cntr)++,                                                        \</span></span>
+<span id="L201"><span class="lineNum">     201</span> <span class="tlaGNC">           9 :                  log$debug(&quot;&quot;))</span></span>
+<span id="L202"><span class="lineNum">     202</span>              : </span>
+<span id="L203"><span class="lineNum">     203</span>              : /**</span>
+<span id="L204"><span class="lineNum">     204</span>              : </span>
+<span id="L205"><span class="lineNum">     205</span>              : ## Operating system</span>
+<span id="L206"><span class="lineNum">     206</span>              : </span>
+<span id="L207"><span class="lineNum">     207</span>              : Cross-platform OS related operations:</span>
+<span id="L208"><span class="lineNum">     208</span>              : </span>
+<span id="L209"><span class="lineNum">     209</span>              : - `os.cmd.` - for running commands and interacting with them</span>
+<span id="L210"><span class="lineNum">     210</span>              : - `os.fs.` - file-system related tasks</span>
+<span id="L211"><span class="lineNum">     211</span>              : - `os.env.` - working with process and user environment</span>
+<span id="L212"><span class="lineNum">     212</span>              : - `os.path.` - file path operations</span>
+<span id="L213"><span class="lineNum">     213</span>              : - `os.platform.` - information about current platform</span>
+<span id="L214"><span class="lineNum">     214</span>              : - `os.random.` - PCG64 pseudo-random number generator with auto-seed via os.timer(), thread-safe via _Thread_local state</span>
+<span id="L215"><span class="lineNum">     215</span>              : </span>
+<span id="L216"><span class="lineNum">     216</span>              : </span>
+<span id="L217"><span class="lineNum">     217</span>              : Examples:</span>
+<span id="L218"><span class="lineNum">     218</span>              : </span>
+<span id="L219"><span class="lineNum">     219</span>              : - Running simple commands</span>
+<span id="L220"><span class="lineNum">     220</span>              : ```c</span>
+<span id="L221"><span class="lineNum">     221</span>              : // NOTE: there are many operation with os-related stuff in cexy build system</span>
+<span id="L222"><span class="lineNum">     222</span>              : // see real usages:  ./cex help --example os.cmd.run</span>
+<span id="L223"><span class="lineNum">     223</span>              : </span>
+<span id="L224"><span class="lineNum">     224</span>              : // Easy macro, run fixed number of arguments</span>
+<span id="L225"><span class="lineNum">     225</span>              : </span>
+<span id="L226"><span class="lineNum">     226</span>              : e$ret(os$cmd(</span>
+<span id="L227"><span class="lineNum">     227</span>              :     cexy$cc,</span>
+<span id="L228"><span class="lineNum">     228</span>              :     &quot;src/main.c&quot;,</span>
+<span id="L229"><span class="lineNum">     229</span>              :     cexy$build_dir &quot;/sqlite3.o&quot;,</span>
+<span id="L230"><span class="lineNum">     230</span>              :     cexy$cc_include,</span>
+<span id="L231"><span class="lineNum">     231</span>              :     &quot;-lpthread&quot;,</span>
+<span id="L232"><span class="lineNum">     232</span>              :     &quot;-lm&quot;,</span>
+<span id="L233"><span class="lineNum">     233</span>              :     &quot;-o&quot;,</span>
+<span id="L234"><span class="lineNum">     234</span>              :     cexy$build_dir &quot;/hello_sqlite&quot;</span>
+<span id="L235"><span class="lineNum">     235</span>              : ));</span>
+<span id="L236"><span class="lineNum">     236</span>              : </span>
+<span id="L237"><span class="lineNum">     237</span>              : </span>
+<span id="L238"><span class="lineNum">     238</span>              : ```</span>
+<span id="L239"><span class="lineNum">     239</span>              : </span>
+<span id="L240"><span class="lineNum">     240</span>              : - Running dynamic arguments</span>
+<span id="L241"><span class="lineNum">     241</span>              : ```c</span>
+<span id="L242"><span class="lineNum">     242</span>              : mem$scope(tmem$, _)</span>
+<span id="L243"><span class="lineNum">     243</span>              : {</span>
+<span id="L244"><span class="lineNum">     244</span>              :     arr$(char*) args = arr$new(args, _);</span>
+<span id="L245"><span class="lineNum">     245</span>              :     arr$pushm(</span>
+<span id="L246"><span class="lineNum">     246</span>              :         args,</span>
+<span id="L247"><span class="lineNum">     247</span>              :         cexy$cc,</span>
+<span id="L248"><span class="lineNum">     248</span>              :         &quot;-Wall&quot;,</span>
+<span id="L249"><span class="lineNum">     249</span>              :         &quot;-Werror&quot;,</span>
+<span id="L250"><span class="lineNum">     250</span>              :     );</span>
+<span id="L251"><span class="lineNum">     251</span>              : </span>
+<span id="L252"><span class="lineNum">     252</span>              :     if (os.platform.current() == OSPlatform__win) {</span>
+<span id="L253"><span class="lineNum">     253</span>              :         arr$pushm(args, &quot;-lbcrypt&quot;);</span>
+<span id="L254"><span class="lineNum">     254</span>              :     }</span>
+<span id="L255"><span class="lineNum">     255</span>              : </span>
+<span id="L256"><span class="lineNum">     256</span>              :     arr$pushm(args, NULL); // NOTE: last element must be NULL</span>
+<span id="L257"><span class="lineNum">     257</span>              :     e$ret(os$cmda(args));</span>
+<span id="L258"><span class="lineNum">     258</span>              : }</span>
+<span id="L259"><span class="lineNum">     259</span>              : ```</span>
+<span id="L260"><span class="lineNum">     260</span>              : </span>
+<span id="L261"><span class="lineNum">     261</span>              : - Getting command output (low level api)</span>
+<span id="L262"><span class="lineNum">     262</span>              : ```c</span>
+<span id="L263"><span class="lineNum">     263</span>              : os_cmd_c c = { 0 };</span>
+<span id="L264"><span class="lineNum">     264</span>              : mem$scope(tmem$, _)</span>
+<span id="L265"><span class="lineNum">     265</span>              : {</span>
+<span id="L266"><span class="lineNum">     266</span>              :     char* args[] = { &quot;./myprog&quot;, NULL };</span>
+<span id="L267"><span class="lineNum">     267</span>              :     e$ret(os.cmd.create(&amp;c, args, arr$len(args), NULL));</span>
+<span id="L268"><span class="lineNum">     268</span>              : </span>
+<span id="L269"><span class="lineNum">     269</span>              :     char* output = os.cmd.read_all(&amp;c, _);</span>
+<span id="L270"><span class="lineNum">     270</span>              :     if (output) { io.printf(&quot;%s\n&quot;, output); }</span>
+<span id="L271"><span class="lineNum">     271</span>              : </span>
+<span id="L272"><span class="lineNum">     272</span>              :     int err_code = 0;</span>
+<span id="L273"><span class="lineNum">     273</span>              :     e$ret(os.cmd.wait(&amp;c, 10, &amp;err_code));</span>
+<span id="L274"><span class="lineNum">     274</span>              : }</span>
+<span id="L275"><span class="lineNum">     275</span>              : ```</span>
+<span id="L276"><span class="lineNum">     276</span>              : </span>
+<span id="L277"><span class="lineNum">     277</span>              : - Working with files</span>
+<span id="L278"><span class="lineNum">     278</span>              : ```c</span>
+<span id="L279"><span class="lineNum">     279</span>              : if (os.path.exists(&quot;./build&quot;)) { e$ret(os.fs.remove(&quot;./build&quot;)); }</span>
+<span id="L280"><span class="lineNum">     280</span>              : </span>
+<span id="L281"><span class="lineNum">     281</span>              : // illustration of path combining</span>
+<span id="L282"><span class="lineNum">     282</span>              : char* pattern = os$path_join(_, &quot;./src&quot;, &quot;*.c&quot;);</span>
+<span id="L283"><span class="lineNum">     283</span>              : </span>
+<span id="L284"><span class="lineNum">     284</span>              : // find all matching *.c files</span>
+<span id="L285"><span class="lineNum">     285</span>              : for$each (it, os.fs.find(pattern, true, _)) {</span>
+<span id="L286"><span class="lineNum">     286</span>              :     log$debug(&quot;found file: %s\n&quot;, it);</span>
+<span id="L287"><span class="lineNum">     287</span>              : }</span>
+<span id="L288"><span class="lineNum">     288</span>              : ```</span>
+<span id="L289"><span class="lineNum">     289</span>              : </span>
+<span id="L290"><span class="lineNum">     290</span>              : </span>
+<span id="L291"><span class="lineNum">     291</span>              : */</span>
+<span id="L292"><span class="lineNum">     292</span>              : struct __cex_namespace__os {</span>
+<span id="L293"><span class="lineNum">     293</span>              :     // Autogenerated by CEX</span>
+<span id="L294"><span class="lineNum">     294</span>              :     // clang-format off</span>
+<span id="L295"><span class="lineNum">     295</span>              : </span>
+<span id="L296"><span class="lineNum">     296</span>              :     /// Get available CPU cores on system, or -1 on error</span>
+<span id="L297"><span class="lineNum">     297</span>              :     i32             (*cpu_count)(void);</span>
+<span id="L298"><span class="lineNum">     298</span>              :     /// Exit process with status code. Does not return.</span>
+<span id="L299"><span class="lineNum">     299</span>              :     void            (*exit)(i32 code);</span>
+<span id="L300"><span class="lineNum">     300</span>              :     /// Get last system API error as string representation (Exception compatible). Result content may be</span>
+<span id="L301"><span class="lineNum">     301</span>              :     /// affected by OS locale settings.</span>
+<span id="L302"><span class="lineNum">     302</span>              :     Exc             (*get_last_error)(void);</span>
+<span id="L303"><span class="lineNum">     303</span>              :     /// Computes generic buffer SIP hash (platform/endiannes stable), seed can be null, or previous hash</span>
+<span id="L304"><span class="lineNum">     304</span>              :     /// value for hash stacking  (null or empty `p` returns 0 hash). (This is the same general hash</span>
+<span id="L305"><span class="lineNum">     305</span>              :     /// function is used in str.hash() and hm$ hashmaps)</span>
+<span id="L306"><span class="lineNum">     306</span>              :     u64             (*hash)(void* p, usize psize, u64 seed);</span>
+<span id="L307"><span class="lineNum">     307</span>              :     /// Sleep for `seconds` duration (f64). On Windows, precision is limited to ~1-2ms</span>
+<span id="L308"><span class="lineNum">     308</span>              :     /// (Sleep() uses millisecond granularity). Use os.timer() for high-resolution timing.</span>
+<span id="L309"><span class="lineNum">     309</span>              :     void            (*sleep)(f64 seconds);</span>
+<span id="L310"><span class="lineNum">     310</span>              :     /// Get high performance monotonic timer value in seconds, started from the first call of the</span>
+<span id="L311"><span class="lineNum">     311</span>              :     /// os.timer()</span>
+<span id="L312"><span class="lineNum">     312</span>              :     f64             (*timer)(void);</span>
+<span id="L313"><span class="lineNum">     313</span>              : </span>
+<span id="L314"><span class="lineNum">     314</span>              :     struct {</span>
+<span id="L315"><span class="lineNum">     315</span>              :         /// Creates new os command (use os$cmd() and os$cmd() for easy cases). flags can be NULL.</span>
+<span id="L316"><span class="lineNum">     316</span>              :         Exception       (*create)(os_cmd_c* self, char** args, usize args_len, os_cmd_flags_s* flags);</span>
+<span id="L317"><span class="lineNum">     317</span>              :         /// Check if `cmd_exe` program name exists in PATH. cmd_exe can be absolute, or simple command name,</span>
+<span id="L318"><span class="lineNum">     318</span>              :         /// e.g. `cat`</span>
+<span id="L319"><span class="lineNum">     319</span>              :         bool            (*exists)(char* cmd_exe);</span>
+<span id="L320"><span class="lineNum">     320</span>              :         /// Get running command stderr stream</span>
+<span id="L321"><span class="lineNum">     321</span>              :         FILE*           (*fstderr)(os_cmd_c* self);</span>
+<span id="L322"><span class="lineNum">     322</span>              :         /// Get running command stdin stream</span>
+<span id="L323"><span class="lineNum">     323</span>              :         FILE*           (*fstdin)(os_cmd_c* self);</span>
+<span id="L324"><span class="lineNum">     324</span>              :         /// Get running command stdout stream</span>
+<span id="L325"><span class="lineNum">     325</span>              :         FILE*           (*fstdout)(os_cmd_c* self);</span>
+<span id="L326"><span class="lineNum">     326</span>              :         /// Checks if process is running</span>
+<span id="L327"><span class="lineNum">     327</span>              :         bool            (*is_alive)(os_cmd_c* self);</span>
+<span id="L328"><span class="lineNum">     328</span>              :         /// Terminates the running process</span>
+<span id="L329"><span class="lineNum">     329</span>              :         Exception       (*kill)(os_cmd_c* self);</span>
+<span id="L330"><span class="lineNum">     330</span>              :         /// Read all output from process stdout, NULL if stdout is not available</span>
+<span id="L331"><span class="lineNum">     331</span>              :         char*           (*read_all)(os_cmd_c* self, IAllocator allc);</span>
+<span id="L332"><span class="lineNum">     332</span>              :         /// Read line from process stdout, NULL if stdout is not available</span>
+<span id="L333"><span class="lineNum">     333</span>              :         char*           (*read_line)(os_cmd_c* self, IAllocator allc);</span>
+<span id="L334"><span class="lineNum">     334</span>              :         /// Get return code of the finished command result, active process always return -1.</span>
+<span id="L335"><span class="lineNum">     335</span>              :         i32             (*ret_code)(os_cmd_c* self);</span>
+<span id="L336"><span class="lineNum">     336</span>              :         /// Run command using arguments array and resulting os_cmd_c</span>
+<span id="L337"><span class="lineNum">     337</span>              :         Exception       (*run)(char** args, usize args_len, os_cmd_c* out_cmd);</span>
+<span id="L338"><span class="lineNum">     338</span>              :         /// Waits until array of `procs` is finished. If timeout_sec is 0 waits indefinitely, when</span>
+<span id="L339"><span class="lineNum">     339</span>              :         /// timeout occurs `Error.timeout` returned and `procs` untouched. Otherwise all `procs` awaited and</span>
+<span id="L340"><span class="lineNum">     340</span>              :         /// cleaned up, `Error.runtime` returned in case of any non-zero return code.</span>
+<span id="L341"><span class="lineNum">     341</span>              :         Exception       (*wait)(os_cmd_c* procs, usize procs_cnt, f64 timeout_sec);</span>
+<span id="L342"><span class="lineNum">     342</span>              :         /// Writes line to the process stdin</span>
+<span id="L343"><span class="lineNum">     343</span>              :         Exception       (*write_line)(os_cmd_c* self, char* line);</span>
+<span id="L344"><span class="lineNum">     344</span>              :     } cmd;</span>
+<span id="L345"><span class="lineNum">     345</span>              : </span>
+<span id="L346"><span class="lineNum">     346</span>              :     struct {</span>
+<span id="L347"><span class="lineNum">     347</span>              :         /// Get path to the current executable</span>
+<span id="L348"><span class="lineNum">     348</span>              :         char*           (*executable_path)(IAllocator allc);</span>
+<span id="L349"><span class="lineNum">     349</span>              :         /// Get environment variable, with `deflt` if not found</span>
+<span id="L350"><span class="lineNum">     350</span>              :         char*           (*get)(char* name, char* deflt);</span>
+<span id="L351"><span class="lineNum">     351</span>              :         /// Get user home directory path</span>
+<span id="L352"><span class="lineNum">     352</span>              :         char*           (*home_dir)(IAllocator allc);</span>
+<span id="L353"><span class="lineNum">     353</span>              :         /// Get current process ID</span>
+<span id="L354"><span class="lineNum">     354</span>              :         i32             (*pid)(void);</span>
+<span id="L355"><span class="lineNum">     355</span>              :         /// Set environment variable</span>
+<span id="L356"><span class="lineNum">     356</span>              :         Exception       (*set)(char* name, char* value);</span>
+<span id="L357"><span class="lineNum">     357</span>              :         /// Unset environment variable</span>
+<span id="L358"><span class="lineNum">     358</span>              :         Exception       (*unset)(char* name);</span>
+<span id="L359"><span class="lineNum">     359</span>              :     } env;</span>
+<span id="L360"><span class="lineNum">     360</span>              : </span>
+<span id="L361"><span class="lineNum">     361</span>              :     struct {</span>
+<span id="L362"><span class="lineNum">     362</span>              :         /// Change current working directory</span>
+<span id="L363"><span class="lineNum">     363</span>              :         Exception       (*chdir)(char* path);</span>
+<span id="L364"><span class="lineNum">     364</span>              :         /// Copy file</span>
+<span id="L365"><span class="lineNum">     365</span>              :         Exception       (*copy)(char* src_path, char* dst_path);</span>
+<span id="L366"><span class="lineNum">     366</span>              :         /// Copy directory recursively</span>
+<span id="L367"><span class="lineNum">     367</span>              :         Exception       (*copy_tree)(char* src_dir, char* dst_dir);</span>
+<span id="L368"><span class="lineNum">     368</span>              :         /// Iterates over directory (can be recursive) using callback function</span>
+<span id="L369"><span class="lineNum">     369</span>              :         Exception       (*dir_walk)(char* path, bool is_recursive, os_fs_dir_walk_f callback_fn, void* user_ctx);</span>
+<span id="L370"><span class="lineNum">     370</span>              :         /// Finds files in `dir/pattern`, for example &quot;./mydir/*.c&quot; (all c files), if is_recursive=true, all</span>
+<span id="L371"><span class="lineNum">     371</span>              :         /// *.c files found in sub-directories.</span>
+<span id="L372"><span class="lineNum">     372</span>              :         arr$(char*)     (*find)(char* path_pattern, bool is_recursive, IAllocator allc);</span>
+<span id="L373"><span class="lineNum">     373</span>              :         /// Get current working directory</span>
+<span id="L374"><span class="lineNum">     374</span>              :         char*           (*getcwd)(IAllocator allc);</span>
+<span id="L375"><span class="lineNum">     375</span>              :         /// Makes directory (no error if exists)</span>
+<span id="L376"><span class="lineNum">     376</span>              :         Exception       (*mkdir)(char* path);</span>
+<span id="L377"><span class="lineNum">     377</span>              :         /// Makes all directories in a path</span>
+<span id="L378"><span class="lineNum">     378</span>              :         Exception       (*mkpath)(char* path);</span>
+<span id="L379"><span class="lineNum">     379</span>              :         /// Removes file or empty directory (also see os.fs.remove_tree)</span>
+<span id="L380"><span class="lineNum">     380</span>              :         Exception       (*remove)(char* path);</span>
+<span id="L381"><span class="lineNum">     381</span>              :         /// Removes directory and all its contents recursively</span>
+<span id="L382"><span class="lineNum">     382</span>              :         Exception       (*remove_tree)(char* path);</span>
+<span id="L383"><span class="lineNum">     383</span>              :         /// Renames file or directory</span>
+<span id="L384"><span class="lineNum">     384</span>              :         Exception       (*rename)(char* old_path, char* new_path);</span>
+<span id="L385"><span class="lineNum">     385</span>              :         /// Returns cross-platform path stats information (see os_fs_stat_s)</span>
+<span id="L386"><span class="lineNum">     386</span>              :         os_fs_stat_s    (*stat)(char* path);</span>
+<span id="L387"><span class="lineNum">     387</span>              :     } fs;</span>
+<span id="L388"><span class="lineNum">     388</span>              : </span>
+<span id="L389"><span class="lineNum">     389</span>              :     struct {</span>
+<span id="L390"><span class="lineNum">     390</span>              :         /// Returns absolute path from relative (no filesystem access, does not resolve symlinks)</span>
+<span id="L391"><span class="lineNum">     391</span>              :         char*           (*absolute)(char* path, IAllocator allc);</span>
+<span id="L392"><span class="lineNum">     392</span>              :         /// Get file name of a path</span>
+<span id="L393"><span class="lineNum">     393</span>              :         char*           (*basename)(char* path, IAllocator allc);</span>
+<span id="L394"><span class="lineNum">     394</span>              :         /// Get directory name of a path</span>
+<span id="L395"><span class="lineNum">     395</span>              :         char*           (*dirname)(char* path, IAllocator allc);</span>
+<span id="L396"><span class="lineNum">     396</span>              :         /// Check if file/directory path exists</span>
+<span id="L397"><span class="lineNum">     397</span>              :         bool            (*exists)(char* file_path);</span>
+<span id="L398"><span class="lineNum">     398</span>              :         /// Join path with OS specific path separator</span>
+<span id="L399"><span class="lineNum">     399</span>              :         char*           (*join)(char** parts, u32 parts_len, IAllocator allc);</span>
+<span id="L400"><span class="lineNum">     400</span>              :         /// Normalize path, resolves &quot;.&quot; and &quot;..&quot; components and collapses &quot;//&quot;</span>
+<span id="L401"><span class="lineNum">     401</span>              :         char*           (*normalize)(char* path, IAllocator allc);</span>
+<span id="L402"><span class="lineNum">     402</span>              :         /// Splits path by `dir` and `file` parts, when return_dir=true - returns `dir` part, otherwise</span>
+<span id="L403"><span class="lineNum">     403</span>              :         /// `file` part</span>
+<span id="L404"><span class="lineNum">     404</span>              :         str_s           (*split)(char* path, bool return_dir);</span>
+<span id="L405"><span class="lineNum">     405</span>              :     } path;</span>
+<span id="L406"><span class="lineNum">     406</span>              : </span>
+<span id="L407"><span class="lineNum">     407</span>              :     struct {</span>
+<span id="L408"><span class="lineNum">     408</span>              :         /// Returns OSArch from string</span>
+<span id="L409"><span class="lineNum">     409</span>              :         OSArch_e        (*arch_from_str)(char* name);</span>
+<span id="L410"><span class="lineNum">     410</span>              :         /// Converts arch to string</span>
+<span id="L411"><span class="lineNum">     411</span>              :         char*           (*arch_to_str)(OSArch_e platform);</span>
+<span id="L412"><span class="lineNum">     412</span>              :         /// Returns current OS platform, returns enum of OSPlatform__*, e.g. OSPlatform__win,</span>
+<span id="L413"><span class="lineNum">     413</span>              :         /// OSPlatform__linux, OSPlatform__macos, etc..</span>
+<span id="L414"><span class="lineNum">     414</span>              :         OSPlatform_e    (*current)(void);</span>
+<span id="L415"><span class="lineNum">     415</span>              :         /// Returns string name of current platform</span>
+<span id="L416"><span class="lineNum">     416</span>              :         char*           (*current_str)(void);</span>
+<span id="L417"><span class="lineNum">     417</span>              :         /// Converts platform name to enum</span>
+<span id="L418"><span class="lineNum">     418</span>              :         OSPlatform_e    (*from_str)(char* name);</span>
+<span id="L419"><span class="lineNum">     419</span>              :         /// Converts platform enum to name</span>
+<span id="L420"><span class="lineNum">     420</span>              :         char*           (*to_str)(OSPlatform_e platform);</span>
+<span id="L421"><span class="lineNum">     421</span>              :     } platform;</span>
+<span id="L422"><span class="lineNum">     422</span>              : </span>
+<span id="L423"><span class="lineNum">     423</span>              :     struct {</span>
+<span id="L424"><span class="lineNum">     424</span>              :         /// Fill `buf` with `buf_len` random bytes. Returns `buf` on success, NULL if `buf` is NULL.</span>
+<span id="L425"><span class="lineNum">     425</span>              :         void*           (*buf)(void* buf, usize buf_len);</span>
+<span id="L426"><span class="lineNum">     426</span>              :         /// Random f32 in [0, 1)</span>
+<span id="L427"><span class="lineNum">     427</span>              :         f32             (*f32)(void);</span>
+<span id="L428"><span class="lineNum">     428</span>              :         /// Random i32 in [min, max)</span>
+<span id="L429"><span class="lineNum">     429</span>              :         i32             (*i32)(i32 min, i32 max);</span>
+<span id="L430"><span class="lineNum">     430</span>              :         /// Initial random generator seed at last os.random.seed() call</span>
+<span id="L431"><span class="lineNum">     431</span>              :         u64             (*initial_seed)(void);</span>
+<span id="L432"><span class="lineNum">     432</span>              :         /// Auto-seeds from timer if state is zero, returns the next raw u32</span>
+<span id="L433"><span class="lineNum">     433</span>              :         u32             (*next)(void);</span>
+<span id="L434"><span class="lineNum">     434</span>              :         /// Random usize in [min, max)</span>
+<span id="L435"><span class="lineNum">     435</span>              :         usize           (*range)(usize min, usize max);</span>
+<span id="L436"><span class="lineNum">     436</span>              :         /// Seeds the PRNG with an explicit seed, resets tick counter</span>
+<span id="L437"><span class="lineNum">     437</span>              :         void            (*seed)(u64 seed);</span>
+<span id="L438"><span class="lineNum">     438</span>              :         /// Number of random values generated since last seed/auto-seed</span>
+<span id="L439"><span class="lineNum">     439</span>              :         u64             (*ticks)(void);</span>
+<span id="L440"><span class="lineNum">     440</span>              :     } random;</span>
+<span id="L441"><span class="lineNum">     441</span>              : </span>
+<span id="L442"><span class="lineNum">     442</span>              :     // clang-format on</span>
+<span id="L443"><span class="lineNum">     443</span>              : };</span>
+<span id="L444"><span class="lineNum">     444</span>              : CEX_NAMESPACE struct __cex_namespace__os os;</span>
+<span id="L445"><span class="lineNum">     445</span>              : </span>
+<span id="L446"><span class="lineNum">     446</span>              : #endif</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>

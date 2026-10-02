@@ -1,0 +1,349 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage-global.info - cexstd/random/cexstd/random/Random.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../../../../index.html">top level</a> - <a href="index.html">cexstd/random/cexstd/random</a> - Random.c<span style="font-size: 80%;"> (source / <a href="Random.c.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage-global.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryHi">91.0&nbsp;%</td>
+            <td class="headerCovTableEntry">89</td>
+            <td class="headerCovTableEntry">81</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2026-10-02 14:29:11</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryHi">90.0&nbsp;%</td>
+            <td class="headerCovTableEntry">10</td>
+            <td class="headerCovTableEntry">9</td>
+          </tr>
+                  <tr><td><img src="../../../../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../../../../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : #include &quot;Random.h&quot;</span>
+<span id="L2"><span class="lineNum">       2</span>              : /*</span>
+<span id="L3"><span class="lineNum">       3</span>              : This code is based on https://github.com/mattiasgustavsson/libs/blob/main/rnd.h</span>
+<span id="L4"><span class="lineNum">       4</span>              : </span>
+<span id="L5"><span class="lineNum">       5</span>              : #### PCG - Permuted Congruential Generator</span>
+<span id="L6"><span class="lineNum">       6</span>              : </span>
+<span id="L7"><span class="lineNum">       7</span>              : PCG is a family of simple fast space-efficient statistically good algorithms for random number</span>
+<span id="L8"><span class="lineNum">       8</span>              : generation. Unlike many general-purpose RNGs, they are also hard to predict.</span>
+<span id="L9"><span class="lineNum">       9</span>              : </span>
+<span id="L10"><span class="lineNum">      10</span>              : More information can be found here:</span>
+<span id="L11"><span class="lineNum">      11</span>              : </span>
+<span id="L12"><span class="lineNum">      12</span>              : http://www.pcg-random.org/</span>
+<span id="L13"><span class="lineNum">      13</span>              : </span>
+<span id="L14"><span class="lineNum">      14</span>              : ------------------------------------------------------------------------------</span>
+<span id="L15"><span class="lineNum">      15</span>              : contributors:</span>
+<span id="L16"><span class="lineNum">      16</span>              :         Jonatan Hedborg (unsigned int to normalized float conversion)</span>
+<span id="L17"><span class="lineNum">      17</span>              : </span>
+<span id="L18"><span class="lineNum">      18</span>              : ------------------------------------------------------------------------------</span>
+<span id="L19"><span class="lineNum">      19</span>              : </span>
+<span id="L20"><span class="lineNum">      20</span>              : This software is available under 2 licenses - you may choose the one you like.</span>
+<span id="L21"><span class="lineNum">      21</span>              : Based on public domain implementation - original licenses can be found next to</span>
+<span id="L22"><span class="lineNum">      22</span>              : the relevant implementation sections of this file.</span>
+<span id="L23"><span class="lineNum">      23</span>              : </span>
+<span id="L24"><span class="lineNum">      24</span>              : ------------------------------------------------------------------------------</span>
+<span id="L25"><span class="lineNum">      25</span>              : </span>
+<span id="L26"><span class="lineNum">      26</span>              : ALTERNATIVE A - MIT License</span>
+<span id="L27"><span class="lineNum">      27</span>              : </span>
+<span id="L28"><span class="lineNum">      28</span>              : Copyright (c) 2016 Mattias Gustavsson</span>
+<span id="L29"><span class="lineNum">      29</span>              : </span>
+<span id="L30"><span class="lineNum">      30</span>              : Permission is hereby granted, free of charge, to any person obtaining a copy of</span>
+<span id="L31"><span class="lineNum">      31</span>              : this software and associated documentation files (the &quot;Software&quot;), to deal in</span>
+<span id="L32"><span class="lineNum">      32</span>              : the Software without restriction, including without limitation the rights to</span>
+<span id="L33"><span class="lineNum">      33</span>              : use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies</span>
+<span id="L34"><span class="lineNum">      34</span>              : of the Software, and to permit persons to whom the Software is furnished to do</span>
+<span id="L35"><span class="lineNum">      35</span>              : so, subject to the following conditions:</span>
+<span id="L36"><span class="lineNum">      36</span>              : </span>
+<span id="L37"><span class="lineNum">      37</span>              : The above copyright notice and this permission notice shall be included in all</span>
+<span id="L38"><span class="lineNum">      38</span>              : copies or substantial portions of the Software.</span>
+<span id="L39"><span class="lineNum">      39</span>              : </span>
+<span id="L40"><span class="lineNum">      40</span>              : THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR</span>
+<span id="L41"><span class="lineNum">      41</span>              : IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,</span>
+<span id="L42"><span class="lineNum">      42</span>              : FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE</span>
+<span id="L43"><span class="lineNum">      43</span>              : AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER</span>
+<span id="L44"><span class="lineNum">      44</span>              : LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,</span>
+<span id="L45"><span class="lineNum">      45</span>              : OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE</span>
+<span id="L46"><span class="lineNum">      46</span>              : SOFTWARE.</span>
+<span id="L47"><span class="lineNum">      47</span>              : </span>
+<span id="L48"><span class="lineNum">      48</span>              : ------------------------------------------------------------------------------</span>
+<span id="L49"><span class="lineNum">      49</span>              : </span>
+<span id="L50"><span class="lineNum">      50</span>              : ALTERNATIVE B - Public Domain (www.unlicense.org)</span>
+<span id="L51"><span class="lineNum">      51</span>              : </span>
+<span id="L52"><span class="lineNum">      52</span>              : This is free and unencumbered software released into the public domain.</span>
+<span id="L53"><span class="lineNum">      53</span>              : </span>
+<span id="L54"><span class="lineNum">      54</span>              : Anyone is free to copy, modify, publish, use, compile, sell, or distribute this</span>
+<span id="L55"><span class="lineNum">      55</span>              : software, either in source code form or as a compiled binary, for any purpose,</span>
+<span id="L56"><span class="lineNum">      56</span>              : commercial or non-commercial, and by any means.</span>
+<span id="L57"><span class="lineNum">      57</span>              : </span>
+<span id="L58"><span class="lineNum">      58</span>              : In jurisdictions that recognize copyright laws, the author or authors of this</span>
+<span id="L59"><span class="lineNum">      59</span>              : software dedicate any and all copyright interest in the software to the public</span>
+<span id="L60"><span class="lineNum">      60</span>              : domain. We make this dedication for the benefit of the public at large and to</span>
+<span id="L61"><span class="lineNum">      61</span>              : the detriment of our heirs and successors. We intend this dedication to be an</span>
+<span id="L62"><span class="lineNum">      62</span>              : overt act of relinquishment in perpetuity of all present and future rights to</span>
+<span id="L63"><span class="lineNum">      63</span>              : this software under copyright law.</span>
+<span id="L64"><span class="lineNum">      64</span>              : </span>
+<span id="L65"><span class="lineNum">      65</span>              : THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR</span>
+<span id="L66"><span class="lineNum">      66</span>              : IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,</span>
+<span id="L67"><span class="lineNum">      67</span>              : FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE</span>
+<span id="L68"><span class="lineNum">      68</span>              : AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN</span>
+<span id="L69"><span class="lineNum">      69</span>              : ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION</span>
+<span id="L70"><span class="lineNum">      70</span>              : WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</span>
+<span id="L71"><span class="lineNum">      71</span>              : </span>
+<span id="L72"><span class="lineNum">      72</span>              : ------------------------------------------------------------------------------</span>
+<span id="L73"><span class="lineNum">      73</span>              : */</span>
+<span id="L74"><span class="lineNum">      74</span>              : </span>
+<span id="L75"><span class="lineNum">      75</span>              : // Convert a randomized RND_U32 value to a float value x in the range 0.0f &lt;= x &lt; 1.0f. Contributed</span>
+<span id="L76"><span class="lineNum">      76</span>              : // by Jonatan Hedborg</span>
+<span id="L77"><span class="lineNum">      77</span>              : static inline f32</span>
+<span id="L78"><span class="lineNum">      78</span>              : rnd_internal_f32_normalized_from_u32(u32 value)</span>
+<span id="L79"><span class="lineNum">      79</span> <span class="tlaGNC tlaBgGNC">    11700000 : {</span></span>
+<span id="L80"><span class="lineNum">      80</span> <span class="tlaGNC">    11700000 :     u32 exponent = 127;</span></span>
+<span id="L81"><span class="lineNum">      81</span> <span class="tlaGNC">    11700000 :     u32 mantissa = value &gt;&gt; 9;</span></span>
+<span id="L82"><span class="lineNum">      82</span> <span class="tlaGNC">    11700000 :     u32 result = (exponent &lt;&lt; 23) | mantissa;</span></span>
+<span id="L83"><span class="lineNum">      83</span> <span class="tlaGNC">    11700000 :     f32 fresult = 0.0f;</span></span>
+<span id="L84"><span class="lineNum">      84</span> <span class="tlaGNC">    11700000 :     memcpy(&amp;fresult, &amp;result, sizeof(u32));</span></span>
+<span id="L85"><span class="lineNum">      85</span> <span class="tlaGNC">    11700000 :     return fresult - 1.0f;</span></span>
+<span id="L86"><span class="lineNum">      86</span> <span class="tlaGNC">    11700000 : }</span></span>
+<span id="L87"><span class="lineNum">      87</span>              : </span>
+<span id="L88"><span class="lineNum">      88</span>              : </span>
+<span id="L89"><span class="lineNum">      89</span>              : static inline u32</span>
+<span id="L90"><span class="lineNum">      90</span>              : rnd_internal_murmur3_avalanche32(u32 h)</span>
+<span id="L91"><span class="lineNum">      91</span> <span class="tlaUNC tlaBgUNC">           0 : {</span></span>
+<span id="L92"><span class="lineNum">      92</span> <span class="tlaUNC">           0 :     h ^= h &gt;&gt; 16;</span></span>
+<span id="L93"><span class="lineNum">      93</span> <span class="tlaUNC">           0 :     h *= 0x85ebca6b;</span></span>
+<span id="L94"><span class="lineNum">      94</span> <span class="tlaUNC">           0 :     h ^= h &gt;&gt; 13;</span></span>
+<span id="L95"><span class="lineNum">      95</span> <span class="tlaUNC">           0 :     h *= 0xc2b2ae35;</span></span>
+<span id="L96"><span class="lineNum">      96</span> <span class="tlaUNC">           0 :     h ^= h &gt;&gt; 16;</span></span>
+<span id="L97"><span class="lineNum">      97</span> <span class="tlaUNC">           0 :     return h;</span></span>
+<span id="L98"><span class="lineNum">      98</span> <span class="tlaUNC">           0 : }</span></span>
+<span id="L99"><span class="lineNum">      99</span>              : </span>
+<span id="L100"><span class="lineNum">     100</span>              : </span>
+<span id="L101"><span class="lineNum">     101</span>              : static inline u64</span>
+<span id="L102"><span class="lineNum">     102</span>              : rnd_internal_murmur3_avalanche64(u64 h)</span>
+<span id="L103"><span class="lineNum">     103</span> <span class="tlaGNC tlaBgGNC">         132 : {</span></span>
+<span id="L104"><span class="lineNum">     104</span> <span class="tlaGNC">         132 :     h ^= h &gt;&gt; 33;</span></span>
+<span id="L105"><span class="lineNum">     105</span> <span class="tlaGNC">         132 :     h *= 0xff51afd7ed558ccd;</span></span>
+<span id="L106"><span class="lineNum">     106</span> <span class="tlaGNC">         132 :     h ^= h &gt;&gt; 33;</span></span>
+<span id="L107"><span class="lineNum">     107</span> <span class="tlaGNC">         132 :     h *= 0xc4ceb9fe1a85ec53;</span></span>
+<span id="L108"><span class="lineNum">     108</span> <span class="tlaGNC">         132 :     h ^= h &gt;&gt; 33;</span></span>
+<span id="L109"><span class="lineNum">     109</span> <span class="tlaGNC">         132 :     return h;</span></span>
+<span id="L110"><span class="lineNum">     110</span> <span class="tlaGNC">         132 : }</span></span>
+<span id="L111"><span class="lineNum">     111</span>              : </span>
+<span id="L112"><span class="lineNum">     112</span>              : /**</span>
+<span id="L113"><span class="lineNum">     113</span>              :  * @brief Next random u32 number</span>
+<span id="L114"><span class="lineNum">     114</span>              :  *</span>
+<span id="L115"><span class="lineNum">     115</span>              :  * @param self </span>
+<span id="L116"><span class="lineNum">     116</span>              :  * @return </span>
+<span id="L117"><span class="lineNum">     117</span>              :  */</span>
+<span id="L118"><span class="lineNum">     118</span>              : u32</span>
+<span id="L119"><span class="lineNum">     119</span>              : Random_next(Random_c* self)</span>
+<span id="L120"><span class="lineNum">     120</span> <span class="tlaGNC">    12040797 : {</span></span>
+<span id="L121"><span class="lineNum">     121</span> <span class="tlaGNC">    12040797 :     uassert(self != NULL);</span></span>
+<span id="L122"><span class="lineNum">     122</span> <span class="tlaGNC">    12040797 :     uassert((self-&gt;state[0] != 0 || self-&gt;state[1] != 0) &amp;&amp; &quot;self not seed'ed&quot;);</span></span>
+<span id="L123"><span class="lineNum">     123</span>              : </span>
+<span id="L124"><span class="lineNum">     124</span> <span class="tlaGNC">    12040797 :     u64 oldstate = self-&gt;state[0];</span></span>
+<span id="L125"><span class="lineNum">     125</span> <span class="tlaGNC">    12040797 :     self-&gt;state[0] = oldstate * 0x5851f42d4c957f2dULL + self-&gt;state[1];</span></span>
+<span id="L126"><span class="lineNum">     126</span> <span class="tlaGNC">    12040797 :     u32 xorshifted = (u32)(((oldstate &gt;&gt; 18ULL) ^ oldstate) &gt;&gt; 27ULL);</span></span>
+<span id="L127"><span class="lineNum">     127</span> <span class="tlaGNC">    12040797 :     u32 rot = (u32)(oldstate &gt;&gt; 59ULL);</span></span>
+<span id="L128"><span class="lineNum">     128</span> <span class="tlaGNC">    12040797 :     self-&gt;n_ticks++;</span></span>
+<span id="L129"><span class="lineNum">     129</span> <span class="tlaGNC">    12040797 :     return (xorshifted &gt;&gt; rot) | (xorshifted &lt;&lt; ((-(i32)rot) &amp; 31));</span></span>
+<span id="L130"><span class="lineNum">     130</span> <span class="tlaGNC">    12040797 : }</span></span>
+<span id="L131"><span class="lineNum">     131</span>              : </span>
+<span id="L132"><span class="lineNum">     132</span>              : /**</span>
+<span id="L133"><span class="lineNum">     133</span>              :  * @brief Resets seed of random generator (must be called before first use)</span>
+<span id="L134"><span class="lineNum">     134</span>              :  *</span>
+<span id="L135"><span class="lineNum">     135</span>              :  * @param self </span>
+<span id="L136"><span class="lineNum">     136</span>              :  * @param seed </span>
+<span id="L137"><span class="lineNum">     137</span>              :  */</span>
+<span id="L138"><span class="lineNum">     138</span>              : void</span>
+<span id="L139"><span class="lineNum">     139</span>              : Random_seed(Random_c* self, u64 seed)</span>
+<span id="L140"><span class="lineNum">     140</span> <span class="tlaGNC">          66 : {</span></span>
+<span id="L141"><span class="lineNum">     141</span> <span class="tlaGNC">          66 :     uassert(self != NULL);</span></span>
+<span id="L142"><span class="lineNum">     142</span>              : </span>
+<span id="L143"><span class="lineNum">     143</span> <span class="tlaGNC">          66 :     u64 value = (seed &lt;&lt; 1ULL) | 1ULL;</span></span>
+<span id="L144"><span class="lineNum">     144</span> <span class="tlaGNC">          66 :     value = rnd_internal_murmur3_avalanche64(value);</span></span>
+<span id="L145"><span class="lineNum">     145</span> <span class="tlaGNC">          66 :     self-&gt;state[0] = 0U;</span></span>
+<span id="L146"><span class="lineNum">     146</span> <span class="tlaGNC">          66 :     self-&gt;state[1] = (value &lt;&lt; 1ULL) | 1ULL;</span></span>
+<span id="L147"><span class="lineNum">     147</span> <span class="tlaGNC">          66 :     Random_next(self);</span></span>
+<span id="L148"><span class="lineNum">     148</span> <span class="tlaGNC">          66 :     self-&gt;state[0] += rnd_internal_murmur3_avalanche64(value);</span></span>
+<span id="L149"><span class="lineNum">     149</span> <span class="tlaGNC">          66 :     Random_next(self);</span></span>
+<span id="L150"><span class="lineNum">     150</span>              : </span>
+<span id="L151"><span class="lineNum">     151</span> <span class="tlaGNC">          66 :     uassert(self-&gt;state[0] != 0 || self-&gt;state[1] != 0);</span></span>
+<span id="L152"><span class="lineNum">     152</span> <span class="tlaGNC">          66 :     self-&gt;n_ticks = 0;</span></span>
+<span id="L153"><span class="lineNum">     153</span> <span class="tlaGNC">          66 : }</span></span>
+<span id="L154"><span class="lineNum">     154</span>              : </span>
+<span id="L155"><span class="lineNum">     155</span>              : </span>
+<span id="L156"><span class="lineNum">     156</span>              : /**</span>
+<span id="L157"><span class="lineNum">     157</span>              :  * @brief Random floating point number in [0;1.0] range</span>
+<span id="L158"><span class="lineNum">     158</span>              :  *</span>
+<span id="L159"><span class="lineNum">     159</span>              :  * @param self </span>
+<span id="L160"><span class="lineNum">     160</span>              :  * @return </span>
+<span id="L161"><span class="lineNum">     161</span>              :  */</span>
+<span id="L162"><span class="lineNum">     162</span>              : f32</span>
+<span id="L163"><span class="lineNum">     163</span>              : Random_f32(Random_c* self)</span>
+<span id="L164"><span class="lineNum">     164</span> <span class="tlaGNC">    11700000 : {</span></span>
+<span id="L165"><span class="lineNum">     165</span> <span class="tlaGNC">    11700000 :     uassert(self != NULL);</span></span>
+<span id="L166"><span class="lineNum">     166</span>              : </span>
+<span id="L167"><span class="lineNum">     167</span> <span class="tlaGNC">    11700000 :     f32 result = rnd_internal_f32_normalized_from_u32(Random_next(self));</span></span>
+<span id="L168"><span class="lineNum">     168</span> <span class="tlaGNC">    11700000 :     uassert(result &gt;= 0.0f &amp;&amp; result &lt;= 1.0f);</span></span>
+<span id="L169"><span class="lineNum">     169</span>              : </span>
+<span id="L170"><span class="lineNum">     170</span> <span class="tlaGNC">    11700000 :     return result;</span></span>
+<span id="L171"><span class="lineNum">     171</span> <span class="tlaGNC">    11700000 : }</span></span>
+<span id="L172"><span class="lineNum">     172</span>              : </span>
+<span id="L173"><span class="lineNum">     173</span>              : /**</span>
+<span id="L174"><span class="lineNum">     174</span>              :  * @brief Random i32 number in [min; max] range</span>
+<span id="L175"><span class="lineNum">     175</span>              :  *</span>
+<span id="L176"><span class="lineNum">     176</span>              :  * @param self </span>
+<span id="L177"><span class="lineNum">     177</span>              :  * @param min  minimum for range</span>
+<span id="L178"><span class="lineNum">     178</span>              :  * @param max maximum for range (included!)</span>
+<span id="L179"><span class="lineNum">     179</span>              :  * @return </span>
+<span id="L180"><span class="lineNum">     180</span>              :  */</span>
+<span id="L181"><span class="lineNum">     181</span>              : i32</span>
+<span id="L182"><span class="lineNum">     182</span>              : Random_i32(Random_c* self, i32 min, i32 max)</span>
+<span id="L183"><span class="lineNum">     183</span> <span class="tlaGNC">      300000 : {</span></span>
+<span id="L184"><span class="lineNum">     184</span> <span class="tlaGNC">      300000 :     uassert(self != NULL);</span></span>
+<span id="L185"><span class="lineNum">     185</span> <span class="tlaGNC">      300000 :     uassert(max &gt; min);</span></span>
+<span id="L186"><span class="lineNum">     186</span>              : </span>
+<span id="L187"><span class="lineNum">     187</span> <span class="tlaGNC">      300000 :     i32 const range = (max - min) + 1;</span></span>
+<span id="L188"><span class="lineNum">     188</span> <span class="tlaGNC">      300000 :     i32 const value = (i32)(Random_f32(self) * range);</span></span>
+<span id="L189"><span class="lineNum">     189</span> <span class="tlaGNC">      300000 :     return min + value;</span></span>
+<span id="L190"><span class="lineNum">     190</span> <span class="tlaGNC">      300000 : }</span></span>
+<span id="L191"><span class="lineNum">     191</span>              : </span>
+<span id="L192"><span class="lineNum">     192</span>              : /**</span>
+<span id="L193"><span class="lineNum">     193</span>              :  * @brief Random probability simulation (rolling a dice)</span>
+<span id="L194"><span class="lineNum">     194</span>              :  *</span>
+<span id="L195"><span class="lineNum">     195</span>              :  * @param self </span>
+<span id="L196"><span class="lineNum">     196</span>              :  * @param prob_threshold target probability of dice roll, between [0.0f;1.0f]</span>
+<span id="L197"><span class="lineNum">     197</span>              :  * @return true dire roll if succeeded</span>
+<span id="L198"><span class="lineNum">     198</span>              :  */</span>
+<span id="L199"><span class="lineNum">     199</span>              : bool</span>
+<span id="L200"><span class="lineNum">     200</span>              : Random_prob(Random_c* self, f32 prob_threshold)</span>
+<span id="L201"><span class="lineNum">     201</span> <span class="tlaGNC">     3900000 : {</span></span>
+<span id="L202"><span class="lineNum">     202</span> <span class="tlaGNC">     3900000 :     uassert(self != NULL);</span></span>
+<span id="L203"><span class="lineNum">     203</span> <span class="tlaGNC">     3900000 :     uassert(prob_threshold &gt;= 0.0f &amp;&amp; prob_threshold &lt;= 1.0f);</span></span>
+<span id="L204"><span class="lineNum">     204</span>              : </span>
+<span id="L205"><span class="lineNum">     205</span> <span class="tlaGNC">     3900000 :     f32 rnd = Random_f32(self);</span></span>
+<span id="L206"><span class="lineNum">     206</span> <span class="tlaGNC">     3900000 :     return rnd &lt;= prob_threshold;</span></span>
+<span id="L207"><span class="lineNum">     207</span> <span class="tlaGNC">     3900000 : }</span></span>
+<span id="L208"><span class="lineNum">     208</span>              : </span>
+<span id="L209"><span class="lineNum">     209</span>              : </span>
+<span id="L210"><span class="lineNum">     210</span>              : /**</span>
+<span id="L211"><span class="lineNum">     211</span>              :  * @brief Returning random range in [min; max). Useful for arrays.</span>
+<span id="L212"><span class="lineNum">     212</span>              :  *</span>
+<span id="L213"><span class="lineNum">     213</span>              :  * @param self </span>
+<span id="L214"><span class="lineNum">     214</span>              :  * @param min minimum start range (included)</span>
+<span id="L215"><span class="lineNum">     215</span>              :  * @param max maximum end range (excluded)</span>
+<span id="L216"><span class="lineNum">     216</span>              :  * @return </span>
+<span id="L217"><span class="lineNum">     217</span>              :  */</span>
+<span id="L218"><span class="lineNum">     218</span>              : usize</span>
+<span id="L219"><span class="lineNum">     219</span>              : Random_range(Random_c* self, usize min, usize max)</span>
+<span id="L220"><span class="lineNum">     220</span> <span class="tlaGNC">      600000 : {</span></span>
+<span id="L221"><span class="lineNum">     221</span> <span class="tlaGNC">      600000 :     uassert(self != NULL);</span></span>
+<span id="L222"><span class="lineNum">     222</span> <span class="tlaGNC">      600000 :     uassert(max &gt; min);</span></span>
+<span id="L223"><span class="lineNum">     223</span>              : </span>
+<span id="L224"><span class="lineNum">     224</span> <span class="tlaGNC">      600000 :     usize const range = (max - min);</span></span>
+<span id="L225"><span class="lineNum">     225</span> <span class="tlaGNC">      600000 :     usize const value = (usize)(Random_f32(self) * range);</span></span>
+<span id="L226"><span class="lineNum">     226</span> <span class="tlaGNC">      600000 :     return min + value;</span></span>
+<span id="L227"><span class="lineNum">     227</span> <span class="tlaGNC">      600000 : }</span></span>
+<span id="L228"><span class="lineNum">     228</span>              : </span>
+<span id="L229"><span class="lineNum">     229</span>              : /**</span>
+<span id="L230"><span class="lineNum">     230</span>              :  * @brief Fill buffer with randomized data</span>
+<span id="L231"><span class="lineNum">     231</span>              :  *</span>
+<span id="L232"><span class="lineNum">     232</span>              :  * @param self </span>
+<span id="L233"><span class="lineNum">     233</span>              :  * @param buf any buffer of memory</span>
+<span id="L234"><span class="lineNum">     234</span>              :  * @param buf_len buffer capacity</span>
+<span id="L235"><span class="lineNum">     235</span>              :  */</span>
+<span id="L236"><span class="lineNum">     236</span>              : void</span>
+<span id="L237"><span class="lineNum">     237</span>              : Random_buf(Random_c* self, void* buf, usize buf_len)</span>
+<span id="L238"><span class="lineNum">     238</span> <span class="tlaGNC">       30012 : {</span></span>
+<span id="L239"><span class="lineNum">     239</span> <span class="tlaGNC">       30012 :     uassert(self != NULL);</span></span>
+<span id="L240"><span class="lineNum">     240</span> <span class="tlaGNC">       30012 :     uassert(buf != NULL);</span></span>
+<span id="L241"><span class="lineNum">     241</span>              : </span>
+<span id="L242"><span class="lineNum">     242</span> <span class="tlaGNC">       30012 :     usize reminder = buf_len % 4;</span></span>
+<span id="L243"><span class="lineNum">     243</span> <span class="tlaGNC">       30012 :     usize buf_aligned_len = buf_len - reminder;</span></span>
+<span id="L244"><span class="lineNum">     244</span> <span class="tlaGNC">       30012 :     static_assert(sizeof(u32) == 4, &quot;u32 size mismatch&quot;);</span></span>
+<span id="L245"><span class="lineNum">     245</span>              : </span>
+<span id="L246"><span class="lineNum">     246</span>              :     // Fill buf, with 4 byte at a step</span>
+<span id="L247"><span class="lineNum">     247</span> <span class="tlaGNC">      330075 :     for (usize i = 0; i &lt; buf_aligned_len; i += 4) {</span></span>
+<span id="L248"><span class="lineNum">     248</span> <span class="tlaGNC">      300063 :         u32 r = Random_next(self);</span></span>
+<span id="L249"><span class="lineNum">     249</span> <span class="tlaGNC">      300063 :         memcpy((char*)buf + i, &amp;r, sizeof(u32));</span></span>
+<span id="L250"><span class="lineNum">     250</span> <span class="tlaGNC">      300063 :     }</span></span>
+<span id="L251"><span class="lineNum">     251</span> <span class="tlaGNC">       30012 :     if (reminder &gt; 0) {</span></span>
+<span id="L252"><span class="lineNum">     252</span> <span class="tlaGNC">       30003 :         u32 r = Random_next(self);</span></span>
+<span id="L253"><span class="lineNum">     253</span>              : </span>
+<span id="L254"><span class="lineNum">     254</span> <span class="tlaGNC">      120009 :         for (usize i = 0; i &lt; reminder; i++) {</span></span>
+<span id="L255"><span class="lineNum">     255</span> <span class="tlaGNC">       90006 :             ((u8*)buf)[buf_aligned_len + i] = ((u8*)&amp;r)[i];</span></span>
+<span id="L256"><span class="lineNum">     256</span> <span class="tlaGNC">       90006 :         }</span></span>
+<span id="L257"><span class="lineNum">     257</span> <span class="tlaGNC">       30003 :     }</span></span>
+<span id="L258"><span class="lineNum">     258</span> <span class="tlaGNC">       30012 : }</span></span>
+<span id="L259"><span class="lineNum">     259</span>              : </span>
+<span id="L260"><span class="lineNum">     260</span>              : CEX_NAMESPACE_DEF struct __cex_namespace__Random Random = {</span>
+<span id="L261"><span class="lineNum">     261</span>              :     // Autogenerated by CEX</span>
+<span id="L262"><span class="lineNum">     262</span>              :     // clang-format off</span>
+<span id="L263"><span class="lineNum">     263</span>              : </span>
+<span id="L264"><span class="lineNum">     264</span>              :     .buf = Random_buf,</span>
+<span id="L265"><span class="lineNum">     265</span>              :     .f32 = Random_f32,</span>
+<span id="L266"><span class="lineNum">     266</span>              :     .i32 = Random_i32,</span>
+<span id="L267"><span class="lineNum">     267</span>              :     .next = Random_next,</span>
+<span id="L268"><span class="lineNum">     268</span>              :     .prob = Random_prob,</span>
+<span id="L269"><span class="lineNum">     269</span>              :     .range = Random_range,</span>
+<span id="L270"><span class="lineNum">     270</span>              :     .seed = Random_seed,</span>
+<span id="L271"><span class="lineNum">     271</span>              : </span>
+<span id="L272"><span class="lineNum">     272</span>              :     // clang-format on</span>
+<span id="L273"><span class="lineNum">     273</span>              : };</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../../../../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>
