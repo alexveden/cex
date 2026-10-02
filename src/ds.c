@@ -34,31 +34,27 @@ _cexds__base(_cexds__array_header* hdr)
     }
 }
 
-bool
+Exception
 _cexds__arr_integrity(const void* arr, usize magic_num)
 {
-    (void)magic_num;
-    (void)arr;
+    if (arr == NULL) { return Error.memory; }
 
-#ifdef CEX_TEST
-    _cexds__array_header* hdr = _cexds__header(arr);
-    (void)hdr;
-
-    uassert(arr != NULL && "array uninitialized or out-of-mem");
     // WARNING: next can trigger sanitizer with "stack/heap-buffer-underflow on address"
     //          when arr pointer is invalid arr$ / hm$ type pointer
+    _cexds__array_header* hdr = _cexds__header(arr);
     if (magic_num == 0) {
-        uassert(((hdr->magic_num == _CEXDS_ARR_MAGIC) || hdr->magic_num == _CEXDS_HM_MAGIC));
-    } else {
-        uassert(hdr->magic_num == magic_num);
+        if (hdr->magic_num != _CEXDS_ARR_MAGIC && hdr->magic_num != _CEXDS_HM_MAGIC) {
+            return Error.integrity;
+        }
+    } else if (hdr->magic_num != magic_num) {
+        return Error.integrity;
     }
 
+#ifdef CEX_TEST
     uassert(mem$asan_poison_check(hdr->__poison_area, sizeof(hdr->__poison_area)));
-
 #endif
 
-
-    return true;
+    return EOK;
 }
 
 inline usize
@@ -84,7 +80,7 @@ _cexds__arrgrowf(
     if (arr == NULL) {
         uassert_always(allc != NULL && "using uninitialized arr/hm or out-of-mem error");
     } else {
-        _cexds__arr_integrity(arr, 0);
+        uassert(_cexds__arr_integrity(arr, 0) == EOK);
     }
     usize min_len;
     {
@@ -613,7 +609,7 @@ void
 _cexds__hmfree_func(void* a, usize elemsize, usize keyoffset)
 {
     if (a == NULL) { return; }
-    _cexds__arr_integrity(a, _CEXDS_HM_MAGIC);
+    uassert(_cexds__arr_integrity(a, _CEXDS_HM_MAGIC) == EOK);
 
     _cexds__array_header* h = _cexds__header(a);
     _cexds__hmfree_keys_func(a, elemsize, keyoffset);
@@ -627,7 +623,7 @@ _cexds__hmfree_func(void* a, usize elemsize, usize keyoffset)
 static ptrdiff_t
 _cexds__hm_find_slot(void* a, usize elemsize, void* key, usize keysize, usize keyoffset)
 {
-    _cexds__arr_integrity(a, _CEXDS_HM_MAGIC);
+    uassert(_cexds__arr_integrity(a, _CEXDS_HM_MAGIC) == EOK);
     _cexds__hash_index* table = _cexds__hash_table(a);
     enum _CexDsKeyType_e key_type = table->key_type;
     u64 hash = _cexds__hash(key_type, key, keysize, table->seed);
@@ -694,7 +690,7 @@ _cexds__hm_find_slot(void* a, usize elemsize, void* key, usize keysize, usize ke
 void*
 _cexds__hmget_key(void* a, usize elemsize, void* key, usize keysize, usize keyoffset)
 {
-    _cexds__arr_integrity(a, _CEXDS_HM_MAGIC);
+    uassert(_cexds__arr_integrity(a, _CEXDS_HM_MAGIC) == EOK);
 
     _cexds__hash_index* table = (_cexds__hash_index*)_cexds__header(a)->_hash_table;
     if (table != NULL) {
@@ -784,7 +780,7 @@ _cexds__hmput_key(
 )
 {
     uassert(result != NULL);
-    _cexds__arr_integrity(a, _CEXDS_HM_MAGIC);
+    uassert(_cexds__arr_integrity(a, _CEXDS_HM_MAGIC) == EOK);
 
     void** out_result = (void**)result;
     _cexds__hash_index* table = (_cexds__hash_index*)_cexds__header(a)->_hash_table;
@@ -976,7 +972,7 @@ end:
 bool
 _cexds__hmdel_key(void* a, usize elemsize, void* key, usize keysize, usize keyoffset)
 {
-    _cexds__arr_integrity(a, _CEXDS_HM_MAGIC);
+    uassert(_cexds__arr_integrity(a, _CEXDS_HM_MAGIC) == EOK);
 
     _cexds__hash_index* table = (_cexds__hash_index*)_cexds__header(a)->_hash_table;
     uassert(_cexds__header(a)->allocator != NULL);

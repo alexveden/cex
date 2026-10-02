@@ -2259,4 +2259,21 @@ test$case(test_ds_null_tolerant)
     return EOK;
 }
 
+test$case(test_arr_hm_validate)
+{
+    arr$(int) a = arr$new(a, mem$);
+    hm$(int, int) m = hm$new(m, mem$);
+
+    tassert_eq(arr$validate(a), EOK);
+    tassert_eq(hm$validate(m), EOK);
+    tassert_eq(arr$validate(NULL), Error.memory);
+    tassert_eq(hm$validate(NULL), Error.memory);
+    tassert_eq(arr$validate(m), Error.integrity);
+    tassert_eq(hm$validate(a), Error.integrity);
+
+    arr$free(a);
+    hm$free(m);
+    return EOK;
+}
+
 test$main();

@@ -1468,8 +1468,9 @@ pointer or fat-pointer indirection. The runtime header
 3. **O(1) amortized growth** — Capacity doubles when full (minimum 16).
 4. **Unified length** — `arr$len()` works on dynamic `arr$`, static C arrays, and hashmaps.
 5. **Unified iteration** — `for$each` / `for$eachp` iterate any array (arr$, static, pointer+len, hm$).
-6. **Debug integrity** — Each array header has a magic number checked by every mutating macro
-   (`_CEXDS_ARR_MAGIC = 0xC001DAAD`). Wrong magic triggers an assertion.
+6. **Debug integrity** — Each array header has a magic number (`_CEXDS_ARR_MAGIC = 0xC001DAAD`).
+   Validate an explicit handle with `arr$validate()` / `hm$validate()`; wrong magic or a NULL
+   handle returns an `Exception` (`Error.integrity` / `Error.memory`).
 7. **ASAN-aware** — The 8-byte poison area after the header is marked poisoned so ASAN catches
    underflow reads/writes.
 8. **OOM-resilient** — mutating macros return a pointer to the item slot or `NULL` on memory
@@ -1527,7 +1528,7 @@ enum _CexDsKeyType_e
 };
 extern void* _cexds__arrgrowf(void* a, usize elemsize, usize addlen, usize min_cap, u16 el_align, IAllocator allc);
 extern void _cexds__arrfreef(void* a);
-extern bool _cexds__arr_integrity(const void* arr, usize magic_num);
+extern Exception _cexds__arr_integrity(const void* arr, usize magic_num);
 extern usize _cexds__arr_len(const void* arr);
 extern void _cexds__hmfree_func(void* p, usize elemsize, usize keyoffset);
 extern void _cexds__hmfree_keys_func(void* a, usize elemsize, usize keyoffset);
@@ -1567,6 +1568,9 @@ static_assert(
 
 #define _cexds__header(t) ((_cexds__array_header*)(((char*)(t)) - sizeof(_cexds__array_header)))
 
+/// Validates an `arr$` handle: `Error.memory` if NULL, `Error.integrity` on bad magic, `EOK` otherwise.
+#define arr$validate(a) _cexds__arr_integrity((a), _CEXDS_ARR_MAGIC)
+
 /// Declares a dynamic array variable. `arr$(int) myarr` = `int* myarr`. Zero overhead, fully C-compatible.
 #define arr$(T) T*
 
@@ -1593,20 +1597,17 @@ struct _cexds__arr_new_kwargs_s
 /// Frees the array memory and sets the pointer to NULL. Safe on NULL arrays (no-op).
 #define arr$free(a)                                                                                \
     ({                                                                                             \
-        if ((a) != NULL) { _cexds__arr_integrity(a, _CEXDS_ARR_MAGIC); }                           \
         _cexds__arrfreef((a));                                                                     \
         (a) = NULL;                                                                                \
     })
 
 /// Resizes the array capacity to at least `n` elements. No-op if current capacity >= n. Returns the array pointer, or NULL on memory error / NULL array.
-#define arr$setcap(a, n)                                                                           \
-    ((a) != NULL ? (_cexds__arr_integrity(a, _CEXDS_ARR_MAGIC), arr$grow(a, 0, n)) : NULL)
+#define arr$setcap(a, n) ((a) != NULL ? arr$grow(a, 0, n) : NULL)
 
 /// Clears the array (sets length to 0). Does NOT free or shrink memory — use `arr$free` for that. NULL array is a no-op.
 #define arr$clear(a)                                                                               \
     ({                                                                                             \
         if ((a) != NULL) {                                                                         \
-            _cexds__arr_integrity(a, _CEXDS_ARR_MAGIC);                                            \
             _cexds__header(a)->length = 0;                                                         \
         }                                                                                          \
     })
@@ -1619,7 +1620,6 @@ struct _cexds__arr_new_kwargs_s
     ({                                                                                             \
         usize _cexds__len = 0;                                                                     \
         if ((a) != NULL) {                                                                         \
-            _cexds__arr_integrity(a, _CEXDS_ARR_MAGIC);                                            \
             _cexds__len = _cexds__header(a)->length;                                               \
             uassert_always((usize)i < _cexds__len && "out of bounds");                             \
             if ((usize)i + 1 < _cexds__len) {                                                      \
@@ -1634,7 +1634,6 @@ struct _cexds__arr_new_kwargs_s
 #define arr$delswap(a, i)                                                                          \
     ({                                                                                             \
         if ((a) != NULL) {                                                                         \
-            _cexds__arr_integrity(a, _CEXDS_ARR_MAGIC);                                            \
             uassert((usize)i < _cexds__header(a)->length && "out of bounds");                      \
             (a)[i] = arr$last(a);                                                                  \
             _cexds__header(a)->length -= 1;                                                        \
@@ -1646,7 +1645,6 @@ struct _cexds__arr_new_kwargs_s
     ({                                                                                             \
         typeof(*a) _cexds__ret = { 0 };                                                            \
         if ((a) != NULL) {                                                                         \
-            _cexds__arr_integrity(a, _CEXDS_ARR_MAGIC);                                            \
             uassert(_cexds__header(a)->length > 0 && "empty array");                               \
             _cexds__ret = (a)[_cexds__header(a)->length - 1];                                      \
         }                                                                                          \
@@ -1658,7 +1656,6 @@ struct _cexds__arr_new_kwargs_s
     ({                                                                                             \
         typeof(*a) _cexds__ret = { 0 };                                                            \
         if ((a) != NULL) {                                                                         \
-            _cexds__arr_integrity(a, 0); /* may work also on hm$ */                                \
             uassert((usize)i < _cexds__header(a)->length && "out of bounds");                      \
             _cexds__ret = (a)[i];                                                                  \
         }                                                                                          \
@@ -1670,7 +1667,6 @@ struct _cexds__arr_new_kwargs_s
     ({                                                                                             \
         typeof(*a) _cexds__ret = { 0 };                                                            \
         if ((a) != NULL) {                                                                         \
-            _cexds__arr_integrity(a, _CEXDS_ARR_MAGIC);                                            \
             uassert(_cexds__header(a)->length > 0 && "empty array");                               \
             if (_cexds__header(a)->length > 0) { _cexds__header(a)->length--; }                    \
             _cexds__ret = (a)[_cexds__header(a)->length];                                          \
@@ -1705,7 +1701,6 @@ struct _cexds__arr_new_kwargs_s
         /* NOLINTBEGIN */                                                                          \
         typeof(*a)* _cexds__ret = NULL;                                                            \
         if ((a) != NULL) {                                                                         \
-            _cexds__arr_integrity(a, _CEXDS_ARR_MAGIC);                                            \
             uassert(array != NULL && "arr$pusha: array is NULL");                                  \
             usize _arr_len_va[] = { array_len };                                                   \
             usize arr_len = (sizeof(_arr_len_va) > 0) ? _arr_len_va[0] : arr$len(array);           \
@@ -1726,7 +1721,6 @@ struct _cexds__arr_new_kwargs_s
 #define arr$sort(a, qsort_cmp)                                                                     \
     ({                                                                                             \
         if ((a) != NULL) {                                                                         \
-            _cexds__arr_integrity(a, _CEXDS_ARR_MAGIC);                                            \
             qsort((a), arr$len(a), sizeof(*a), qsort_cmp);                                         \
         }                                                                                          \
     })
@@ -1754,7 +1748,6 @@ struct _cexds__arr_new_kwargs_s
     ({                                                                                             \
         bool _cexds__ok = false;                                                                   \
         if ((a) != NULL) {                                                                         \
-            _cexds__arr_integrity(a, _CEXDS_ARR_MAGIC);                                            \
             usize _cexds__add = (add_extra);                                                       \
             if (_cexds__add > (usize)-1 - _cexds__header(a)->length) {                             \
                 _cexds__ok = false;                                                                \
@@ -2108,6 +2101,9 @@ hm$free(smap);
 /// Declares a hashmap based on a custom struct that has a `.key` field. The struct itself becomes the key+value record.
 #define hm$s(_StructType) _StructType*
 
+/// Validates an `hm$` handle: `Error.memory` if NULL, `Error.integrity` on bad magic, `EOK` otherwise.
+#define hm$validate(t) _cexds__arr_integrity((t), _CEXDS_HM_MAGIC)
+
 /// hm$new(kwargs...) - default values always zeroed (ZII)
 struct _cexds__hm_new_kwargs_s
 {
@@ -2247,7 +2243,6 @@ struct _cexds__hm_new_kwargs_s
 #define hm$clear(t)                                                                                \
     ({                                                                                             \
         if ((t) != NULL) {                                                                         \
-            _cexds__arr_integrity(t, _CEXDS_HM_MAGIC);                                             \
             _cexds__hmfree_keys_func((t), sizeof(*t), offsetof(typeof(*t), key));                  \
             _cexds__hmclear_func(_cexds__header((t))->_hash_table, NULL);                          \
             _cexds__header(t)->length = 0;                                                         \
@@ -2276,11 +2271,7 @@ struct _cexds__hm_new_kwargs_s
 #define hm$free(t) (_cexds__hmfree_func((t), sizeof *(t), offsetof(typeof(*t), key)), (t) = NULL)
 
 /// Returns the number of entries in the hashmap. Equivalent to `arr$len()`. Returns 0 if NULL.
-#define hm$len(t)                                                                                  \
-    ({                                                                                             \
-        if (t != NULL) { _cexds__arr_integrity(t, _CEXDS_HM_MAGIC); }                              \
-        (t) ? _cexds__header((t))->length : 0;                                                     \
-    })
+#define hm$len(t) ((t) ? _cexds__header((t))->length : 0)
 
 u64 _cexds__hash_bytes(const void* p, usize len, u64 seed);
 
@@ -8690,31 +8681,27 @@ _cexds__base(_cexds__array_header* hdr)
     }
 }
 
-bool
+Exception
 _cexds__arr_integrity(const void* arr, usize magic_num)
 {
-    (void)magic_num;
-    (void)arr;
+    if (arr == NULL) { return Error.memory; }
 
-#ifdef CEX_TEST
-    _cexds__array_header* hdr = _cexds__header(arr);
-    (void)hdr;
-
-    uassert(arr != NULL && "array uninitialized or out-of-mem");
     // WARNING: next can trigger sanitizer with "stack/heap-buffer-underflow on address"
     //          when arr pointer is invalid arr$ / hm$ type pointer
+    _cexds__array_header* hdr = _cexds__header(arr);
     if (magic_num == 0) {
-        uassert(((hdr->magic_num == _CEXDS_ARR_MAGIC) || hdr->magic_num == _CEXDS_HM_MAGIC));
-    } else {
-        uassert(hdr->magic_num == magic_num);
+        if (hdr->magic_num != _CEXDS_ARR_MAGIC && hdr->magic_num != _CEXDS_HM_MAGIC) {
+            return Error.integrity;
+        }
+    } else if (hdr->magic_num != magic_num) {
+        return Error.integrity;
     }
 
+#ifdef CEX_TEST
     uassert(mem$asan_poison_check(hdr->__poison_area, sizeof(hdr->__poison_area)));
-
 #endif
 
-
-    return true;
+    return EOK;
 }
 
 inline usize
@@ -8740,7 +8727,7 @@ _cexds__arrgrowf(
     if (arr == NULL) {
         uassert_always(allc != NULL && "using uninitialized arr/hm or out-of-mem error");
     } else {
-        _cexds__arr_integrity(arr, 0);
+        uassert(_cexds__arr_integrity(arr, 0) == EOK);
     }
     usize min_len;
     {
@@ -9269,7 +9256,7 @@ void
 _cexds__hmfree_func(void* a, usize elemsize, usize keyoffset)
 {
     if (a == NULL) { return; }
-    _cexds__arr_integrity(a, _CEXDS_HM_MAGIC);
+    uassert(_cexds__arr_integrity(a, _CEXDS_HM_MAGIC) == EOK);
 
     _cexds__array_header* h = _cexds__header(a);
     _cexds__hmfree_keys_func(a, elemsize, keyoffset);
@@ -9283,7 +9270,7 @@ _cexds__hmfree_func(void* a, usize elemsize, usize keyoffset)
 static ptrdiff_t
 _cexds__hm_find_slot(void* a, usize elemsize, void* key, usize keysize, usize keyoffset)
 {
-    _cexds__arr_integrity(a, _CEXDS_HM_MAGIC);
+    uassert(_cexds__arr_integrity(a, _CEXDS_HM_MAGIC) == EOK);
     _cexds__hash_index* table = _cexds__hash_table(a);
     enum _CexDsKeyType_e key_type = table->key_type;
     u64 hash = _cexds__hash(key_type, key, keysize, table->seed);
@@ -9350,7 +9337,7 @@ _cexds__hm_find_slot(void* a, usize elemsize, void* key, usize keysize, usize ke
 void*
 _cexds__hmget_key(void* a, usize elemsize, void* key, usize keysize, usize keyoffset)
 {
-    _cexds__arr_integrity(a, _CEXDS_HM_MAGIC);
+    uassert(_cexds__arr_integrity(a, _CEXDS_HM_MAGIC) == EOK);
 
     _cexds__hash_index* table = (_cexds__hash_index*)_cexds__header(a)->_hash_table;
     if (table != NULL) {
@@ -9440,7 +9427,7 @@ _cexds__hmput_key(
 )
 {
     uassert(result != NULL);
-    _cexds__arr_integrity(a, _CEXDS_HM_MAGIC);
+    uassert(_cexds__arr_integrity(a, _CEXDS_HM_MAGIC) == EOK);
 
     void** out_result = (void**)result;
     _cexds__hash_index* table = (_cexds__hash_index*)_cexds__header(a)->_hash_table;
@@ -9632,7 +9619,7 @@ end:
 bool
 _cexds__hmdel_key(void* a, usize elemsize, void* key, usize keysize, usize keyoffset)
 {
-    _cexds__arr_integrity(a, _CEXDS_HM_MAGIC);
+    uassert(_cexds__arr_integrity(a, _CEXDS_HM_MAGIC) == EOK);
 
     _cexds__hash_index* table = (_cexds__hash_index*)_cexds__header(a)->_hash_table;
     uassert(_cexds__header(a)->allocator != NULL);
