@@ -20267,6 +20267,8 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
             return e$raise(Error.argument, "coverage engine 'llvm' requires clang compiler");
         }
         coverage_llvm = str.eq(coverage_engine, "llvm");
+        // lets subprocess fixtures built by tests instrument themselves the same way
+        e$ret(os.env.set("CEX_COVERAGE_ENGINE", coverage_engine));
     }
     _cexy__coverage_llvm = coverage_llvm;
 

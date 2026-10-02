@@ -1044,4 +1044,244 @@ test$case(test_alloc_oom_probability_always_reset)
     return EOK;
 }
 
+/* ---- src/test.c: _check_eq_* failure message formatting ---- */
+
+test$case(test_check_eq_int_message)
+{
+    Exc e = _check_eq_int(1, 2, 42, _cex_test_eq_op__eq);
+    tassert(e != EOK);
+    tassert(str.find(e, "-> 1 != 2") != NULL);
+    return EOK;
+}
+
+test$case(test_check_eq_u64_message)
+{
+    Exc e = _check_eq_u64(1, 2, 42, _cex_test_eq_op__eq);
+    tassert(e != EOK);
+    tassert(str.find(e, "-> 1 != 2") != NULL);
+    return EOK;
+}
+
+test$case(test_check_eq_almost_message)
+{
+    Exc e = _check_eq_almost(1.0, 2.0, 0.1, 42);
+    tassert(e != EOK);
+    tassert(str.find(e, "delta") != NULL);
+    return EOK;
+}
+
+test$case(test_check_eq_f32_message)
+{
+    Exc e = _check_eq_f32(1.0, 2.0, 42, _cex_test_eq_op__eq);
+    tassert(e != EOK);
+    tassert(str.find(e, "-> 1.000000 != 2.000000") != NULL);
+    return EOK;
+}
+
+test$case(test_check_eq_str_short_message)
+{
+    Exc e = _check_eq_str("foo", "bar", 42, _cex_test_eq_op__eq);
+    tassert(e != EOK);
+    tassert(str.find(e, "-> 'foo' != 'bar'") != NULL);
+    return EOK;
+}
+
+test$case(test_check_eq_err_message)
+{
+    Exc e = _check_eq_err(Error.io, Error.argument, 42);
+    tassert(e != EOK);
+    tassert(str.find(e, "Exc mismatch 'IOError' != 'ArgumentError'") != NULL);
+    return EOK;
+}
+
+test$case(test_check_eq_ptr_message)
+{
+    i32 a = 0;
+    i32 b = 0;
+    Exc e = _check_eq_ptr(&a, &b, 42);
+    tassert(e != EOK);
+    tassert(str.find(e, "ptr_diff") != NULL);
+    return EOK;
+}
+
+test$case(test_check_eqs_slice_message)
+{
+    Exc e = _check_eqs_slice(str$s("foo"), str$s("bar"), 42, _cex_test_eq_op__eq);
+    tassert(e != EOK);
+    tassert(str.find(e, "-> 'foo' != 'bar'") != NULL);
+    return EOK;
+}
+
+/* ---- src/test.h: tassert* failure paths ----
+ * The tassert macros `return` from the enclosing function, so each failure is triggered from a
+ * dedicated wrapper and the test only observes the returned error. */
+
+static Exc
+run_tassert_fail(void)
+{
+    tassert(false && "boom");
+    return EOK;
+}
+
+static Exc
+run_tassertf_fail(void)
+{
+    tassertf(false, "boom %d", 1);
+    return EOK;
+}
+
+static Exc
+run_tassert_eq_fail(void)
+{
+    tassert_eq(1, 2);
+    return EOK;
+}
+
+static Exc
+run_tassert_er_fail(void)
+{
+    tassert_er(Error.io, Error.argument);
+    return EOK;
+}
+
+static Exc
+run_tassert_eq_almost_fail(void)
+{
+    tassert_eq_almost(1.0, 2.0, 0.1);
+    return EOK;
+}
+
+static Exc
+run_tassert_eq_ptr_fail(void)
+{
+    i32 a = 0;
+    i32 b = 0;
+    tassert_eq_ptr(&a, &b);
+    return EOK;
+}
+
+static Exc
+run_tassert_eq_mem_fail(void)
+{
+    i32 a = 1;
+    i32 b = 2;
+    tassert_eq_mem(a, b);
+    return EOK;
+}
+
+static Exc
+run_tassert_eq_arr_len_fail(void)
+{
+    i32 a[] = { 1, 2, 3 };
+    i32 b[] = { 1, 2 };
+    tassert_eq_arr(a, b);
+    return EOK;
+}
+
+static Exc
+run_tassert_eq_arr_elem_fail(void)
+{
+    i32 a[] = { 1, 2, 3 };
+    i32 b[] = { 1, 9, 3 };
+    tassert_eq_arr(a, b);
+    return EOK;
+}
+
+static Exc
+run_tassert_ne_fail(void)
+{
+    tassert_ne(1, 1);
+    return EOK;
+}
+
+static Exc
+run_tassert_le_fail(void)
+{
+    tassert_le(2, 1);
+    return EOK;
+}
+
+static Exc
+run_tassert_lt_fail(void)
+{
+    tassert_lt(2, 1);
+    return EOK;
+}
+
+static Exc
+run_tassert_ge_fail(void)
+{
+    tassert_ge(1, 2);
+    return EOK;
+}
+
+static Exc
+run_tassert_gt_fail(void)
+{
+    tassert_gt(1, 2);
+    return EOK;
+}
+
+test$case(test_tassert_failure_paths)
+{
+    tassert(run_tassert_fail() != EOK);
+    tassert(run_tassertf_fail() != EOK);
+    tassert(run_tassert_eq_fail() != EOK);
+    tassert(run_tassert_er_fail() != EOK);
+    tassert(run_tassert_eq_almost_fail() != EOK);
+    tassert(run_tassert_eq_ptr_fail() != EOK);
+    tassert(run_tassert_eq_mem_fail() != EOK);
+    tassert(run_tassert_eq_arr_len_fail() != EOK);
+    tassert(run_tassert_eq_arr_elem_fail() != EOK);
+    tassert(run_tassert_ne_fail() != EOK);
+    tassert(run_tassert_le_fail() != EOK);
+    tassert(run_tassert_lt_fail() != EOK);
+    tassert(run_tassert_ge_fail() != EOK);
+    tassert(run_tassert_gt_fail() != EOK);
+    return EOK;
+}
+
+/* ---- src/test.c: benchmark internals ---- */
+
+static u32 g_bench_fail_on_call = 0;
+static u32 g_bench_call_count = 0;
+
+static Exc
+bench_ok_fn(void)
+{
+    return EOK;
+}
+
+static Exc
+bench_failing_fn(void)
+{
+    g_bench_call_count++;
+    if (g_bench_call_count == g_bench_fail_on_call) { return Error.io; }
+    return EOK;
+}
+
+test$case(test_bench_internals)
+{
+    e$ret(_cex_test_bench_call_timer_overhead());
+    e$ret(_cex_test_flush_cpu_cache());
+
+    struct _cex_test_case_s bench = {
+        .test_fn = bench_ok_fn,
+        .test_name = "synthetic_bench",
+        .is_benchmark = true,
+    };
+    e$ret(_cex_test_run_bench_case(&bench));
+
+    g_bench_call_count = 0;
+    g_bench_fail_on_call = 1;
+    bench.test_fn = bench_failing_fn;
+    tassert(_cex_test_run_bench_case(&bench) != EOK);
+
+    g_bench_call_count = 0;
+    g_bench_fail_on_call = 2;
+    tassert(_cex_test_run_bench_case(&bench) != EOK);
+
+    return EOK;
+}
+
 test$main();

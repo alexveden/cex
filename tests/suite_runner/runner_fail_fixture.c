@@ -7,10 +7,28 @@ fail_hook(char* name)
     return v != NULL && str.eq(v, name);
 }
 
+static bool
+mock_isatty(FILE* file)
+{
+    (void)file;
+    return true;
+}
+
+__attribute__((constructor)) static void
+force_ansi_when_requested(void)
+{
+    if (os.env.get("CEX_SUITE_ANSI", NULL) != NULL) { io.isatty = mock_isatty; }
+}
+
 static Exception
 err_ret(int i)
 {
     if (i) { e$ret(e$raise(Error.io, "raise io")); }
+    return EOK;
+}
+
+test$bench(bench_case)
+{
     return EOK;
 }
 
@@ -40,7 +58,10 @@ test$teardown_suite()
 
 test$case(regular_fail)
 {
-    if (fail_hook("case")) { return e$raise(Error.io, "case boom"); }
+    if (fail_hook("case")) {
+        (void)os.random.next();
+        return e$raise(Error.io, "case boom");
+    }
     if (fail_hook("tassert")) {
         Exc e = err_ret(1);
         tassert_eq(e, Error.io);
@@ -73,6 +94,16 @@ test$case(global_mem_allocator_restored)
             return e$raise(Error.runtime, "mem$ not restored by the runner");
         }
         fprintf(stderr, "MEM_RESTORED\n");
+    }
+    return EOK;
+}
+
+test$case(leak_memory)
+{
+    if (fail_hook("leak")) {
+        u8* p = mem$malloc(mem$, 64);
+        if (p == NULL) { return e$raise(Error.runtime, "leak alloc failed"); }
+        (void)p;
     }
     return EOK;
 }
