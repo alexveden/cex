@@ -2031,7 +2031,12 @@ test$case(test_hm_array_grow_oom_frees_key_arena)
     tassert(m == NULL);
     // BEFORE: key arena leaked -> copied key still readable -> not poisoned -> FAILS
     // AFTER:  key arena destroyed -> backing region poisoned
+    // NOTE: only native ASAN can query poison without dereferencing; Fil-C and
+    // Emscripten use the byte-reading fallback, which would read this freed
+    // key-arena page and trap (Fil-C) / ASAN-report use-after-free (wasm)
+#if mem$asan_enabled() && !defined(__EMSCRIPTEN__)
     tassert(mem$asan_poison_check(copied_key, strlen("key0") + 1));
+#endif
     return EOK;
 }
 
