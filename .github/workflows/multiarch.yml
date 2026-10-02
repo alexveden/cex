@@ -24,7 +24,7 @@ jobs:
           - armhf
           - armv7
           # - loongarch64
-          - ppc64le
+          # - ppc64le  # apk v3 db read fails under qemu-ppc64le (Alpine 3.24)
     steps:
       - uses: actions/checkout@v2
 

@@ -69,6 +69,7 @@
 - fix(os): `_os$args_print()` no longer underflows when the argument count is 0 (gcc 15 `-Werror=aggressive-loop-optimizations` on alpine)
 - fix(ds): `hm$` probe loops are bounded by the bucket count, so a table left full by a grow/rebuild OOM failure can no longer spin forever (libFuzzer timeout)
 - test(ds): deterministic regression for the `hm$` no-empty-slot probe bound (`test_hm_no_empty_slot_probe_terminates` + OOM corpus seed)
+- fix(cexy): test binaries that build apps in-process inherit the no-sanitizer config, so emulated/alpine arches without an ASAN runtime link (CEX_RELEASE multi-arch)
 
 ## 0.21
 2026-06-07
