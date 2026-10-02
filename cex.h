@@ -18995,7 +18995,7 @@ _cexy__help_qscmp_decls_type(const void* a, const void* b)
     }* _a = a;
     typeof(_a) _b = b;
     if (_a->value->type != _b->value->type) {
-        return _b->value->type - _a->value->type;
+        return (int)_b->value->type - (int)_a->value->type;
     } else {
         return str.slice.qscmp(&_a->key, &_b->key);
     }
