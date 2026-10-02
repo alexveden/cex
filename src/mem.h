@@ -48,6 +48,9 @@ loop
 - Arenas never reuse freed chunks; pre-allocate capacity instead of heavy `realloc`
 - In test mode `mem$` tracks leaks, allocations are filled with `0xf7`, arenas are ASAN-poisoned;
 switch `tmem$` to `mem$` to triage use-after-poison
+- Heap allocation failure panics via `cex$platform_oom_panic` (defaults to `cex$platform_panic`);
+  define it as an empty function-like macro (`#define cex$platform_oom_panic(...)`) before
+  including CEX to restore `NULL` returns
 - Use address sanitizers as often as possible
 
 

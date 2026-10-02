@@ -6,6 +6,9 @@
 static void _heap_scope_panic(const char*, const char*, uint32_t, const char*, const char*);
 #endif
 
+// opt out of allocation-failure panics: this file asserts the NULL-return contract
+#define cex$platform_oom_panic(...) (void)0
+
 #include "src/all.c"
 
 #ifndef NDEBUG

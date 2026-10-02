@@ -42,9 +42,10 @@ _cex_errors_traceback_print(FILE* stream)
     CEX_PANIC_VERBOSITY >= 1
 
 #if CEX_PANIC_VERBOSITY == 1
-/// Private: emit the panic line (L1 records only file:line)
+/// Private: emit the panic line (L1 records file:line, plus msg when present)
 #    define _cex_errors_report(_stream)                                                            \
-        cexsp__fprintf((_stream), "%s ( %s:%u )\n", prefix, file, line)
+        ((msg) ? cexsp__fprintf((_stream), "%s ( %s:%u ) %s\n", prefix, file, line, msg)           \
+               : cexsp__fprintf((_stream), "%s ( %s:%u )\n", prefix, file, line))
 #else
 /// Private: emit the panic line (L2 records file:line, func and message)
 #    define _cex_errors_report(_stream)                                                            \
@@ -67,7 +68,6 @@ _cex_errors_panic_handler(
 {
 #    if CEX_PANIC_VERBOSITY == 1
     (void)func;
-    (void)msg;
 #    endif
 
 #    ifdef CEX_TEST
@@ -87,4 +87,25 @@ _cex_errors_panic_handler(
 }
 
 #    undef _cex_errors_report
+
+#else // reporting compiled out (NDEBUG / clang analyzer / CEX_PANIC_VERBOSITY == 0)
+
+__attribute__((cold, noinline, noreturn))
+void
+_cex_errors_panic_handler(
+    const char* prefix,
+    const char* file,
+    u32 line,
+    const char* func,
+    const char* msg
+)
+{
+    (void)prefix;
+    (void)file;
+    (void)line;
+    (void)func;
+    (void)msg;
+    __builtin_trap();
+}
+
 #endif

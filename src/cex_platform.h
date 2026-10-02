@@ -25,6 +25,12 @@
 #    define cex$platform_panic _cex_errors_panic_handler
 #endif
 
+#ifndef cex$platform_oom_panic
+///  Macro for redefining heap allocation-failure panic; define it as an empty function-like macro
+///  (e.g. `#define cex$platform_oom_panic(...)`) to restore NULL returns
+#    define cex$platform_oom_panic(...) cex$platform_panic(__VA_ARGS__)
+#endif
+
 #ifdef cex$enable_minimal
 #    undef cex$enable_minimal
 /// Disables all key CEX capabilities, except core types, and macros, other functionality must be

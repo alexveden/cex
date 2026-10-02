@@ -310,6 +310,12 @@ If the project has no agent instruction file (`AGENTS.md`, `CLAUDE.md`,
 #    define cex$platform_panic _cex_errors_panic_handler
 #endif
 
+#ifndef cex$platform_oom_panic
+///  Macro for redefining heap allocation-failure panic; define it as an empty function-like macro
+///  (e.g. `#define cex$platform_oom_panic(...)`) to restore NULL returns
+#    define cex$platform_oom_panic(...) cex$platform_panic(__VA_ARGS__)
+#endif
+
 #ifdef cex$enable_minimal
 #    undef cex$enable_minimal
 /// Disables all key CEX capabilities, except core types, and macros, other functionality must be
@@ -994,6 +1000,9 @@ loop
 - Arenas never reuse freed chunks; pre-allocate capacity instead of heavy `realloc`
 - In test mode `mem$` tracks leaks, allocations are filled with `0xf7`, arenas are ASAN-poisoned;
 switch `tmem$` to `mem$` to triage use-after-poison
+- Heap allocation failure panics via `cex$platform_oom_panic` (defaults to `cex$platform_panic`);
+  define it as an empty function-like macro (`#define cex$platform_oom_panic(...)`) before
+  including CEX to restore `NULL` returns
 - Use address sanitizers as often as possible
 
 
@@ -3041,6 +3050,9 @@ static_assert(
 /// Assertion label, shared by uassert()/uassert_always() and _cex_errors_panic_handler()'s
 /// suppressible check
 #define _cex_errors_assert_prefix "[ASSERT] "
+
+/// Allocation-failure label used by the heap allocator's cex$platform_oom_panic hook
+#define _cex_errors_oom_prefix "[MEMORY] "
 
 #if defined(mem$asan_enabled)
 #    if mem$asan_enabled()
@@ -7713,7 +7725,13 @@ _cex_allocator_heap__alloc(IAllocator self, u8 fill_val, usize size, usize align
     (void)a;
 
     u64 hdr = _cex_allocator_heap__hdr_make(size, alignment);
-    if (unlikely(hdr == 0)) { return NULL; }
+    if (unlikely(hdr == 0)) {
+        cex$platform_oom_panic(
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+            "invalid allocation size or alignment"
+        );
+        return NULL;
+    }
 
     usize full_size = _cex_allocator_heap__hdr_get_size(hdr);
     alignment = _cex_allocator_heap__hdr_get_alignment(hdr);
@@ -7727,32 +7745,35 @@ _cex_allocator_heap__alloc(IAllocator self, u8 fill_val, usize size, usize align
     } else {
         raw_result = cex$platform_calloc(1, full_size);
     }
-    u8* result = raw_result;
+    if (unlikely(raw_result == NULL)) {
+        cex$platform_oom_panic(
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "out of memory"
+        );
+        return NULL;
+    }
 
-    if (raw_result) {
-        result = mem$aligned_pointer(raw_result + sizeof(u64) * 2, alignment);
-        uassert(mem$aligned_pointer(result, 8) == result);
-        uassert(mem$aligned_pointer(result, alignment) == result);
+    u8* result = mem$aligned_pointer(raw_result + sizeof(u64) * 2, alignment);
+    uassert(mem$aligned_pointer(result, 8) == result);
+    uassert(mem$aligned_pointer(result, alignment) == result);
 
 #ifdef CEX_TEST
-        a->stats.n_allocs++;
-        // intentionally set malloc to 0xf7 pattern to mark uninitialized data
-        if (fill_val != 0) { memset(result, 0xf7, size); }
+    a->stats.n_allocs++;
+    // intentionally set malloc to 0xf7 pattern to mark uninitialized data
+    if (fill_val != 0) { memset(result, 0xf7, size); }
 #endif
-        usize ptr_offset = result - raw_result;
-        uassert(ptr_offset >= sizeof(u64) * 2);
-        uassert(ptr_offset <= 64 + 16);
-        uassert(ptr_offset <= alignment + sizeof(u64) * 2);
-        uassert(result + size <= raw_result + full_size);
+    usize ptr_offset = result - raw_result;
+    uassert(ptr_offset >= sizeof(u64) * 2);
+    uassert(ptr_offset <= 64 + 16);
+    uassert(ptr_offset <= alignment + sizeof(u64) * 2);
+    uassert(result + size <= raw_result + full_size);
 
-        // poison area after header and before allocated pointer
-        mem$asan_poison(result - sizeof(u64), sizeof(u64));
-        ((u64*)result)[-2] = _cex_allocator_heap__hdr_set(size, ptr_offset, alignment);
+    // poison area after header and before allocated pointer
+    mem$asan_poison(result - sizeof(u64), sizeof(u64));
+    ((u64*)result)[-2] = _cex_allocator_heap__hdr_set(size, ptr_offset, alignment);
 
-        if (ptr_offset + size < full_size) {
-            // Adding padding poison for non 8-byte aligned data
-            mem$asan_poison(result + size, full_size - size - ptr_offset);
-        }
+    if (ptr_offset + size < full_size) {
+        // Adding padding poison for non 8-byte aligned data
+        mem$asan_poison(result + size, full_size - size - ptr_offset);
     }
 
     return result;
@@ -7769,11 +7790,17 @@ _cex_allocator_heap__calloc(IAllocator self, usize nmemb, usize size, usize alig
     if (unlikely(nmemb == 0 || nmemb >= PTRDIFF_MAX)) {
         uassert(nmemb > 0 && "nmemb is zero");
         uassert(nmemb < PTRDIFF_MAX && "nmemb is too high or negative overflow");
+        cex$platform_oom_panic(
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "invalid element count"
+        );
         return NULL;
     }
     if (unlikely(size == 0 || size >= PTRDIFF_MAX)) {
         uassert(size > 0 && "size is zero");
         uassert(size < PTRDIFF_MAX && "size is too high or negative overflow");
+        cex$platform_oom_panic(
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "invalid element size"
+        );
         return NULL;
     }
 
@@ -7786,6 +7813,9 @@ _cex_allocator_heap__realloc(IAllocator self, void* ptr, usize size, usize align
     _cex_allocator_heap__validate(self);
     if (unlikely(ptr == NULL)) {
         uassert(ptr != NULL);
+        cex$platform_oom_panic(
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "realloc of NULL"
+        );
         return NULL;
     }
     AllocatorHeap_c* a = (AllocatorHeap_c*)self;
@@ -7811,11 +7841,19 @@ _cex_allocator_heap__realloc(IAllocator self, void* ptr, usize size, usize align
             (alignment <= 8 && old_alignment != 8) || (alignment > 8 && alignment != old_alignment)
         )) {
         uassert(alignment == old_alignment && "given alignment doesn't match to old one");
+        cex$platform_oom_panic(
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "realloc alignment mismatch"
+        );
         goto fail;
     }
 
     u64 new_hdr = _cex_allocator_heap__hdr_make(size, alignment);
-    if (unlikely(new_hdr == 0)) { goto fail; }
+    if (unlikely(new_hdr == 0)) {
+        cex$platform_oom_panic(
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "invalid realloc size"
+        );
+        goto fail;
+    }
 
     u8* raw_result = NULL;
     u8* result = NULL;
@@ -7824,12 +7862,22 @@ _cex_allocator_heap__realloc(IAllocator self, void* ptr, usize size, usize align
     if (alignment <= _Alignof(max_align_t)) {
         uassert(new_full_size > size);
         raw_result = cex$platform_realloc(p - old_offset, new_full_size);
-        if (unlikely(raw_result == NULL)) { goto fail; }
+        if (unlikely(raw_result == NULL)) {
+            cex$platform_oom_panic(
+                _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "out of memory"
+            );
+            goto fail;
+        }
         result = mem$aligned_pointer(raw_result + sizeof(u64) * 2, old_alignment);
     } else {
         // fallback to malloc + memcpy because realloc doesn't guarantee alignment
         raw_result = cex$platform_malloc(new_full_size);
-        if (unlikely(raw_result == NULL)) { goto fail; }
+        if (unlikely(raw_result == NULL)) {
+            cex$platform_oom_panic(
+                _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "out of memory"
+            );
+            goto fail;
+        }
         result = mem$aligned_pointer(raw_result + sizeof(u64) * 2, old_alignment);
         memcpy(result, ptr, size > old_size ? old_size : size);
         cex$platform_free(ptr - old_offset);
@@ -14128,9 +14176,10 @@ _cex_errors_traceback_print(FILE* stream)
     CEX_PANIC_VERBOSITY >= 1
 
 #if CEX_PANIC_VERBOSITY == 1
-/// Private: emit the panic line (L1 records only file:line)
+/// Private: emit the panic line (L1 records file:line, plus msg when present)
 #    define _cex_errors_report(_stream)                                                            \
-        cexsp__fprintf((_stream), "%s ( %s:%u )\n", prefix, file, line)
+        ((msg) ? cexsp__fprintf((_stream), "%s ( %s:%u ) %s\n", prefix, file, line, msg)           \
+               : cexsp__fprintf((_stream), "%s ( %s:%u )\n", prefix, file, line))
 #else
 /// Private: emit the panic line (L2 records file:line, func and message)
 #    define _cex_errors_report(_stream)                                                            \
@@ -14153,7 +14202,6 @@ _cex_errors_panic_handler(
 {
 #    if CEX_PANIC_VERBOSITY == 1
     (void)func;
-    (void)msg;
 #    endif
 
 #    ifdef CEX_TEST
@@ -14173,6 +14221,27 @@ _cex_errors_panic_handler(
 }
 
 #    undef _cex_errors_report
+
+#else // reporting compiled out (NDEBUG / clang analyzer / CEX_PANIC_VERBOSITY == 0)
+
+__attribute__((cold, noinline, noreturn))
+void
+_cex_errors_panic_handler(
+    const char* prefix,
+    const char* file,
+    u32 line,
+    const char* func,
+    const char* msg
+)
+{
+    (void)prefix;
+    (void)file;
+    (void)line;
+    (void)func;
+    (void)msg;
+    __builtin_trap();
+}
+
 #endif
 
 

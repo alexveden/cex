@@ -125,7 +125,13 @@ _cex_allocator_heap__alloc(IAllocator self, u8 fill_val, usize size, usize align
     (void)a;
 
     u64 hdr = _cex_allocator_heap__hdr_make(size, alignment);
-    if (unlikely(hdr == 0)) { return NULL; }
+    if (unlikely(hdr == 0)) {
+        cex$platform_oom_panic(
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+            "invalid allocation size or alignment"
+        );
+        return NULL;
+    }
 
     usize full_size = _cex_allocator_heap__hdr_get_size(hdr);
     alignment = _cex_allocator_heap__hdr_get_alignment(hdr);
@@ -139,32 +145,35 @@ _cex_allocator_heap__alloc(IAllocator self, u8 fill_val, usize size, usize align
     } else {
         raw_result = cex$platform_calloc(1, full_size);
     }
-    u8* result = raw_result;
+    if (unlikely(raw_result == NULL)) {
+        cex$platform_oom_panic(
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "out of memory"
+        );
+        return NULL;
+    }
 
-    if (raw_result) {
-        result = mem$aligned_pointer(raw_result + sizeof(u64) * 2, alignment);
-        uassert(mem$aligned_pointer(result, 8) == result);
-        uassert(mem$aligned_pointer(result, alignment) == result);
+    u8* result = mem$aligned_pointer(raw_result + sizeof(u64) * 2, alignment);
+    uassert(mem$aligned_pointer(result, 8) == result);
+    uassert(mem$aligned_pointer(result, alignment) == result);
 
 #ifdef CEX_TEST
-        a->stats.n_allocs++;
-        // intentionally set malloc to 0xf7 pattern to mark uninitialized data
-        if (fill_val != 0) { memset(result, 0xf7, size); }
+    a->stats.n_allocs++;
+    // intentionally set malloc to 0xf7 pattern to mark uninitialized data
+    if (fill_val != 0) { memset(result, 0xf7, size); }
 #endif
-        usize ptr_offset = result - raw_result;
-        uassert(ptr_offset >= sizeof(u64) * 2);
-        uassert(ptr_offset <= 64 + 16);
-        uassert(ptr_offset <= alignment + sizeof(u64) * 2);
-        uassert(result + size <= raw_result + full_size);
+    usize ptr_offset = result - raw_result;
+    uassert(ptr_offset >= sizeof(u64) * 2);
+    uassert(ptr_offset <= 64 + 16);
+    uassert(ptr_offset <= alignment + sizeof(u64) * 2);
+    uassert(result + size <= raw_result + full_size);
 
-        // poison area after header and before allocated pointer
-        mem$asan_poison(result - sizeof(u64), sizeof(u64));
-        ((u64*)result)[-2] = _cex_allocator_heap__hdr_set(size, ptr_offset, alignment);
+    // poison area after header and before allocated pointer
+    mem$asan_poison(result - sizeof(u64), sizeof(u64));
+    ((u64*)result)[-2] = _cex_allocator_heap__hdr_set(size, ptr_offset, alignment);
 
-        if (ptr_offset + size < full_size) {
-            // Adding padding poison for non 8-byte aligned data
-            mem$asan_poison(result + size, full_size - size - ptr_offset);
-        }
+    if (ptr_offset + size < full_size) {
+        // Adding padding poison for non 8-byte aligned data
+        mem$asan_poison(result + size, full_size - size - ptr_offset);
     }
 
     return result;
@@ -181,11 +190,17 @@ _cex_allocator_heap__calloc(IAllocator self, usize nmemb, usize size, usize alig
     if (unlikely(nmemb == 0 || nmemb >= PTRDIFF_MAX)) {
         uassert(nmemb > 0 && "nmemb is zero");
         uassert(nmemb < PTRDIFF_MAX && "nmemb is too high or negative overflow");
+        cex$platform_oom_panic(
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "invalid element count"
+        );
         return NULL;
     }
     if (unlikely(size == 0 || size >= PTRDIFF_MAX)) {
         uassert(size > 0 && "size is zero");
         uassert(size < PTRDIFF_MAX && "size is too high or negative overflow");
+        cex$platform_oom_panic(
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "invalid element size"
+        );
         return NULL;
     }
 
@@ -198,6 +213,9 @@ _cex_allocator_heap__realloc(IAllocator self, void* ptr, usize size, usize align
     _cex_allocator_heap__validate(self);
     if (unlikely(ptr == NULL)) {
         uassert(ptr != NULL);
+        cex$platform_oom_panic(
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "realloc of NULL"
+        );
         return NULL;
     }
     AllocatorHeap_c* a = (AllocatorHeap_c*)self;
@@ -223,11 +241,19 @@ _cex_allocator_heap__realloc(IAllocator self, void* ptr, usize size, usize align
             (alignment <= 8 && old_alignment != 8) || (alignment > 8 && alignment != old_alignment)
         )) {
         uassert(alignment == old_alignment && "given alignment doesn't match to old one");
+        cex$platform_oom_panic(
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "realloc alignment mismatch"
+        );
         goto fail;
     }
 
     u64 new_hdr = _cex_allocator_heap__hdr_make(size, alignment);
-    if (unlikely(new_hdr == 0)) { goto fail; }
+    if (unlikely(new_hdr == 0)) {
+        cex$platform_oom_panic(
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "invalid realloc size"
+        );
+        goto fail;
+    }
 
     u8* raw_result = NULL;
     u8* result = NULL;
@@ -236,12 +262,22 @@ _cex_allocator_heap__realloc(IAllocator self, void* ptr, usize size, usize align
     if (alignment <= _Alignof(max_align_t)) {
         uassert(new_full_size > size);
         raw_result = cex$platform_realloc(p - old_offset, new_full_size);
-        if (unlikely(raw_result == NULL)) { goto fail; }
+        if (unlikely(raw_result == NULL)) {
+            cex$platform_oom_panic(
+                _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "out of memory"
+            );
+            goto fail;
+        }
         result = mem$aligned_pointer(raw_result + sizeof(u64) * 2, old_alignment);
     } else {
         // fallback to malloc + memcpy because realloc doesn't guarantee alignment
         raw_result = cex$platform_malloc(new_full_size);
-        if (unlikely(raw_result == NULL)) { goto fail; }
+        if (unlikely(raw_result == NULL)) {
+            cex$platform_oom_panic(
+                _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "out of memory"
+            );
+            goto fail;
+        }
         result = mem$aligned_pointer(raw_result + sizeof(u64) * 2, old_alignment);
         memcpy(result, ptr, size > old_size ? old_size : size);
         cex$platform_free(ptr - old_offset);
