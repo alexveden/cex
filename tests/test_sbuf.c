@@ -858,7 +858,10 @@ test$case(test_sbuf_grow_realloc_oom)
     tassert_eq(sbuf.capacity(&s), 64 - sizeof(sbuf_head_s) - 1);
 
     test$alloc_set_oom_probability(1.0);
-    tassert_er(Error.memory, sbuf.append(&s, "01234567890123456789012"));
+    tassert_er(
+        Error.memory,
+        sbuf.append(&s, "0123456789012345678901234567890123456789012345678901234567890123")
+    );
     tassert(s == NULL);
     tassert_eq(false, sbuf.isvalid(&s));
 
