@@ -2427,4 +2427,29 @@ test$case(test_hm_tombstone_reuse_second_loop)
     return EOK;
 }
 
+test$case(test_hm_no_empty_slot_probe_terminates)
+{
+    hm$(u64, u64) m = hm$new(m, test$alloc);
+    tassert(m != NULL);
+
+    // a grow/rebuild that failed under OOM can leave every slot a tombstone, so no empty
+    // slot remains to terminate probing; lookups/inserts must still terminate
+    _cexds__hash_index* table = _cexds__header(m)->_hash_table;
+    for (usize i = 0; i < table->slot_count; ++i) {
+        table->storage[i >> _CEXDS_BUCKET_SHIFT].hash[i & _CEXDS_BUCKET_MASK] = _CEXDS_HASH_DELETED;
+        table->storage[i >> _CEXDS_BUCKET_SHIFT].index[i & _CEXDS_BUCKET_MASK] =
+            _CEXDS_INDEX_DELETED;
+    }
+    table->used_count = 0;
+    table->tombstone_count = table->slot_count;
+
+    tassert_eq(hm$get(m, 42, 7), 7);        // lookup terminates, returns default
+    tassert(!hm$del(m, 42));                // delete terminates, no-op
+    tassert(hm$set(m, 123, 456) != NULL);   // insert reuses a tombstone
+    tassert_eq(hm$get(m, 123, 0), 456);
+
+    hm$free(m);
+    return EOK;
+}
+
 test$main();

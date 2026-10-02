@@ -635,8 +635,10 @@ _cexds__hm_find_slot(void* a, usize elemsize, void* key, usize keysize, usize ke
 
     usize pos = _cexds__probe_position(hash, table->slot_count, table->slot_count_log2);
 
-    // TODO: check when this could be infinite loop (due to overflow or something)?
-    for (;;) {
+    // a table full of used/tombstone slots can happen when a grow/rebuild failed under OOM;
+    // probing every bucket once is enough to conclude the key is absent
+    usize max_probes = table->slot_count >> _CEXDS_BUCKET_SHIFT;
+    for (usize probe = 0; probe < max_probes; ++probe) {
         _CEXDS_STATS(++_cexds__hash_probes);
         _cexds__hash_bucket* bucket = &table->storage[pos >> _CEXDS_BUCKET_SHIFT];
 
@@ -685,6 +687,7 @@ _cexds__hm_find_slot(void* a, usize elemsize, void* key, usize keysize, usize ke
         step += _CEXDS_BUCKET_LENGTH;
         pos &= (table->slot_count - 1);
     }
+    return -1;
 }
 
 void*
@@ -848,7 +851,8 @@ _cexds__hmput_key(
 
         pos = _cexds__probe_position(hash, table->slot_count, table->slot_count_log2);
 
-        for (;;) {
+        usize max_probes = table->slot_count >> _CEXDS_BUCKET_SHIFT;
+        for (usize probe = 0; probe < max_probes; ++probe) {
             usize limit, i;
             _CEXDS_STATS(++_cexds__hash_probes);
             bucket = &table->storage[pos >> _CEXDS_BUCKET_SHIFT];
@@ -912,6 +916,13 @@ _cexds__hmput_key(
             step += _CEXDS_BUCKET_LENGTH;
             pos &= (table->slot_count - 1);
         }
+        // no empty slot: a grow/rebuild failed under OOM. Reuse a tombstone if any, else fail.
+        if (tombstone >= 0) {
+            pos = (usize)tombstone;
+            goto found_empty_slot;
+        }
+        *out_result = NULL;
+        goto end;
     found_empty_slot:
         if (tombstone >= 0) {
             pos = tombstone;

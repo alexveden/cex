@@ -67,6 +67,8 @@
 - fix(cexy): `CEX_TEST_NOASAN` now reaches test binaries (propagated as a define and honored by `cexy$cc_args_sanitizer`), so the in-test build system no longer links sanitizer runtimes a toolchain may not ship (alpine i586/s390x)
 - test(cexy): `test_cmd_simple_fuzz` run path is skipped when the configured fuzzer binary is not installed (e.g. alpine CI)
 - fix(os): `_os$args_print()` no longer underflows when the argument count is 0 (gcc 15 `-Werror=aggressive-loop-optimizations` on alpine)
+- fix(ds): `hm$` probe loops are bounded by the bucket count, so a table left full by a grow/rebuild OOM failure can no longer spin forever (libFuzzer timeout)
+- test(ds): deterministic regression for the `hm$` no-empty-slot probe bound (`test_hm_no_empty_slot_probe_terminates` + OOM corpus seed)
 
 ## 0.21
 2026-06-07
