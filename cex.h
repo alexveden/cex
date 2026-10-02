@@ -276,7 +276,7 @@ If the project has no agent instruction file (`AGENTS.md`, `CLAUDE.md`,
 /// CEX patch version
 #define cex$version_patch 0
 /// CEX build date (substituted at bundle time)
-#define cex$version_date "2026-10-01"
+#define cex$version_date "2026-10-02"
 
 
 
@@ -21853,8 +21853,13 @@ CexParser_decl_parse(
             return NULL;
     }
     cex_decl_s* result = mem$new(alloc, cex_decl_s);
+    if (unlikely(result == NULL)) { return NULL; }
     result->args = sbuf.create(128, alloc);
     result->ret_type = sbuf.create(128, alloc);
+    if (unlikely(result->args == NULL || result->ret_type == NULL)) {
+        CexParser_decl_free(result, alloc);
+        return NULL;
+    }
     result->type = decl_token.type;
 
     // CexParser line is at the end of token, find, the beginning

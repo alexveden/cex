@@ -333,6 +333,23 @@ test$case(test_funcs_decl_parse)
     return EOK;
 }
 
+test$case(test_decl_parse_oom)
+{
+    char* code = "int add(int a, int b); \n";
+    for (i32 n = 1; n <= 3; n++) {
+        CexParser_c lx = CexParser_create(code, 0, true);
+        arr$(cex_token_s) items = arr$new(items, test$alloc);
+        cex_token_s t = CexParser_next_entity(&lx, &items);
+
+        test$alloc_set_oom_on_call(n);
+        cex_decl_s* d = CexParser.decl_parse(&lx, t, items, NULL, test$alloc);
+        test$alloc_set_oom_on_call(0);
+
+        tassert(d == NULL);
+    }
+    return EOK;
+}
+
 test$case(test_funcs_def_parse_args)
 {
     // clang-format off
