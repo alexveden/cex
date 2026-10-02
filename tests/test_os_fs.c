@@ -971,6 +971,26 @@ test$case(test_os_path_normpath_basic)
     return EOK;
 }
 
+test$case(test_os_path_normpath_oom)
+{
+    mem$scope(tmem$, _)
+    {
+        sbuf_c path = sbuf.create(256, _);
+        for (u32 i = 0; i < 17; i++) {
+            if (i > 0) {
+                if (sbuf.append(&path, "/")) {}
+            }
+            if (sbuf.append(&path, "a")) {}
+        }
+
+        test$alloc_set_oom_on_call(23);
+        char* res = os.path.normalize(path, test$alloc);
+        test$alloc_set_oom_on_call(0);
+        tassert(res == NULL);
+    }
+    return EOK;
+}
+
 
 test$case(test_os_path_normpath_backslash)
 {

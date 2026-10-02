@@ -957,6 +957,7 @@ cex_os__path__normalize(char* path, IAllocator allc)
 
     stack = arr$new(stack, allc);
     if (stack == NULL) { goto done; }
+    if (unlikely(!arr$grow_check(stack, arr$len(parts)))) { goto done; }
 
     usize start = is_absolute ? 1 : 0;
     for (usize i = start; i < arr$len(parts); i++) {
