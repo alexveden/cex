@@ -2153,14 +2153,18 @@ test$case(test_arr_push_oom_returns_null)
     for (int i = 0; i < 16; i++) { tassert(arr$push(arr, i) != NULL); }
     tassert_eq(arr$len(arr), 16);
 
+#if !CEX_DISABLE_POISON
     void* old = arr;
+#endif
     test$alloc_set_oom_on_call(1); // next alloc = the grow realloc
     int* r = arr$push(arr, 42);
     test$alloc_set_oom_on_call(0);
 
     tassert(r == NULL);
     tassert(arr == NULL);
+#if !CEX_DISABLE_POISON
     tassert(mem$asan_poison_check(old, sizeof(int) * 16));
+#endif
     return EOK;
 }
 
@@ -2171,14 +2175,18 @@ test$case(test_arr_pusha_oom_returns_null)
     for (int i = 0; i < 16; i++) { tassert(arr$push(arr, i) != NULL); }
 
     int src[4] = { 1, 2, 3, 4 };
+#if !CEX_DISABLE_POISON
     void* old = arr;
+#endif
     test$alloc_set_oom_on_call(1);
     int* r = arr$pusha(arr, src);
     test$alloc_set_oom_on_call(0);
 
     tassert(r == NULL);
     tassert(arr == NULL);
+#if !CEX_DISABLE_POISON
     tassert(mem$asan_poison_check(old, sizeof(int) * 16));
+#endif
     return EOK;
 }
 

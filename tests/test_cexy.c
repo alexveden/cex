@@ -47,6 +47,7 @@ test$case(test_target_make_oom)
 {
     mem$scope(tmem$, _)
     {
+        (void)_;
         char* src = TBUILDDIR "my_src.c";
         e$ret(io.file.save(src, "#include <my_src2.c>"));
 
@@ -784,6 +785,7 @@ test$case(test_cmd_stats)
 {
     mem$scope(tmem$, _)
     {
+        (void)_;
         e$ret(io.file.save(TBUILDDIR "stat_src.c", "// comment\nint foo(void) { return 1; }\n"));
         e$ret(io.file.save(
             TBUILDDIR "stat_test.c", "int test_foo(void) { uassert(1); return 1; }\n"
