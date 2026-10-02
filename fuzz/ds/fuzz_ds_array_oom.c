@@ -25,27 +25,19 @@ fuzz$case(const u8* data, usize size)
             u8 oom = 0;
             if (!fuzz$dget(&oom)) { break; }
 
-            // arr$push()/arr$pusha() abort on OOM via uassert_always, so growth is
-            // exercised through the graceful arr$new()/arr$setcap()/arr$grow() API
-            ((AllocatorArena_c*)arena)->test_oom_threshold = 0.0f;
+            // inject OOM into every operation, including the graceful arr$push()/arr$pusha()/arr$ins()
+            ((AllocatorArena_c*)arena)->test_oom_threshold = (f32)(oom % 4);
 
-            switch (op % 6) {
+            switch (op % 8) {
                 case 0:
-                    if (arr == NULL) {
-                        ((AllocatorArena_c*)arena)->test_oom_threshold = (f32)(oom % 4);
-                        arr$new(arr, arena, .capacity = v % 64);
-                        ((AllocatorArena_c*)arena)->test_oom_threshold = 0.0f;
-                    }
+                    if (arr == NULL) { arr$new(arr, arena, .capacity = v % 64); }
                     break;
                 case 1:
-                    if (arr != NULL) {
-                        ((AllocatorArena_c*)arena)->test_oom_threshold = (f32)(oom % 4);
-                        arr$setcap(arr, v % 256);
-                        ((AllocatorArena_c*)arena)->test_oom_threshold = 0.0f;
-                    }
+                    if (arr != NULL) { arr$setcap(arr, v % 256); }
                     break;
                 case 2:
-                    if (arr != NULL) { arr$push(arr, v); }
+                case 6:
+                    if (arr != NULL) { (void)arr$push(arr, v); }
                     break;
                 case 3:
                     if (arr != NULL && arr$len(arr) > 0) { (void)arr$pop(arr); }
@@ -66,7 +58,17 @@ fuzz$case(const u8* data, usize size)
                         for$each (it, arr) { (void)it; }
                     }
                     break;
+                case 7: {
+                    if (arr != NULL) {
+                        u64 items[2] = { v, v + 1 };
+                        (void)arr$pusha(arr, items);
+                        (void)arr$ins(arr, 0, v);
+                    }
+                    break;
+                }
             }
+
+            ((AllocatorArena_c*)arena)->test_oom_threshold = 0.0f;
         }
     }
 
@@ -80,7 +82,7 @@ fuzz$setup()
 {
     if (os.fs.mkdir(fuzz$corpus_dir)) {}
 
-    u8 ops[] = { 0, 1, 2, 2, 1, 3, 4, 5 };
+    u8 ops[] = { 0, 1, 2, 7, 6, 3, 4, 5 };
     u8 oom_vals[] = { 1, 2, 3 };
     u8 buf[10 * 48];
 

@@ -4,6 +4,12 @@
 #include "src/test.h"
 
 
+static int
+cmp_int(const void* a, const void* b)
+{
+    return (*(const int*)a > *(const int*)b) - (*(const int*)a < *(const int*)b);
+}
+
 static void
 add_to_arr(arr$(int) * arr)
 {
@@ -2112,18 +2118,144 @@ test$case(test_arr_grow_len_overflow_poc)
     // causing min_len to be small → no realloc → OOB write on push.
     //
     // Before fix: length + addlen wraps, function proceeds without error
-    // After fix:  overflow guard returns NULL
+    // After fix:  overflow guard frees the old array and returns NULL (no leak)
 
     arr$(int) arr = arr$new(arr, mem$);
     tassert(arr != NULL);
-    // Save pointer for cleanup after arr$grow sets arr to NULL
-    void* old_arr = arr;
     uassert_disable();
     _cexds__header(arr)->length = (usize)-1;
-    arr$grow(arr, 1, 0);    // BEFORE: wraps, arr unchanged. AFTER: overflow → NULL
+    arr$grow(arr, 1, 0); // overflow → old array freed internally, arr set to NULL
     tassert(arr == NULL);
     uassert_enable();
-    _cexds__arrfreef(old_arr);    // free the leaked array allocation
+    return EOK;
+}
+
+test$case(test_arr_push_oom_returns_null)
+{
+    arr$(int) arr = arr$new(arr, test$alloc);
+    tassert(arr != NULL);
+    for (int i = 0; i < 16; i++) { tassert(arr$push(arr, i) != NULL); }
+    tassert_eq(arr$len(arr), 16);
+
+    void* old = arr;
+    test$alloc_set_oom_on_call(1); // next alloc = the grow realloc
+    int* r = arr$push(arr, 42);
+    test$alloc_set_oom_on_call(0);
+
+    tassert(r == NULL);
+    tassert(arr == NULL);
+    tassert(mem$asan_poison_check(old, sizeof(int) * 16));
+    return EOK;
+}
+
+test$case(test_arr_pusha_oom_returns_null)
+{
+    arr$(int) arr = arr$new(arr, test$alloc);
+    tassert(arr != NULL);
+    for (int i = 0; i < 16; i++) { tassert(arr$push(arr, i) != NULL); }
+
+    int src[4] = { 1, 2, 3, 4 };
+    void* old = arr;
+    test$alloc_set_oom_on_call(1);
+    int* r = arr$pusha(arr, src);
+    test$alloc_set_oom_on_call(0);
+
+    tassert(r == NULL);
+    tassert(arr == NULL);
+    tassert(mem$asan_poison_check(old, sizeof(int) * 16));
+    return EOK;
+}
+
+test$case(test_arr_pushm_oom_returns_null)
+{
+    arr$(int) arr = arr$new(arr, test$alloc);
+    tassert(arr != NULL);
+    for (int i = 0; i < 16; i++) { tassert(arr$push(arr, i) != NULL); }
+
+    test$alloc_set_oom_on_call(1);
+    int* r = arr$pushm(arr, 1, 2, 3);
+    test$alloc_set_oom_on_call(0);
+
+    tassert(r == NULL);
+    tassert(arr == NULL);
+    return EOK;
+}
+
+test$case(test_arr_ins_oom_returns_null)
+{
+    arr$(int) arr = arr$new(arr, test$alloc);
+    tassert(arr != NULL);
+    for (int i = 0; i < 16; i++) { tassert(arr$push(arr, i) != NULL); }
+
+    test$alloc_set_oom_on_call(1);
+    int* r = arr$ins(arr, 0, 42);
+    test$alloc_set_oom_on_call(0);
+
+    tassert(r == NULL);
+    tassert(arr == NULL);
+    return EOK;
+}
+
+test$case(test_arr_grow_check_overflow_returns_false)
+{
+    arr$(int) arr = arr$new(arr, test$alloc);
+    tassert(arr != NULL);
+
+    _cexds__header(arr)->length = (usize)-1;
+    tassert(arr$grow_check(arr, 1) == false);
+    // overflow leaves the array intact (only grow-OOM frees it)
+    tassert(arr != NULL);
+
+    _cexds__header(arr)->length = 0;
+    arr$free(arr);
+    return EOK;
+}
+
+test$case(test_hminit_key_arena_oom_returns_null)
+{
+    mem$ = test$alloc;
+    // alloc #1 = record array, #2 = hash table, #3 = key arena struct
+    test$alloc_set_oom_on_call(3);
+    hm$(char*, int) m = hm$new(m, test$alloc, .copy_keys = true, .copy_keys_arena_pgsize = 1024);
+    test$alloc_set_oom_on_call(0);
+
+    tassert(m == NULL);
+    return EOK;
+}
+
+test$case(test_ds_null_tolerant)
+{
+    arr$(int) a = NULL;
+    tassert(arr$len(a) == 0);
+    tassert(arr$cap(a) == 0);
+    tassert(arr$at(a, 0) == 0);
+    tassert(arr$last(a) == 0);
+    tassert(arr$pop(a) == 0);
+    tassert(arr$push(a, 1) == NULL);
+    tassert(arr$ins(a, 0, 1) == NULL);
+    tassert(arr$pushm(a, 1, 2) == NULL);
+    int src[2] = { 1, 2 };
+    tassert(arr$pusha(a, src) == NULL);
+    tassert(arr$grow(a, 1, 0) == NULL);
+    tassert(arr$setcap(a, 4) == NULL);
+    tassert(arr$grow_check(a, 1) == false);
+    tassert(arr$del(a, 0) == 0);
+    arr$delswap(a, 0);
+    arr$clear(a);
+    arr$sort(a, cmp_int);
+    arr$free(a);
+
+    hm$(int, int) m = NULL;
+    tassert(hm$len(m) == 0);
+    tassert(hm$get(m, 1, -1) == -1);
+    tassert(hm$getp(m, 1) == NULL);
+    tassert(hm$gets(m, 1) == NULL);
+    tassert(hm$set(m, 1, 2) == NULL);
+    tassert(hm$setp(m, 1) == NULL);
+    tassert(hm$sets(m, (typeof(*m)){ .key = 1, .value = 2 }) == NULL);
+    tassert(hm$del(m, 1) == false);
+    tassert(hm$clear(m) == true);
+    hm$free(m);
     return EOK;
 }
 

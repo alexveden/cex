@@ -55,34 +55,34 @@ arr$free(array);
 /// Declares a dynamic array variable. `arr$(int) myarr` = `int* myarr`. Zero overhead, fully C-compatible.
 #define arr$(T)
 
-/// Returns element at index `i` (by value) with bounds checking via `uassert()`. Also works on `hm$`.
+/// Returns element at index `i` (by value) with bounds checking via `uassert()`. Also works on `hm$`. Returns zero value for a NULL array.
 #define arr$at(a, i)
 
 /// Returns the current allocated capacity (in elements). Returns 0 if array is NULL.
 #define arr$cap(a)
 
-/// Clears the array (sets length to 0). Does NOT free or shrink memory — use `arr$free` for that.
+/// Clears the array (sets length to 0). Does NOT free or shrink memory — use `arr$free` for that. NULL array is a no-op.
 #define arr$clear(a)
 
-/// Deletes element at index `i` by shifting subsequent elements left. Order preserved. O(n).
+/// Deletes element at index `i` by shifting subsequent elements left. Order preserved. O(n). NULL array is a no-op (returns 0).
 #define arr$del(a, i)
 
-/// Deletes element at index `i` by swapping with the last element. Order NOT preserved, but O(1).
+/// Deletes element at index `i` by swapping with the last element. Order NOT preserved, but O(1). NULL array is a no-op.
 #define arr$delswap(a, i)
 
 /// Frees the array memory and sets the pointer to NULL. Safe on NULL arrays (no-op).
 #define arr$free(a)
 
-/// Grows array so it can hold at least `add_len` more elements, with the absolute minimum of `min_cap`.
+/// Grows array so it can hold at least `add_len` more elements, with the absolute minimum of `min_cap`. Returns the array pointer, or NULL on memory error / NULL array.
 #define arr$grow(a, add_len, min_cap)
 
-/// Checks if array has room for `add_extra` elements, growing if needed. Returns false on memory error.
+/// Checks if array has room for `add_extra` elements, growing if needed. Returns false on memory error, length overflow, or NULL array.
 #define arr$grow_check(a, add_extra)
 
-/// Inserts element at index `i`, shifting subsequent elements right. Order preserved. O(n).
+/// Inserts element at index `i`, shifting subsequent elements right. Order preserved. O(n). Returns pointer to the inserted slot, or NULL on memory error / NULL array.
 #define arr$ins(a, i, value...)
 
-/// Returns the last element (by value). Asserts that the array is not empty.
+/// Returns the last element (by value). Asserts that the array is not empty. Returns zero value for a NULL array.
 #define arr$last(a)
 
 /// Returns the number of elements. Works on `arr$`, `hm$`, static C arrays, and pointer+length slices.
@@ -91,22 +91,22 @@ arr$free(array);
 /// Initializes a dynamic array. Pass the array variable, an `IAllocator`, and optional `.capacity = N`. Returns the new pointer on success, NULL on memory error.
 #define arr$new(a, allocator, kwargs...)
 
-/// Pops and returns the last element (by value), asserts non-empty array
+/// Pops and returns the last element (by value), asserts non-empty array. Returns zero value for a NULL array.
 #define arr$pop(a)
 
-/// Appends a single element to the end. Automatically grows capacity if needed. Returns pointer to the new slot.
+/// Appends a single element to the end. Automatically grows capacity if needed. Returns pointer to the new slot, or NULL on memory error / NULL array.
 #define arr$push(a, value...)
 
-/// Appends all elements from `array` (dynamic, static, or pointer+len) into `a`. `array_len` is optional for pointer+len.
+/// Appends all elements from `array` (dynamic, static, or pointer+len) into `a`. `array_len` is optional for pointer+len. Returns pointer to the first appended slot, or NULL on memory error / NULL array / empty source.
 #define arr$pusha(a, array, array_len...)
 
 /// Appends multiple elements at once: `arr$pushm(arr, 1, 2, 3)`. Uses a compound-literal temporary array.
 #define arr$pushm(a, items...)
 
-/// Resizes the array capacity to at least `n` elements. No-op if current capacity >= n.
+/// Resizes the array capacity to at least `n` elements. No-op if current capacity >= n. Returns the array pointer, or NULL on memory error / NULL array.
 #define arr$setcap(a, n)
 
-/// Sorts the array in-place using `qsort()` with the provided comparator.
+/// Sorts the array in-place using `qsort()` with the provided comparator. NULL array is a no-op.
 #define arr$sort(a, qsort_cmp)
 
 

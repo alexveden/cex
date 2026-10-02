@@ -101,22 +101,22 @@ hm$free(smap);
 /// Declares a hashmap variable. `hm$(char*, int) map` = `struct { char* key; int value; }*`.
 #define hm$(_KeyType, _ValType)
 
-/// Clears all entries from the hashmap. Frees copied string keys if `.copy_keys` was set. Does NOT free the hashmap itself.
+/// Clears all entries from the hashmap. Frees copied string keys if `.copy_keys` was set. Does NOT free the hashmap itself. NULL hashmap is a no-op.
 #define hm$clear(t)
 
-/// Deletes the entry for key `k`. IMPORTANT: the backing array may be reordered (swap-with-last). Frees copied string keys if applicable.
+/// Deletes the entry for key `k`. IMPORTANT: the backing array may be reordered (swap-with-last). Frees copied string keys if applicable. Returns false for a NULL hashmap.
 #define hm$del(t, k)
 
 /// Frees all hashmap resources (entries, key copies, arena, hash table) and sets the pointer to NULL.
 #define hm$free(t)
 
-/// Gets the value for key `k` by value. Returns `def` (defaults to zero) if key not found.
+/// Gets the value for key `k` by value. Returns `def` (defaults to zero) if key not found or hashmap is NULL.
 #define hm$get(t, k, def...)
 
-/// Gets a pointer to the value for key `k`. Returns NULL if key not found (no copy — direct pointer into hashmap storage).
+/// Gets a pointer to the value for key `k`. Returns NULL if key not found or hashmap is NULL (no copy — direct pointer into hashmap storage).
 #define hm$getp(t, k)
 
-/// Gets a pointer to the full hashmap record (key+value struct) for key `k`. Returns NULL if not found.
+/// Gets a pointer to the full hashmap record (key+value struct) for key `k`. Returns NULL if not found or hashmap is NULL.
 #define hm$gets(t, k)
 
 /// Returns the number of entries in the hashmap. Equivalent to `arr$len()`. Returns 0 if NULL.
@@ -128,13 +128,13 @@ hm$free(smap);
 /// Declares a hashmap based on a custom struct that has a `.key` field. The struct itself becomes the key+value record.
 #define hm$s(_StructType)
 
-/// Sets `key` to `value` in the hashmap. Replaces if key already exists. Returns pointer to the record, or NULL on memory error.
+/// Sets `key` to `value` in the hashmap. Replaces if key already exists. Returns pointer to the record, or NULL on memory error / NULL hashmap.
 #define hm$set(t, k, v...)
 
-/// Adds or gets a key and returns a pointer to its value field for direct mutation. Returns NULL on memory error.
+/// Adds or gets a key and returns a pointer to its value field for direct mutation. Returns NULL on memory error / NULL hashmap.
 #define hm$setp(t, k)
 
-/// Sets a full pre-initialized record (struct with `.key` field) into the hashmap. Returns pointer to the stored record, or NULL on memory error.
+/// Sets a full pre-initialized record (struct with `.key` field) into the hashmap. Returns pointer to the stored record, or NULL on memory error / NULL hashmap.
 #define hm$sets(t, v...)
 
 

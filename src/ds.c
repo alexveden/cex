@@ -89,7 +89,7 @@ _cexds__arrgrowf(
     usize min_len;
     {
         usize cur_len = arr ? _cexds__header(arr)->length : 0;
-        if (mem$add_overflow(cur_len, addlen, &min_len)) { return NULL; }
+        if (mem$add_overflow(cur_len, addlen, &min_len)) { goto fail_owned; }
     }
 
     // compute the minimum capacity needed
@@ -110,7 +110,7 @@ _cexds__arrgrowf(
 
     // guard against overflow in elemsize * min_cap
     usize elem_total;
-    if (mem$mul_overflow(min_cap, elemsize, &elem_total)) { return NULL; }
+    if (mem$mul_overflow(min_cap, elemsize, &elem_total)) { goto fail_owned; }
 
     // General types with alignment <= usize use generic realloc (less mem overhead + realloc faster)
     el_align = (el_align <= alignof(_cexds__array_header)) ? alignof(_cexds__array_header) : 64;
@@ -166,6 +166,11 @@ _cexds__arrgrowf(
     hdr->capacity = min_cap;
 
     return new_arr;
+
+fail_owned:
+    // overflow detected before any realloc: the old array is still alive, free it to avoid a leak
+    if (arr != NULL) { _cexds__arrfreef(arr); }
+    return NULL;
 }
 
 void
@@ -755,6 +760,12 @@ _cexds__hminit(
         table->key_arena = AllocatorArena.create(
             &(AllocatorArena_kw){ .page_size = kwargs->copy_keys_arena_pgsize }
         );
+        if (unlikely(table->key_arena == NULL)) {
+            _cexds__header(a)->_hash_table = NULL;
+            _cexds__header(a)->allocator->free(_cexds__header(a)->allocator, table);
+            _cexds__arrfreef(a);
+            return NULL;
+        }
     }
 
     return a;

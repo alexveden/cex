@@ -151,68 +151,95 @@ struct _cexds__arr_new_kwargs_s
         (a) = NULL;                                                                                \
     })
 
-/// Resizes the array capacity to at least `n` elements. No-op if current capacity >= n.
-#define arr$setcap(a, n) (_cexds__arr_integrity(a, _CEXDS_ARR_MAGIC), arr$grow(a, 0, n))
+/// Resizes the array capacity to at least `n` elements. No-op if current capacity >= n. Returns the array pointer, or NULL on memory error / NULL array.
+#define arr$setcap(a, n)                                                                           \
+    ((a) != NULL ? (_cexds__arr_integrity(a, _CEXDS_ARR_MAGIC), arr$grow(a, 0, n)) : NULL)
 
-/// Clears the array (sets length to 0). Does NOT free or shrink memory — use `arr$free` for that.
-#define arr$clear(a) (_cexds__arr_integrity(a, _CEXDS_ARR_MAGIC), _cexds__header(a)->length = 0)
+/// Clears the array (sets length to 0). Does NOT free or shrink memory — use `arr$free` for that. NULL array is a no-op.
+#define arr$clear(a)                                                                               \
+    ({                                                                                             \
+        if ((a) != NULL) {                                                                         \
+            _cexds__arr_integrity(a, _CEXDS_ARR_MAGIC);                                            \
+            _cexds__header(a)->length = 0;                                                         \
+        }                                                                                          \
+    })
 
 /// Returns the current allocated capacity (in elements). Returns 0 if array is NULL.
 #define arr$cap(a) ((a) ? (_cexds__header(a)->capacity) : 0)
 
-/// Deletes element at index `i` by shifting subsequent elements left. Order preserved. O(n).
+/// Deletes element at index `i` by shifting subsequent elements left. Order preserved. O(n). NULL array is a no-op (returns 0).
 #define arr$del(a, i)                                                                              \
     ({                                                                                             \
-        _cexds__arr_integrity(a, _CEXDS_ARR_MAGIC);                                                \
-        usize _cexds__len = _cexds__header(a)->length;                                             \
-        uassert_always((usize)i < _cexds__len && "out of bounds");                                 \
-        if ((usize)i + 1 < _cexds__len) {                                                          \
-            memmove(&(a)[i], &(a)[(i) + 1], sizeof *(a) * (_cexds__len - 1 - (usize)i));           \
+        usize _cexds__len = 0;                                                                     \
+        if ((a) != NULL) {                                                                         \
+            _cexds__arr_integrity(a, _CEXDS_ARR_MAGIC);                                            \
+            _cexds__len = _cexds__header(a)->length;                                               \
+            uassert_always((usize)i < _cexds__len && "out of bounds");                             \
+            if ((usize)i + 1 < _cexds__len) {                                                      \
+                memmove(&(a)[i], &(a)[(i) + 1], sizeof *(a) * (_cexds__len - 1 - (usize)i));       \
+            }                                                                                      \
+            _cexds__header(a)->length = _cexds__len - 1;                                           \
         }                                                                                          \
-        _cexds__header(a)->length = _cexds__len - 1;                                               \
         _cexds__len;                                                                               \
     })
 
-/// Deletes element at index `i` by swapping with the last element. Order NOT preserved, but O(1).
+/// Deletes element at index `i` by swapping with the last element. Order NOT preserved, but O(1). NULL array is a no-op.
 #define arr$delswap(a, i)                                                                          \
     ({                                                                                             \
-        _cexds__arr_integrity(a, _CEXDS_ARR_MAGIC);                                                \
-        uassert((usize)i < _cexds__header(a)->length && "out of bounds");                          \
-        (a)[i] = arr$last(a);                                                                      \
-        _cexds__header(a)->length -= 1;                                                            \
+        if ((a) != NULL) {                                                                         \
+            _cexds__arr_integrity(a, _CEXDS_ARR_MAGIC);                                            \
+            uassert((usize)i < _cexds__header(a)->length && "out of bounds");                      \
+            (a)[i] = arr$last(a);                                                                  \
+            _cexds__header(a)->length -= 1;                                                        \
+        }                                                                                          \
     })
 
-/// Returns the last element (by value). Asserts that the array is not empty.
+/// Returns the last element (by value). Asserts that the array is not empty. Returns zero value for a NULL array.
 #define arr$last(a)                                                                                \
     ({                                                                                             \
-        _cexds__arr_integrity(a, _CEXDS_ARR_MAGIC);                                                \
-        uassert(_cexds__header(a)->length > 0 && "empty array");                                   \
-        (a)[_cexds__header(a)->length - 1];                                                        \
+        typeof(*a) _cexds__ret = { 0 };                                                            \
+        if ((a) != NULL) {                                                                         \
+            _cexds__arr_integrity(a, _CEXDS_ARR_MAGIC);                                            \
+            uassert(_cexds__header(a)->length > 0 && "empty array");                               \
+            _cexds__ret = (a)[_cexds__header(a)->length - 1];                                      \
+        }                                                                                          \
+        _cexds__ret;                                                                               \
     })
 
-/// Returns element at index `i` (by value) with bounds checking via `uassert()`. Also works on `hm$`.
+/// Returns element at index `i` (by value) with bounds checking via `uassert()`. Also works on `hm$`. Returns zero value for a NULL array.
 #define arr$at(a, i)                                                                               \
     ({                                                                                             \
-        _cexds__arr_integrity(a, 0); /* may work also on hm$ */                                    \
-        uassert((usize)i < _cexds__header(a)->length && "out of bounds");                          \
-        (a)[i];                                                                                    \
+        typeof(*a) _cexds__ret = { 0 };                                                            \
+        if ((a) != NULL) {                                                                         \
+            _cexds__arr_integrity(a, 0); /* may work also on hm$ */                                \
+            uassert((usize)i < _cexds__header(a)->length && "out of bounds");                      \
+            _cexds__ret = (a)[i];                                                                  \
+        }                                                                                          \
+        _cexds__ret;                                                                               \
     })
 
-/// Pops and returns the last element (by value), asserts non-empty array
+/// Pops and returns the last element (by value), asserts non-empty array. Returns zero value for a NULL array.
 #define arr$pop(a)                                                                                 \
     ({                                                                                             \
-        _cexds__arr_integrity(a, _CEXDS_ARR_MAGIC);                                                \
-        uassert(_cexds__header(a)->length > 0 && "empty array");                                   \
-        if (_cexds__header(a)->length > 0) { _cexds__header(a)->length--; }                        \
-        (a)[_cexds__header(a)->length];                                                            \
+        typeof(*a) _cexds__ret = { 0 };                                                            \
+        if ((a) != NULL) {                                                                         \
+            _cexds__arr_integrity(a, _CEXDS_ARR_MAGIC);                                            \
+            uassert(_cexds__header(a)->length > 0 && "empty array");                               \
+            if (_cexds__header(a)->length > 0) { _cexds__header(a)->length--; }                    \
+            _cexds__ret = (a)[_cexds__header(a)->length];                                          \
+        }                                                                                          \
+        _cexds__ret;                                                                               \
     })
 
-/// Appends a single element to the end. Automatically grows capacity if needed. Returns pointer to the new slot.
+/// Appends a single element to the end. Automatically grows capacity if needed. Returns pointer to the new slot, or NULL on memory error / NULL array.
 #define arr$push(a, value...)                                                                      \
     ({                                                                                             \
-        uassert_always(arr$grow_check(a, 1) && "arr$push memory error");                           \
-        (a)[_cexds__header(a)->length++] = (value);                                                \
-        &(a)[_cexds__header(a)->length-1];                                                         \
+        typeof(*a)* _cexds__ret = NULL;                                                            \
+        if (arr$grow_check(a, 1)) {                                                                \
+            (a)[_cexds__header(a)->length++] = (value);                                            \
+            _cexds__ret = &(a)[_cexds__header(a)->length - 1];                                     \
+        }                                                                                          \
+        _cexds__ret;                                                                               \
     })
 
 /// Appends multiple elements at once: `arr$pushm(arr, 1, 2, 3)`. Uses a compound-literal temporary array.
@@ -225,52 +252,82 @@ struct _cexds__arr_new_kwargs_s
         /* NOLINTEND */                                                                            \
     })
 
-/// Appends all elements from `array` (dynamic, static, or pointer+len) into `a`. `array_len` is optional for pointer+len.
+/// Appends all elements from `array` (dynamic, static, or pointer+len) into `a`. `array_len` is optional for pointer+len. Returns pointer to the first appended slot, or NULL on memory error / NULL array / empty source.
 #define arr$pusha(a, array, array_len...)                                                          \
     ({                                                                                             \
         /* NOLINTBEGIN */                                                                          \
-        _cexds__arr_integrity(a, _CEXDS_ARR_MAGIC);                                                \
-        uassert(array != NULL && "arr$pusha: array is NULL");                                      \
-        usize _arr_len_va[] = { array_len };                                                       \
-        usize arr_len = (sizeof(_arr_len_va) > 0) ? _arr_len_va[0] : arr$len(array);               \
-        uassert(arr_len < PTRDIFF_MAX && "negative length or overflow");                           \
-        uassert_always(arr$grow_check(a, arr_len) && "arr$pusha memory error");                    \
-        for (usize i = 0; i < arr_len; i++) { (a)[_cexds__header(a)->length++] = ((array)[i]); }   \
+        typeof(*a)* _cexds__ret = NULL;                                                            \
+        if ((a) != NULL) {                                                                         \
+            _cexds__arr_integrity(a, _CEXDS_ARR_MAGIC);                                            \
+            uassert(array != NULL && "arr$pusha: array is NULL");                                  \
+            usize _arr_len_va[] = { array_len };                                                   \
+            usize arr_len = (sizeof(_arr_len_va) > 0) ? _arr_len_va[0] : arr$len(array);           \
+            uassert(arr_len < PTRDIFF_MAX && "negative length or overflow");                       \
+            if (arr_len > 0 && arr$grow_check(a, arr_len)) {                                       \
+                typeof(*a)* _cexds__first = &(a)[_cexds__header(a)->length];                       \
+                for (usize i = 0; i < arr_len; i++) {                                              \
+                    (a)[_cexds__header(a)->length++] = ((array)[i]);                               \
+                }                                                                                  \
+                _cexds__ret = _cexds__first;                                                       \
+            }                                                                                      \
+        }                                                                                          \
         /* NOLINTEND */                                                                            \
+        _cexds__ret;                                                                               \
     })
 
-/// Sorts the array in-place using `qsort()` with the provided comparator.
+/// Sorts the array in-place using `qsort()` with the provided comparator. NULL array is a no-op.
 #define arr$sort(a, qsort_cmp)                                                                     \
     ({                                                                                             \
-        _cexds__arr_integrity(a, _CEXDS_ARR_MAGIC);                                                \
-        qsort((a), arr$len(a), sizeof(*a), qsort_cmp);                                             \
+        if ((a) != NULL) {                                                                         \
+            _cexds__arr_integrity(a, _CEXDS_ARR_MAGIC);                                            \
+            qsort((a), arr$len(a), sizeof(*a), qsort_cmp);                                         \
+        }                                                                                          \
     })
 
 
-/// Inserts element at index `i`, shifting subsequent elements right. Order preserved. O(n).
+/// Inserts element at index `i`, shifting subsequent elements right. Order preserved. O(n). Returns pointer to the inserted slot, or NULL on memory error / NULL array.
 #define arr$ins(a, i, value...)                                                                    \
-    do {                                                                                           \
-        uassert_always(arr$grow_check(a, 1) && "arr$ins memory error");                            \
-        usize _cexds__len = _cexds__header(a)->length;                                             \
-        uassert_always((usize)i < _cexds__len + 1 && "i out of bounds");                           \
-        if ((usize)i < _cexds__len) {                                                              \
-            memmove(&(a)[(i) + 1], &(a)[i], sizeof(*(a)) * (_cexds__len - (usize)i));              \
+    ({                                                                                             \
+        typeof(*a)* _cexds__ret = NULL;                                                            \
+        if (arr$grow_check(a, 1)) {                                                                \
+            usize _cexds__len = _cexds__header(a)->length;                                         \
+            uassert_always((usize)i < _cexds__len + 1 && "i out of bounds");                       \
+            if ((usize)i < _cexds__len) {                                                          \
+                memmove(&(a)[(i) + 1], &(a)[i], sizeof(*(a)) * (_cexds__len - (usize)i));          \
+            }                                                                                      \
+            _cexds__header(a)->length = _cexds__len + 1;                                           \
+            (a)[i] = (value);                                                                      \
+            _cexds__ret = &(a)[i];                                                                 \
         }                                                                                          \
-        _cexds__header(a)->length = _cexds__len + 1;                                               \
-        (a)[i] = (value);                                                                          \
-    } while (0)
+        _cexds__ret;                                                                               \
+    })
 
-/// Checks if array has room for `add_extra` elements, growing if needed. Returns false on memory error.
+/// Checks if array has room for `add_extra` elements, growing if needed. Returns false on memory error, length overflow, or NULL array.
 #define arr$grow_check(a, add_extra)                                                               \
-    ((_cexds__arr_integrity(a, _CEXDS_ARR_MAGIC) &&                                                \
-      (add_extra) <= (usize)-1 - _cexds__header(a)->length &&                                      \
-      _cexds__header(a)->length + (add_extra) > _cexds__header(a)->capacity)                       \
-         ? (arr$grow(a, add_extra, 0), a != NULL)                                                  \
-         : true)
+    ({                                                                                             \
+        bool _cexds__ok = false;                                                                   \
+        if ((a) != NULL) {                                                                         \
+            _cexds__arr_integrity(a, _CEXDS_ARR_MAGIC);                                            \
+            usize _cexds__add = (add_extra);                                                       \
+            if (_cexds__add > (usize)-1 - _cexds__header(a)->length) {                             \
+                _cexds__ok = false;                                                                \
+            } else if (_cexds__header(a)->length + _cexds__add > _cexds__header(a)->capacity) {    \
+                (void)arr$grow(a, _cexds__add, 0);                                                 \
+                _cexds__ok = ((a) != NULL);                                                        \
+            } else {                                                                               \
+                _cexds__ok = true;                                                                 \
+            }                                                                                      \
+        }                                                                                          \
+        _cexds__ok;                                                                                \
+    })
 
-/// Grows array so it can hold at least `add_len` more elements, with the absolute minimum of `min_cap`.
+/// Grows array so it can hold at least `add_len` more elements, with the absolute minimum of `min_cap`. Returns the array pointer, or NULL on memory error / NULL array.
 #define arr$grow(a, add_len, min_cap)                                                              \
-    ((a) = _cexds__arrgrowf((a), sizeof *(a), (add_len), (min_cap), alignof(typeof(*a)), NULL))
+    ((a) != NULL                                                                                   \
+         ? ((a) = _cexds__arrgrowf((a), sizeof *(a), (add_len), (min_cap), alignof(typeof(*a)),    \
+                                   NULL),                                                          \
+            (a))                                                                                   \
+         : NULL)
 
 
 #if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 12)
@@ -632,116 +689,137 @@ struct _cexds__hm_new_kwargs_s
     })
 
 
-/// Sets `key` to `value` in the hashmap. Replaces if key already exists. Returns pointer to the record, or NULL on memory error.
+/// Sets `key` to `value` in the hashmap. Replaces if key already exists. Returns pointer to the record, or NULL on memory error / NULL hashmap.
 #define hm$set(t, k, v...)                                                                         \
     ({                                                                                             \
         typeof(t) result = NULL;                                                                   \
-        (t) = _cexds__hmput_key(                                                                   \
-            (t),                                                                                   \
-            sizeof(*t),                     /* size of hashmap item */                             \
-            ((typeof((t)->key)[1]){ (k) }), /* temp on stack pointer to (k) value */               \
-            sizeof((t)->key),               /* size of key */                                      \
-            offsetof(typeof(*t), key),      /* offset of key in hm struct */                       \
-            NULL,                           /* no full element set */                              \
-            &result                         /* NULL on memory error */                             \
-        );                                                                                         \
-        if (result) result->value = (v);                                                           \
+        if ((t) != NULL) {                                                                         \
+            (t) = _cexds__hmput_key(                                                               \
+                (t),                                                                               \
+                sizeof(*t),                     /* size of hashmap item */                         \
+                ((typeof((t)->key)[1]){ (k) }), /* temp on stack pointer to (k) value */           \
+                sizeof((t)->key),               /* size of key */                                  \
+                offsetof(typeof(*t), key),      /* offset of key in hm struct */                   \
+                NULL,                           /* no full element set */                          \
+                &result                         /* NULL on memory error */                         \
+            );                                                                                     \
+            if (result) result->value = (v);                                                       \
+        }                                                                                          \
         result;                                                                                    \
     })
 
-/// Adds or gets a key and returns a pointer to its value field for direct mutation. Returns NULL on memory error.
+/// Adds or gets a key and returns a pointer to its value field for direct mutation. Returns NULL on memory error / NULL hashmap.
 #define hm$setp(t, k)                                                                              \
     ({                                                                                             \
         typeof(t) result = NULL;                                                                   \
-        (t) = _cexds__hmput_key(                                                                   \
-            (t),                                                                                   \
-            sizeof(*t),                     /* size of hashmap item */                             \
-            ((typeof((t)->key)[1]){ (k) }), /* temp on stack pointer to (k) value */               \
-            sizeof((t)->key),               /* size of key */                                      \
-            offsetof(typeof(*t), key),      /* offset of key in hm struct */                       \
-            NULL,                           /* no full element set */                              \
-            &result                         /* NULL on memory error */                             \
-        );                                                                                         \
+        if ((t) != NULL) {                                                                         \
+            (t) = _cexds__hmput_key(                                                               \
+                (t),                                                                               \
+                sizeof(*t),                     /* size of hashmap item */                         \
+                ((typeof((t)->key)[1]){ (k) }), /* temp on stack pointer to (k) value */           \
+                sizeof((t)->key),               /* size of key */                                  \
+                offsetof(typeof(*t), key),      /* offset of key in hm struct */                   \
+                NULL,                           /* no full element set */                          \
+                &result                         /* NULL on memory error */                         \
+            );                                                                                     \
+        }                                                                                          \
         (result ? &result->value : NULL);                                                          \
     })
 
-/// Sets a full pre-initialized record (struct with `.key` field) into the hashmap. Returns pointer to the stored record, or NULL on memory error.
+/// Sets a full pre-initialized record (struct with `.key` field) into the hashmap. Returns pointer to the stored record, or NULL on memory error / NULL hashmap.
 #define hm$sets(t, v...)                                                                           \
     ({                                                                                             \
         typeof(t) result = NULL;                                                                   \
-        typeof(*t) _val = (v);                                                                     \
-        (t) = _cexds__hmput_key(                                                                   \
-            (t),                                                                                   \
-            sizeof(*t),                /* size of hashmap item */                                  \
-            &_val.key,                 /* temp on stack pointer to (k) value */                    \
-            sizeof((t)->key),          /* size of key */                                           \
-            offsetof(typeof(*t), key), /* offset of key in hm struct */                            \
-            &(_val),                   /* full element write */                                    \
-            &result                    /* NULL on memory error */                                  \
-        );                                                                                         \
+        if ((t) != NULL) {                                                                         \
+            typeof(*t) _val = (v);                                                                 \
+            (t) = _cexds__hmput_key(                                                               \
+                (t),                                                                               \
+                sizeof(*t),                /* size of hashmap item */                              \
+                &_val.key,                 /* temp on stack pointer to (k) value */                \
+                sizeof((t)->key),          /* size of key */                                       \
+                offsetof(typeof(*t), key), /* offset of key in hm struct */                        \
+                &(_val),                   /* full element write */                                \
+                &result                    /* NULL on memory error */                              \
+            );                                                                                     \
+        }                                                                                          \
         result;                                                                                    \
     })
 
-/// Gets the value for key `k` by value. Returns `def` (defaults to zero) if key not found.
+/// Gets the value for key `k` by value. Returns `def` (defaults to zero) if key not found or hashmap is NULL.
 #define hm$get(t, k, def...)                                                                       \
     ({                                                                                             \
-        typeof(t) result = _cexds__hmget_key(                                                      \
-            (t),                                                                                   \
-            sizeof(*t),                     /* size of hashmap item */                             \
-            ((typeof((t)->key)[1]){ (k) }), /* temp on stack pointer to (k) value */               \
-            sizeof((t)->key),               /* size of key */                                      \
-            offsetof(typeof(*t), key)       /* offset of key in hm struct */                       \
-        );                                                                                         \
         typeof((t)->value) _def[1] = { def }; /* default value, always 0 if def... is empty! */    \
+        typeof(t) result = NULL;                                                                   \
+        if ((t) != NULL) {                                                                         \
+            result = _cexds__hmget_key(                                                            \
+                (t),                                                                               \
+                sizeof(*t),                     /* size of hashmap item */                         \
+                ((typeof((t)->key)[1]){ (k) }), /* temp on stack pointer to (k) value */           \
+                sizeof((t)->key),               /* size of key */                                  \
+                offsetof(typeof(*t), key)       /* offset of key in hm struct */                   \
+            );                                                                                     \
+        }                                                                                          \
         result ? result->value : _def[0];                                                          \
     })
 
-/// Gets a pointer to the value for key `k`. Returns NULL if key not found (no copy — direct pointer into hashmap storage).
+/// Gets a pointer to the value for key `k`. Returns NULL if key not found or hashmap is NULL (no copy — direct pointer into hashmap storage).
 #define hm$getp(t, k)                                                                              \
     ({                                                                                             \
-        typeof(t) result = _cexds__hmget_key(                                                      \
-            (t),                                                                                   \
-            sizeof *(t),                                                                           \
-            ((typeof((t)->key)[1]){ (k) }),                                                        \
-            sizeof(t)->key,                                                                        \
-            offsetof(typeof(*t), key)                                                              \
-        );                                                                                         \
+        typeof(t) result = NULL;                                                                   \
+        if ((t) != NULL) {                                                                         \
+            result = _cexds__hmget_key(                                                            \
+                (t),                                                                               \
+                sizeof *(t),                                                                       \
+                ((typeof((t)->key)[1]){ (k) }),                                                    \
+                sizeof(t)->key,                                                                    \
+                offsetof(typeof(*t), key)                                                          \
+            );                                                                                     \
+        }                                                                                          \
         result ? &result->value : NULL;                                                            \
     })
 
-/// Gets a pointer to the full hashmap record (key+value struct) for key `k`. Returns NULL if not found.
+/// Gets a pointer to the full hashmap record (key+value struct) for key `k`. Returns NULL if not found or hashmap is NULL.
 #define hm$gets(t, k)                                                                              \
     ({                                                                                             \
-        typeof(t) result = _cexds__hmget_key(                                                      \
-            (t),                                                                                   \
-            sizeof *(t),                                                                           \
-            ((typeof((t)->key)[1]){ (k) }),                                                        \
-            sizeof(t)->key,                                                                        \
-            offsetof(typeof(*t), key)                                                              \
-        );                                                                                         \
+        typeof(t) result = NULL;                                                                   \
+        if ((t) != NULL) {                                                                         \
+            result = _cexds__hmget_key(                                                            \
+                (t),                                                                               \
+                sizeof *(t),                                                                       \
+                ((typeof((t)->key)[1]){ (k) }),                                                    \
+                sizeof(t)->key,                                                                    \
+                offsetof(typeof(*t), key)                                                          \
+            );                                                                                     \
+        }                                                                                          \
         result;                                                                                    \
     })
 
-/// Clears all entries from the hashmap. Frees copied string keys if `.copy_keys` was set. Does NOT free the hashmap itself.
+/// Clears all entries from the hashmap. Frees copied string keys if `.copy_keys` was set. Does NOT free the hashmap itself. NULL hashmap is a no-op.
 #define hm$clear(t)                                                                                \
     ({                                                                                             \
-        _cexds__arr_integrity(t, _CEXDS_HM_MAGIC);                                                 \
-        _cexds__hmfree_keys_func((t), sizeof(*t), offsetof(typeof(*t), key));                      \
-        _cexds__hmclear_func(_cexds__header((t))->_hash_table, NULL);                              \
-        _cexds__header(t)->length = 0;                                                             \
+        if ((t) != NULL) {                                                                         \
+            _cexds__arr_integrity(t, _CEXDS_HM_MAGIC);                                             \
+            _cexds__hmfree_keys_func((t), sizeof(*t), offsetof(typeof(*t), key));                  \
+            _cexds__hmclear_func(_cexds__header((t))->_hash_table, NULL);                          \
+            _cexds__header(t)->length = 0;                                                         \
+        }                                                                                          \
         true;                                                                                      \
     })
 
-/// Deletes the entry for key `k`. IMPORTANT: the backing array may be reordered (swap-with-last). Frees copied string keys if applicable.
+/// Deletes the entry for key `k`. IMPORTANT: the backing array may be reordered (swap-with-last). Frees copied string keys if applicable. Returns false for a NULL hashmap.
 #define hm$del(t, k)                                                                               \
     ({                                                                                             \
-        _cexds__hmdel_key(                                                                         \
-            (t),                                                                                   \
-            sizeof *(t),                                                                           \
-            ((typeof((t)->key)[1]){ (k) }),                                                        \
-            sizeof(t)->key,                                                                        \
-            offsetof(typeof(*t), key)                                                              \
-        );                                                                                         \
+        bool _cexds__ret = false;                                                                  \
+        if ((t) != NULL) {                                                                         \
+            _cexds__ret = _cexds__hmdel_key(                                                       \
+                (t),                                                                               \
+                sizeof *(t),                                                                       \
+                ((typeof((t)->key)[1]){ (k) }),                                                    \
+                sizeof(t)->key,                                                                    \
+                offsetof(typeof(*t), key)                                                          \
+            );                                                                                     \
+        }                                                                                          \
+        _cexds__ret;                                                                               \
     })
 
 
