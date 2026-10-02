@@ -29,9 +29,11 @@ pointer or fat-pointer indirection. The runtime header
    handle returns an `Exception` (`Error.integrity` / `Error.memory`).
 7. **ASAN-aware** — The 8-byte poison area after the header is marked poisoned so ASAN catches
    underflow reads/writes.
-8. **OOM-resilient** — mutating macros return a pointer to the item slot or `NULL` on memory
-   error (never abort); a grow-OOM frees the array and sets its variable to `NULL`. Most macros
+8. **Allocation-failure aware** — mutating macros return a pointer to the item slot or `NULL` on
+   allocation failure; a grow-OOM frees the array and sets its variable to `NULL`. Most macros
    tolerate a `NULL` array; the accessors `arr$last()`, `arr$at()`, `arr$pop()` assert on it.
+   Note: the default heap allocator panics on real OOM (`cex$platform_oom_panic`); these `NULL`
+   returns are for synthetic `test$alloc` OOM, custom allocators, or an opt-out build.
 
 ### Examples
 
@@ -134,7 +136,7 @@ struct _cexds__arr_new_kwargs_s
 {
     usize capacity;
 };
-/// Initializes a dynamic array. Pass the array variable, an `IAllocator`, and optional `.capacity = N`. Returns the new pointer on success, NULL on memory error.
+/// Initializes a dynamic array. Pass the array variable, an `IAllocator`, and optional `.capacity = N`. Returns the new pointer on success, NULL on allocation failure.
 #define arr$new(a, allocator, kwargs...)                                                           \
     ({                                                                                             \
         static_assert(_Alignof(typeof(*a)) <= 64, "array item alignment too high");                \
@@ -157,7 +159,7 @@ struct _cexds__arr_new_kwargs_s
         (a) = NULL;                                                                                \
     })
 
-/// Resizes the array capacity to at least `n` elements. No-op if current capacity >= n. Returns the array pointer, or NULL on memory error / NULL array.
+/// Resizes the array capacity to at least `n` elements. No-op if current capacity >= n. Returns the array pointer, or NULL on allocation failure / NULL array.
 #define arr$setcap(a, n) ((a) != NULL ? arr$grow(a, 0, n) : NULL)
 
 /// Clears the array (sets length to 0). Does NOT free or shrink memory — use `arr$free` for that. NULL array is a no-op.
@@ -221,7 +223,7 @@ struct _cexds__arr_new_kwargs_s
         (a)[_cexds__header(a)->length];                                                            \
     })
 
-/// Appends a single element to the end. Automatically grows capacity if needed. Returns pointer to the new slot, or NULL on memory error / NULL array.
+/// Appends a single element to the end. Automatically grows capacity if needed. Returns pointer to the new slot, or NULL on allocation failure / NULL array.
 #define arr$push(a, value...)                                                                      \
     ({                                                                                             \
         typeof(*a)* _cexds__ret = NULL;                                                            \
@@ -242,7 +244,7 @@ struct _cexds__arr_new_kwargs_s
         /* NOLINTEND */                                                                            \
     })
 
-/// Appends all elements from `array` (dynamic, static, or pointer+len) into `a`. `array_len` is optional for pointer+len. Returns pointer to the first appended slot, or NULL on memory error / NULL array / empty source.
+/// Appends all elements from `array` (dynamic, static, or pointer+len) into `a`. `array_len` is optional for pointer+len. Returns pointer to the first appended slot, or NULL on allocation failure / NULL array / empty source.
 #define arr$pusha(a, array, array_len...)                                                          \
     ({                                                                                             \
         /* NOLINTBEGIN */                                                                          \
@@ -273,7 +275,7 @@ struct _cexds__arr_new_kwargs_s
     })
 
 
-/// Inserts element at index `i`, shifting subsequent elements right. Order preserved. O(n). Returns pointer to the inserted slot, or NULL on memory error / NULL array.
+/// Inserts element at index `i`, shifting subsequent elements right. Order preserved. O(n). Returns pointer to the inserted slot, or NULL on allocation failure / NULL array.
 #define arr$ins(a, i, value...)                                                                    \
     ({                                                                                             \
         typeof(*a)* _cexds__ret = NULL;                                                            \
@@ -290,7 +292,7 @@ struct _cexds__arr_new_kwargs_s
         _cexds__ret;                                                                               \
     })
 
-/// Checks if array has room for `add_extra` elements, growing if needed. Returns false on memory error, length overflow, or NULL array.
+/// Checks if array has room for `add_extra` elements, growing if needed. Returns false on allocation failure, length overflow, or NULL array.
 #define arr$grow_check(a, add_extra)                                                               \
     ({                                                                                             \
         bool _cexds__ok = false;                                                                   \
@@ -308,7 +310,7 @@ struct _cexds__arr_new_kwargs_s
         _cexds__ok;                                                                                \
     })
 
-/// Grows array so it can hold at least `add_len` more elements, with the absolute minimum of `min_cap`. Returns the array pointer, or NULL on memory error / NULL array.
+/// Grows array so it can hold at least `add_len` more elements, with the absolute minimum of `min_cap`. Returns the array pointer, or NULL on allocation failure / NULL array.
 #define arr$grow(a, add_len, min_cap)                                                              \
     ((a) != NULL                                                                                   \
          ? ((a) = _cexds__arrgrowf((a), sizeof *(a), (add_len), (min_cap), alignof(typeof(*a)),    \
@@ -567,9 +569,11 @@ just like a regular dynamic array.
 3. `arr$len()`, `arr$cap()`, `for$each`, `for$eachp` all work on `hm$` types.
 4. Array indexing `smap[i].key` / `smap[i].value` works but order may change after
    calls to `hm$del`.
-5. `hm$new` can return `NULL` on memory error — always check (or use `uassert`).
-6. **OOM-resilient** — `hm$set`/`hm$setp`/`hm$sets` return `NULL` on memory error; every `hm$`
-   macro tolerates a `NULL` hashmap.
+5. `hm$new` can return `NULL` on allocation failure — always check (or use `uassert`).
+6. **Allocation-failure aware** — `hm$set`/`hm$setp`/`hm$sets` return `NULL` on allocation
+   failure; every `hm$` macro tolerates a `NULL` hashmap. Note: the default heap allocator panics
+   on real OOM (`cex$platform_oom_panic`); these `NULL` returns are for synthetic `test$alloc`
+   OOM, custom allocators, or an opt-out build.
 
 ### Examples
 
@@ -623,7 +627,7 @@ struct my_rec_s
     usize bar;
 };
 
-// hm$new returns NULL on memory error — always check (or use uassert)
+// hm$new returns NULL on allocation failure — always check (or use uassert)
 hm$s(struct my_rec_s) smap = hm$new(smap, mem$);
 
 hm$sets(smap, ((struct my_rec_s){ .key = 1, .foo = 10, .bar = 20 }));
@@ -661,7 +665,7 @@ struct _cexds__hm_new_kwargs_s
 };
 
 
-/// Creates a new hashmap. Keyword args: `.capacity`, `.seed`, `.copy_keys` (for char* keys), `.copy_keys_arena_pgsize`. Returns the new pointer on success, NULL on memory error.
+/// Creates a new hashmap. Keyword args: `.capacity`, `.seed`, `.copy_keys` (for char* keys), `.copy_keys_arena_pgsize`. Returns the new pointer on success, NULL on allocation failure.
 #define hm$new(t, allocator, kwargs...)                                                            \
     ({                                                                                             \
         static_assert(_Alignof(typeof(*t)) <= 64, "hashmap record alignment too high");            \
@@ -681,7 +685,7 @@ struct _cexds__hm_new_kwargs_s
     })
 
 
-/// Sets `key` to `value` in the hashmap. Replaces if key already exists. Returns pointer to the record, or NULL on memory error / NULL hashmap.
+/// Sets `key` to `value` in the hashmap. Replaces if key already exists. Returns pointer to the record, or NULL on allocation failure / NULL hashmap.
 #define hm$set(t, k, v...)                                                                         \
     ({                                                                                             \
         typeof(t) result = NULL;                                                                   \
@@ -693,14 +697,14 @@ struct _cexds__hm_new_kwargs_s
                 sizeof((t)->key),               /* size of key */                                  \
                 offsetof(typeof(*t), key),      /* offset of key in hm struct */                   \
                 NULL,                           /* no full element set */                          \
-                &result                         /* NULL on memory error */                         \
+                &result                         /* NULL on allocation failure */                         \
             );                                                                                     \
             if (result) result->value = (v);                                                       \
         }                                                                                          \
         result;                                                                                    \
     })
 
-/// Adds or gets a key and returns a pointer to its value field for direct mutation. Returns NULL on memory error / NULL hashmap.
+/// Adds or gets a key and returns a pointer to its value field for direct mutation. Returns NULL on allocation failure / NULL hashmap.
 #define hm$setp(t, k)                                                                              \
     ({                                                                                             \
         typeof(t) result = NULL;                                                                   \
@@ -712,13 +716,13 @@ struct _cexds__hm_new_kwargs_s
                 sizeof((t)->key),               /* size of key */                                  \
                 offsetof(typeof(*t), key),      /* offset of key in hm struct */                   \
                 NULL,                           /* no full element set */                          \
-                &result                         /* NULL on memory error */                         \
+                &result                         /* NULL on allocation failure */                         \
             );                                                                                     \
         }                                                                                          \
         (result ? &result->value : NULL);                                                          \
     })
 
-/// Sets a full pre-initialized record (struct with `.key` field) into the hashmap. Returns pointer to the stored record, or NULL on memory error / NULL hashmap.
+/// Sets a full pre-initialized record (struct with `.key` field) into the hashmap. Returns pointer to the stored record, or NULL on allocation failure / NULL hashmap.
 #define hm$sets(t, v...)                                                                           \
     ({                                                                                             \
         typeof(t) result = NULL;                                                                   \
@@ -731,7 +735,7 @@ struct _cexds__hm_new_kwargs_s
                 sizeof((t)->key),          /* size of key */                                       \
                 offsetof(typeof(*t), key), /* offset of key in hm struct */                        \
                 &(_val),                   /* full element write */                                \
-                &result                    /* NULL on memory error */                              \
+                &result                    /* NULL on allocation failure */                              \
             );                                                                                     \
         }                                                                                          \
         result;                                                                                    \

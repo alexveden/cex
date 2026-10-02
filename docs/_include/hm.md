@@ -30,9 +30,11 @@ just like a regular dynamic array.
 3. `arr$len()`, `arr$cap()`, `for$each`, `for$eachp` all work on `hm$` types.
 4. Array indexing `smap[i].key` / `smap[i].value` works but order may change after
    calls to `hm$del`.
-5. `hm$new` can return `NULL` on memory error — always check (or use `uassert`).
-6. **OOM-resilient** — `hm$set`/`hm$setp`/`hm$sets` return `NULL` on memory error; every `hm$`
-   macro tolerates a `NULL` hashmap.
+5. `hm$new` can return `NULL` on allocation failure — always check (or use `uassert`).
+6. **Allocation-failure aware** — `hm$set`/`hm$setp`/`hm$sets` return `NULL` on allocation
+   failure; every `hm$` macro tolerates a `NULL` hashmap. Note: the default heap allocator panics
+   on real OOM (`cex$platform_oom_panic`); these `NULL` returns are for synthetic `test$alloc`
+   OOM, custom allocators, or an opt-out build.
 
 #### Examples
 
@@ -86,7 +88,7 @@ struct my_rec_s
     usize bar;
 };
 
-// hm$new returns NULL on memory error — always check (or use uassert)
+// hm$new returns NULL on allocation failure — always check (or use uassert)
 hm$s(struct my_rec_s) smap = hm$new(smap, mem$);
 
 hm$sets(smap, ((struct my_rec_s){ .key = 1, .foo = 10, .bar = 20 }));
@@ -124,20 +126,23 @@ hm$free(smap);
 /// Returns the number of entries in the hashmap. Equivalent to `arr$len()`. Returns 0 if NULL.
 #define hm$len(t)
 
-/// Creates a new hashmap. Keyword args: `.capacity`, `.seed`, `.copy_keys` (for char* keys), `.copy_keys_arena_pgsize`. Returns the new pointer on success, NULL on memory error.
+/// Creates a new hashmap. Keyword args: `.capacity`, `.seed`, `.copy_keys` (for char* keys), `.copy_keys_arena_pgsize`. Returns the new pointer on success, NULL on allocation failure.
 #define hm$new(t, allocator, kwargs...)
 
 /// Declares a hashmap based on a custom struct that has a `.key` field. The struct itself becomes the key+value record.
 #define hm$s(_StructType)
 
-/// Sets `key` to `value` in the hashmap. Replaces if key already exists. Returns pointer to the record, or NULL on memory error / NULL hashmap.
+/// Sets `key` to `value` in the hashmap. Replaces if key already exists. Returns pointer to the record, or NULL on allocation failure / NULL hashmap.
 #define hm$set(t, k, v...)
 
-/// Adds or gets a key and returns a pointer to its value field for direct mutation. Returns NULL on memory error / NULL hashmap.
+/// Adds or gets a key and returns a pointer to its value field for direct mutation. Returns NULL on allocation failure / NULL hashmap.
 #define hm$setp(t, k)
 
-/// Sets a full pre-initialized record (struct with `.key` field) into the hashmap. Returns pointer to the stored record, or NULL on memory error / NULL hashmap.
+/// Sets a full pre-initialized record (struct with `.key` field) into the hashmap. Returns pointer to the stored record, or NULL on allocation failure / NULL hashmap.
 #define hm$sets(t, v...)
+
+/// Validates an `hm$` handle: `Error.memory` if NULL, `Error.integrity` on bad magic, `EOK` otherwise.
+#define hm$validate(t)
 
 
 

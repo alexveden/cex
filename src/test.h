@@ -127,6 +127,12 @@ test$case(my_test_case)
 }
 ```
 
+> [!NOTE]
+>
+> Real heap allocation failure is fatal by default (`cex$platform_oom_panic`). `test$alloc`
+> injects synthetic failures *before* the heap, so `mem$` still returns `NULL` here — this is
+> the supported way to exercise `NULL` / `Error.memory` paths.
+
 ### Replacing the global allocator (CEX_TEST mode)
 
 In `CEX_TEST` builds `mem$` is an assignable global: point it at any `IAllocator` and all code

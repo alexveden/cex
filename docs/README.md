@@ -1250,7 +1250,7 @@ CEX tries to adopt allocator-centric approach to memory management, which helps 
 * **Explicit memory allocation.** Each object (class) or function that may allocate memory has to have an allocator parameter. This requirement, adds explicit API signature hints, and communicates about memory implications of a function without deep dive into documentation or source code.
 * **Transparent memory management.** All memory operations are provided by `IAllocator` interface, which can be an interchangeable allocator object of different type.
 * **Memory scoping**. When possible memory usage should be limited by scope, which naturally regulates lifetimes of allocated memory and automatically free it after exiting scope.
-* **Unit test friendly**. Allocators allow implementation of additional levels of memory safety when run in unit test environment. For example, CEX allocators add special poisoned areas around allocated blocks, which trigger address sanitizer when this region accesses with user code. Allocators open the door for memory leak checks, or extra memory error simulations for better out-of-memory error handling.
+* **Unit test friendly**. Allocators allow implementation of additional levels of memory safety when run in unit test environment. For example, CEX allocators add special poisoned areas around allocated blocks, which trigger address sanitizer when this region accesses with user code. Allocators open the door for memory leak checks, or synthetic out-of-memory injection for testing allocation-failure handling (real heap OOM is fatal by default — see [Allocation failure policy](#allocation-failure-policy)).
 * **Standard and Temporary allocators**. Sometimes it's useful to have initialized allocator under your belt for short-lived temporary operations. CEX provides two global allocators by default: `mem$` - is a standard heap allocator using `malloc/realloc/free`, and `tmem$` - is dynamic arena allocator of small size (about 256k of per page). Unit tests additionally get `test$alloc` - a per-test-case arena allocator.
 
 #### Example
@@ -1330,12 +1330,39 @@ You shouldn't use allocator interface directly (it's less convenient), so it's b
 * `mem$free(allocator, old_ptr)` - frees `old_ptr` and implicitly sets it to `NULL` to avoid use-after-free issues.
 * `mem$new(allocator, T)` - generic allocation of new instance of `T` (type), with respect of its size and alignment.
 
-> On failure `realloc` frees `old_ptr` and returns `NULL`; the `mem$realloc()` macro additionally sets `old_ptr` to `NULL`. Never keep using or freeing `old_ptr` after the call — always use the returned pointer.
+> When allocation failure returns `NULL` (an opt-out build, a custom allocator, or simulated `test$alloc` OOM), `realloc` frees `old_ptr` and returns `NULL`; the `mem$realloc()` macro additionally sets `old_ptr` to `NULL`. Never keep using or freeing `old_ptr` after the call — always use the returned pointer. By default a heap allocation failure panics instead (see [Allocation failure policy](#allocation-failure-policy)).
 
 Allocator scoping:
 
 * `mem$arena_scope(page_size, allc_var) { ... }` - enters new instance of allocator arena with the `page_size`. Also supports `AllocatorArena_kw*` pointer form for `disable_scopes` etc.
 * `mem$scope(arena_or_tmem$, scope_var) { ... }` - opens new memory scope (works only with arena allocators or temp allocator)
+
+
+#### Allocation failure policy
+
+By default heap allocation failure is **fatal**: `mem$` panics via `cex$platform_oom_panic`,
+which defaults to `cex$platform_panic` and prints `[MEMORY] file:line reason` before aborting.
+The same applies to anything backed by the heap, including `tmem$` page growth.
+
+Out-of-memory is rarely recoverable, and checking every allocation result for `NULL` adds noise
+to code that can't do anything useful about the failure anyway. Failing fast keeps the common
+path clean and matches the behavior of modern languages.
+
+If you need recoverable `NULL` semantics, define the hook as an empty function-like macro before
+including CEX:
+
+```c
+#define cex$platform_oom_panic(...)
+#include "cex.h"
+```
+
+With that, `mem$` returns `NULL` on allocation failure as before and you are responsible for
+checking results (the `mem$realloc()` macro still frees `old_ptr` and nulls it).
+
+Because real OOM aborts, the `NULL` / `Error.memory` paths are exercised in tests via the
+`test$alloc` arena's synthetic OOM (`test$alloc_set_oom_probability()` /
+`test$alloc_set_oom_on_call()`), which fails allocations before they reach the heap. Custom
+allocators that return `NULL` behave the same way.
 
 
 #### Dynamic arenas
@@ -1410,9 +1437,9 @@ mem$scope(tmem$, _) /* <1> */
 
 There are three general purpose allocators globally available out of the box for CEX:
 
-* `mem$` — heap allocator backed by `malloc`/`free` with extra alignment support. In unit tests this allocator provides simple memory leak checks even without address sanitizer enabled.
+* `mem$` — heap allocator backed by `malloc`/`free` with extra alignment support. In unit tests this allocator provides simple memory leak checks even without address sanitizer enabled. Allocation failure panics by default (see [Allocation failure policy](#allocation-failure-policy)).
 * `tmem$` — dynamic arena with 256 KB page size, used for short-lived temporary operations, cleans up pages automatically at program exit. Does page allocation only at the first allocation, otherwise remains a global static struct instance (about 128 bytes size). Thread safe, uses `thread_local`.
-* `test$alloc` — dedicated per-test-case arena (1 MB page, `disable_scopes=true`). Created fresh before each test case, destroyed afterward with no manual free needed. Supports OOM simulation via `test$alloc_set_oom_probability()` (probabilistic) and `test$alloc_set_oom_on_call()` (deterministic, fails on the n-th allocation call) in test mode. Only available in unit tests.
+* `test$alloc` — dedicated per-test-case arena (1 MB page, `disable_scopes=true`). Created fresh before each test case, destroyed afterward with no manual free needed. Supports OOM simulation via `test$alloc_set_oom_probability()` (probabilistic) and `test$alloc_set_oom_on_call()` (deterministic, fails on the n-th allocation call) in test mode. Only available in unit tests. Synthetic OOM returns `NULL`; a real heap allocation failure panics by default (see [Allocation failure policy](#allocation-failure-policy)).
 
 
 #### Caveats
@@ -1451,7 +1478,7 @@ When run in test mode (or specifically `#ifdef CEX_TEST` is true) the memory all
 2. `mem$malloc()` - return uninitialized memory with `0xf7` byte pattern
 3. If Address Sanitizer is available all allocations for arenas and heap will be surrounded by poisoned areas. If you see use-after-poison errors, it's likely a sign of use-after-free or out of bounds access in `tmem$`. Try to switch your code to the `mem$` allocator if possible to triage the exact reason of the error.
 4. Allocators do sanity checks at the end of each unit test case
-5. **OOM (Out-of-Memory) simulation** — `test$alloc` supports synthetic allocation failure via `test$alloc_set_oom_probability(prob)` (probabilistic: `1.0` = always fail, `0.5` = ~50%) and `test$alloc_set_oom_on_call(n)` (deterministic: succeeds `n-1` calls, then fails on every subsequent call; `n=1` fails immediately). Both write the same `test_oom_threshold` field (`0` disables, `(0,1)` probability, `1` always fail, `>1` countdown). Setting `prob`/`n` to `0` restores normal behavior. Automatically reset to `0` before the next test case.
+5. **OOM (Out-of-Memory) simulation** — `test$alloc` supports synthetic allocation failure via `test$alloc_set_oom_probability(prob)` (probabilistic: `1.0` = always fail, `0.5` = ~50%) and `test$alloc_set_oom_on_call(n)` (deterministic: succeeds `n-1` calls, then fails on every subsequent call; `n=1` fails immediately). Both write the same `test_oom_threshold` field (`0` disables, `(0,1)` probability, `1` always fail, `>1` countdown). Setting `prob`/`n` to `0` restores normal behavior. Automatically reset to `0` before the next test case. This is the recoverable OOM path — a real heap allocation failure panics by default (see [Allocation failure policy](#allocation-failure-policy)).
 6. **Deterministic random values** — `os.random.seed(0)` is called before each test case, ensuring repeatable random sequences. This is essential for OOM simulation and any test using `os.random.*`.
 
 > [!NOTE]
@@ -1620,7 +1647,7 @@ Cex strings follow these principles:
 
 ### General purpose strings
 
-Use `str` for general purpose string manipulation, this namespace typically returns `char*` or NULL on error, all functions are tolerant to NULL arguments of `char*` type and re-return NULL in this case. Each allocating function must have `IAllocator` argument, and will return NULL on memory errors.
+Use `str` for general purpose string manipulation, this namespace typically returns `char*` or NULL on error, all functions are tolerant to NULL arguments of `char*` type and re-return NULL in this case. Each allocating function must have `IAllocator` argument, and will return NULL on allocation failure — except that a real heap OOM panics by default (see [Allocation failure policy](#allocation-failure-policy)); the `NULL` path applies to synthetic `test$alloc` OOM, custom allocators, or an opt-out build.
 
 ```c
     char*           str.clone(char* s, IAllocator allc);
@@ -3126,7 +3153,7 @@ additional safety mechanisms are activated:
 | 9 | **Stdout capture** | stdout → temp file; replayed only on test failure with `>>>TEST OUTPUT<<<` markers |
 | 10 | **Breakpoint on assert** | `--breakpoint` (`-b`) triggers debugger on `tassert_*` failure |
 | 11 | **ASAN poison regions** *(recommended)* | Poison padding surrounds every heap & arena allocation — OOB access triggers a `use-after-poison` crash with precise stack trace |
-| 12 | **OOM simulation** | `test$alloc_set_oom_probability(prob)` injects synthetic allocation failures on `test$alloc`. Automatically reset to `0.0` between test cases. |
+| 12 | **OOM simulation** | `test$alloc_set_oom_probability(prob)` injects synthetic allocation failures on `test$alloc` (recoverable `NULL` path; real heap OOM panics by default). Automatically reset to `0.0` between test cases. |
 | 13 | **Seeded random** | `os.random.seed(0)` is called before each test case, giving deterministic, repeatable random sequences across runs. |
 
 
@@ -3225,7 +3252,7 @@ test$alloc = AllocatorArena.create(&(AllocatorArena_kw){
 | **`mem$scope` ignored** | `mem$scope(test$alloc, _)` is a no-op. All allocations survive until the case ends. |
 | **Self-cleanup** | Destroyed after every case (pass or fail), then `test$alloc = NULL`. Next case gets a fresh arena. |
 | **`0xf7` poisoning** | All `test$alloc` allocations filled with `0xf7` in test mode |
-| **OOM simulation** | `test$alloc_set_oom_probability(prob)` (0.0–1.0) injects synthetic allocation failures. Reset to `0.0` between cases. |
+| **OOM simulation** | `test$alloc_set_oom_probability(prob)` (0.0–1.0) injects synthetic allocation failures (recoverable `NULL` path; real heap OOM panics by default). Reset to `0.0` between cases. |
 
 Usage:
 

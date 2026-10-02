@@ -28,6 +28,22 @@ runner, no manual free; `mem$scope` is a no-op; OOM simulation via
 `test$alloc_set_oom_probability(prob)` or deterministic `test$alloc_set_oom_on_call(n)`
 (test mode only)
 
+### Allocation failure
+
+Heap allocation failure is fatal by default: `mem$` panics via `cex$platform_oom_panic`
+(defaults to `cex$platform_panic`, prints `[MEMORY] file:line reason`). This applies to
+everything backed by the heap, including `tmem$` page growth. Out-of-memory is rarely
+recoverable, so failing fast keeps the common path free of `NULL` checks.
+
+Define the hook as an empty function-like macro before including CEX to restore `NULL` returns:
+
+```c
+#define cex$platform_oom_panic(...)
+```
+
+`test$alloc` synthetic OOM still returns `NULL` — it fails allocations before they reach the
+heap — so `NULL` / `Error.memory` error paths remain testable.
+
 ### Memory management hints
 
 - If a function accepts IAllocator as an argument, it allocates memory
@@ -48,9 +64,6 @@ loop
 - Arenas never reuse freed chunks; pre-allocate capacity instead of heavy `realloc`
 - In test mode `mem$` tracks leaks, allocations are filled with `0xf7`, arenas are ASAN-poisoned;
 switch `tmem$` to `mem$` to triage use-after-poison
-- Heap allocation failure panics via `cex$platform_oom_panic` (defaults to `cex$platform_panic`);
-  define it as an empty function-like macro (`#define cex$platform_oom_panic(...)`) before
-  including CEX to restore `NULL` returns
 - Use address sanitizers as often as possible
 
 
