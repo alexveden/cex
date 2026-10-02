@@ -484,6 +484,7 @@ CexParser_next_entity(CexParser_c* lx, arr$(cex_token_s) * children)
         }
 
         arr$push(*children, t);
+        if (unlikely(*children == NULL)) { goto error; }
         switch (t.type) {
             case CexTkn__preproc: {
                 if (str.slice.starts_with(t.value, str$s("define "))) {
