@@ -548,7 +548,7 @@ _cexds__hash(enum _CexDsKeyType_e key_type, const void* key, usize key_size, u64
             return _cexds__hash_string(s->buf, s->len, seed);
         }
     }
-    uassert_always(false && "unhandled key type");
+    uassert_always(false && "unhandled key type"); // LCOV_EXCL_LINE
 }
 
 static bool
@@ -580,7 +580,7 @@ _cexds__is_key_equal(
             return 0 == memcmp(_k->buf, _hm->buf, _k->len);
         }
     }
-    uassert_always(false && "unhandled key type");
+    uassert_always(false && "unhandled key type"); // LCOV_EXCL_LINE
 }
 
 void
