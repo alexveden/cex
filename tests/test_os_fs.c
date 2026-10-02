@@ -352,6 +352,15 @@ test$case(test_os_find_direct_match)
     return EOK;
 }
 
+test$case(test_os_getcwd_oom)
+{
+    test$alloc_set_oom_on_call(1);
+    char* cwd = os.fs.getcwd(test$alloc);
+    test$alloc_set_oom_on_call(0);
+    tassert(cwd == NULL);
+    return EOK;
+}
+
 test$case(test_os_getcwd)
 {
     mem$scope(tmem$, _)

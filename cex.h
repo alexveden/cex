@@ -16317,6 +16317,7 @@ static char*
 cex_os__fs__getcwd(IAllocator allc)
 {
     char* buf = mem$malloc(allc, PATH_MAX);
+    if (unlikely(buf == NULL)) { return NULL; }
 
     char* result = NULL;
 #    ifdef _WIN32
