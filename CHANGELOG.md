@@ -56,6 +56,14 @@
 - fix(sbuf): use-after-free when an append operation failed
 - fix(str): `fail:` label bodies wrapped in blocks; `for$each` expands to declarations, which clang 19 rejects after a label under `-Werror`
 - test(io): more deterministic OOM cases
+- fix(mem): `_cex__default_global__allocator_mem` is defined unconditionally, so the fast precompiled `cex.h` object exports it and `CEX_TEST` + `CEX_PREBUILT` test TUs link
+- fix(allocator): `_cex_alloc_estimate_page_size()` computes the grown page size in `u64` and rejects results above `CEX_ARENA_MAX_ALLOC`; on 32-bit a near-max request no longer wraps into a small page
+- fix(CexParser): `CexParser_next_entity()` handles `arr$push()` grow-OOM (which nulls the children array) by bailing to the error path instead of dereferencing `NULL`
+- fix(cexy): `_cexy__help_qscmp_decls_type()` casts the enum operands to `int`, fixing the UBSan implicit-conversion report
+- test(mem): global-allocator swap tests place the custom `AllocatorHeap_c` in the test arena instead of pointing `mem$` at a stack local (musl gcc `-Wdangling-pointer=`)
+- test(sbuf): `test_sbuf_grow_realloc_oom` appends 64 bytes so the grow/OOM path triggers on 32-bit too
+- test(cexy): skip the libFuzzer run assertion on Apple/Windows where the fuzzer runtime is unavailable
+- test(ds): freed key-arena poison check is gated on native ASAN; Fil-C and Emscripten use the byte-reading fallback and would read the freed page
 
 ## 0.21
 2026-06-07
