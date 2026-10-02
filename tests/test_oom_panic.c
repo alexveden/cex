@@ -38,7 +38,7 @@ test$case(test_heap_oom_panic_on_invalid_malloc)
     tassert(p == NULL);
     tassert_eq(_oom_panic_count, 1);
     tassert(strcmp(_oom_panic_prefix, "[MEMORY] ") == 0);
-    tassert(strcmp(_oom_panic_msg, "invalid allocation size or alignment") == 0);
+    tassert(strcmp(_oom_panic_msg, "allocation size is zero") == 0);
     return EOK;
 }
 
@@ -51,7 +51,7 @@ test$case(test_heap_oom_panic_on_calloc_zero)
 
     tassert(p == NULL);
     tassert_eq(_oom_panic_count, 1);
-    tassert(strcmp(_oom_panic_msg, "invalid element count") == 0);
+    tassert(strcmp(_oom_panic_msg, "element count is zero or too high") == 0);
     return EOK;
 }
 

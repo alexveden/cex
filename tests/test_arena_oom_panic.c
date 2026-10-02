@@ -43,7 +43,7 @@ test$case(test_arena_oom_panic_create_invalid_page_size)
     uassert_enable();
 
     tassert(arena == NULL);
-    _arena_oom_assert("invalid arena page size");
+    _arena_oom_assert("arena page size is too small or too large");
     return EOK;
 }
 
@@ -60,7 +60,7 @@ test$case(test_arena_oom_panic_malloc_invalid_size)
     uassert_enable();
 
     tassert(p == NULL);
-    _arena_oom_assert("invalid allocation size or alignment");
+    _arena_oom_assert("allocation size is zero");
 
     AllocatorArena_destroy(arena);
     return EOK;
@@ -79,7 +79,7 @@ test$case(test_arena_oom_panic_calloc_invalid_nmemb)
     uassert_enable();
 
     tassert(p == NULL);
-    _arena_oom_assert("invalid element count");
+    _arena_oom_assert("element count is too large");
 
     AllocatorArena_destroy(arena);
     return EOK;
@@ -98,7 +98,7 @@ test$case(test_arena_oom_panic_calloc_invalid_size)
     uassert_enable();
 
     tassert(p == NULL);
-    _arena_oom_assert("invalid element size");
+    _arena_oom_assert("element size is too large");
 
     AllocatorArena_destroy(arena);
     return EOK;
@@ -120,7 +120,7 @@ test$case(test_arena_oom_panic_realloc_invalid_size)
     uassert_enable();
 
     tassert(q == NULL);
-    _arena_oom_assert("invalid realloc size");
+    _arena_oom_assert("realloc size is too large");
 
     AllocatorArena_destroy(arena);
     return EOK;
@@ -143,7 +143,7 @@ test$case(test_arena_oom_panic_request_page_too_large)
     uassert_enable();
 
     tassert(page == NULL);
-    _arena_oom_assert("arena page size is too large");
+    _arena_oom_assert("arena page size is zero or too large");
 
     AllocatorArena_destroy(arena);
     return EOK;

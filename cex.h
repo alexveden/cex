@@ -7705,18 +7705,34 @@ _cex_allocator_heap__hdr_make(usize alloc_size, usize alignment)
 
     usize size = alloc_size;
 
-    if (unlikely(alloc_size == 0 || alloc_size > PTRDIFF_MAX || alignment > 64)) {
-        uassert(alloc_size > 0 && "zero size");
-        uassert(alloc_size > PTRDIFF_MAX && "size is too high");
-        uassert(alignment <= 64);
+    if (unlikely(alloc_size == 0)) {
+        cex$platform_oom_panic(
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+            "allocation size is zero"
+        );
+        return 0;
+    }
+    if (unlikely(alloc_size > PTRDIFF_MAX)) {
+        cex$platform_oom_panic(
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+            "allocation size is too large"
+        );
+        return 0;
+    }
+    if (unlikely(alignment > 64)) {
+        cex$platform_oom_panic(
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+            "allocation alignment is too large"
+        );
         return 0;
     }
 
 #if UINTPTR_MAX > 0xFFFFFFFFU
     // Only 64 bit
     if (unlikely((u64)alloc_size > (u64)0xFFFFFFFFFFFFULL)) {
-        uassert(
-            (u64)alloc_size < (u64)0xFFFFFFFFFFFFULL && "size is too high, or negative overflow"
+        cex$platform_oom_panic(
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+            "allocation size exceeds 48 bits"
         );
         return 0;
     }
@@ -7730,7 +7746,10 @@ _cex_allocator_heap__hdr_make(usize alloc_size, usize alignment)
         uassert(mem$is_power_of2(alignment) && "must be pow2");
 
         if ((alloc_size & (alignment - 1)) != 0) {
-            uassert(alloc_size % alignment == 0 && "requested size is not aligned");
+            cex$platform_oom_panic(
+                _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+                "requested size is not aligned"
+            );
             return 0;
         }
         // Adding extra alignment chunk because system malloc() may return misaligned pointer
@@ -7756,13 +7775,7 @@ _cex_allocator_heap__alloc(IAllocator self, u8 fill_val, usize size, usize align
     (void)a;
 
     u64 hdr = _cex_allocator_heap__hdr_make(size, alignment);
-    if (unlikely(hdr == 0)) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
-            "invalid allocation size or alignment"
-        );
-        return NULL;
-    }
+    if (unlikely(hdr == 0)) { return NULL; }
 
     usize full_size = _cex_allocator_heap__hdr_get_size(hdr);
     alignment = _cex_allocator_heap__hdr_get_alignment(hdr);
@@ -7819,18 +7832,16 @@ static void*
 _cex_allocator_heap__calloc(IAllocator self, usize nmemb, usize size, usize alignment)
 {
     if (unlikely(nmemb == 0 || nmemb >= PTRDIFF_MAX)) {
-        uassert(nmemb > 0 && "nmemb is zero");
-        uassert(nmemb < PTRDIFF_MAX && "nmemb is too high or negative overflow");
         cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "invalid element count"
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+            "element count is zero or too high"
         );
         return NULL;
     }
     if (unlikely(size == 0 || size >= PTRDIFF_MAX)) {
-        uassert(size > 0 && "size is zero");
-        uassert(size < PTRDIFF_MAX && "size is too high or negative overflow");
         cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "invalid element size"
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+            "element size is zero or too high"
         );
         return NULL;
     }
@@ -7843,7 +7854,6 @@ _cex_allocator_heap__realloc(IAllocator self, void* ptr, usize size, usize align
 {
     _cex_allocator_heap__validate(self);
     if (unlikely(ptr == NULL)) {
-        uassert(ptr != NULL);
         cex$platform_oom_panic(
             _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "realloc of NULL"
         );
@@ -7871,7 +7881,6 @@ _cex_allocator_heap__realloc(IAllocator self, void* ptr, usize size, usize align
     if (unlikely(
             (alignment <= 8 && old_alignment != 8) || (alignment > 8 && alignment != old_alignment)
         )) {
-        uassert(alignment == old_alignment && "given alignment doesn't match to old one");
         cex$platform_oom_panic(
             _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "realloc alignment mismatch"
         );
@@ -7879,12 +7888,7 @@ _cex_allocator_heap__realloc(IAllocator self, void* ptr, usize size, usize align
     }
 
     u64 new_hdr = _cex_allocator_heap__hdr_make(size, alignment);
-    if (unlikely(new_hdr == 0)) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "invalid realloc size"
-        );
-        goto fail;
-    }
+    if (unlikely(new_hdr == 0)) { goto fail; }
 
     u8* raw_result = NULL;
     u8* result = NULL;
@@ -8099,10 +8103,25 @@ _cex_alloc_estimate_page_size(usize page_size, usize alloc_size)
 static allocator_arena_rec_s
 _cex_alloc_estimate_alloc_size(usize alloc_size, usize alignment)
 {
-    if (alloc_size == 0 || alloc_size > CEX_ARENA_MAX_ALLOC || alignment > CEX_ARENA_MAX_ALIGN) {
-        uassert(alloc_size > 0);
-        uassert(alloc_size <= CEX_ARENA_MAX_ALLOC && "allocation size is too high");
-        uassert(alignment <= CEX_ARENA_MAX_ALIGN);
+    if (alloc_size == 0) {
+        cex$platform_oom_panic(
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+            "allocation size is zero"
+        );
+        return (allocator_arena_rec_s){ 0 };
+    }
+    if (alloc_size > CEX_ARENA_MAX_ALLOC) {
+        cex$platform_oom_panic(
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+            "allocation size is too large"
+        );
+        return (allocator_arena_rec_s){ 0 };
+    }
+    if (alignment > CEX_ARENA_MAX_ALIGN) {
+        cex$platform_oom_panic(
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+            "allocation alignment is too large"
+        );
         return (allocator_arena_rec_s){ 0 };
     }
     usize size = alloc_size;
@@ -8115,7 +8134,10 @@ _cex_alloc_estimate_alloc_size(usize alloc_size, usize alignment)
     } else {
         uassert(mem$is_power_of2(alignment) && "must be pow2");
         if ((alloc_size & (alignment - 1)) != 0) {
-            uassert(alloc_size % alignment == 0 && "requested size is not aligned");
+            cex$platform_oom_panic(
+                _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+                "requested size is not aligned"
+            );
             return (allocator_arena_rec_s){ 0 };
         }
     }
@@ -8197,11 +8219,9 @@ _cex_allocator_arena__request_page_size(
         usize page_size = _cex_alloc_estimate_page_size(self->page_size, req_size);
 
         if (page_size == 0 || page_size > CEX_ARENA_MAX_ALLOC) {
-            uassert(page_size > 0 && "page_size is zero");
-            uassert(page_size <= CEX_ARENA_MAX_ALLOC && "page_size is to big");
             cex$platform_oom_panic(
                 _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
-                "arena page size is too large"
+                "arena page size is zero or too large"
             );
             return NULL;
         }
@@ -8259,13 +8279,7 @@ _cex_allocator_arena__malloc(IAllocator allc, usize size, usize alignment)
     #endif
 
     allocator_arena_rec_s rec = _cex_alloc_estimate_alloc_size(size, alignment);
-    if (rec.size_low == 0 && rec.size_high == 0) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
-            "invalid allocation size or alignment"
-        );
-        return NULL;
-    }
+    if (rec.size_low == 0 && rec.size_high == 0) { return NULL; }
 
     allocator_arena_page_s* page = _cex_allocator_arena__request_page_size(self, rec, NULL);
     if (page == NULL) { return NULL; }
@@ -8321,16 +8335,14 @@ _cex_allocator_arena__calloc(IAllocator allc, usize nmemb, usize size, usize ali
 {
     _cex_allocator_arena__validate(allc);
     if (nmemb > CEX_ARENA_MAX_ALLOC) {
-        uassert(nmemb < CEX_ARENA_MAX_ALLOC);
         cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "invalid element count"
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "element count is too large"
         );
         return NULL;
     }
     if (size > CEX_ARENA_MAX_ALLOC) {
-        uassert(size < CEX_ARENA_MAX_ALLOC);
         cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "invalid element size"
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "element size is too large"
         );
         return NULL;
     }
@@ -8372,9 +8384,8 @@ _cex_allocator_arena__realloc(IAllocator allc, void* old_ptr, usize size, usize 
     uassert(old_ptr != NULL);
     uassert(size > 0);
     if (size > CEX_ARENA_MAX_ALLOC) {
-        uassert(size <= CEX_ARENA_MAX_ALLOC);
         cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "invalid realloc size"
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "realloc size is too large"
         );
         goto fail;
     }
@@ -8418,12 +8429,7 @@ _cex_allocator_arena__realloc(IAllocator allc, void* old_ptr, usize size, usize 
     if (unlikely(self->last_page && self->last_page->last_alloc == old_ptr)) {
         // Faster path, when last allocation is current item for resizing
         allocator_arena_rec_s nrec = _cex_alloc_estimate_alloc_size(size, alignment);
-        if (nrec.size_low == 0 && nrec.size_high == 0) {
-            cex$platform_oom_panic(
-                _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "invalid realloc size"
-            );
-            goto fail;
-        }
+        if (nrec.size_low == 0 && nrec.size_high == 0) { goto fail; }
         bool is_created = false;
         allocator_arena_page_s* page = _cex_allocator_arena__request_page_size(
             self,
@@ -8569,10 +8575,9 @@ AllocatorArena_create(const AllocatorArena_kw* kwargs)
     }
 
     if (kw.page_size < 1024 || kw.page_size >= CEX_ARENA_MAX_ALLOC) {
-        uassert(kw.page_size >= 1024 && "page size is too small");
-        uassert(kw.page_size < CEX_ARENA_MAX_ALLOC && "page size is too big");
         cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "invalid arena page size"
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+            "arena page size is too small or too large"
         );
         return NULL;
     }

@@ -74,18 +74,34 @@ _cex_allocator_heap__hdr_make(usize alloc_size, usize alignment)
 
     usize size = alloc_size;
 
-    if (unlikely(alloc_size == 0 || alloc_size > PTRDIFF_MAX || alignment > 64)) {
-        uassert(alloc_size > 0 && "zero size");
-        uassert(alloc_size > PTRDIFF_MAX && "size is too high");
-        uassert(alignment <= 64);
+    if (unlikely(alloc_size == 0)) {
+        cex$platform_oom_panic(
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+            "allocation size is zero"
+        );
+        return 0;
+    }
+    if (unlikely(alloc_size > PTRDIFF_MAX)) {
+        cex$platform_oom_panic(
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+            "allocation size is too large"
+        );
+        return 0;
+    }
+    if (unlikely(alignment > 64)) {
+        cex$platform_oom_panic(
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+            "allocation alignment is too large"
+        );
         return 0;
     }
 
 #if UINTPTR_MAX > 0xFFFFFFFFU
     // Only 64 bit
     if (unlikely((u64)alloc_size > (u64)0xFFFFFFFFFFFFULL)) {
-        uassert(
-            (u64)alloc_size < (u64)0xFFFFFFFFFFFFULL && "size is too high, or negative overflow"
+        cex$platform_oom_panic(
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+            "allocation size exceeds 48 bits"
         );
         return 0;
     }
@@ -99,7 +115,10 @@ _cex_allocator_heap__hdr_make(usize alloc_size, usize alignment)
         uassert(mem$is_power_of2(alignment) && "must be pow2");
 
         if ((alloc_size & (alignment - 1)) != 0) {
-            uassert(alloc_size % alignment == 0 && "requested size is not aligned");
+            cex$platform_oom_panic(
+                _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+                "requested size is not aligned"
+            );
             return 0;
         }
         // Adding extra alignment chunk because system malloc() may return misaligned pointer
@@ -125,13 +144,7 @@ _cex_allocator_heap__alloc(IAllocator self, u8 fill_val, usize size, usize align
     (void)a;
 
     u64 hdr = _cex_allocator_heap__hdr_make(size, alignment);
-    if (unlikely(hdr == 0)) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
-            "invalid allocation size or alignment"
-        );
-        return NULL;
-    }
+    if (unlikely(hdr == 0)) { return NULL; }
 
     usize full_size = _cex_allocator_heap__hdr_get_size(hdr);
     alignment = _cex_allocator_heap__hdr_get_alignment(hdr);
@@ -188,18 +201,16 @@ static void*
 _cex_allocator_heap__calloc(IAllocator self, usize nmemb, usize size, usize alignment)
 {
     if (unlikely(nmemb == 0 || nmemb >= PTRDIFF_MAX)) {
-        uassert(nmemb > 0 && "nmemb is zero");
-        uassert(nmemb < PTRDIFF_MAX && "nmemb is too high or negative overflow");
         cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "invalid element count"
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+            "element count is zero or too high"
         );
         return NULL;
     }
     if (unlikely(size == 0 || size >= PTRDIFF_MAX)) {
-        uassert(size > 0 && "size is zero");
-        uassert(size < PTRDIFF_MAX && "size is too high or negative overflow");
         cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "invalid element size"
+            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+            "element size is zero or too high"
         );
         return NULL;
     }
@@ -212,7 +223,6 @@ _cex_allocator_heap__realloc(IAllocator self, void* ptr, usize size, usize align
 {
     _cex_allocator_heap__validate(self);
     if (unlikely(ptr == NULL)) {
-        uassert(ptr != NULL);
         cex$platform_oom_panic(
             _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "realloc of NULL"
         );
@@ -240,7 +250,6 @@ _cex_allocator_heap__realloc(IAllocator self, void* ptr, usize size, usize align
     if (unlikely(
             (alignment <= 8 && old_alignment != 8) || (alignment > 8 && alignment != old_alignment)
         )) {
-        uassert(alignment == old_alignment && "given alignment doesn't match to old one");
         cex$platform_oom_panic(
             _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "realloc alignment mismatch"
         );
@@ -248,12 +257,7 @@ _cex_allocator_heap__realloc(IAllocator self, void* ptr, usize size, usize align
     }
 
     u64 new_hdr = _cex_allocator_heap__hdr_make(size, alignment);
-    if (unlikely(new_hdr == 0)) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "invalid realloc size"
-        );
-        goto fail;
-    }
+    if (unlikely(new_hdr == 0)) { goto fail; }
 
     u8* raw_result = NULL;
     u8* result = NULL;
