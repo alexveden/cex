@@ -85,8 +85,8 @@ test$case(test_app_create_clean)
 
 test$case(test_cmd_new)
 {
-    char* noarg[] = { "new", NULL };
-    tassert_er(Error.argsparse, cexy.cmd.new(arr$len(noarg) - 1, noarg, NULL));
+    char* noarg[] = { "new" };
+    tassert_er(Error.argsparse, cexy.cmd.new(arr$len(noarg), noarg, NULL));
 
     char* ok[] = { "new", TBUILDDIR "proj" };
     tassert_er(EOK, cexy.cmd.new(arr$len(ok), ok, NULL));

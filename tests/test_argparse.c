@@ -1,6 +1,15 @@
 #include "src/all.c"
 #include "src/all.h"
 
+static Exception
+test_argparse_cb(argparse_c* self, argparse_opt_s* opt, void* ctx)
+{
+    (void)self;
+    (void)opt;
+    (void)ctx;
+    return EOK;
+}
+
 test$case(test_cex_argparse_init_short)
 {
     bool force = 0;
@@ -1258,4 +1267,159 @@ test$case(test_cex_argparse_usage_default_options)
 
     return EOK;
 }
+
+test$case(test_args_next_empty)
+{
+    char* argv[] = { "prog" };
+    argparse_c args = { 0 };
+    tassert_er(Error.ok, argparse.parse(&args, 1, argv));
+    tassert_eq(args.argc, 0);
+    tassert_eq(args.program_name, "prog");
+    tassert_eq(argparse.next(&args), NULL);
+    tassert_eq(argparse.next(&args), NULL);
+    return EOK;
+}
+
+test$case(test_args_next_empty_with_options)
+{
+    char* argv[] = { "prog" };
+    argparse_c args = { argparse$opt_list(argparse$opt_help(),) };
+    tassert_er(Error.ok, argparse.parse(&args, 1, argv));
+    tassert_eq(args.argc, 0);
+    tassert_eq(argparse.next(&args), NULL);
+    return EOK;
+}
+
+test$case(test_argparse_unknown_short_opt)
+{
+    argparse_c args = { argparse$opt_list(argparse$opt_help(),) };
+    char* argv[] = { "prog", "-z" };
+    tassert_er(Error.argsparse, argparse.parse(&args, arr$len(argv), argv));
+    return EOK;
+}
+
+test$case(test_argparse_unknown_short_opt_cluster)
+{
+    bool force = false;
+    argparse_c args = {
+        argparse$opt_list(
+            argparse$opt_help(),
+            argparse$opt(&force, 'f', "force", .help = "force"),
+        )
+    };
+    char* argv[] = { "prog", "-fz" };
+    tassert_er(Error.argsparse, argparse.parse(&args, arr$len(argv), argv));
+    tassert_eq(force, true);
+    return EOK;
+}
+
+test$case(test_argparse_unknown_long_opt)
+{
+    argparse_c args = { argparse$opt_list(argparse$opt_help(),) };
+    char* argv[] = { "prog", "--bogus" };
+    tassert_er(Error.argsparse, argparse.parse(&args, arr$len(argv), argv));
+    return EOK;
+}
+
+test$case(test_argparse_string_missing_value)
+{
+    char* value = NULL;
+    argparse_c args = {
+        argparse$opt_list(
+            argparse$opt_help(),
+            argparse$opt(&value, 's', "str", .help = "str"),
+        )
+    };
+    char* argv[] = { "prog", "-s" };
+    tassert_er(Error.argsparse, argparse.parse(&args, arr$len(argv), argv));
+    return EOK;
+}
+
+test$case(test_argparse_numeric_convert_error)
+{
+    i32 value = 0;
+    argparse_c args = {
+        argparse$opt_list(
+            argparse$opt_help(),
+            argparse$opt(&value, 'n', "num", .help = "num"),
+        )
+    };
+    char* argv[] = { "prog", "-n", "abc" };
+    tassert_er(Error.argsparse, argparse.parse(&args, arr$len(argv), argv));
+    return EOK;
+}
+
+test$case(test_argparse_option_after_argument)
+{
+    bool force = false;
+    argparse_c args = {
+        argparse$opt_list(
+            argparse$opt_help(),
+            argparse$opt(&force, 'f', "force", .help = "force"),
+        )
+    };
+    char* argv[] = { "prog", "-f", "arg", "--nope" };
+    tassert_er(Error.ok, argparse.parse(&args, arr$len(argv), argv));
+    tassert_eq(force, true);
+    tassert_eq("arg", argparse.next(&args));
+    tassert_eq("--nope", argparse.next(&args));
+    tassert_eq(argparse.next(&args), NULL);
+    return EOK;
+}
+
+test$case(test_argparse_generic_option)
+{
+    void* generic = NULL;
+    argparse_c args = {
+        argparse$opt_list(
+            argparse$opt_help(),
+            argparse$opt(
+                &generic, 'g', "generic", .help = "generic", .callback = test_argparse_cb
+            ),
+        )
+    };
+    char* argv[] = { "prog" };
+    tassert_er(Error.ok, argparse.parse(&args, arr$len(argv), argv));
+    argparse.usage(&args);
+    return EOK;
+}
+
+test$case(test_argparse_callback_dispatch)
+{
+    argparse_opt_s opt = {
+        .type = CexArgParseType__boolean,
+        .value = NULL,
+        .short_name = 'x',
+        .callback = test_argparse_cb,
+    };
+    argparse_c args = { 0 };
+    tassert_er(EOK, _cex_argparse__getvalue(&args, &opt, false));
+    tassert(opt.is_present);
+    return EOK;
+}
+
+test$case(test_argparse_getvalue_unhandled_type)
+{
+    void* value = NULL;
+    argparse_opt_s opt = { .type = CexArgParseType__generic, .value = &value };
+    argparse_c args = { 0 };
+    uassert_disable();
+    Exc err = _cex_argparse__getvalue(&args, &opt, false);
+    uassert_enable();
+    tassert_er(Error.runtime, err);
+    return EOK;
+}
+
+test$case(test_argparse_options_check_wrong_type)
+{
+    void* value = NULL;
+    argparse_opt_s opt = { .type = 200, .value = &value, .short_name = 'x' };
+    argparse_c args = { .options = &opt, .options_len = 1 };
+    uassert_disable();
+    Exc err = _cex_argparse__options_check(&args, true);
+    uassert_enable();
+    tassert_er(EOK, err);
+    return EOK;
+}
+
 test$main();

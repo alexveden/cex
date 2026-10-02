@@ -583,6 +583,15 @@ cex_argparse_next(argparse_c* self)
     uassert(self != NULL);
     uassert(self->argv != NULL && "forgot argparse.parse() call?");
 
+    if (unlikely(self->argc == 0)) {
+        // parse() with a single argv leaves argv one-past the caller's array;
+        // point it at a stable NULL slot so next() reads stay in-bounds
+        static char* null_argv[] = { NULL };
+        null_argv[0] = NULL;
+        self->argv = null_argv;
+        return NULL;
+    }
+
     auto result = self->argv[0];
     if (self->argc > 0) {
 
