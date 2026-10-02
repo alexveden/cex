@@ -75,22 +75,22 @@ _cex_allocator_heap__hdr_make(usize alloc_size, usize alignment)
     usize size = alloc_size;
 
     if (unlikely(alloc_size == 0)) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__,
             "allocation size is zero"
         );
         return 0;
     }
     if (unlikely(alloc_size > PTRDIFF_MAX)) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__,
             "allocation size is too large"
         );
         return 0;
     }
     if (unlikely(alignment > 64)) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__,
             "allocation alignment is too large"
         );
         return 0;
@@ -99,8 +99,8 @@ _cex_allocator_heap__hdr_make(usize alloc_size, usize alignment)
 #if UINTPTR_MAX > 0xFFFFFFFFU
     // Only 64 bit
     if (unlikely((u64)alloc_size > (u64)0xFFFFFFFFFFFFULL)) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__,
             "allocation size exceeds 48 bits"
         );
         return 0;
@@ -115,8 +115,8 @@ _cex_allocator_heap__hdr_make(usize alloc_size, usize alignment)
         uassert(mem$is_power_of2(alignment) && "must be pow2");
 
         if ((alloc_size & (alignment - 1)) != 0) {
-            cex$platform_oom_panic(
-                _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+            cex$platform_mem_panic(
+                _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__,
                 "requested size is not aligned"
             );
             return 0;
@@ -159,8 +159,8 @@ _cex_allocator_heap__alloc(IAllocator self, u8 fill_val, usize size, usize align
         raw_result = cex$platform_calloc(1, full_size);
     }
     if (unlikely(raw_result == NULL)) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "out of memory"
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__, "out of memory"
         );
         return NULL;
     }
@@ -201,15 +201,15 @@ static void*
 _cex_allocator_heap__calloc(IAllocator self, usize nmemb, usize size, usize alignment)
 {
     if (unlikely(nmemb == 0 || nmemb >= PTRDIFF_MAX)) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__,
             "element count is zero or too high"
         );
         return NULL;
     }
     if (unlikely(size == 0 || size >= PTRDIFF_MAX)) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__,
             "element size is zero or too high"
         );
         return NULL;
@@ -223,8 +223,8 @@ _cex_allocator_heap__realloc(IAllocator self, void* ptr, usize size, usize align
 {
     _cex_allocator_heap__validate(self);
     if (unlikely(ptr == NULL)) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "realloc of NULL"
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__, "realloc of NULL"
         );
         return NULL;
     }
@@ -250,8 +250,8 @@ _cex_allocator_heap__realloc(IAllocator self, void* ptr, usize size, usize align
     if (unlikely(
             (alignment <= 8 && old_alignment != 8) || (alignment > 8 && alignment != old_alignment)
         )) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "realloc alignment mismatch"
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__, "realloc alignment mismatch"
         );
         goto fail;
     }
@@ -267,8 +267,8 @@ _cex_allocator_heap__realloc(IAllocator self, void* ptr, usize size, usize align
         uassert(new_full_size > size);
         raw_result = cex$platform_realloc(p - old_offset, new_full_size);
         if (unlikely(raw_result == NULL)) {
-            cex$platform_oom_panic(
-                _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "out of memory"
+            cex$platform_mem_panic(
+                _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__, "out of memory"
             );
             goto fail;
         }
@@ -277,8 +277,8 @@ _cex_allocator_heap__realloc(IAllocator self, void* ptr, usize size, usize align
         // fallback to malloc + memcpy because realloc doesn't guarantee alignment
         raw_result = cex$platform_malloc(new_full_size);
         if (unlikely(raw_result == NULL)) {
-            cex$platform_oom_panic(
-                _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "out of memory"
+            cex$platform_mem_panic(
+                _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__, "out of memory"
             );
             goto fail;
         }

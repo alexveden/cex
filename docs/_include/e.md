@@ -40,7 +40,7 @@ Errors are `char*` pointers:
 | Error.permission | "PermissionError"     | Permission denied                     |
 | Error.try_again | "TryAgainError"        | EAGAIN / EWOULDBLOCK analog           |
 
-> Heap allocation failure is fatal by default: `mem$` panics via `cex$platform_oom_panic`
+> Heap allocation failure is fatal by default: `mem$` panics via `cex$platform_mem_panic`
 > instead of returning `Error.memory`. The `Error.memory` / `NULL` path is returned by custom
 > allocators and by `test$alloc` synthetic OOM — see `mem$`.
 

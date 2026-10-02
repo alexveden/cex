@@ -42,8 +42,8 @@ static_assert(
 /// suppressible check
 #define _cex_errors_assert_prefix "[ASSERT] "
 
-/// Allocation-failure label used by the heap allocator's cex$platform_oom_panic hook
-#define _cex_errors_oom_prefix "[MEMORY] "
+/// Allocation-failure label used by the heap allocator's cex$platform_mem_panic hook
+#define _cex_errors_mem_prefix "[MEMORY] "
 
 #if defined(mem$asan_enabled)
 #    if mem$asan_enabled()

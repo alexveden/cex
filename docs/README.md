@@ -1340,7 +1340,7 @@ Allocator scoping:
 
 #### Allocation failure policy
 
-By default heap allocation failure is **fatal**: `mem$` panics via `cex$platform_oom_panic`,
+By default heap allocation failure is **fatal**: `mem$` panics via `cex$platform_mem_panic`,
 which defaults to `cex$platform_panic` and prints `[MEMORY] file:line reason` before aborting.
 The same applies to anything backed by the heap, including `tmem$` page growth. Arena
 argument/limit violations — invalid page size, zero or oversized allocation, misalignment — also
@@ -1355,7 +1355,7 @@ If you need recoverable `NULL` semantics, define the hook as an empty function-l
 including CEX:
 
 ```c
-#define cex$platform_oom_panic(...)
+#define cex$platform_mem_panic(...)
 #include "cex.h"
 ```
 

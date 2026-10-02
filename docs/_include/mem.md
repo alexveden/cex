@@ -12,7 +12,7 @@ runner, no manual free; `mem$scope` is a no-op; OOM simulation via
 
 #### Allocation failure
 
-Heap allocation failure is fatal by default: `mem$` panics via `cex$platform_oom_panic`
+Heap allocation failure is fatal by default: `mem$` panics via `cex$platform_mem_panic`
 (defaults to `cex$platform_panic`, prints `[MEMORY] file:line reason`). This applies to
 everything backed by the heap, including `tmem$` page growth. Out-of-memory is rarely
 recoverable, so failing fast keeps the common path free of `NULL` checks.
@@ -20,7 +20,7 @@ recoverable, so failing fast keeps the common path free of `NULL` checks.
 Define the hook as an empty function-like macro before including CEX to restore `NULL` returns:
 
 ```c
-#define cex$platform_oom_panic(...)
+#define cex$platform_mem_panic(...)
 ```
 
 Arena argument/limit violations (invalid page size, zero or oversized allocation, misalignment)

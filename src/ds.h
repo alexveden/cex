@@ -32,7 +32,7 @@ pointer or fat-pointer indirection. The runtime header
 8. **Allocation-failure aware** — mutating macros return a pointer to the item slot or `NULL` on
    allocation failure; a grow-OOM frees the array and sets its variable to `NULL`. Most macros
    tolerate a `NULL` array; the accessors `arr$last()`, `arr$at()`, `arr$pop()` assert on it.
-   Note: the default heap allocator panics on real OOM (`cex$platform_oom_panic`); these `NULL`
+   Note: the default heap allocator panics on real OOM (`cex$platform_mem_panic`); these `NULL`
    returns are for synthetic `test$alloc` OOM, custom allocators, or an opt-out build.
 
 ### Examples
@@ -572,7 +572,7 @@ just like a regular dynamic array.
 5. `hm$new` can return `NULL` on allocation failure — always check (or use `uassert`).
 6. **Allocation-failure aware** — `hm$set`/`hm$setp`/`hm$sets` return `NULL` on allocation
    failure; every `hm$` macro tolerates a `NULL` hashmap. Note: the default heap allocator panics
-   on real OOM (`cex$platform_oom_panic`); these `NULL` returns are for synthetic `test$alloc`
+   on real OOM (`cex$platform_mem_panic`); these `NULL` returns are for synthetic `test$alloc`
    OOM, custom allocators, or an opt-out build.
 
 ### Examples

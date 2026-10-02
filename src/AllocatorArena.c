@@ -90,22 +90,22 @@ static allocator_arena_rec_s
 _cex_alloc_estimate_alloc_size(usize alloc_size, usize alignment)
 {
     if (alloc_size == 0) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__,
             "allocation size is zero"
         );
         return (allocator_arena_rec_s){ 0 };
     }
     if (alloc_size > CEX_ARENA_MAX_ALLOC) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__,
             "allocation size is too large"
         );
         return (allocator_arena_rec_s){ 0 };
     }
     if (alignment > CEX_ARENA_MAX_ALIGN) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__,
             "allocation alignment is too large"
         );
         return (allocator_arena_rec_s){ 0 };
@@ -120,8 +120,8 @@ _cex_alloc_estimate_alloc_size(usize alloc_size, usize alignment)
     } else {
         uassert(mem$is_power_of2(alignment) && "must be pow2");
         if ((alloc_size & (alignment - 1)) != 0) {
-            cex$platform_oom_panic(
-                _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+            cex$platform_mem_panic(
+                _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__,
                 "requested size is not aligned"
             );
             return (allocator_arena_rec_s){ 0 };
@@ -205,8 +205,8 @@ _cex_allocator_arena__request_page_size(
         usize page_size = _cex_alloc_estimate_page_size(self->page_size, req_size);
 
         if (page_size == 0 || page_size > CEX_ARENA_MAX_ALLOC) {
-            cex$platform_oom_panic(
-                _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+            cex$platform_mem_panic(
+                _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__,
                 "arena page size is zero or too large"
             );
             return NULL;
@@ -321,14 +321,14 @@ _cex_allocator_arena__calloc(IAllocator allc, usize nmemb, usize size, usize ali
 {
     _cex_allocator_arena__validate(allc);
     if (nmemb > CEX_ARENA_MAX_ALLOC) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "element count is too large"
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__, "element count is too large"
         );
         return NULL;
     }
     if (size > CEX_ARENA_MAX_ALLOC) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "element size is too large"
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__, "element size is too large"
         );
         return NULL;
     }
@@ -370,8 +370,8 @@ _cex_allocator_arena__realloc(IAllocator allc, void* old_ptr, usize size, usize 
     uassert(old_ptr != NULL);
     uassert(size > 0);
     if (size > CEX_ARENA_MAX_ALLOC) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "realloc size is too large"
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__, "realloc size is too large"
         );
         goto fail;
     }
@@ -561,8 +561,8 @@ AllocatorArena_create(const AllocatorArena_kw* kwargs)
     }
 
     if (kw.page_size < 1024 || kw.page_size >= CEX_ARENA_MAX_ALLOC) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__,
             "arena page size is too small or too large"
         );
         return NULL;

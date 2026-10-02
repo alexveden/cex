@@ -322,9 +322,9 @@ If the project has no agent instruction file (`AGENTS.md`, `CLAUDE.md`,
 /// Macro for redefining default platform malloc()
 #define cex$platform_malloc
 
-/// Macro for redefining heap allocation-failure panic; define it as an empty function-like macro
-///  (e.g. `#define cex$platform_oom_panic(...)`) to restore NULL returns
-#define cex$platform_oom_panic(...)
+/// Macro for redefining memory-failure panic; define it as an empty function-like macro
+///  (e.g. `#define cex$platform_mem_panic(...)`) to restore NULL returns
+#define cex$platform_mem_panic(...)
 
 /// Macro for redefining panic function (used in assertions, and other CEX stuff)
 #define cex$platform_panic

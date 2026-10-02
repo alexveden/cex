@@ -1,5 +1,5 @@
 // opt out of allocation-failure panics: this file asserts the NULL-return contract
-#define cex$platform_oom_panic(...) (void)0
+#define cex$platform_mem_panic(...) (void)0
 
 #include "src/all.c"
 

@@ -310,10 +310,10 @@ If the project has no agent instruction file (`AGENTS.md`, `CLAUDE.md`,
 #    define cex$platform_panic _cex_errors_panic_handler
 #endif
 
-#ifndef cex$platform_oom_panic
-///  Macro for redefining heap allocation-failure panic; define it as an empty function-like macro
-///  (e.g. `#define cex$platform_oom_panic(...)`) to restore NULL returns
-#    define cex$platform_oom_panic(...) cex$platform_panic(__VA_ARGS__)
+#ifndef cex$platform_mem_panic
+///  Macro for redefining memory-failure panic; define it as an empty function-like macro
+///  (e.g. `#define cex$platform_mem_panic(...)`) to restore NULL returns
+#    define cex$platform_mem_panic(...) cex$platform_panic(__VA_ARGS__)
 #endif
 
 #ifdef cex$enable_minimal
@@ -520,7 +520,7 @@ Errors are `char*` pointers:
 | Error.permission | "PermissionError"     | Permission denied                     |
 | Error.try_again | "TryAgainError"        | EAGAIN / EWOULDBLOCK analog           |
 
-> Heap allocation failure is fatal by default: `mem$` panics via `cex$platform_oom_panic`
+> Heap allocation failure is fatal by default: `mem$` panics via `cex$platform_mem_panic`
 > instead of returning `Error.memory`. The `Error.memory` / `NULL` path is returned by custom
 > allocators and by `test$alloc` synthetic OOM — see `mem$`.
 
@@ -986,7 +986,7 @@ runner, no manual free; `mem$scope` is a no-op; OOM simulation via
 
 ### Allocation failure
 
-Heap allocation failure is fatal by default: `mem$` panics via `cex$platform_oom_panic`
+Heap allocation failure is fatal by default: `mem$` panics via `cex$platform_mem_panic`
 (defaults to `cex$platform_panic`, prints `[MEMORY] file:line reason`). This applies to
 everything backed by the heap, including `tmem$` page growth. Out-of-memory is rarely
 recoverable, so failing fast keeps the common path free of `NULL` checks.
@@ -994,7 +994,7 @@ recoverable, so failing fast keeps the common path free of `NULL` checks.
 Define the hook as an empty function-like macro before including CEX to restore `NULL` returns:
 
 ```c
-#define cex$platform_oom_panic(...)
+#define cex$platform_mem_panic(...)
 ```
 
 Arena argument/limit violations (invalid page size, zero or oversized allocation, misalignment)
@@ -1506,7 +1506,7 @@ pointer or fat-pointer indirection. The runtime header
 8. **Allocation-failure aware** — mutating macros return a pointer to the item slot or `NULL` on
    allocation failure; a grow-OOM frees the array and sets its variable to `NULL`. Most macros
    tolerate a `NULL` array; the accessors `arr$last()`, `arr$at()`, `arr$pop()` assert on it.
-   Note: the default heap allocator panics on real OOM (`cex$platform_oom_panic`); these `NULL`
+   Note: the default heap allocator panics on real OOM (`cex$platform_mem_panic`); these `NULL`
    returns are for synthetic `test$alloc` OOM, custom allocators, or an opt-out build.
 
 ### Examples
@@ -2046,7 +2046,7 @@ just like a regular dynamic array.
 5. `hm$new` can return `NULL` on allocation failure — always check (or use `uassert`).
 6. **Allocation-failure aware** — `hm$set`/`hm$setp`/`hm$sets` return `NULL` on allocation
    failure; every `hm$` macro tolerates a `NULL` hashmap. Note: the default heap allocator panics
-   on real OOM (`cex$platform_oom_panic`); these `NULL` returns are for synthetic `test$alloc`
+   on real OOM (`cex$platform_mem_panic`); these `NULL` returns are for synthetic `test$alloc`
    OOM, custom allocators, or an opt-out build.
 
 ### Examples
@@ -3076,8 +3076,8 @@ static_assert(
 /// suppressible check
 #define _cex_errors_assert_prefix "[ASSERT] "
 
-/// Allocation-failure label used by the heap allocator's cex$platform_oom_panic hook
-#define _cex_errors_oom_prefix "[MEMORY] "
+/// Allocation-failure label used by the heap allocator's cex$platform_mem_panic hook
+#define _cex_errors_mem_prefix "[MEMORY] "
 
 #if defined(mem$asan_enabled)
 #    if mem$asan_enabled()
@@ -4749,7 +4749,7 @@ test$case(my_test_case)
 
 > [!NOTE]
 >
-> Real heap allocation failure is fatal by default (`cex$platform_oom_panic`). `test$alloc`
+> Real heap allocation failure is fatal by default (`cex$platform_mem_panic`). `test$alloc`
 > injects synthetic failures *before* the heap, so `mem$` still returns `NULL` here — this is
 > the supported way to exercise `NULL` / `Error.memory` paths.
 
@@ -7706,22 +7706,22 @@ _cex_allocator_heap__hdr_make(usize alloc_size, usize alignment)
     usize size = alloc_size;
 
     if (unlikely(alloc_size == 0)) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__,
             "allocation size is zero"
         );
         return 0;
     }
     if (unlikely(alloc_size > PTRDIFF_MAX)) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__,
             "allocation size is too large"
         );
         return 0;
     }
     if (unlikely(alignment > 64)) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__,
             "allocation alignment is too large"
         );
         return 0;
@@ -7730,8 +7730,8 @@ _cex_allocator_heap__hdr_make(usize alloc_size, usize alignment)
 #if UINTPTR_MAX > 0xFFFFFFFFU
     // Only 64 bit
     if (unlikely((u64)alloc_size > (u64)0xFFFFFFFFFFFFULL)) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__,
             "allocation size exceeds 48 bits"
         );
         return 0;
@@ -7746,8 +7746,8 @@ _cex_allocator_heap__hdr_make(usize alloc_size, usize alignment)
         uassert(mem$is_power_of2(alignment) && "must be pow2");
 
         if ((alloc_size & (alignment - 1)) != 0) {
-            cex$platform_oom_panic(
-                _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+            cex$platform_mem_panic(
+                _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__,
                 "requested size is not aligned"
             );
             return 0;
@@ -7790,8 +7790,8 @@ _cex_allocator_heap__alloc(IAllocator self, u8 fill_val, usize size, usize align
         raw_result = cex$platform_calloc(1, full_size);
     }
     if (unlikely(raw_result == NULL)) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "out of memory"
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__, "out of memory"
         );
         return NULL;
     }
@@ -7832,15 +7832,15 @@ static void*
 _cex_allocator_heap__calloc(IAllocator self, usize nmemb, usize size, usize alignment)
 {
     if (unlikely(nmemb == 0 || nmemb >= PTRDIFF_MAX)) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__,
             "element count is zero or too high"
         );
         return NULL;
     }
     if (unlikely(size == 0 || size >= PTRDIFF_MAX)) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__,
             "element size is zero or too high"
         );
         return NULL;
@@ -7854,8 +7854,8 @@ _cex_allocator_heap__realloc(IAllocator self, void* ptr, usize size, usize align
 {
     _cex_allocator_heap__validate(self);
     if (unlikely(ptr == NULL)) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "realloc of NULL"
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__, "realloc of NULL"
         );
         return NULL;
     }
@@ -7881,8 +7881,8 @@ _cex_allocator_heap__realloc(IAllocator self, void* ptr, usize size, usize align
     if (unlikely(
             (alignment <= 8 && old_alignment != 8) || (alignment > 8 && alignment != old_alignment)
         )) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "realloc alignment mismatch"
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__, "realloc alignment mismatch"
         );
         goto fail;
     }
@@ -7898,8 +7898,8 @@ _cex_allocator_heap__realloc(IAllocator self, void* ptr, usize size, usize align
         uassert(new_full_size > size);
         raw_result = cex$platform_realloc(p - old_offset, new_full_size);
         if (unlikely(raw_result == NULL)) {
-            cex$platform_oom_panic(
-                _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "out of memory"
+            cex$platform_mem_panic(
+                _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__, "out of memory"
             );
             goto fail;
         }
@@ -7908,8 +7908,8 @@ _cex_allocator_heap__realloc(IAllocator self, void* ptr, usize size, usize align
         // fallback to malloc + memcpy because realloc doesn't guarantee alignment
         raw_result = cex$platform_malloc(new_full_size);
         if (unlikely(raw_result == NULL)) {
-            cex$platform_oom_panic(
-                _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "out of memory"
+            cex$platform_mem_panic(
+                _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__, "out of memory"
             );
             goto fail;
         }
@@ -8104,22 +8104,22 @@ static allocator_arena_rec_s
 _cex_alloc_estimate_alloc_size(usize alloc_size, usize alignment)
 {
     if (alloc_size == 0) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__,
             "allocation size is zero"
         );
         return (allocator_arena_rec_s){ 0 };
     }
     if (alloc_size > CEX_ARENA_MAX_ALLOC) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__,
             "allocation size is too large"
         );
         return (allocator_arena_rec_s){ 0 };
     }
     if (alignment > CEX_ARENA_MAX_ALIGN) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__,
             "allocation alignment is too large"
         );
         return (allocator_arena_rec_s){ 0 };
@@ -8134,8 +8134,8 @@ _cex_alloc_estimate_alloc_size(usize alloc_size, usize alignment)
     } else {
         uassert(mem$is_power_of2(alignment) && "must be pow2");
         if ((alloc_size & (alignment - 1)) != 0) {
-            cex$platform_oom_panic(
-                _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+            cex$platform_mem_panic(
+                _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__,
                 "requested size is not aligned"
             );
             return (allocator_arena_rec_s){ 0 };
@@ -8219,8 +8219,8 @@ _cex_allocator_arena__request_page_size(
         usize page_size = _cex_alloc_estimate_page_size(self->page_size, req_size);
 
         if (page_size == 0 || page_size > CEX_ARENA_MAX_ALLOC) {
-            cex$platform_oom_panic(
-                _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+            cex$platform_mem_panic(
+                _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__,
                 "arena page size is zero or too large"
             );
             return NULL;
@@ -8335,14 +8335,14 @@ _cex_allocator_arena__calloc(IAllocator allc, usize nmemb, usize size, usize ali
 {
     _cex_allocator_arena__validate(allc);
     if (nmemb > CEX_ARENA_MAX_ALLOC) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "element count is too large"
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__, "element count is too large"
         );
         return NULL;
     }
     if (size > CEX_ARENA_MAX_ALLOC) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "element size is too large"
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__, "element size is too large"
         );
         return NULL;
     }
@@ -8384,8 +8384,8 @@ _cex_allocator_arena__realloc(IAllocator allc, void* old_ptr, usize size, usize 
     uassert(old_ptr != NULL);
     uassert(size > 0);
     if (size > CEX_ARENA_MAX_ALLOC) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__, "realloc size is too large"
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__, "realloc size is too large"
         );
         goto fail;
     }
@@ -8575,8 +8575,8 @@ AllocatorArena_create(const AllocatorArena_kw* kwargs)
     }
 
     if (kw.page_size < 1024 || kw.page_size >= CEX_ARENA_MAX_ALLOC) {
-        cex$platform_oom_panic(
-            _cex_errors_oom_prefix, __FILE_NAME__, __LINE__, __func__,
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__,
             "arena page size is too small or too large"
         );
         return NULL;

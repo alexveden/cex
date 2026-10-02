@@ -33,7 +33,7 @@ just like a regular dynamic array.
 5. `hm$new` can return `NULL` on allocation failure — always check (or use `uassert`).
 6. **Allocation-failure aware** — `hm$set`/`hm$setp`/`hm$sets` return `NULL` on allocation
    failure; every `hm$` macro tolerates a `NULL` hashmap. Note: the default heap allocator panics
-   on real OOM (`cex$platform_oom_panic`); these `NULL` returns are for synthetic `test$alloc`
+   on real OOM (`cex$platform_mem_panic`); these `NULL` returns are for synthetic `test$alloc`
    OOM, custom allocators, or an opt-out build.
 
 #### Examples
