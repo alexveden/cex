@@ -69,19 +69,20 @@ _cex_alloc_estimate_page_size(usize page_size, usize alloc_size)
     uassert(base_page_size % alignof(allocator_arena_page_s) == 0 && "expected to be 64 aligned");
 
     if (alloc_size > 0.7 * base_page_size) {
-        if (alloc_size > 1024 * 1024) {
-            alloc_size *= 1.1;
-            alloc_size += sizeof(allocator_arena_page_s) + CEX_ARENA_MAX_ALIGN;
+        u64 need = alloc_size;
+        if (need > 1024 * 1024) {
+            need += need / 10;
+            need += sizeof(allocator_arena_page_s) + CEX_ARENA_MAX_ALIGN;
         } else {
-            alloc_size *= 2;
+            need *= 2;
         }
 
-        usize result = mem$aligned_round(
-            alloc_size + sizeof(allocator_arena_page_s) + CEX_ARENA_MAX_ALIGN,
-            alignof(allocator_arena_page_s)
-        );
-        uassert(result % alignof(allocator_arena_page_s) == 0 && "expected to be 64 aligned");
-        return result;
+        u64 align = alignof(allocator_arena_page_s);
+        u64 padded = need + sizeof(allocator_arena_page_s) + CEX_ARENA_MAX_ALIGN;
+        u64 result = (padded + align - 1) & ~(align - 1);
+        uassert(result % align == 0 && "expected to be 64 aligned");
+        if (unlikely(result > CEX_ARENA_MAX_ALLOC)) { return (usize)-1; }
+        return (usize)result;
     } else {
         return base_page_size;
     }
