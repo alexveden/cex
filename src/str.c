@@ -1345,10 +1345,11 @@ static arr$(char*) cex_str_split(char* s, char* split_by, IAllocator allc)
 
     return result;
 
-fail:
+fail: {
     for$each (p, result) { mem$free(allc, p); }
     arr$free(result);
     return NULL;
+}
 }
 
 /// Splits string by lines, result allocated by allc, as dynamic array of cloned lines, Returns NULL
@@ -1396,10 +1397,11 @@ static arr$(char*) cex_str_split_lines(char* s, IAllocator allc)
     }
     return result;
 
-fail:
+fail: {
     for$each (p, result) { mem$free(allc, p); }
     arr$free(result);
     return NULL;
+}
 }
 
 /// Joins string using a separator (join_by), NULL tolerant, returns NULL on error.

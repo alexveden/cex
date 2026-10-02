@@ -1472,6 +1472,9 @@ pointer or fat-pointer indirection. The runtime header
    (`_CEXDS_ARR_MAGIC = 0xC001DAAD`). Wrong magic triggers an assertion.
 7. **ASAN-aware** — The 8-byte poison area after the header is marked poisoned so ASAN catches
    underflow reads/writes.
+8. **OOM-resilient** — mutating macros return a pointer to the item slot or `NULL` on memory
+   error (never abort); a grow-OOM frees the array and sets its variable to `NULL`. Every macro
+   tolerates a `NULL` array.
 
 ### Examples
 
@@ -2025,6 +2028,8 @@ just like a regular dynamic array.
 4. Array indexing `smap[i].key` / `smap[i].value` works but order may change after
    calls to `hm$del`.
 5. `hm$new` can return `NULL` on memory error — always check (or use `uassert`).
+6. **OOM-resilient** — `hm$set`/`hm$setp`/`hm$sets` return `NULL` on memory error; every `hm$`
+   macro tolerates a `NULL` hashmap.
 
 ### Examples
 
@@ -12640,10 +12645,11 @@ static arr$(char*) cex_str_split(char* s, char* split_by, IAllocator allc)
 
     return result;
 
-fail:
+fail: {
     for$each (p, result) { mem$free(allc, p); }
     arr$free(result);
     return NULL;
+}
 }
 
 /// Splits string by lines, result allocated by allc, as dynamic array of cloned lines, Returns NULL
@@ -12691,10 +12697,11 @@ static arr$(char*) cex_str_split_lines(char* s, IAllocator allc)
     }
     return result;
 
-fail:
+fail: {
     for$each (p, result) { mem$free(allc, p); }
     arr$free(result);
     return NULL;
+}
 }
 
 /// Joins string using a separator (join_by), NULL tolerant, returns NULL on error.

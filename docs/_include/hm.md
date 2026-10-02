@@ -31,6 +31,8 @@ just like a regular dynamic array.
 4. Array indexing `smap[i].key` / `smap[i].value` works but order may change after
    calls to `hm$del`.
 5. `hm$new` can return `NULL` on memory error — always check (or use `uassert`).
+6. **OOM-resilient** — `hm$set`/`hm$setp`/`hm$sets` return `NULL` on memory error; every `hm$`
+   macro tolerates a `NULL` hashmap.
 
 #### Examples
 

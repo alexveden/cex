@@ -22,6 +22,8 @@
 - feat(test): `test$alloc_set_oom_on_call(n)` - deterministic OOM simulation, fails on the n-th allocation call (`1` = next call)
 - (breaking) `AllocatorArena_kw.test_oom_probability` and `AllocatorArena_c.test_oom_probability` renamed to `test_oom_threshold`; one field now encodes probability (`(0,1)`), always-fail (`1`), or countdown (`>1`)
 - feat(fuzz): OOM fuzz harnesses for `hm$` and `arr$` (`fuzz/ds/fuzz_ds_hashmap_oom.c`, `fuzz/ds/fuzz_ds_array_oom.c`); inject `test_oom_threshold` failures at each operation and run under ASAN/UBSan
+- feat(ds): OOM is expected and non-fatal for `arr$`/`hm$` — mutating macros return a pointer to the item slot or `NULL` on memory error; a grow-OOM frees the container and sets its variable to `NULL` (no leak/crash)
+- feat(ds): every `arr$`/`hm$` macro tolerates a `NULL` container as its first argument (`arr$at`/`arr$last`/`arr$pop` return a zero value, `hm$get` returns the default, appends/inserts return `NULL`, deletes return `false`)
 
 ### Fixes
 - fix(test): `test$mock_scope` no longer clobbers the OOM setting; `test_oom_threshold` is saved and restored around the namespace snapshot
@@ -41,10 +43,13 @@
 - fix(ds): `hm$set()` with `.copy_keys` leaked the previous key copy on replace; the copy is allocated before mutation so OOM leaves the map unchanged
 - fix(ds): `arr$free(NULL)` no longer asserts in `CEX_TEST`; the integrity check is skipped on NULL as documented
 - fix(ds): `arr$setcap(a, n)` doubled capacity even when `n <= capacity`, causing runaway growth; amortized doubling now applies only when appending (`addlen > 0`)
+- fix(ds): `_cexds__arrgrowf` length/byte overflow failure leaked the old array (now freed before returning NULL)
+- fix(ds): `hm$new` with `.copy_keys_arena_pgsize` silently fell back to the main allocator when the key arena allocation failed; now returns `NULL`
 - fix(mem): `mem$malloc`/`mem$calloc`/`mem$realloc`/`mem$free`/`mem$new` evaluate the allocator (and old-pointer) argument exactly once
 - fix(allocator): arena `realloc()` OOM now frees the old pointer instead of leaking it
 - fix(str): `str.fmt()` callback buffer growth could overflow when appending past capacity
 - fix(sbuf): use-after-free when an append operation failed
+- fix(str): `fail:` label bodies wrapped in blocks; `for$each` expands to declarations, which clang 19 rejects after a label under `-Werror`
 - test(io): more deterministic OOM cases
 
 ## 0.21
