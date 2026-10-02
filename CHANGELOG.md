@@ -23,7 +23,9 @@
 - (breaking) `AllocatorArena_kw.test_oom_probability` and `AllocatorArena_c.test_oom_probability` renamed to `test_oom_threshold`; one field now encodes probability (`(0,1)`), always-fail (`1`), or countdown (`>1`)
 - feat(fuzz): OOM fuzz harnesses for `hm$` and `arr$` (`fuzz/ds/fuzz_ds_hashmap_oom.c`, `fuzz/ds/fuzz_ds_array_oom.c`); inject `test_oom_threshold` failures at each operation and run under ASAN/UBSan
 - feat(ds): OOM is expected and non-fatal for `arr$`/`hm$` — mutating macros return a pointer to the item slot or `NULL` on memory error; a grow-OOM frees the container and sets its variable to `NULL` (no leak/crash)
-- feat(ds): every `arr$`/`hm$` macro tolerates a `NULL` container as its first argument (`arr$at`/`arr$last`/`arr$pop` return a zero value, `hm$get` returns the default, appends/inserts return `NULL`, deletes return `false`)
+- feat(ds): `arr$validate()` / `hm$validate()` — validate a container handle, returning `Error.memory` on `NULL`, `Error.integrity` on bad magic, `EOK` otherwise; `_cexds__arr_integrity()` now returns `Exception` and internal callers assert on it
+- feat(ds): most `arr$`/`hm$` macros tolerate a `NULL` container as their first argument (`hm$get` returns the default, appends/inserts return `NULL`, deletes return `false`)
+- (breaking) ds: `arr$at`/`arr$last`/`arr$pop` now assert on a `NULL` array instead of returning a zero value
 
 ### Fixes
 - fix(test): `test$mock_scope` no longer clobbers the OOM setting; `test_oom_threshold` is saved and restored around the namespace snapshot
