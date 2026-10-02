@@ -66,6 +66,7 @@
 - test(ds): freed key-arena poison check is gated on native ASAN; Fil-C and Emscripten use the byte-reading fallback and would read the freed page
 - fix(cexy): `CEX_TEST_NOASAN` now reaches test binaries (propagated as a define and honored by `cexy$cc_args_sanitizer`), so the in-test build system no longer links sanitizer runtimes a toolchain may not ship (alpine i586/s390x)
 - test(cexy): `test_cmd_simple_fuzz` run path is skipped when the configured fuzzer binary is not installed (e.g. alpine CI)
+- fix(os): `_os$args_print()` no longer underflows when the argument count is 0 (gcc 15 `-Werror=aggressive-loop-optimizations` on alpine)
 
 ## 0.21
 2026-06-07

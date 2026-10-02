@@ -133,7 +133,7 @@ __attribute__((unused)) static const char* OSArch_str[] = {
 #    if defined(CEX_BUILD) && CEX_LOG_LVL > 3
 #        define _os$args_print(msg, args, args_len)                                                \
             log$debug(msg "");                                                                     \
-            for (u32 i = 0; i < args_len - 1; i++) {                                               \
+            for (usize i = 0; i + 1 < args_len; i++) {                                             \
                 char* a = args[i];                                                                 \
                 io.printf(" ");                                                                    \
                 if (str.find(a, " ")) {                                                            \
