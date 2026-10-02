@@ -7593,9 +7593,7 @@ const struct _CEX_Error_struct Error = {
 #if !defined(cex$enable_minimal) || defined(cex$enable_mem)
 
 
-#ifdef CEX_TEST
 IAllocator _cex__default_global__allocator_mem = &_cex__default_global__allocator_heap.alloc;
-#endif
 
 void
 _cex_allocator_memscope_cleanup(IAllocator* allc)
