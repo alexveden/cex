@@ -160,6 +160,25 @@ test$case(test_os_find_exact)
     return EOK;
 }
 
+test$case(test_os_find_exact_file_oom)
+{
+    mem$scope(tmem$, _)
+    {
+        char* path = p("tests/data/dir1/file1.csv", _);
+
+        test$alloc_set_oom_on_call(1);
+        arr$(char*) res = os.fs.find(path, false, test$alloc);
+        test$alloc_set_oom_on_call(0);
+        tassert(res == NULL);
+
+        test$alloc_set_oom_on_call(2);
+        res = os.fs.find(path, false, test$alloc);
+        test$alloc_set_oom_on_call(0);
+        tassert(res == NULL);
+    }
+    return EOK;
+}
+
 test$case(test_os_find_exact_recursive)
 {
 

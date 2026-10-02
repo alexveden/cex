@@ -16267,7 +16267,12 @@ static arr$(char*) cex_os__fs__find(char* path_pattern, bool is_recursive, IAllo
         if (f.is_valid && f.is_file) {
             // Find used with exact file path, we still have to return array + allocated path copy
             arr$(char*) result = arr$new(result, allc);
+            if (unlikely(result == NULL)) { return NULL; }
             char* it = str.clone(path_pattern, allc);
+            if (unlikely(it == NULL)) {
+                arr$free(result);
+                return NULL;
+            }
             arr$push(result, it);
             return result;
         }
