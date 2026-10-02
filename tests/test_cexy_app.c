@@ -136,19 +136,23 @@ test$case(test_cmd_simple_fuzz)
 
         // the template traps on `CEX`, use a non-crashing target for the run path
 #if !defined(__APPLE__) && !defined(_WIN32)
-        char* safe_src = TBUILDDIR "fuzz/fuzz_safe.c";
-        e$ret(io.file.save(
-            safe_src,
-            "#define CEX_IMPLEMENTATION\n"
-            "#include \"cex.h\"\n"
-            "int fuzz$case(const u8* data, usize size) { (void)data; (void)size; return 0; }\n"
-            "fuzz$main();\n"
-        ));
+        char* fuzzer[] = { cexy$fuzzer };
+        // fuzzer runtime (clang/libFuzzer) may be absent, e.g. alpine CI
+        if (arr$len(fuzzer) > 0 && os.cmd.exists(fuzzer[0])) {
+            char* safe_src = TBUILDDIR "fuzz/fuzz_safe.c";
+            e$ret(io.file.save(
+                safe_src,
+                "#define CEX_IMPLEMENTATION\n"
+                "#include \"cex.h\"\n"
+                "int fuzz$case(const u8* data, usize size) { (void)data; (void)size; return 0; }\n"
+                "fuzz$main();\n"
+            ));
 
-        char* old_dir = os.fs.getcwd(_);
-        char* run[] = { "fuzz", "--max-time", "1", "run", safe_src };
-        tassert_er(EOK, cexy.cmd.simple_fuzz(arr$len(run), run, NULL));
-        e$ret(os.fs.chdir(old_dir));
+            char* old_dir = os.fs.getcwd(_);
+            char* run[] = { "fuzz", "--max-time", "1", "run", safe_src };
+            tassert_er(EOK, cexy.cmd.simple_fuzz(arr$len(run), run, NULL));
+            e$ret(os.fs.chdir(old_dir));
+        }
 #endif
     }
     return EOK;

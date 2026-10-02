@@ -2651,6 +2651,11 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
                         arr$push(args, it);
                     }
                 }
+#ifdef CEX_TEST_NOASAN
+                // keep the in-test build system sanitizer-free too, so it does not
+                // require an ASAN runtime the toolchain may not ship (e.g. alpine i586/s390x)
+                arr$push(args, "-DCEX_TEST_NOASAN");
+#endif
                 arr$pusha(args, cc_include);
 
                 // Handling cex.h -> cex.obj for faster debug builds

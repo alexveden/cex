@@ -42,7 +42,10 @@
 #    endif
 
 #    ifndef cexy$cc_args_sanitizer
-#        if defined(_WIN32) || defined(MACOS_X) || defined(__APPLE__)
+#        ifdef CEX_TEST_NOASAN
+/// CEX_TEST_NOASAN (e.g. emulated CI) drops sanitizers whose runtime may be unavailable
+#            define cexy$cc_args_sanitizer "-fstack-protector-strong"
+#        elif defined(_WIN32) || defined(MACOS_X) || defined(__APPLE__)
 #            if defined(__clang__)
 /// Debug mode and tests sanitizer flags (may be overridden by user)
 #                define cexy$cc_args_sanitizer                                                     \
