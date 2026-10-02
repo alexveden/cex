@@ -102,7 +102,8 @@ test$case(test_mem_mul_overflow)
 test$case(test_global_mem_allocator_replaceable)
 {
     IAllocator saved_mem = mem$;
-    AllocatorHeap_c* custom = mem$malloc(test$alloc, sizeof(AllocatorHeap_c));
+    AllocatorHeap_c* custom =
+        mem$malloc(test$alloc, sizeof(AllocatorHeap_c), alignof(AllocatorHeap_c));
     memcpy(custom, &_cex__default_global__allocator_heap, sizeof(*custom));
     memset(&custom->stats, 0, sizeof(custom->stats));
 

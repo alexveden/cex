@@ -149,8 +149,19 @@ test$case(test_cmd_simple_fuzz)
             ));
 
             char* old_dir = os.fs.getcwd(_);
+            // LSan false-positives on musl; leak fuzzing runs in the dedicated fuzz workflow,
+            // this case only checks the build+run pipeline
+            char* old_asan = os.env.get("ASAN_OPTIONS", NULL);
+            if (old_asan) { old_asan = str.clone(old_asan, _); }
+            e$ret(os.env.set("ASAN_OPTIONS", "detect_leaks=0"));
             char* run[] = { "fuzz", "--max-time", "1", "run", safe_src };
-            tassert_er(EOK, cexy.cmd.simple_fuzz(arr$len(run), run, NULL));
+            Exc run_err = cexy.cmd.simple_fuzz(arr$len(run), run, NULL);
+            if (old_asan) {
+                e$ret(os.env.set("ASAN_OPTIONS", old_asan));
+            } else {
+                e$ret(os.env.unset("ASAN_OPTIONS"));
+            }
+            tassert_er(EOK, run_err);
             e$ret(os.fs.chdir(old_dir));
         }
 #endif
