@@ -1829,4 +1829,181 @@ test$case(json_writer_unicode_unescape_self_ref)
     return EOK;
 }
 
+test$case(json_rd_str_unescape_simple_escapes)
+{
+    mem$scope(tmem$, _)
+    {
+        str_s unesc = { 0 };
+
+        e$ret(json$rd_str_unescape(str$s("\\\"\\\\\\/\\b\\f\\n\\r\\t"), &unesc, _));
+        char expected[] = { '"', '\\', '/', '\b', '\f', '\n', '\r', '\t' };
+        tassert_eq(unesc.len, sizeof(expected));
+        tassert(memcmp(unesc.buf, expected, sizeof(expected)) == 0);
+
+        // unknown escape keeps both characters
+        e$ret(json$rd_str_unescape(str$s("\\q"), &unesc, _));
+        tassert_eq(unesc.len, 2);
+        tassert(memcmp(unesc.buf, "\\q", 2) == 0);
+
+        // trailing backslash is copied as-is
+        e$ret(json$rd_str_unescape(str$s("ab\\"), &unesc, _));
+        tassert_eq(unesc.len, 3);
+        tassert(memcmp(unesc.buf, "ab\\", 3) == 0);
+
+        // 1-byte unicode escape
+        e$ret(json$rd_str_unescape(str$s("\\u0041"), &unesc, _));
+        tassert_eq(unesc.len, 1);
+        tassert_eq(unesc.buf[0], 'A');
+    }
+    return EOK;
+}
+
+test$case(json_rd_str_unescape_inplace_small_buf)
+{
+    char buf[8] = { 0 };
+    usize size = 3; // <= value_str.len
+    uassert_disable();
+    Exc err = json$rd_str_unescape_inplace(str$s("abcd"), buf, &size);
+    uassert_enable();
+    tassert_er(Error.assert, err);
+    return EOK;
+}
+
+test$case(json_rd_validate)
+{
+    tassert_er(Error.argument, json.rd.validate(NULL));
+
+    json_rd_c jr = { 0 };
+    e$ret(json$rd_new(&jr, "{\"a\": 1}", 0));
+    tassert_er(EOK, json.rd.validate(&jr));
+
+    json_rd_c bad = { 0 };
+    e$ret(json$rd_new(&bad, "{\"a\" 1}", 0));
+    while (json.rd.next(&bad)) {}
+    tassert(json.rd.validate(&bad) != EOK);
+
+    return EOK;
+}
+
+test$case(json_rd_step_errors)
+{
+    // step_out at depth 0
+    json_rd_c jr = { 0 };
+    e$ret(json$rd_new(&jr, "{\"a\": 1}", 0));
+    tassert(json.rd.step_out(&jr) != EOK);
+    tassert(str.eq(jr.error, "Bad scope/level for step out"));
+
+    // step_in with wrong expected type
+    json_rd_c j2 = { 0 };
+    e$ret(json$rd_new(&j2, "{\"a\": 1}", 0));
+    tassert(json.rd.step_in(&j2, JsonType__arr) != EOK);
+    tassert(str.eq(j2.error, "Unexpected type for stepping in"));
+
+    // step_in on a non-scope value
+    json_rd_c j3 = { 0 };
+    e$ret(json$rd_new(&j3, "\"hello\"", 0));
+    tassert(json.rd.step_in(&j3, JsonType__str) != EOK);
+    tassert(str.eq(j3.error, "Stepping in is only for objects or arrays"));
+
+    return EOK;
+}
+
+test$case(json_rd_get_scope_wrong_type)
+{
+    json_rd_c jr = { 0 };
+    e$ret(json$rd_new(&jr, "{\"a\": 1}", 0));
+    str_s s = json.rd.get_scope(&jr, JsonType__arr);
+    tassert_eq(s.len, 0);
+    tassert(str.eq(jr.error, "Expected array scope"));
+
+    json_rd_c j2 = { 0 };
+    e$ret(json$rd_new(&j2, "[1, 2]", 0));
+    s = json.rd.get_scope(&j2, JsonType__obj);
+    tassert_eq(s.len, 0);
+    tassert(str.eq(j2.error, "Expected object scope"));
+
+    return EOK;
+}
+
+test$case(json_rd_parse_malformed)
+{
+    char* docs[] = {
+        "{,}",
+        "{\"a\": 1, 2}",
+        "{\"a\" 1}",
+        "{\"a\":}",
+        "[}",
+        "{]",
+        "foo",
+    };
+
+    for$each (doc, docs) {
+        json_rd_c jr = { 0 };
+        e$ret(json$rd_new(&jr, doc, 0));
+        while (json.rd.next(&jr)) {}
+        tassertf(json.rd.validate(&jr) != EOK, "expected error for: %s", doc);
+    }
+    return EOK;
+}
+
+test$case(json_wr_create_conflicting_kwargs)
+{
+    mem$scope(tmem$, _)
+    {
+        json_wr_c jw = { 0 };
+        sbuf_c buf = sbuf.create(64, _);
+        tassert(json$wr_new(&jw, .buf = &buf, .stream = stdout, .indent = 4) != EOK);
+    }
+    return EOK;
+}
+
+test$case(json_wr_print_str_escaped_controls)
+{
+    mem$scope(tmem$, _)
+    {
+        json_wr_c jw = { 0 };
+        sbuf_c buf = sbuf.create(256, _);
+        e$ret(json$wr_new(&jw, .buf = &buf, .indent = 0));
+
+        char input[] = { '\b', '\f', '\n', '\r', '\t', '"', '\\' };
+        json.wr.print_str_escaped(&jw, input, sizeof(input), true);
+        tassert_er(EOK, jw.error);
+        tassert_eq(buf, "\"\\b\\f\\n\\r\\t\\\"\\\\\"");
+    }
+    return EOK;
+}
+
+test$case(json_wr_print_str_escaped_bad_utf8)
+{
+    mem$scope(tmem$, _)
+    {
+        // lead byte followed by a non-continuation byte
+        json_wr_c jw = { 0 };
+        sbuf_c buf = sbuf.create(256, _);
+        e$ret(json$wr_new(&jw, .buf = &buf, .indent = 0));
+        char bad1[] = { (char)0xC3, '(' };
+        json.wr.print_str_escaped(&jw, bad1, sizeof(bad1), true);
+        tassert(str.find(buf, "\\u0003") != NULL);
+
+        // 0xF8 has no valid sequence length
+        json_wr_c jw2 = { 0 };
+        sbuf_c buf2 = sbuf.create(256, _);
+        e$ret(json$wr_new(&jw2, .buf = &buf2, .indent = 0));
+        char bad2[] = { (char)0xF8 };
+        json.wr.print_str_escaped(&jw2, bad2, sizeof(bad2), true);
+        tassert_er(JsonError.encoding, jw2.error);
+        tassert(str.find(buf2, "\\u00F8") != NULL);
+
+        // continuation byte without a start byte
+        json_wr_c jw3 = { 0 };
+        sbuf_c buf3 = sbuf.create(256, _);
+        e$ret(json$wr_new(&jw3, .buf = &buf3, .indent = 0));
+        char bad3[] = { (char)0x80 };
+        json.wr.print_str_escaped(&jw3, bad3, sizeof(bad3), true);
+        tassert_er(JsonError.encoding, jw3.error);
+        tassert(str.find(buf3, "\\u0080") != NULL);
+    }
+    return EOK;
+}
+
 test$main();
