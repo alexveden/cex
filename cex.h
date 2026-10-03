@@ -1798,9 +1798,12 @@ struct _cexds__arr_new_kwargs_s
         bool _cexds__ok = false;                                                                   \
         if ((a) != NULL) {                                                                         \
             usize _cexds__add = (add_extra);                                                       \
-            if (_cexds__add > (usize)-1 - _cexds__header(a)->length) {                             \
+            usize _cexds__need = mem$calc_overflow(                                                \
+                _cexds__header(a)->capacity, _cexds__header(a)->length, _cexds__add                \
+            );                                                                                     \
+            if (_cexds__need == mem$MAX + 1) {                                                     \
                 _cexds__ok = false;                                                                \
-            } else if (_cexds__header(a)->length + _cexds__add > _cexds__header(a)->capacity) {    \
+            } else if (_cexds__need > 0) {                                                         \
                 (void)arr$grow(a, _cexds__add, 0);                                                 \
                 _cexds__ok = ((a) != NULL);                                                        \
             } else {                                                                               \
@@ -8880,7 +8883,8 @@ _cexds__arrgrowf(
     usize min_len;
     {
         usize cur_len = arr ? _cexds__header(arr)->length : 0;
-        if (mem$add_overflow(cur_len, addlen, &min_len)) { goto fail_owned; }
+        if (mem$has_overflow(mem$MAX, cur_len, addlen)) { goto fail_owned; }
+        min_len = cur_len + addlen;
     }
 
     // compute the minimum capacity needed
@@ -9729,7 +9733,7 @@ _cexds__hmput_key(
             ptrdiff_t i = (ptrdiff_t)_cexds__header(a)->length;
             // we want to do _cexds__arraddn(1), but we can't use the macros since we don't have
             // something of the right type
-            if ((usize)i + 1 > arr$cap(a)) {
+            if (mem$has_overflow(arr$cap(a), (usize)i, 1)) {
                 *(void**)&a = _cexds__arrgrowf(a, elemsize, 1, 0, _cexds__header(a)->el_align, NULL);
                 if (a == NULL) {
                     if (table->key_arena != NULL) {
@@ -9742,7 +9746,7 @@ _cexds__hmput_key(
                 }
             }
 
-            uassert((usize)i + 1 <= arr$cap(a));
+            uassert(!mem$has_overflow(arr$cap(a), (usize)i, 1));
             _cexds__header(a)->length = i + 1;
             bucket = &table->storage[pos >> _CEXDS_BUCKET_SHIFT];
             bucket->hash[pos & _CEXDS_BUCKET_MASK] = hash;
@@ -12637,10 +12641,11 @@ _cex_str__fmt_callback(char* buf, void* user, u32 len)
     if (unlikely(ctx->has_error)) { return NULL; }
 
     if (unlikely(
-            ctx->buf == NULL || (u64)ctx->length + len + CEX_SPRINTF_MIN > ctx->capacity
+            ctx->buf == NULL ||
+            mem$has_overflow(ctx->capacity, ctx->length, (usize)len + CEX_SPRINTF_MIN)
         )) {
 
-        if ((u64)ctx->length + len > INT32_MAX) {
+        if (mem$has_overflow(INT32_MAX, ctx->length, len)) {
             ctx->has_error = true;
             return NULL;
         }
@@ -13501,10 +13506,10 @@ _cex_sbuf_sprintf_callback(char* buf, void* user, u32 len)
     if (unlikely(ctx->err != EOK)) { return NULL; }
     uassert((buf != ctx->buf) || (sbuf + ctx->length + len <= sbuf + ctx->count && "out of bounds"));
 
-    if (unlikely(ctx->length + len > ctx->count)) {
+    if (unlikely(mem$has_overflow(ctx->count, ctx->length, len))) {
         bool buf_is_tmp = buf != ctx->buf;
 
-        if (len > INT32_MAX || ctx->length + len > (u32)INT32_MAX) {
+        if (mem$has_overflow(INT32_MAX, ctx->length, len)) {
             ctx->err = Error.integrity;
             return NULL;
         }
@@ -13616,7 +13621,7 @@ cex_sbuf_append(sbuf_c* self, char* s)
     usize slen = strlen(s);
 
     // Try resize
-    if (length + slen > capacity - 1) {
+    if (mem$has_overflow(capacity - 1, length, slen)) {
         e$except (err, _sbuf__grow_buffer(self, length + slen)) { return err; }
         uassert(*self); // clang-tidy false positive, should never happen
     }

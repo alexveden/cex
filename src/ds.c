@@ -85,7 +85,8 @@ _cexds__arrgrowf(
     usize min_len;
     {
         usize cur_len = arr ? _cexds__header(arr)->length : 0;
-        if (mem$add_overflow(cur_len, addlen, &min_len)) { goto fail_owned; }
+        if (mem$has_overflow(mem$MAX, cur_len, addlen)) { goto fail_owned; }
+        min_len = cur_len + addlen;
     }
 
     // compute the minimum capacity needed
@@ -934,7 +935,7 @@ _cexds__hmput_key(
             ptrdiff_t i = (ptrdiff_t)_cexds__header(a)->length;
             // we want to do _cexds__arraddn(1), but we can't use the macros since we don't have
             // something of the right type
-            if ((usize)i + 1 > arr$cap(a)) {
+            if (mem$has_overflow(arr$cap(a), (usize)i, 1)) {
                 *(void**)&a = _cexds__arrgrowf(a, elemsize, 1, 0, _cexds__header(a)->el_align, NULL);
                 if (a == NULL) {
                     if (table->key_arena != NULL) {
@@ -947,7 +948,7 @@ _cexds__hmput_key(
                 }
             }
 
-            uassert((usize)i + 1 <= arr$cap(a));
+            uassert(!mem$has_overflow(arr$cap(a), (usize)i, 1));
             _cexds__header(a)->length = i + 1;
             bucket = &table->storage[pos >> _CEXDS_BUCKET_SHIFT];
             bucket->hash[pos & _CEXDS_BUCKET_MASK] = hash;

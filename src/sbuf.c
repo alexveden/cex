@@ -236,10 +236,10 @@ _cex_sbuf_sprintf_callback(char* buf, void* user, u32 len)
     if (unlikely(ctx->err != EOK)) { return NULL; }
     uassert((buf != ctx->buf) || (sbuf + ctx->length + len <= sbuf + ctx->count && "out of bounds"));
 
-    if (unlikely(ctx->length + len > ctx->count)) {
+    if (unlikely(mem$has_overflow(ctx->count, ctx->length, len))) {
         bool buf_is_tmp = buf != ctx->buf;
 
-        if (len > INT32_MAX || ctx->length + len > (u32)INT32_MAX) {
+        if (mem$has_overflow(INT32_MAX, ctx->length, len)) {
             ctx->err = Error.integrity;
             return NULL;
         }
@@ -351,7 +351,7 @@ cex_sbuf_append(sbuf_c* self, char* s)
     usize slen = strlen(s);
 
     // Try resize
-    if (length + slen > capacity - 1) {
+    if (mem$has_overflow(capacity - 1, length, slen)) {
         e$except (err, _sbuf__grow_buffer(self, length + slen)) { return err; }
         uassert(*self); // clang-tidy false positive, should never happen
     }

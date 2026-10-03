@@ -585,6 +585,28 @@ test$case(test_sbuf_set_len_cap_zero_overflow)
     return EOK;
 }
 
+test$case(test_sbuf_append_cap_zero_overflow)
+{
+    sbuf_c s = sbuf.create(20, mem$);
+    tassert(s != NULL);
+
+    // manually corrupt header: capacity=0 without setting err
+    sbuf_head_s* head = _sbuf__head(s);
+    head->capacity = 0;
+    head->length = 0;
+
+    // Before fix: capacity-1 wrapped to SIZE_MAX, bypassed grow,
+    // and memcpy wrote past the buffer end (ASAN crash).
+    // Now: mem$has_overflow() flags it and the grow path enlarges the buffer.
+    tassert_eq(EOK, sbuf.append(&s, "ABC"));
+    tassert_eq(sbuf.len(&s), 3);
+    tassert_eq(s[3], '\0');
+    tassert(sbuf.capacity(&s) >= 3);
+
+    sbuf.destroy(&s);
+    return EOK;
+}
+
 test$case(test_sbuf_append_guard_null_no_grow)
 {
     sbuf_c s = sbuf.create(100, mem$);

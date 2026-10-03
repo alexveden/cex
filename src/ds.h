@@ -298,9 +298,12 @@ struct _cexds__arr_new_kwargs_s
         bool _cexds__ok = false;                                                                   \
         if ((a) != NULL) {                                                                         \
             usize _cexds__add = (add_extra);                                                       \
-            if (_cexds__add > (usize)-1 - _cexds__header(a)->length) {                             \
+            usize _cexds__need = mem$calc_overflow(                                                \
+                _cexds__header(a)->capacity, _cexds__header(a)->length, _cexds__add                \
+            );                                                                                     \
+            if (_cexds__need >= mem$MAX) {                                                     \
                 _cexds__ok = false;                                                                \
-            } else if (_cexds__header(a)->length + _cexds__add > _cexds__header(a)->capacity) {    \
+            } else if (_cexds__need > 0) {                                                         \
                 (void)arr$grow(a, _cexds__add, 0);                                                 \
                 _cexds__ok = ((a) != NULL);                                                        \
             } else {                                                                               \

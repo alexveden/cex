@@ -1191,10 +1191,11 @@ _cex_str__fmt_callback(char* buf, void* user, u32 len)
     if (unlikely(ctx->has_error)) { return NULL; }
 
     if (unlikely(
-            ctx->buf == NULL || (u64)ctx->length + len + CEX_SPRINTF_MIN > ctx->capacity
+            ctx->buf == NULL ||
+            mem$has_overflow(ctx->capacity, ctx->length, (usize)len + CEX_SPRINTF_MIN)
         )) {
 
-        if ((u64)ctx->length + len > INT32_MAX) {
+        if (mem$has_overflow(INT32_MAX, ctx->length, len)) {
             ctx->has_error = true;
             return NULL;
         }
