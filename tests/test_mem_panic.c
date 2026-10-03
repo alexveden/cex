@@ -55,6 +55,23 @@ test$case(test_heap_mem_panic_on_calloc_zero)
     return EOK;
 }
 
+test$case(test_heap_mem_panic_on_calloc_overflow)
+{
+    // both operands pass the individual checks, but nmemb * size wraps
+    usize big = (usize)1 << (mem$platform() / 2);
+
+    _mem_panic_reset();
+    uassert_disable();
+    void* p = mem$->calloc(mem$, big, big, 0);
+    uassert_enable();
+
+    tassert(p == NULL);
+    tassert_eq(_mem_panic_count, 1);
+    tassert(strcmp(_mem_panic_prefix, "[MEMORY] ") == 0);
+    tassert(strcmp(_mem_panic_msg, "allocation size overflow") == 0);
+    return EOK;
+}
+
 test$case(test_heap_mem_panic_on_realloc_null)
 {
     _mem_panic_reset();

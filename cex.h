@@ -276,7 +276,7 @@ If the project has no agent instruction file (`AGENTS.md`, `CLAUDE.md`,
 /// CEX patch version
 #define cex$version_patch 0
 /// CEX build date (substituted at bundle time)
-#define cex$version_date "2026-10-02"
+#define cex$version_date "2026-10-03"
 
 
 
@@ -7847,7 +7847,15 @@ _cex_allocator_heap__calloc(IAllocator self, usize nmemb, usize size, usize alig
         return NULL;
     }
 
-    return _cex_allocator_heap__alloc(self, 0, size * nmemb, alignment);
+    usize total;
+    if (unlikely(mem$mul_overflow(nmemb, size, &total))) {
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__, "allocation size overflow"
+        );
+        return NULL;
+    }
+
+    return _cex_allocator_heap__alloc(self, 0, total, alignment);
 }
 
 static void*
@@ -8348,7 +8356,14 @@ _cex_allocator_arena__calloc(IAllocator allc, usize nmemb, usize size, usize ali
         );
         return NULL;
     }
-    usize alloc_size = nmemb * size;
+    usize alloc_size;
+    if (unlikely(mem$mul_overflow(nmemb, size, &alloc_size))) {
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__, "allocation size overflow"
+        );
+        return NULL;
+    }
+
     void* result = _cex_allocator_arena__malloc(allc, alloc_size, alignment);
     if (result != NULL) { memset(result, 0, alloc_size); }
 

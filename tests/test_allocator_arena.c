@@ -123,6 +123,11 @@ test$case(test_allocator_arena_oversized)
     p = arena->calloc(arena, 1, CEX_ARENA_MAX_ALLOC + 1, 8);
     tassert(p == NULL);
 
+    // operands individually valid, product wraps
+    usize big = (usize)1 << (mem$platform() / 2);
+    p = arena->calloc(arena, big, big, 8);
+    tassert(p == NULL);
+
     // 4. realloc returns NULL for too-large size
     u8* p2 = mem$malloc(arena, 100);
     tassert(p2 != NULL);

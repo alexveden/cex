@@ -215,7 +215,15 @@ _cex_allocator_heap__calloc(IAllocator self, usize nmemb, usize size, usize alig
         return NULL;
     }
 
-    return _cex_allocator_heap__alloc(self, 0, size * nmemb, alignment);
+    usize total;
+    if (unlikely(mem$mul_overflow(nmemb, size, &total))) {
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__, "allocation size overflow"
+        );
+        return NULL;
+    }
+
+    return _cex_allocator_heap__alloc(self, 0, total, alignment);
 }
 
 static void*

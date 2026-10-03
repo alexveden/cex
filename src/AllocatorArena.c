@@ -333,7 +333,14 @@ _cex_allocator_arena__calloc(IAllocator allc, usize nmemb, usize size, usize ali
         );
         return NULL;
     }
-    usize alloc_size = nmemb * size;
+    usize alloc_size;
+    if (unlikely(mem$mul_overflow(nmemb, size, &alloc_size))) {
+        cex$platform_mem_panic(
+            _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__, "allocation size overflow"
+        );
+        return NULL;
+    }
+
     void* result = _cex_allocator_arena__malloc(allc, alloc_size, alignment);
     if (result != NULL) { memset(result, 0, alloc_size); }
 

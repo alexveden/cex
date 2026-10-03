@@ -347,6 +347,11 @@ test$case(test_allocator_heap_invalid_args_return_null)
 
     tassert(mem$->calloc(mem$, 0, 8, 0) == NULL);
     tassert(mem$->calloc(mem$, 1, 0, 0) == NULL);
+
+    // operands individually valid, product wraps
+    usize big = (usize)1 << (mem$platform() / 2);
+    tassert(mem$->calloc(mem$, big, big, 0) == NULL);
+
     tassert(mem$->realloc(mem$, NULL, 16, 0) == NULL);
 
     u8* p = mem$malloc(mem$, 32, 0);

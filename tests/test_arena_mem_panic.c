@@ -104,6 +104,28 @@ test$case(test_arena_mem_panic_calloc_invalid_size)
     return EOK;
 }
 
+test$case(test_arena_mem_panic_calloc_overflow)
+{
+    IAllocator arena = AllocatorArena.create(
+        &(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true }
+    );
+    tassert(arena != NULL);
+
+    // both operands pass the individual CEX_ARENA_MAX_ALLOC checks, but the product wraps
+    usize big = (usize)1 << (mem$platform() / 2);
+
+    _arena_mem_reset();
+    uassert_disable();
+    void* p = arena->calloc(arena, big, big, 8);
+    uassert_enable();
+
+    tassert(p == NULL);
+    _arena_mem_assert("allocation size overflow");
+
+    AllocatorArena_destroy(arena);
+    return EOK;
+}
+
 test$case(test_arena_mem_panic_realloc_invalid_size)
 {
     IAllocator arena = AllocatorArena.create(
