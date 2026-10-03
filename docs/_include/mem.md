@@ -114,6 +114,10 @@ AllocatorArena.destroy(arena); // must not be called inside mem$scope
 /// General purpose heap allocator
 #define mem$
 
+/// Maximum valid size/index (PTRDIFF_MAX). Values above it are invalid; mem$MAX + 1 is the
+/// overflow sentinel and mem$MAX is the allocator size bound.
+#define mem$MAX((usize)PTRDIFF_MAX)
+
 /// Overflow-checked addition: computes a + b, stores result through *res. Returns true on overflow.
 #define mem$add_overflow(a, b, res)
 
@@ -142,11 +146,18 @@ AllocatorArena.destroy(arena); // must not be called inside mem$scope
 /// Unpoisons memory region with ASAN, or fill it with 0x00 byte pattern (no ASAN)
 #define mem$asan_unpoison(addr, size)
 
+/// Returns the number of elements that do not fit in `cap` (0 when they fit), or mem$MAX + 1
+/// when any argument is out of range
+#define mem$calc_overflow(cap, off, n)
+
 /// Allocate zero initialized chunk of memory using `allocator`
 #define mem$calloc(allocator, nmemb, size, alignment...)
 
 /// Free previously allocated chunk of memory, `ptr` implicitly set to NULL
 #define mem$free(allocator, ptr)
+
+/// Returns true when `[off, off + n)` does not fit in `cap`, or when any argument is out of range
+#define mem$has_overflow(cap, off, n)
 
 /// Checks if `s` value is power of 2
 #define mem$is_power_of2(s)

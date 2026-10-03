@@ -248,7 +248,7 @@ If the project has no agent instruction file (`AGENTS.md`, `CLAUDE.md`,
 /// Max alignment supported by the arena allocator
 #define CEX_ARENA_MAX_ALIGN
 
-/// Max single arena allocation / page size. Bounded by PTRDIFF_MAX (signed-negative sizes
+/// Max single arena allocation / page size. Bounded by mem$MAX (signed-negative sizes
 /// are rejected, size arithmetic cannot overflow) and by the record's 40-bit size field,
 /// whichever is smaller.
 #define CEX_ARENA_MAX_ALLOC
