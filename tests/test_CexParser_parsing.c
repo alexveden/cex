@@ -1524,4 +1524,32 @@ test$case(test_scope_string_with_tab)
     }
     return EOK;
 }
+
+test$case(test_next_entity_error_state)
+{
+    CexParser_c lx = CexParser_create("foo", 0, true);
+    mem$scope(tmem$, _)
+    {
+        arr$(cex_token_s) items = arr$new(items, _);
+        lx.error = "forced";
+        cex_token_s t = CexParser_next_entity(&lx, &items);
+        tassert_eq(t.type, CexTkn__error);
+    }
+    return EOK;
+}
+
+test$case(test_next_entity_macro_bad_define)
+{
+    // #define without an identifier must fail the entity parse
+    CexParser_c lx = CexParser_create("#define 123\n", 0, true);
+    mem$scope(tmem$, _)
+    {
+        arr$(cex_token_s) items = arr$new(items, _);
+        cex_token_s t = CexParser_next_entity(&lx, &items);
+        tassert_eq(t.type, CexTkn__error);
+        tassert(lx.error != NULL);
+    }
+    return EOK;
+}
+
 test$main();

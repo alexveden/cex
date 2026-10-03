@@ -602,4 +602,54 @@ test$case(test_token_parser)
     return EOK;
 }
 
+test$case(test_token_compound_operators)
+{
+    // compound operators are not lexed as a single token: '=' becomes CexTkn__unk
+    token_cmp_s tokens[] = {
+        { "a == b", "=", CexTkn__unk }, { "a += b", "=", CexTkn__unk },
+        { "a *= b", "=", CexTkn__unk }, { "a != b", "=", CexTkn__unk },
+        { "a ~= b", "=", CexTkn__unk }, { "a <= b", "=", CexTkn__unk },
+        { "@", "@", CexTkn__unk },
+    };
+    for$each (it, tokens) {
+        CexParser_c lx = CexParser_create(it.code, 0, false);
+        bool found = false;
+        cex_token_s t;
+        while ((t = CexParser_next_token(&lx)).type != CexTkn__eof) {
+            if (t.type == CexTkn__unk && str.slice.eq(t.value, str.sstr(it.exp_token))) {
+                found = true;
+            }
+        }
+        tassertf(found, "code='%s' exp='%s'", it.code, it.exp_token);
+    }
+    return EOK;
+}
+
+test$case(test_token_error_state)
+{
+    CexParser_c lx = CexParser_create("foo", 0, false);
+    lx.error = "forced";
+    cex_token_s t = CexParser_next_token(&lx);
+    tassert_eq(t.type, CexTkn__error);
+    return EOK;
+}
+
+test$case(test_token_string_overflow)
+{
+    // unterminated string ending with a backslash: the escape consumes a missing char
+    CexParser_c lx = CexParser_create("\"\\", 0, false);
+    cex_token_s t = CexParser_next_token(&lx);
+    tassert_eq(t.type, CexTkn__error);
+    return EOK;
+}
+
+test$case(test_token_scope_preproc_error)
+{
+    // '#' at the end of a folded scope makes the inner preproc scan fail
+    CexParser_c lx = CexParser_create("{#", 0, true);
+    cex_token_s t = CexParser_next_token(&lx);
+    tassert_eq(t.type, CexTkn__error);
+    return EOK;
+}
+
 test$main();
