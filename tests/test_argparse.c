@@ -1422,4 +1422,33 @@ test$case(test_argparse_options_check_wrong_type)
     return EOK;
 }
 
+test$case(test_argparse_report_error)
+{
+    char* argv[] = { "--bogus" };
+    argparse_c args = { .argv = argv, .argc = 1 };
+
+    // no options defined -> "command name expected" diagnostic
+    tassert_er(Error.argsparse, _cex_argparse__report_error(&args, Error.not_found));
+    // "option follows argument" diagnostic
+    tassert_er(Error.argsparse, _cex_argparse__report_error(&args, Error.integrity));
+    return EOK;
+}
+
+test$case(test_argparse_parse_options_with_commands)
+{
+    argparse_cmd_s cmds[] = {
+        { .name = "foo", .func = argparse_command_test, .help = "foo command" },
+        { 0 },
+    };
+    argparse_c args = { .commands = cmds };
+    char* argv[] = { "arg" };
+    args.argc = 1;
+    args.argv = argv;
+
+    // a non-option argument with commands set stops option parsing
+    tassert_er(Error.ok, _cex_argparse__parse_options(&args));
+    tassert_eq(args._ctx.has_argument, true);
+    return EOK;
+}
+
 test$main();
