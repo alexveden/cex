@@ -514,6 +514,18 @@ test$case(test_iter_split)
     return EOK;
 }
 
+test$case(test_iter_split_empty_separator)
+{
+    str_s s = str$s("a,b,c");
+    i32 nit = 0;
+    for$iter (str_s, it, str.slice.iter_split(s, "", &it.iterator)) {
+        (void)it;
+        nit++;
+    }
+    tassert_eq(nit, 0);
+    return EOK;
+}
+
 test$case(test_find)
 {
 
@@ -1919,6 +1931,31 @@ test$case(test_fmt_edge)
     return EOK;
 }
 
+test$case(test_fmt_callback_overflow_guard)
+{
+    // length + len would exceed INT32_MAX: callback must fail without allocating
+    cexsp__context ctx = { .allc = test$alloc, .length = INT32_MAX };
+    char* res = _cex_str__fmt_callback(NULL, &ctx, 1);
+    tassert(res == NULL);
+    tassert(ctx.has_error);
+    return EOK;
+}
+
+test$case(test_fmt_callback_realloc_oom)
+{
+    char* buf = mem$malloc(test$alloc, 8);
+    tassert(buf != NULL);
+    cexsp__context ctx = { .allc = test$alloc, .buf = buf, .capacity = 8, .length = 8 };
+
+    test$alloc_set_oom_on_call(1); // next allocation is the grow realloc
+    char* res = _cex_str__fmt_callback(NULL, &ctx, 16);
+    test$alloc_set_oom_on_call(0);
+
+    tassert(res == NULL);
+    tassert(ctx.has_error);
+    return EOK;
+}
+
 test$case(test_slice_clone)
 {
     mem$scope(tmem$, _)
@@ -2219,6 +2256,15 @@ test$case(test_str_replace)
     return EOK;
 }
 
+test$case(test_treplace_oom)
+{
+    test$alloc_set_oom_on_call(1);
+    char* res = str.replace("123", "1", "9", test$alloc);
+    test$alloc_set_oom_on_call(0);
+    tassert(res == NULL);
+    return EOK;
+}
+
 test$case(test_tjoin)
 {
     mem$scope(tmem$, _)
@@ -2252,6 +2298,24 @@ test$case(test_tjoin)
         tassert_eq(joined, "1, 2, 3, 4");
     }
 
+    return EOK;
+}
+
+test$case(test_tjoin_null_element)
+{
+    char* parts[] = { "foo", NULL, "bar" };
+    char* joined = str.join(parts, 3, ",", test$alloc);
+    tassert(joined == NULL);
+    return EOK;
+}
+
+test$case(test_tjoin_oom)
+{
+    char* parts[] = { "foo", "bar" };
+    test$alloc_set_oom_on_call(1);
+    char* joined = str.join(parts, 2, ",", test$alloc);
+    test$alloc_set_oom_on_call(0);
+    tassert(joined == NULL);
     return EOK;
 }
 
