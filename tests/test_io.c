@@ -708,7 +708,7 @@ test$case(test_fread_overflow_guard)
 
     char buf[8];
     uassert_disable();
-    tassert_eq(-1, io.fread(file, buf, PTRDIFF_MAX));
+    tassert_eq(-1, io.fread(file, buf, mem$MAX));
     uassert_enable();
 
     io.fclose(&file);

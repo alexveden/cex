@@ -352,6 +352,10 @@ test$case(test_allocator_heap_invalid_args_return_null)
     usize big = (usize)1 << (mem$platform() / 2);
     tassert(mem$->calloc(mem$, big, big, 0) == NULL);
 
+    // at / above the mem$MAX domain bound
+    tassert(mem$->calloc(mem$, mem$MAX, 1, 0) == NULL);
+    tassert(mem$->calloc(mem$, 1, mem$MAX, 0) == NULL);
+
     tassert(mem$->realloc(mem$, NULL, 16, 0) == NULL);
 
     u8* p = mem$malloc(mem$, 32, 0);

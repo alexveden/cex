@@ -3,12 +3,12 @@
 #if !defined(cex$enable_minimal) || defined(cex$enable_mem)
 
 
-/// Max single arena allocation / page size. Bounded by PTRDIFF_MAX (signed-negative sizes
+/// Max single arena allocation / page size. Bounded by mem$MAX (signed-negative sizes
 /// are rejected, size arithmetic cannot overflow) and by the record's 40-bit size field,
 /// whichever is smaller.
 #define CEX_ARENA_MAX_ALLOC                                                                        \
-    (usize)((((u64)PTRDIFF_MAX < (1ULL << 40)) ? (u64)PTRDIFF_MAX : (1ULL << 40)) - 1000)
-static_assert(CEX_ARENA_MAX_ALLOC <= (usize)PTRDIFF_MAX, "arena max must fit ptrdiff_t");
+    (usize)((((u64)mem$MAX < (1ULL << 40)) ? (u64)mem$MAX : (1ULL << 40)) - 1000)
+static_assert(CEX_ARENA_MAX_ALLOC <= mem$MAX, "arena max must fit ptrdiff_t");
 /// Max alignment supported by the arena allocator
 #define CEX_ARENA_MAX_ALIGN 64
 

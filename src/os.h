@@ -160,7 +160,7 @@ __attribute__((unused)) static const char* OSArch_str[] = {
             usize _args_len_va[] = { args_len };                                                   \
             (void)_args_len_va;                                                                    \
             usize _args_len = (sizeof(_args_len_va) > 0) ? _args_len_va[0] : arr$len(args);        \
-            uassert(_args_len < PTRDIFF_MAX && "negative length or overflow");                     \
+            uassert(_args_len < mem$MAX && "negative length or overflow");                     \
             _os$args_print("CMD:", args, _args_len);                                               \
             os_cmd_c _cmd = { 0 };                                                                 \
             Exc result = os.cmd.run(args, _args_len, &_cmd);                                       \

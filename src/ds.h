@@ -253,7 +253,7 @@ struct _cexds__arr_new_kwargs_s
             uassert(array != NULL && "arr$pusha: array is NULL");                                  \
             usize _arr_len_va[] = { array_len };                                                   \
             usize arr_len = (sizeof(_arr_len_va) > 0) ? _arr_len_va[0] : arr$len(array);           \
-            uassert(arr_len < PTRDIFF_MAX && "negative length or overflow");                       \
+            uassert(arr_len < mem$MAX && "negative length or overflow");                       \
             if (arr_len > 0 && arr$grow_check(a, arr_len)) {                                       \
                 typeof(*a)* _cexds__first = &(a)[_cexds__header(a)->length];                       \
                 for (usize i = 0; i < arr_len; i++) {                                              \

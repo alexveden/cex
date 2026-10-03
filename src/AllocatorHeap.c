@@ -81,7 +81,7 @@ _cex_allocator_heap__hdr_make(usize alloc_size, usize alignment)
         );
         return 0;
     }
-    if (unlikely(alloc_size > PTRDIFF_MAX)) {
+    if (unlikely(alloc_size > mem$MAX)) {
         cex$platform_mem_panic(
             _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__,
             "allocation size is too large"
@@ -200,14 +200,14 @@ _cex_allocator_heap__malloc(IAllocator self, usize size, usize alignment)
 static void*
 _cex_allocator_heap__calloc(IAllocator self, usize nmemb, usize size, usize alignment)
 {
-    if (unlikely(nmemb == 0 || nmemb >= PTRDIFF_MAX)) {
+    if (unlikely(nmemb == 0 || nmemb >= mem$MAX)) {
         cex$platform_mem_panic(
             _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__,
             "element count is zero or too high"
         );
         return NULL;
     }
-    if (unlikely(size == 0 || size >= PTRDIFF_MAX)) {
+    if (unlikely(size == 0 || size >= mem$MAX)) {
         cex$platform_mem_panic(
             _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__,
             "element size is zero or too high"

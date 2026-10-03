@@ -1178,6 +1178,32 @@ extern IAllocator _cex__default_global__allocator_mem;
 /// Overflow-checked multiplication: computes a * b, stores result through *res. Returns true on overflow.
 #define mem$mul_overflow(a, b, res) __builtin_mul_overflow((a), (b), (res))
 
+/// Maximum valid size/index (PTRDIFF_MAX). Values above it are invalid; mem$MAX + 1 is the
+/// overflow sentinel and mem$MAX is the allocator size bound.
+#define mem$MAX ((usize)PTRDIFF_MAX)
+
+static inline bool
+_cex_mem_has_overflow(usize cap, usize off, usize n)
+{
+    usize room = cap - off; // wraps only when off > cap, already flagged
+    return ((cap | off | n) > mem$MAX) | (off > cap) | (n > room);
+}
+
+static inline usize
+_cex_mem_calc_overflow(usize cap, usize off, usize n)
+{
+    if (unlikely((cap | off | n) > mem$MAX || off > cap)) { return mem$MAX + 1; }
+    usize room = cap - off;
+    return n > room ? n - room : 0;
+}
+
+/// Returns true when `[off, off + n)` does not fit in `cap`, or when any argument is out of range
+#define mem$has_overflow(cap, off, n) _cex_mem_has_overflow((cap), (off), (n))
+
+/// Returns the number of elements that do not fit in `cap` (0 when they fit), or mem$MAX + 1
+/// when any argument is out of range
+#define mem$calc_overflow(cap, off, n) _cex_mem_calc_overflow((cap), (off), (n))
+
 // clang-format off
 
 /// Opens new memory scope using Arena-like allocator, frees all memory after scope exit
@@ -1727,7 +1753,7 @@ struct _cexds__arr_new_kwargs_s
             uassert(array != NULL && "arr$pusha: array is NULL");                                  \
             usize _arr_len_va[] = { array_len };                                                   \
             usize arr_len = (sizeof(_arr_len_va) > 0) ? _arr_len_va[0] : arr$len(array);           \
-            uassert(arr_len < PTRDIFF_MAX && "negative length or overflow");                       \
+            uassert(arr_len < mem$MAX && "negative length or overflow");                       \
             if (arr_len > 0 && arr$grow_check(a, arr_len)) {                                       \
                 typeof(*a)* _cexds__first = &(a)[_cexds__header(a)->length];                       \
                 for (usize i = 0; i < arr_len; i++) {                                              \
@@ -4331,7 +4357,7 @@ __attribute__((unused)) static const char* OSArch_str[] = {
             usize _args_len_va[] = { args_len };                                                   \
             (void)_args_len_va;                                                                    \
             usize _args_len = (sizeof(_args_len_va) > 0) ? _args_len_va[0] : arr$len(args);        \
-            uassert(_args_len < PTRDIFF_MAX && "negative length or overflow");                     \
+            uassert(_args_len < mem$MAX && "negative length or overflow");                     \
             _os$args_print("CMD:", args, _args_len);                                               \
             os_cmd_c _cmd = { 0 };                                                                 \
             Exc result = os.cmd.run(args, _args_len, &_cmd);                                       \
@@ -7713,7 +7739,7 @@ _cex_allocator_heap__hdr_make(usize alloc_size, usize alignment)
         );
         return 0;
     }
-    if (unlikely(alloc_size > PTRDIFF_MAX)) {
+    if (unlikely(alloc_size > mem$MAX)) {
         cex$platform_mem_panic(
             _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__,
             "allocation size is too large"
@@ -7832,14 +7858,14 @@ _cex_allocator_heap__malloc(IAllocator self, usize size, usize alignment)
 static void*
 _cex_allocator_heap__calloc(IAllocator self, usize nmemb, usize size, usize alignment)
 {
-    if (unlikely(nmemb == 0 || nmemb >= PTRDIFF_MAX)) {
+    if (unlikely(nmemb == 0 || nmemb >= mem$MAX)) {
         cex$platform_mem_panic(
             _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__,
             "element count is zero or too high"
         );
         return NULL;
     }
-    if (unlikely(size == 0 || size >= PTRDIFF_MAX)) {
+    if (unlikely(size == 0 || size >= mem$MAX)) {
         cex$platform_mem_panic(
             _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__,
             "element size is zero or too high"
@@ -8026,12 +8052,12 @@ _cex_allocator_heap__scope_depth(IAllocator self)
 #if !defined(cex$enable_minimal) || defined(cex$enable_mem)
 
 
-/// Max single arena allocation / page size. Bounded by PTRDIFF_MAX (signed-negative sizes
+/// Max single arena allocation / page size. Bounded by mem$MAX (signed-negative sizes
 /// are rejected, size arithmetic cannot overflow) and by the record's 40-bit size field,
 /// whichever is smaller.
 #define CEX_ARENA_MAX_ALLOC                                                                        \
-    (usize)((((u64)PTRDIFF_MAX < (1ULL << 40)) ? (u64)PTRDIFF_MAX : (1ULL << 40)) - 1000)
-static_assert(CEX_ARENA_MAX_ALLOC <= (usize)PTRDIFF_MAX, "arena max must fit ptrdiff_t");
+    (usize)((((u64)mem$MAX < (1ULL << 40)) ? (u64)mem$MAX : (1ULL << 40)) - 1000)
+static_assert(CEX_ARENA_MAX_ALLOC <= mem$MAX, "arena max must fit ptrdiff_t");
 /// Max alignment supported by the arena allocator
 #define CEX_ARENA_MAX_ALIGN 64
 
@@ -8842,8 +8868,8 @@ _cexds__arrgrowf(
     IAllocator allc
 )
 {
-    uassert(addlen < (usize)PTRDIFF_MAX && "negative or overflow");
-    uassert(min_cap < (usize)PTRDIFF_MAX && "negative or overflow");
+    uassert(addlen < mem$MAX && "negative or overflow");
+    uassert(min_cap < mem$MAX && "negative or overflow");
     uassert(el_align <= 64 && "alignment is too high");
 
     if (arr == NULL) {
@@ -8868,7 +8894,7 @@ _cexds__arrgrowf(
         }
     }
     if (min_cap < 16) { min_cap = 16; }
-    uassert(min_cap < (usize)PTRDIFF_MAX && "negative or overflow after processing");
+    uassert(min_cap < mem$MAX && "negative or overflow after processing");
     uassert(addlen > 0 || min_cap > 0);
 
     if (min_cap <= arr$cap(arr)) { return arr; }
@@ -12704,7 +12730,7 @@ cex_str_clone(char* s, IAllocator allc)
 {
     if (s == NULL) { return NULL; }
     usize slen = strlen(s);
-    uassert(slen < PTRDIFF_MAX);
+    uassert(slen < mem$MAX);
 
     char* result = mem$malloc(allc, slen + 1);
     if (result) {
@@ -12720,7 +12746,7 @@ cex_str_lower(char* s, IAllocator allc)
 {
     if (s == NULL) { return NULL; }
     usize slen = strlen(s);
-    uassert(slen < PTRDIFF_MAX);
+    uassert(slen < mem$MAX);
 
     char* result = mem$malloc(allc, slen + 1);
     if (result) {
@@ -12736,7 +12762,7 @@ cex_str_upper(char* s, IAllocator allc)
 {
     if (s == NULL) { return NULL; }
     usize slen = strlen(s);
-    uassert(slen < PTRDIFF_MAX);
+    uassert(slen < mem$MAX);
 
     char* result = mem$malloc(allc, slen + 1);
     if (result) {
@@ -13814,9 +13840,9 @@ cex_io_fread(FILE* file, void* buff, usize buff_len)
 {
     uassert(file != NULL);
     uassert(buff != NULL);
-    uassert(buff_len < PTRDIFF_MAX && "Must fit to isize max");
+    uassert(buff_len < mem$MAX && "Must fit to isize max");
 
-    if (unlikely(buff_len >= PTRDIFF_MAX)) {
+    if (unlikely(buff_len >= mem$MAX)) {
         return -1; // hard protecting even in production
     }
 
@@ -13829,7 +13855,7 @@ cex_io_fread(FILE* file, void* buff, usize buff_len)
         }
     }
 
-    uassert(ret_count < PTRDIFF_MAX);
+    uassert(ret_count < mem$MAX);
     return ret_count;
 }
 

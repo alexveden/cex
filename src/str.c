@@ -1284,7 +1284,7 @@ cex_str_clone(char* s, IAllocator allc)
 {
     if (s == NULL) { return NULL; }
     usize slen = strlen(s);
-    uassert(slen < PTRDIFF_MAX);
+    uassert(slen < mem$MAX);
 
     char* result = mem$malloc(allc, slen + 1);
     if (result) {
@@ -1300,7 +1300,7 @@ cex_str_lower(char* s, IAllocator allc)
 {
     if (s == NULL) { return NULL; }
     usize slen = strlen(s);
-    uassert(slen < PTRDIFF_MAX);
+    uassert(slen < mem$MAX);
 
     char* result = mem$malloc(allc, slen + 1);
     if (result) {
@@ -1316,7 +1316,7 @@ cex_str_upper(char* s, IAllocator allc)
 {
     if (s == NULL) { return NULL; }
     usize slen = strlen(s);
-    uassert(slen < PTRDIFF_MAX);
+    uassert(slen < mem$MAX);
 
     char* result = mem$malloc(allc, slen + 1);
     if (result) {

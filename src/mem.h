@@ -222,6 +222,32 @@ extern IAllocator _cex__default_global__allocator_mem;
 /// Overflow-checked multiplication: computes a * b, stores result through *res. Returns true on overflow.
 #define mem$mul_overflow(a, b, res) __builtin_mul_overflow((a), (b), (res))
 
+/// Maximum valid size/index (PTRDIFF_MAX). Values above it are invalid; mem$MAX + 1 is the
+/// overflow sentinel and mem$MAX is the allocator size bound.
+#define mem$MAX ((usize)PTRDIFF_MAX)
+
+static inline bool
+_cex_mem_has_overflow(usize cap, usize off, usize n)
+{
+    usize room = cap - off; // wraps only when off > cap, already flagged
+    return ((cap | off | n) > mem$MAX) | (off > cap) | (n > room);
+}
+
+static inline usize
+_cex_mem_calc_overflow(usize cap, usize off, usize n)
+{
+    if (unlikely((cap | off | n) > mem$MAX || off > cap)) { return mem$MAX + 1; }
+    usize room = cap - off;
+    return n > room ? n - room : 0;
+}
+
+/// Returns true when `[off, off + n)` does not fit in `cap`, or when any argument is out of range
+#define mem$has_overflow(cap, off, n) _cex_mem_has_overflow((cap), (off), (n))
+
+/// Returns the number of elements that do not fit in `cap` (0 when they fit), or mem$MAX + 1
+/// when any argument is out of range
+#define mem$calc_overflow(cap, off, n) _cex_mem_calc_overflow((cap), (off), (n))
+
 // clang-format off
 
 /// Opens new memory scope using Arena-like allocator, frees all memory after scope exit

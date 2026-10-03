@@ -99,6 +99,154 @@ test$case(test_mem_mul_overflow)
     return EOK;
 }
 
+static_assert(mem$MAX == (usize)PTRDIFF_MAX, "mem$MAX must be PTRDIFF_MAX");
+
+test$case(test_mem_has_overflow)
+{
+    usize m = (usize)-1;
+
+    // fits
+    tassert(!mem$has_overflow((usize)10, (usize)0, (usize)0));
+    tassert(!mem$has_overflow((usize)10, (usize)0, (usize)10));
+    tassert(!mem$has_overflow((usize)10, (usize)3, (usize)7));
+    tassert(!mem$has_overflow((usize)10, (usize)10, (usize)0));
+    tassert(!mem$has_overflow((usize)0, (usize)0, (usize)0));
+    tassert(!mem$has_overflow(mem$MAX, (usize)0, mem$MAX));
+
+    // exceeds remaining room
+    tassert(mem$has_overflow((usize)10, (usize)0, (usize)11));
+    tassert(mem$has_overflow((usize)10, (usize)3, (usize)8));
+    tassert(mem$has_overflow((usize)10, (usize)10, (usize)1));
+    tassert(mem$has_overflow((usize)0, (usize)0, (usize)1));
+    tassert(mem$has_overflow(mem$MAX, (usize)1, mem$MAX));
+
+    // invalid start past the bound
+    tassert(mem$has_overflow((usize)10, (usize)11, (usize)0));
+    tassert(mem$has_overflow((usize)0, (usize)1, (usize)0));
+    tassert(mem$has_overflow((usize)10, (usize)11, (usize)5));
+
+    // out of domain: SIZE_MAX / negative
+    tassert(mem$has_overflow(mem$MAX + 1, (usize)0, (usize)0));
+    tassert(mem$has_overflow(m, (usize)0, (usize)0));
+    tassert(mem$has_overflow((usize)10, m, (usize)0));
+    tassert(mem$has_overflow((usize)10, (usize)0, m));
+    tassert(mem$has_overflow(m, (usize)0, m));
+    tassert(mem$has_overflow((usize)10, (i32)-1, (usize)0));
+
+    // mixed argument types convert to usize
+    tassert(mem$has_overflow((u32)10, (u32)3, (u32)8));
+    tassert(mem$has_overflow((u8)10, (u8)3, (u8)8));
+    tassert(mem$has_overflow((i32)10, (i32)3, (i32)8));
+    return EOK;
+}
+
+test$case(test_mem_has_overflow_slice_sub)
+{
+    u8 buf[10] = {0};
+    usize off = 0, n = 0;
+    u8* sub = NULL;
+
+    off = 3;
+    n = 7;
+    sub = !mem$has_overflow(sizeof(buf), off, n) ? buf + off : NULL;
+    tassert(sub == &buf[3]);
+
+    off = 3;
+    n = 8;
+    sub = !mem$has_overflow(sizeof(buf), off, n) ? buf + off : NULL;
+    tassert(sub == NULL);
+
+    off = 11;
+    n = 0;
+    sub = !mem$has_overflow(sizeof(buf), off, n) ? buf + off : NULL;
+    tassert(sub == NULL);
+
+    off = (usize)-1;
+    n = 1;
+    sub = !mem$has_overflow(sizeof(buf), off, n) ? buf + off : NULL;
+    tassert(sub == NULL);
+    return EOK;
+}
+
+test$case(test_mem_has_overflow_chunk_loop)
+{
+    u8 buf[16] = {0};
+    usize off = 0, consumed = 0, chunk = 3;
+    while (!mem$has_overflow(sizeof(buf), off, chunk)) {
+        consumed += chunk;
+        off += chunk;
+    }
+    tassert_eq(consumed, (usize)15);
+    tassert(off <= sizeof(buf));
+    return EOK;
+}
+
+test$case(test_mem_has_overflow_untrusted_length)
+{
+    usize cap = 1024, len = 0;
+    tassert(!mem$has_overflow(cap, len, (usize)1024));
+    tassert(mem$has_overflow(cap, len, (usize)1025));
+    tassert(mem$has_overflow(cap, len, (usize)-1));
+    tassert(mem$has_overflow(cap, len, (usize)(i64)-1));
+    return EOK;
+}
+
+test$case(test_mem_has_overflow_domain_idiom)
+{
+    // has_overflow(mem$MAX, 0, x) == (x > mem$MAX)
+    tassert(!mem$has_overflow(mem$MAX, (usize)0, mem$MAX));
+    tassert(mem$has_overflow(mem$MAX, (usize)0, mem$MAX + 1));
+    tassert(mem$has_overflow(mem$MAX, (usize)0, (usize)-1));
+    return EOK;
+}
+
+test$case(test_mem_calc_overflow_growth)
+{
+    usize cap = 10, len = 7, add = 5;
+    usize need = mem$calc_overflow(cap, len, add);
+    tassert_eq(need, (usize)2);
+    tassert(need <= mem$MAX);
+    tassert_eq(cap + need, len + add);
+
+    tassert_eq(mem$calc_overflow(cap, len, (usize)3), (usize)0);
+    return EOK;
+}
+
+test$case(test_mem_calc_overflow_sentinel)
+{
+    tassert_eq(mem$calc_overflow(mem$MAX + 1, (usize)0, (usize)0), mem$MAX + 1);
+    tassert_eq(mem$calc_overflow((usize)10, (usize)11, (usize)0), mem$MAX + 1);
+    tassert_eq(mem$calc_overflow((usize)10, (usize)0, (usize)-1), mem$MAX + 1);
+    tassert_eq(mem$calc_overflow(mem$MAX, mem$MAX, mem$MAX), mem$MAX);
+    tassert(mem$calc_overflow((usize)10, (usize)7, (usize)5) < mem$MAX);
+    return EOK;
+}
+
+static usize _cex_test_ho_evals = 0;
+
+static usize
+_cex_test_ho_arg(void)
+{
+    _cex_test_ho_evals++;
+    return 3;
+}
+
+test$case(test_mem_has_overflow_evals_args_once)
+{
+    _cex_test_ho_evals = 0;
+    (void)mem$has_overflow(_cex_test_ho_arg(), _cex_test_ho_arg(), _cex_test_ho_arg());
+    tassert_eq(_cex_test_ho_evals, (usize)3);
+    return EOK;
+}
+
+test$case(test_mem_calc_overflow_evals_args_once)
+{
+    _cex_test_ho_evals = 0;
+    (void)mem$calc_overflow(_cex_test_ho_arg(), _cex_test_ho_arg(), _cex_test_ho_arg());
+    tassert_eq(_cex_test_ho_evals, (usize)3);
+    return EOK;
+}
+
 test$case(test_global_mem_allocator_replaceable)
 {
     IAllocator saved_mem = mem$;

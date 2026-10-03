@@ -149,9 +149,9 @@ cex_io_fread(FILE* file, void* buff, usize buff_len)
 {
     uassert(file != NULL);
     uassert(buff != NULL);
-    uassert(buff_len < PTRDIFF_MAX && "Must fit to isize max");
+    uassert(buff_len < mem$MAX && "Must fit to isize max");
 
-    if (unlikely(buff_len >= PTRDIFF_MAX)) {
+    if (unlikely(buff_len >= mem$MAX)) {
         return -1; // hard protecting even in production
     }
 
@@ -164,7 +164,7 @@ cex_io_fread(FILE* file, void* buff, usize buff_len)
         }
     }
 
-    uassert(ret_count < PTRDIFF_MAX);
+    uassert(ret_count < mem$MAX);
     return ret_count;
 }
 

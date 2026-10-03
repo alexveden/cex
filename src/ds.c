@@ -73,8 +73,8 @@ _cexds__arrgrowf(
     IAllocator allc
 )
 {
-    uassert(addlen < (usize)PTRDIFF_MAX && "negative or overflow");
-    uassert(min_cap < (usize)PTRDIFF_MAX && "negative or overflow");
+    uassert(addlen < mem$MAX && "negative or overflow");
+    uassert(min_cap < mem$MAX && "negative or overflow");
     uassert(el_align <= 64 && "alignment is too high");
 
     if (arr == NULL) {
@@ -99,7 +99,7 @@ _cexds__arrgrowf(
         }
     }
     if (min_cap < 16) { min_cap = 16; }
-    uassert(min_cap < (usize)PTRDIFF_MAX && "negative or overflow after processing");
+    uassert(min_cap < mem$MAX && "negative or overflow after processing");
     uassert(addlen > 0 || min_cap > 0);
 
     if (min_cap <= arr$cap(arr)) { return arr; }
