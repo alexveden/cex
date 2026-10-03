@@ -2387,6 +2387,8 @@ test$case(test_str_match)
     tassert(str.match("\\", "[\\\\]"));
     tassert(!str.match("#abc=", "[a-c+]="));
     tassert(!str.match("#abc=", "[a-c+]*=*"));
+    tassert(!str.match("a", "[a+b]")); // unescaped '+' must be last before ']'
+    tassert(!str.match("a", "[*]"));   // unescaped '*' must be escaped
     tassert(str.match("abc  =", "[a-c +]*=*"));
     tassert(str.match("abc=", "[a-c +]=*"));
     tassert(str.match("abc", "[a-c+]"));
@@ -2408,6 +2410,7 @@ test$case(test_str_match)
     tassert(str.slice.match(str$s("f5fca082882b848dd28c470c4d1f111c995cb7bd"), "[0-9a-fA-F+]"));
 
     tassert(!str.match("abc", "(\\"));
+    tassert(!str.match("abc", "(abc")); // no closing ')'
     tassert(str.match("abc", "(abc)"));
     tassert(str.match("def", "(abc|def)"));
     tassert(str.match("abcdef", "abc(abc|def)"));
