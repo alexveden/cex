@@ -360,6 +360,59 @@ cmd_build_docs(int argc, char** argv, void* user_ctx)
             e$ret(io.file.save(out_path, shifted));
         }
     }
+
+    mem$scope(tmem$, _)
+    {
+        FILE* readme_fh;
+        e$ret(io.fopen(&readme_fh, "./docs/README.md", "r"));
+        str_s readme = { 0 };
+        e$except (err, io.fread_all(readme_fh, &readme, _)) {
+            io.fclose(&readme_fh);
+            return err;
+        }
+        io.fclose(&readme_fh);
+
+        str_s body = readme;
+        if (str.slice.starts_with(body, str$s("---\n"))) {
+            isize fm_end = str.slice.index_of(str.slice.sub(body, 4, 0), str$s("\n---\n"));
+            if (fm_end < 0) { return e$raise(Error.integrity, "unterminated README frontmatter"); }
+            body = str.slice.lstrip(str.slice.sub(body, 4 + fm_end + 5, 0));
+        }
+        body = str.slice.rstrip(body);
+
+        sbuf_c out = sbuf.create(body.len + 4096, _);
+        e$ret(sbuf.append(&out, "# CEX.C Language Documentation\n\n"));
+
+        for$iter (str_s, line, str.slice.iter_split(body, "\n", &line.iterator)) {
+            str_s trimmed = str.slice.strip(line.val);
+            bool is_include = str.slice.starts_with(trimmed, str$s("{{< include ")) &&
+                              str.slice.ends_with(trimmed, str$s(" >}}"));
+            if (!is_include) {
+                e$ret(sbuf.appendf(&out, "%S\n", line.val));
+                continue;
+            }
+
+            str_s rel_path = str.slice.sub(trimmed, 12, trimmed.len - 4);
+            FILE* include_fh;
+            e$ret(io.fopen(&include_fh, str.fmt(_, "./docs/%S", rel_path), "r"));
+            str_s included = { 0 };
+            e$except (err, io.fread_all(include_fh, &included, _)) {
+                io.fclose(&include_fh);
+                return err;
+            }
+            io.fclose(&include_fh);
+            e$ret(sbuf.appendf(&out, "%S", included));
+        }
+
+        FILE* cex_md_fh;
+        e$ret(io.fopen(&cex_md_fh, "./docs/cex.md", "w"));
+        e$except (err, io.fwrite(cex_md_fh, out, sbuf.len(&out))) {
+            io.fclose(&cex_md_fh);
+            return err;
+        }
+        io.fclose(&cex_md_fh);
+    }
+
     e$assert(!os.path.exists("_include/") && "should not exist, remove if it's quarto remainder");
 
     e$ret(os.fs.chdir("docs/"));

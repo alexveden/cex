@@ -76,6 +76,7 @@ archive/
 *.afl/
 
 docs/README.html
+docs/cex.md
 
 /.quarto/
 **/*.quarto_ipynb
