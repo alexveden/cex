@@ -137,11 +137,18 @@ test$case(test_allocator_arena_oversized)
     // at the mem$MAX domain bound
     p = mem$malloc(arena, mem$MAX);
     tassert(p == NULL);
+    p = arena->calloc(arena, mem$MAX, 1, 8);
+    tassert(p == NULL);
 
     // 4. realloc returns NULL for too-large size
     u8* p2 = mem$malloc(arena, 100);
     tassert(p2 != NULL);
     u8* p3 = mem$realloc(arena, p2, CEX_ARENA_MAX_ALLOC + 1);
+    tassert(p3 == NULL);
+
+    p2 = mem$malloc(arena, 100);
+    tassert(p2 != NULL);
+    p3 = mem$realloc(arena, p2, mem$MAX);
     tassert(p3 == NULL);
 
     AllocatorArena_destroy(arena);

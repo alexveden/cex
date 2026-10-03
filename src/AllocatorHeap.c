@@ -81,7 +81,7 @@ _cex_allocator_heap__hdr_make(usize alloc_size, usize alignment)
         );
         return 0;
     }
-    if (unlikely(alloc_size > mem$MAX)) {
+    if (unlikely(alloc_size >= mem$MAX)) {
         cex$platform_mem_panic(
             _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__,
             "allocation size is too large"

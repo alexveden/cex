@@ -355,12 +355,19 @@ test$case(test_allocator_heap_invalid_args_return_null)
     // at / above the mem$MAX domain bound
     tassert(mem$->calloc(mem$, mem$MAX, 1, 0) == NULL);
     tassert(mem$->calloc(mem$, 1, mem$MAX, 0) == NULL);
+    tassert(mem$->malloc(mem$, mem$MAX, 0) == NULL);
+    tassert(mem$->malloc(mem$, mem$MAX + 1, 0) == NULL);
+    tassert(mem$->malloc(mem$, (usize)-1, 0) == NULL);
 
     tassert(mem$->realloc(mem$, NULL, 16, 0) == NULL);
 
     u8* p = mem$malloc(mem$, 32, 0);
     tassert(p != NULL);
     tassert(mem$->realloc(mem$, p, 64, 16) == NULL);
+
+    p = mem$malloc(mem$, 32, 0);
+    tassert(p != NULL);
+    tassert(mem$->realloc(mem$, p, mem$MAX, 0) == NULL);
 
     uassert_enable();
     return EOK;

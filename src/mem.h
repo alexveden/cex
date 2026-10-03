@@ -223,7 +223,7 @@ extern IAllocator _cex__default_global__allocator_mem;
 #define mem$mul_overflow(a, b, res) __builtin_mul_overflow((a), (b), (res))
 
 /// Maximum valid size/index (PTRDIFF_MAX). Values above it are invalid; mem$MAX + 1 is the
-/// overflow sentinel and mem$MAX is the allocator size bound.
+/// overflow sentinel. Allocators reject sizes >= mem$MAX (largest request is mem$MAX - 1).
 #define mem$MAX ((usize)PTRDIFF_MAX)
 
 static inline bool

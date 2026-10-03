@@ -29,7 +29,7 @@
 - (breaking) mem$: heap allocation failure now panics via `cex$platform_mem_panic` (default `cex$platform_panic`); define it as an empty function-like macro (`#define cex$platform_mem_panic(...)`) before including CEX to restore `NULL` returns
 - (breaking) arena: argument/limit violations (invalid page size, zero or oversized allocation, misalignment) now panic via `cex$platform_mem_panic`; synthetic `test$alloc` OOM and custom-backing allocation failures still return `NULL`
 - feat: `CEX_PANIC_VERBOSITY` level 1 now prints the panic message when present; `_cex_errors_panic_handler` is always compiled (minimal trap under `NDEBUG` / verbosity 0)
-- feat(mem): `mem$MAX` (PTRDIFF_MAX), `mem$has_overflow(cap, off, n)`, `mem$calc_overflow(cap, off, n)` — overflow-free, domain-aware size/room checks; allocators and internal size bounds now reference `mem$MAX`
+- feat(mem): `mem$MAX` (PTRDIFF_MAX), `mem$has_overflow(cap, off, n)`, `mem$calc_overflow(cap, off, n)` — overflow-free, domain-aware size/room checks; allocators and internal size bounds now reference `mem$MAX`; allocation requests with `size >= mem$MAX` now panic (memory error)
 
 ### Fixes
 - fix(test): `test$mock_scope` no longer clobbers the OOM setting; `test_oom_threshold` is saved and restored around the namespace snapshot

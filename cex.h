@@ -1179,7 +1179,7 @@ extern IAllocator _cex__default_global__allocator_mem;
 #define mem$mul_overflow(a, b, res) __builtin_mul_overflow((a), (b), (res))
 
 /// Maximum valid size/index (PTRDIFF_MAX). Values above it are invalid; mem$MAX + 1 is the
-/// overflow sentinel and mem$MAX is the allocator size bound.
+/// overflow sentinel. Allocators reject sizes >= mem$MAX (largest request is mem$MAX - 1).
 #define mem$MAX ((usize)PTRDIFF_MAX)
 
 static inline bool
@@ -7739,7 +7739,7 @@ _cex_allocator_heap__hdr_make(usize alloc_size, usize alignment)
         );
         return 0;
     }
-    if (unlikely(alloc_size > mem$MAX)) {
+    if (unlikely(alloc_size >= mem$MAX)) {
         cex$platform_mem_panic(
             _cex_errors_mem_prefix, __FILE_NAME__, __LINE__, __func__,
             "allocation size is too large"

@@ -115,7 +115,7 @@ AllocatorArena.destroy(arena); // must not be called inside mem$scope
 #define mem$
 
 /// Maximum valid size/index (PTRDIFF_MAX). Values above it are invalid; mem$MAX + 1 is the
-/// overflow sentinel and mem$MAX is the allocator size bound.
+/// overflow sentinel. Allocators reject sizes >= mem$MAX (largest request is mem$MAX - 1).
 #define mem$MAX((usize)PTRDIFF_MAX)
 
 /// Overflow-checked addition: computes a + b, stores result through *res. Returns true on overflow.
