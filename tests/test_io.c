@@ -567,6 +567,15 @@ test$case(test_write_error)
     return EOK;
 }
 
+test$case(test_fprintf_error)
+{
+    FILE* file;
+    tassert_eq(Error.ok, io.fopen(&file, "tests/data/text_file_50b.txt", "r"));
+    tassert_ne(Error.ok, io.fprintf(file, "write to read-only stream")); // vfprintf fails
+    io.fclose(&file);
+    return EOK;
+}
+
 test$case(test_fprintf_to_file)
 {
     FILE* file;
@@ -615,6 +624,18 @@ test$case(test_fload_save)
     tassert(content);
     tassert_eq(content, "Hello from CEX!\n");
     mem$free(mem$, content);
+    return EOK;
+}
+
+test$case(test_file_save_write_error)
+{
+#ifdef __linux__
+    // /dev/full opens for writing but every write fails with ENOSPC
+    char big[8192];
+    memset(big, 'x', sizeof(big) - 1);
+    big[sizeof(big) - 1] = '\0';
+    tassert_ne(Error.ok, io.file.save("/dev/full", big));
+#endif
     return EOK;
 }
 
@@ -692,12 +713,41 @@ test$case(test_fflush)
     return EOK;
 }
 
+test$case(test_fflush_error)
+{
+#ifdef __linux__
+    FILE* file;
+    tassert_eq(Error.ok, io.fopen(&file, "/dev/full", "w"));
+    tassert_eq(Error.ok, io.fwrite(file, "data", 4)); // buffered, not flushed yet
+    tassert_ne(Error.ok, io.fflush(file));            // flush fails with ENOSPC
+    io.fclose(&file);
+#endif
+    return EOK;
+}
+
 test$case(test_fseek_invalid_whence)
 {
     FILE* file;
     tassert_eq(Error.ok, io.fopen(&file, "tests/data/text_file_50b.txt", "r"));
     tassert_eq(Error.argument, io.fseek(file, 0, 12345));
     io.fclose(&file);
+    return EOK;
+}
+
+test$case(test_ftell_error)
+{
+#ifndef _WIN32
+    int fds[2];
+    tassert_eq(0, pipe(fds));
+    FILE* file = fdopen(fds[0], "r");
+    tassert(file != NULL);
+
+    usize pos = 0;
+    tassert_ne(Error.ok, io.ftell(file, &pos)); // ftell on a pipe fails with ESPIPE
+
+    io.fclose(&file);
+    close(fds[1]);
+#endif
     return EOK;
 }
 
@@ -806,6 +856,78 @@ test$case(test_fread_line_realloc_oom)
     tassert_eq(content.len, 0);
 
     io.fclose(&file);
+    return EOK;
+}
+
+test$case(test_fread_all_file_too_big)
+{
+#ifndef _WIN32
+    FILE* file = tmpfile();
+    tassert(file != NULL);
+    // sparse file just above the INT32_MAX limit
+    tassert_eq(0, ftruncate(fileno(file), (off_t)INT32_MAX + 1));
+
+    str_s content;
+    tassert_ne(Error.ok, io.fread_all(file, &content, mem$));
+    tassert(content.buf == NULL);
+
+    io.fclose(&file);
+#endif
+    return EOK;
+}
+
+test$case(test_fread_all_read_error)
+{
+#ifndef _WIN32
+    FILE* file;
+    tassert_eq(Error.ok, io.fopen(&file, ".", "r")); // reading a directory fails
+
+    str_s content;
+    tassert_ne(Error.ok, io.fread_all(file, &content, mem$));
+    tassert(content.buf == NULL);
+
+    io.fclose(&file);
+#endif
+    return EOK;
+}
+
+test$case(test_fread_line_read_error)
+{
+#ifndef _WIN32
+    FILE* file;
+    tassert_eq(Error.ok, io.fopen(&file, ".", "r")); // reading a directory fails
+
+    str_s content;
+    tassert_ne(Error.ok, io.fread_line(file, &content, mem$));
+    tassert(content.buf == NULL);
+
+    io.fclose(&file);
+#endif
+    return EOK;
+}
+
+test$case(test_fread_all_stream_grow_oom)
+{
+#ifndef _WIN32
+    int fds[2];
+    tassert_eq(0, pipe(fds));
+    char chunk[6000];
+    memset(chunk, 'a', sizeof(chunk));
+    tassert_eq((isize)sizeof(chunk), write(fds[1], chunk, sizeof(chunk)));
+    close(fds[1]);
+
+    FILE* file = fdopen(fds[0], "r");
+    tassert(file != NULL);
+
+    // stream has no size -> is_stream; 1st alloc = initial buffer, 2nd = grow realloc
+    test$alloc_set_oom_on_call(2);
+    str_s content;
+    tassert_eq(Error.memory, io.fread_all(file, &content, test$alloc));
+    test$alloc_set_oom_probability(0.0);
+    tassert(content.buf == NULL);
+
+    io.fclose(&file);
+#endif
     return EOK;
 }
 
