@@ -10759,7 +10759,7 @@ cexsp__vsprintfcb(cexsp_callback_f* callback, void* user, char* buf, char const*
                         }
                     }
                     if (n64 == 0) {
-                        if ((s[0] == '0') && (s != (num + CEXSP__NUMSZ))) { ++s; }
+                        if ((s != (num + CEXSP__NUMSZ)) && (s[0] == '0')) { ++s; }
                         break;
                     }
                     while (s != o) {

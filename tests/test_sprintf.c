@@ -31,6 +31,16 @@ ret_null_char()
     return NULL;
 }
 
+static int
+sprintf_no_callback(char* buf, char* fmt, ...)
+{
+    va_list va;
+    va_start(va, fmt);
+    int ret = cexsp__vsprintfcb(NULL, NULL, buf, fmt, va);
+    va_end(va);
+    return ret;
+}
+
 /*
  *
  *   TEST SUITE
@@ -166,6 +176,7 @@ test$case(stb_sprintf_orig)
     // ' modifier. Non-standard, but supported by glibc.
     CHECK2("1,200,000", "%'d", 1200000);
     CHECK2("-100,006,789", "%'d", -100006789);
+    CHECK2("0", "%'d", 0);
 #if !defined(_MSC_VER) || _MSC_VER >= 1600
     CHECK2("9,888,777,666", "%'lld", 9888777666ll);
 #endif
@@ -181,6 +192,8 @@ test$case(stb_sprintf_orig)
     CHECK2("100000000", "%b", 256);
     CHECK3("0b10 0B11", "%#b %#B", 2, 3);
     CHECK3("2 3", "%I64d %I32d", 2ll, 3);
+    CHECK2("123", "%Iu", (usize)123);
+    CHECK2("123", "%hhd", 123);
     CHECK3("1k 2.54 M", "%$_d %$.2d", 1000, 2536000);
     CHECK3("2.42 Mi 2.4 M", "%$$.2d %$$$d", 2536000, 2536000);
 
@@ -189,6 +202,16 @@ test$case(stb_sprintf_orig)
     CHECK2("12 345,678900", "%'f", 12345.6789);
 #endif
 
+    return EOK;
+}
+
+test$case(sprintf_no_callback_terminates)
+{
+    char buf[16];
+    memset(buf, 'x', sizeof(buf));
+    int ret = sprintf_no_callback(buf, "abc");
+    tassert_eq(3, ret);
+    tassert_eq(buf[3], '\0');
     return EOK;
 }
 
