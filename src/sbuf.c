@@ -252,6 +252,7 @@ _cex_sbuf_sprintf_callback(char* buf, void* user, u32 len)
         }
         // re-fetch head in case of realloc
         ctx->head = (sbuf_head_s*)(sbuf - sizeof(sbuf_head_s));
+        uassert(ctx->head); // clang-tidy false positive, should never happen
         uassert(ctx->head->header.magic == SBUF_MAGIC && "not a sbuf_head_s / bad pointer");
 
         ctx->buf = sbuf + ctx->head->length;
