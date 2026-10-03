@@ -30,6 +30,45 @@ backing allocator still return `NULL`.
 `test$alloc` synthetic OOM fails allocations before they reach the heap, so `NULL` /
 `Error.memory` error paths remain testable.
 
+#### Size and overflow safety
+
+Bounds checks like `off + n > cap` are where integer overflow turns into memory corruption: the
+addition wraps, the check passes, the write lands out of bounds. A negative length cast to `usize`
+(or `SIZE_MAX`) behaves the same. CEX provides overflow-free, domain-aware primitives around
+`mem$MAX`:
+
+- `mem$MAX` - maximum valid size/index (`PTRDIFF_MAX`). Values above it are invalid; `mem$MAX + 1`
+is the reserved overflow sentinel.
+- `mem$has_overflow(cap, off, n)` - true when `[off, off + n)` does not fit in `cap`, or when any
+argument is out of range. Never wraps, safe on untrusted input.
+- `mem$calc_overflow(cap, off, n)` - `0` when it fits, the shortfall to grow by (`1..mem$MAX`), or
+`mem$MAX + 1` when an argument is out of range.
+
+Allocators reject any requested `size >= mem$MAX`, so a negative size cast to `usize` fails as a
+memory error instead of a huge allocation. `mem$add/sub/mul_overflow` remain for checked arithmetic.
+
+```c
+// untrusted buf/len slice
+if (mem$has_overflow(cap, off, n)) return Error.overflow;
+memcpy(dst, buf + off, n);
+
+// chunked walk: full chunks, then the tail (cap - off cannot underflow)
+for (usize off = 0; off < cap; ) {
+    usize n = mem$has_overflow(cap, off, chunk) ? cap - off : chunk;
+    process(buf + off, n);
+    off += n;
+}
+
+// allocation size: a wrapped product is a heap overflow
+usize total;
+if (mem$mul_overflow(nmemb, size, &total)) return Error.overflow;
+
+// grow by the exact shortfall (no-op when it already fits)
+usize need = mem$calc_overflow(cap, len, add);
+if (need >= mem$MAX) return Error.overflow;
+cap += need;
+```
+
 #### Memory management hints
 
 - If a function accepts IAllocator as an argument, it allocates memory
@@ -51,6 +90,7 @@ loop
 - In test mode `mem$` tracks leaks, allocations are filled with `0xf7`, arenas are ASAN-poisoned;
 switch `tmem$` to `mem$` to triage use-after-poison
 - Use address sanitizers as often as possible
+- Validate untrusted sizes/offsets with `mem$has_overflow(cap, off, n)` / `mem$calc_overflow(cap, off, n)`, not `off + n > cap`
 
 
 #### Examples

@@ -1329,6 +1329,7 @@ You shouldn't use allocator interface directly (it's less convenient), so it's b
 * `mem$realloc(allocator, old_ptr, size, [alignment])` - reallocates previously initialized `old_ptr` with `allocator`, `alignment` parameter is optional and must match initial alignment of `old_ptr`. `old_ptr` must be a modifiable lvalue: it is always set to `NULL` on return (the old allocation may be freed or moved), so consume the returned pointer.
 * `mem$free(allocator, old_ptr)` - frees `old_ptr` and implicitly sets it to `NULL` to avoid use-after-free issues.
 * `mem$new(allocator, T)` - generic allocation of new instance of `T` (type), with respect of its size and alignment.
+* `mem$has_overflow(cap, off, n)` / `mem$calc_overflow(cap, off, n)` / `mem$add_overflow(a, b, r)` / `mem$sub_overflow(a, b, r)` / `mem$mul_overflow(a, b, r)` - overflow-free size arithmetic; see [Size and overflow safety](#size-and-overflow-safety)
 
 > When allocation failure returns `NULL` (an opt-out build, a custom allocator, or simulated `test$alloc` OOM), `realloc` frees `old_ptr` and returns `NULL`; the `mem$realloc()` macro additionally sets `old_ptr` to `NULL`. Never keep using or freeing `old_ptr` after the call — always use the returned pointer. By default a heap allocation failure panics instead (see [Allocation failure policy](#allocation-failure-policy)).
 
@@ -1336,6 +1337,100 @@ Allocator scoping:
 
 * `mem$arena_scope(page_size, allc_var) { ... }` - enters new instance of allocator arena with the `page_size`. Also supports `AllocatorArena_kw*` pointer form for `disable_scopes` etc.
 * `mem$scope(arena_or_tmem$, scope_var) { ... }` - opens new memory scope (works only with arena allocators or temp allocator)
+
+
+#### Size and overflow safety
+
+Sizes, offsets and counts in CEX routinely come from files, network or user input. Size arithmetic
+is the most common path from a bad number to a memory-corruption bug, because C's unsigned
+arithmetic **wraps silently** and a signed value cast to `usize` becomes enormous. CEX provides
+overflow-free primitives for exactly these checks.
+
+##### The footguns
+
+1. **Addition wrap.** `off + n > cap` is not a safe bounds check: when `off + n` wraps past
+   `USIZE_MAX`, the sum is small and the check passes.
+   ```c
+   if (off + n > cap) { return error; } // WRONG: wraps, check passes
+   memcpy(dst, src + off, n);           // out-of-bounds write
+   ```
+2. **Subtraction underflow.** `cap - off` with `off > cap` wraps to a huge "remaining room", so a
+   growth guard is never taken.
+   ```c
+   usize room = cap - off;  // off > cap -> ~USIZE_MAX
+   if (n > room) { grow(); } // never taken
+   ```
+3. **Multiplication overflow.** `nmemb * size` wraps; the allocator hands out a small block and the
+   caller then writes the full product — the classic `calloc` heap overflow.
+4. **Negative-to-`usize` cast.** A signed length of `-1` (sentinel, parse error, earlier underflow)
+   becomes `SIZE_MAX` and looks like a valid huge size.
+5. **Out-of-domain values.** On 64-bit, a value above `PTRDIFF_MAX` (2^63−1) does not wrap `usize`
+   yet cannot be a real size or pointer difference — treating it as valid leads to undefined
+   behavior.
+
+##### The toolkit
+
+* `mem$MAX` — maximum valid size/index (`PTRDIFF_MAX`). Values above it are invalid; `mem$MAX + 1`
+  is the reserved overflow sentinel. Allocators reject any requested `size >= mem$MAX`, so a
+  negative size cast to `usize` fails as a memory error instead of a huge allocation.
+* `mem$has_overflow(cap, off, n)` — overflow-free predicate: true when `[off, off + n)` does not fit
+  in `cap`, or when any argument is out of range (negative cast, `SIZE_MAX`). Replaces both the
+  wrap-prone `off + n > cap` and the underflow-prone `n > cap - off`.
+* `mem$calc_overflow(cap, off, n)` — for growth paths: `0` when it fits, the exact shortfall to grow
+  by (`1..mem$MAX`), or `mem$MAX + 1` when an argument is out of range. The sentinel is `mem$MAX + 1`
+  rather than `SIZE_MAX`: a real shortfall is at most `mem$MAX`, so `mem$MAX + 1` is the first value
+  that can never be a legitimate result. It is also chosen so a forgotten guard fails safe — for any
+  valid `cap`, `cap + (mem$MAX + 1)` cannot wrap `usize` and lands above `mem$MAX`, which every
+  allocator rejects (`size >= mem$MAX`). So even if the caller skips the range check and still does
+  `cap += need`, the oversized size is caught downstream at the allocation instead of wrapping back
+  into a valid-looking value.
+* `mem$add_overflow(a, b, res)` / `mem$sub_overflow(a, b, res)` / `mem$mul_overflow(a, b, res)` —
+  compiler-builtin checked arithmetic that stores the result and returns `true` on overflow. Use
+  these when you need the computed value, not just a fit predicate (`nmemb * size` in an allocator,
+  `a + b` for a combined length, and so on).
+
+##### Which one to use
+
+| You want | Use |
+| --- | --- |
+| "does `off .. off + n` fit in `cap`?" | `mem$has_overflow(cap, off, n)` |
+| "how much more capacity do I need?" | `mem$calc_overflow(cap, off, n)` |
+| "compute `a + b`, detect wrap" | `mem$add_overflow(a, b, &res)` |
+| "compute `a - b`, detect underflow" | `mem$sub_overflow(a, b, &res)` |
+| "compute `a * b`, detect wrap" | `mem$mul_overflow(a, b, &res)` |
+
+##### Idioms
+
+```c
+// 1. Buffer + length slice: off / n are untrusted, one guard prevents the OOB write
+if (mem$has_overflow(sizeof(buf), off, n)) { return Error.overflow; }
+memcpy(dst, buf + off, n);
+
+// 2. Chunked loop: full chunks, then the exact tail; neither off + chunk nor cap - off can wrap
+const usize chunk = 64;
+for (usize off = 0; off < cap; ) {
+    usize n = mem$has_overflow(cap, off, chunk) ? cap - off : chunk;
+    process(buf + off, n);
+    off += n;
+}
+
+// 3. Allocation size: a wrapped nmemb * size is a heap overflow, not a small buffer
+usize total;
+if (mem$mul_overflow(nmemb, size, &total)) { return Error.overflow; }
+mem$malloc(mem$, total);
+
+// 4. Growth: ask for the missing amount and grow once
+usize need = mem$calc_overflow(cap, len, add);
+if (need >= mem$MAX) { return Error.overflow; } // sentinel: argument out of range
+// Defense in depth: if this guard is missed and cap += need still runs, the result
+// cannot wrap and ends above mem$MAX, so the next allocation rejects the size
+// (size >= mem$MAX) instead of silently corrupting memory.
+if (need > 0) { cap += need; }
+```
+
+These are not advisory: `arr$`, `hm$`, `sbuf`, `str.fmt`, and both allocators use the same
+primitives for their internal bounds and growth checks, so the guarantees hold through the whole
+stack.
 
 
 #### Allocation failure policy
