@@ -71,6 +71,7 @@
 - test(ds): deterministic regression for the `hm$` no-empty-slot probe bound (`test_hm_no_empty_slot_probe_terminates` + OOM corpus seed)
 - fix(cexy): test binaries that build apps in-process inherit the no-sanitizer config, so emulated/alpine arches without an ASAN runtime link (CEX_RELEASE multi-arch)
 - fix(allocator): heap and arena `calloc` detect `nmemb * size` overflow (previously wrapped to a small/zero allocation) and panic via `cex$platform_mem_panic`
+- fix(allocator): `CEX_ARENA_MAX_ALLOC` is bounded by `PTRDIFF_MAX` (was `SIZE_MAX` on 32-bit), so a signed-negative size cast to `usize` is rejected as OOM instead of treated as a huge allocation; `static_assert` locks the half-`usize` invariant
 
 ## 0.21
 2026-06-07

@@ -128,6 +128,12 @@ test$case(test_allocator_arena_oversized)
     p = arena->calloc(arena, big, big, 8);
     tassert(p == NULL);
 
+    // negative values cast to usize exceed PTRDIFF_MAX
+    p = mem$malloc(arena, (usize)-1);
+    tassert(p == NULL);
+    p = arena->calloc(arena, (usize)-1, 1, 8);
+    tassert(p == NULL);
+
     // 4. realloc returns NULL for too-large size
     u8* p2 = mem$malloc(arena, 100);
     tassert(p2 != NULL);
@@ -1491,6 +1497,7 @@ test$case(test_allocator_arena_create_invalid_page_size)
     uassert_disable();
 
     tassert(AllocatorArena.create(&(AllocatorArena_kw){ .page_size = 512 }) == NULL);
+    tassert(AllocatorArena.create(&(AllocatorArena_kw){ .page_size = (usize)-1 }) == NULL);
 
 #if mem$platform() > 32
     tassert(AllocatorArena.create(&(AllocatorArena_kw){ .page_size = CEX_ARENA_MAX_ALLOC }) == NULL);

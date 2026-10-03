@@ -126,6 +126,49 @@ test$case(test_arena_mem_panic_calloc_overflow)
     return EOK;
 }
 
+test$case(test_arena_mem_panic_negative_size_rejected)
+{
+    IAllocator arena = AllocatorArena.create(
+        &(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true }
+    );
+    tassert(arena != NULL);
+
+    // a negative value cast to usize exceeds PTRDIFF_MAX and must be rejected as OOM
+    _arena_mem_reset();
+    uassert_disable();
+    void* p = mem$malloc(arena, (usize)-1);
+    uassert_enable();
+    tassert(p == NULL);
+    _arena_mem_assert("allocation size is too large");
+
+    _arena_mem_reset();
+    uassert_disable();
+    p = arena->calloc(arena, (usize)-1, 1, 8);
+    uassert_enable();
+    tassert(p == NULL);
+    _arena_mem_assert("element count is too large");
+
+    _arena_mem_reset();
+    uassert_disable();
+    p = arena->calloc(arena, 1, (usize)-1, 8);
+    uassert_enable();
+    tassert(p == NULL);
+    _arena_mem_assert("element size is too large");
+
+    u8* q = mem$malloc(arena, 100);
+    tassert(q != NULL);
+
+    _arena_mem_reset();
+    uassert_disable();
+    p = mem$realloc(arena, q, (usize)-1);
+    uassert_enable();
+    tassert(p == NULL);
+    _arena_mem_assert("realloc size is too large");
+
+    AllocatorArena_destroy(arena);
+    return EOK;
+}
+
 test$case(test_arena_mem_panic_realloc_invalid_size)
 {
     IAllocator arena = AllocatorArena.create(
