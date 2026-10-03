@@ -29,6 +29,15 @@ test_dir_walk(char* path, os_fs_stat_s ftype, void* user_ctx)
     return EOK;
 }
 
+static Exception
+test_dir_walk_fail(char* path, os_fs_stat_s ftype, void* user_ctx)
+{
+    (void)path;
+    (void)ftype;
+    (void)user_ctx;
+    return Error.runtime;
+}
+
 static char*
 p(char* path, IAllocator allc)
 {
@@ -83,6 +92,15 @@ test$case(test_os_dir_walk_print)
         tassert_er(Error.argument, os.fs.dir_walk("tests/data/dir1", false, NULL, NULL));
     }
 
+    return EOK;
+}
+
+test$case(test_os_dir_walk_errors)
+{
+    // opendir() failure
+    tassert_ne(EOK, os.fs.dir_walk(TBUILDDIR "no_such_dir", false, test_dir_walk, NULL));
+    // callback error is propagated
+    tassert_eq(Error.runtime, os.fs.dir_walk("tests/data/dir1", false, test_dir_walk_fail, NULL));
     return EOK;
 }
 
@@ -212,6 +230,18 @@ test$case(test_os_find_bad_pattern)
         tassert_eq(nit, 0);
     }
 
+    return EOK;
+}
+
+test$case(test_os_find_errors)
+{
+    mem$scope(tmem$, _)
+    {
+        // NULL pattern -> dir_part.buf is NULL
+        tassert(os.fs.find(NULL, true, _) == NULL);
+        // nonexistent directory -> dir_walk fails, partial results are freed
+        tassert(os.fs.find(TBUILDDIR "no_such_dir/*.c", true, _) == NULL);
+    }
     return EOK;
 }
 
@@ -714,6 +744,23 @@ test$case(test_os_mkpath)
     return EOK;
 }
 
+test$case(test_os_mkdir_error)
+{
+    // parent directory does not exist -> mkdir fails with ENOENT
+    tassert_eq(Error.not_found, os.fs.mkdir(TBUILDDIR "no_such_parent/sub"));
+    return EOK;
+}
+
+test$case(test_os_chdir_errors)
+{
+    tassert_er(Error.not_found, os.fs.chdir(TBUILDDIR "no_such_dir"));
+
+    // a regular file is not a directory -> errno ENOTDIR -> strerror path
+    tassert_er(Error.ok, io.file.save(TBUILDDIR "afile.txt", "x"));
+    tassert_ne(EOK, os.fs.chdir(TBUILDDIR "afile.txt"));
+    return EOK;
+}
+
 test$case(test_os_mkpath_overflow)
 {
     char path[PATH_MAX + 32];
@@ -757,6 +804,25 @@ test$case(test_os_copy_file)
     tassert_er(Error.exists, os.fs.copy(TBUILDDIR "mytestfile.txt", TBUILDDIR "mytestfile.txt2"));
     tassert_er(Error.not_found, os.fs.copy(TBUILDDIR "alksdjaldj.txt", TBUILDDIR "mytestfile.txt4"));
 
+    return EOK;
+}
+
+test$case(test_os_copy_args_and_errors)
+{
+    // empty src/dst arguments
+    tassert_er(Error.argument, os.fs.copy(NULL, TBUILDDIR "x"));
+    tassert_er(Error.argument, os.fs.copy("tests/data/text_file_50b.txt", NULL));
+    tassert_er(Error.argument, os.fs.copy("", TBUILDDIR "x"));
+    tassert_er(Error.argument, os.fs.copy("tests/data/text_file_50b.txt", ""));
+
+    // destination directory does not exist -> dst open() fails
+    tassert_ne(EOK, os.fs.copy("tests/data/text_file_50b.txt", TBUILDDIR "no_such_dir/out.txt"));
+
+#ifdef __linux__
+    // copying a directory as a file: read() on the src fd fails with EISDIR
+    tassert_ne(EOK, os.fs.copy("tests/data", TBUILDDIR "dir_as_file"));
+    if (os.fs.remove(TBUILDDIR "dir_as_file")) {}
+#endif
     return EOK;
 }
 
@@ -1267,6 +1333,19 @@ test$case(test_os_path_normpath_windows)
         tassert_eq(os.path.normalize("C:\\..\\..\\b", _), "C:\\b");
         tassert_eq(os.path.normalize("C:\\\\", _), "C:\\");
         tassert_eq(os.path.normalize("C:\\.", _), "C:\\");
+    }
+    return EOK;
+}
+
+test$case(test_os_path_normalize_drive)
+{
+    // drive-letter handling is platform independent (only UNC prefix is win32-only)
+    const char* sep = (os$PATH_SEP == '/') ? "/" : "\\";
+    mem$scope(tmem$, _)
+    {
+        tassert_eq(os.path.normalize("C:", _), str.fmt(_, "C:%s", sep));
+        tassert_eq(os.path.normalize("C:/../x", _), str.fmt(_, "C:%sx", sep));
+        tassert_eq(os.path.normalize("C:/a/../b", _), str.fmt(_, "C:%sb", sep));
     }
     return EOK;
 }

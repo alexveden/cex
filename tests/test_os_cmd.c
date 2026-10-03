@@ -626,6 +626,47 @@ test$case(os_cmd_null_args)
     tassert_er(Error.argument, os.cmd.create(NULL, args, 2, NULL));
     return EOK;
 }
+
+test$case(os_cmd_run_arg_validation)
+{
+    os_cmd_c c = { 0 };
+    tassert_er(Error.argument, os.cmd.run(NULL, 0, &c));
+
+    char* no_terminator[] = { "true", NULL };
+    tassert_er(Error.argument, os.cmd.run(no_terminator, 1, &c));
+
+    char* null_item[] = { "true", NULL, NULL };
+    tassert_er(Error.argument, os.cmd.run(null_item, 3, &c));
+
+    // os.cmd.create() rejects a NULL item too
+    tassert_ne(EOK, os.cmd.create(&c, null_item, 3, NULL));
+    return EOK;
+}
+
+test$case(os_cmd_run_exec_not_found)
+{
+    os_cmd_c c = { 0 };
+    char* args[] = { "cex_no_such_command_xyz", NULL };
+    tassert_er(EOK, os.cmd.run(args, 2, &c)); // fork succeeds, child exec fails
+    tassert_er(Error.runtime, os.cmd.wait(&c, 1, 0));
+    return EOK;
+}
+
+test$case(os_cmd_read_no_stdout)
+{
+    os_cmd_c c = { 0 };
+    mem$scope(tmem$, _)
+    {
+        char* args[] = { test_app("write_lines", _), NULL };
+        tassert_er(EOK, os.cmd.run(args, 2, &c)); // os.cmd.run() creates no stdout pipe
+
+        tassert(os.cmd.read_all(&c, _) == NULL);
+        tassert(os.cmd.read_line(&c, _) == NULL);
+
+        tassert_er(Error.runtime, os.cmd.wait(&c, 1, 0));
+    }
+    return EOK;
+}
 #endif  // #if !defined(__EMSCRIPTEN__)
 
 

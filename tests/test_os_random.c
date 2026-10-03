@@ -36,6 +36,15 @@ test$case(os_random_auto_seed)
     return EOK;
 }
 
+test$case(os_random_auto_seed_zero_state)
+{
+    // test setup seeds the PRNG, so zero the state to exercise the auto-seed branch
+    memset(&_cex_os_rnd, 0, sizeof(_cex_os_rnd));
+    u32 r = os.random.next();
+    tassert(r > 0);
+    return EOK;
+}
+
 test$case(os_random_seed)
 {
     os.random.seed(0);

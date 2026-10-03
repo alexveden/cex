@@ -218,4 +218,20 @@ test$case(test_os_get_last_error_no_errno)
     return EOK;
 }
 
+test$case(test_os_get_last_error_errno_map)
+{
+#ifndef _WIN32
+    errno = EPERM;
+    tassert_eq(Error.permission, os.get_last_error());
+    errno = EIO;
+    tassert_eq(Error.io, os.get_last_error());
+    errno = EAGAIN;
+    tassert_eq(Error.try_again, os.get_last_error());
+    errno = ENOENT;
+    tassert_eq(Error.not_found, os.get_last_error());
+    errno = 0;
+#endif
+    return EOK;
+}
+
 test$main();
