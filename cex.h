@@ -14320,6 +14320,7 @@ _cex_errors_panic_handler(
         return;
     }
 #    endif
+    // LCOV_EXCL_START -- only reachable on abort(); a forked probe's gcov data is never flushed
     _cex_errors_report(stderr);
     fflush(stdout);
     fflush(stderr);
@@ -14327,6 +14328,7 @@ _cex_errors_panic_handler(
 #    ifdef CEX_TEST
     breakpoint();
 #    endif
+    // LCOV_EXCL_STOP
     abort();
 }
 
@@ -14336,7 +14338,7 @@ _cex_errors_panic_handler(
 
 __attribute__((cold, noinline, noreturn))
 void
-_cex_errors_panic_handler(
+_cex_errors_panic_handler( // LCOV_EXCL_LINE -- trap path is unreachable from the test suite
     const char* prefix,
     const char* file,
     u32 line,
@@ -14349,7 +14351,7 @@ _cex_errors_panic_handler(
     (void)line;
     (void)func;
     (void)msg;
-    __builtin_trap();
+    __builtin_trap(); // LCOV_EXCL_LINE
 }
 
 #endif

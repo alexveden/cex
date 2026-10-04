@@ -191,6 +191,37 @@ test$case(test_arena_mem_panic_realloc_invalid_size)
     return EOK;
 }
 
+test$case(test_arena_mem_panic_alignment_too_large)
+{
+    IAllocator arena = AllocatorArena.create(
+        &(AllocatorArena_kw){ .page_size = 4096, .disable_scopes = true }
+    );
+    tassert(arena != NULL);
+
+    _arena_mem_reset();
+    uassert_disable();
+    void* p = arena->malloc(arena, 100, 128);
+    uassert_enable();
+
+    tassert(p == NULL);
+    _arena_mem_assert("allocation alignment is too large");
+
+    AllocatorArena_destroy(arena);
+    return EOK;
+}
+
+test$case(test_arena_mem_panic_size_not_aligned)
+{
+    _arena_mem_reset();
+    uassert_disable();
+    allocator_arena_rec_s rec = _cex_alloc_estimate_alloc_size(17, 16);
+    uassert_enable();
+
+    tassert(rec.size_low == 0 && rec.size_high == 0);
+    _arena_mem_assert("requested size is not aligned");
+    return EOK;
+}
+
 test$case(test_arena_mem_panic_request_page_too_large)
 {
     IAllocator arena = AllocatorArena.create(

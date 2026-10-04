@@ -76,6 +76,7 @@ _cex_errors_panic_handler(
         return;
     }
 #    endif
+    // LCOV_EXCL_START -- only reachable on abort(); a forked probe's gcov data is never flushed
     _cex_errors_report(stderr);
     fflush(stdout);
     fflush(stderr);
@@ -83,6 +84,7 @@ _cex_errors_panic_handler(
 #    ifdef CEX_TEST
     breakpoint();
 #    endif
+    // LCOV_EXCL_STOP
     abort();
 }
 
@@ -90,6 +92,7 @@ _cex_errors_panic_handler(
 
 #else // reporting compiled out (NDEBUG / clang analyzer / CEX_PANIC_VERBOSITY == 0)
 
+// LCOV_EXCL_START
 __attribute__((cold, noinline, noreturn))
 void
 _cex_errors_panic_handler(
@@ -108,4 +111,5 @@ _cex_errors_panic_handler(
     __builtin_trap();
 }
 
+// LCOV_EXCL_STOP
 #endif
