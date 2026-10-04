@@ -1250,7 +1250,8 @@ _cex_mem_calc_overflow(usize cap, usize off, usize n)
 #define mem$scope(allocator, allc_var)                                                                                                                                           \
     u32 cex$tmpname(tallc_cnt) = 0;                                                                                                                                \
     for (IAllocator allc_var  \
-        __attribute__ ((__cleanup__(_cex_allocator_memscope_cleanup))) =  \
+        __attribute__ ((__cleanup__(_cex_allocator_memscope_cleanup))) \
+        __attribute__ ((unused)) =  \
                                                         (allocator)->scope_enter(allocator); \
         cex$tmpname(tallc_cnt) < 1; \
         cex$tmpname(tallc_cnt)++)
@@ -1260,8 +1261,9 @@ _cex_mem_calc_overflow(usize cap, usize off, usize n)
 #define mem$arena_scope(ps, allc_var)                                                                                                                                           \
     u32 cex$tmpname(tallc_cnt) = 0;                                                                                                                                \
     for (IAllocator allc_var  \
-        __attribute__ ((__cleanup__(_cex_allocator_arena_cleanup))) =  \
-        ({                                                                                                                   \
+        __attribute__ ((__cleanup__(_cex_allocator_arena_cleanup))) \
+        __attribute__ ((unused)) =  \
+        ({  \
             AllocatorArena_kw _mem$arena_kw_val = { .page_size = (usize)(ps), .disable_scopes = false };                    \
             const AllocatorArena_kw* _mem$arena_kw = _Generic((ps),                                                                                                  \
                 const AllocatorArena_kw*: (ps),                                                                             \
@@ -14336,9 +14338,10 @@ _cex_errors_panic_handler(
 
 #else // reporting compiled out (NDEBUG / clang analyzer / CEX_PANIC_VERBOSITY == 0)
 
+// LCOV_EXCL_START
 __attribute__((cold, noinline, noreturn))
 void
-_cex_errors_panic_handler( // LCOV_EXCL_LINE -- trap path is unreachable from the test suite
+_cex_errors_panic_handler(
     const char* prefix,
     const char* file,
     u32 line,
@@ -14351,9 +14354,10 @@ _cex_errors_panic_handler( // LCOV_EXCL_LINE -- trap path is unreachable from th
     (void)line;
     (void)func;
     (void)msg;
-    __builtin_trap(); // LCOV_EXCL_LINE
+    __builtin_trap();
 }
 
+// LCOV_EXCL_STOP
 #endif
 
 
