@@ -30,6 +30,9 @@
 - (breaking) arena: argument/limit violations (invalid page size, zero or oversized allocation, misalignment) now panic via `cex$platform_mem_panic`; synthetic `test$alloc` OOM and custom-backing allocation failures still return `NULL`
 - feat: `CEX_PANIC_VERBOSITY` level 1 now prints the panic message when present; `_cex_errors_panic_handler` is always compiled (minimal trap under `NDEBUG` / verbosity 0)
 - feat(mem): `mem$MAX` (PTRDIFF_MAX), `mem$has_overflow(cap, off, n)`, `mem$calc_overflow(cap, off, n)` — overflow-free, domain-aware size/room checks; allocators and internal size bounds now reference `mem$MAX`; allocation requests with `size >= mem$MAX` now panic (memory error)
+- feat(cexy): `./cex build-docs` also emits `docs/cex.md` — README frontmatter stripped and `{{< include >}}` directives expanded; the generated markdown ships in the release `cex.zip`
+- refactor: vendored `subprocess.h` symbols renamed to `_cex_subprocess_*` (create/join/destroy/terminate/alive/options), so CEX can coexist with the upstream `subprocess.h` in the same project
+- refactor: `mem$has_overflow()` / `mem$calc_overflow()` now back the internal `sbuf` / `str` / `ds` bounds checks
 
 ### Fixes
 - fix(test): `test$mock_scope` no longer clobbers the OOM setting; `test_oom_threshold` is saved and restored around the namespace snapshot
@@ -73,6 +76,9 @@
 - fix(cexy): test binaries that build apps in-process inherit the no-sanitizer config, so emulated/alpine arches without an ASAN runtime link (CEX_RELEASE multi-arch)
 - fix(allocator): heap and arena `calloc` detect `nmemb * size` overflow (previously wrapped to a small/zero allocation) and panic via `cex$platform_mem_panic`
 - fix(allocator): `CEX_ARENA_MAX_ALLOC` is bounded by `PTRDIFF_MAX` (was `SIZE_MAX` on 32-bit), so a signed-negative size cast to `usize` is rejected as OOM instead of treated as a huge allocation; `static_assert` locks the half-`usize` invariant
+- fix(sprintf): `cexsp__vsprintfcb()` read the stack number buffer before its bounds check on the `%'d` grouping path; condition order corrected, `%'d` with 0 now covered
+- fix(json): removed a duplicated unreachable branch in deserialize codegen for non-nullable fields
+- test: coverage push across `str` / `io` / `os` / `argparse` / `CexParser` / test-runner / `cexy` / json / `cex_errors`, with dead branches annotated `LCOV_EXCL_*`
 
 ## 0.21
 2026-06-07
