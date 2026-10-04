@@ -246,7 +246,7 @@ test$case(os_cmd_read_all_combined_stderr)
 test$case(os_cmd_join_timeout)
 {
     os_cmd_c c = { 0 };
-    // WTF: if we call subprocess_terminate() on empty struct it will kill self!
+    // WTF: if we call _cex_subprocess_terminate() on empty struct it will kill self!
     tassert_eq(0, os.cmd.is_alive(&c));
     e$ret(os.cmd.kill(&c));
 
@@ -265,6 +265,37 @@ test$case(os_cmd_join_timeout)
         tassert_er(Error.ok, os.cmd.wait(&c, 1, 3));
         tassert_eq(os.cmd.ret_code(&c), 0);
     }
+    return EOK;
+}
+
+test$case(os_cmd_kill_running)
+{
+    os_cmd_c c = { 0 };
+    mem$scope(tmem$, _)
+    {
+        arr$(char*) args = arr$new(args, _);
+        arr$pushm(args, test_app("sleep", _), "5", NULL);
+        tassert_er(EOK, os.cmd.create(&c, args, arr$len(args), NULL));
+        tassert_eq(1, os.cmd.is_alive(&c));
+        tassert_er(EOK, os.cmd.kill(&c));
+        tassert_er(Error.runtime, os.cmd.wait(&c, 1, 0));
+    }
+    return EOK;
+}
+
+test$case(os_cmd_create_exec_not_found)
+{
+    os_cmd_c c = { 0 };
+    char* args[] = { "cex_no_such_command_xyz", NULL };
+    tassert_ne(EOK, os.cmd.create(&c, args, 2, NULL));
+    return EOK;
+}
+
+test$case(os_cmd_create_no_search_path_not_found)
+{
+    os_cmd_c c = { 0 };
+    char* args[] = { "cex_no_such_command_xyz", NULL };
+    tassert_ne(EOK, os.cmd.create(&c, args, 2, &(os_cmd_flags_s){ .no_search_path = 1 }));
     return EOK;
 }
 

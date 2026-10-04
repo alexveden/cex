@@ -45,7 +45,7 @@ static_assert(sizeof(os_cmd_flags_s) == sizeof(u32), "size?");
 /// Command container (current state of subprocess)
 typedef struct os_cmd_c
 {
-    struct subprocess_s _subpr;
+    struct _cex_subprocess_s _subpr;
     os_cmd_flags_s _flags;
     bool _is_subprocess;
     i32 _ret_code;

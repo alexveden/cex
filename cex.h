@@ -3893,8 +3893,8 @@ CEX_NAMESPACE struct __cex_namespace__argparse argparse;
    For more information, please refer to <http://unlicense.org/>
 */
 
-#ifndef SHEREDOM_SUBPROCESS_H_INCLUDED
-#define SHEREDOM_SUBPROCESS_H_INCLUDED
+#ifndef CEX_SUBPROCESS_H_INCLUDED
+#define CEX_SUBPROCESS_H_INCLUDED
 
 #if defined(_MSC_VER)
 #pragma warning(push, 1)
@@ -3909,112 +3909,81 @@ CEX_NAMESPACE struct __cex_namespace__argparse argparse;
 #endif
 
 #if defined(__TINYC__)
-#define SUBPROCESS_ATTRIBUTE(a) __attribute((a))
+#define CEX_SUBPROCESS_ATTRIBUTE(a) __attribute((a))
 #else
-#define SUBPROCESS_ATTRIBUTE(a) __attribute__((a))
+#define CEX_SUBPROCESS_ATTRIBUTE(a) __attribute__((a))
 #endif
 
 #if defined(_MSC_VER)
-#define subprocess_pure
-#define subprocess_weak __inline
-#define subprocess_tls __declspec(thread)
+#define _cex_subprocess_pure
+#define _cex_subprocess_weak __inline
+#define _cex_subprocess_tls __declspec(thread)
 #elif defined(__MINGW32__)
-#define subprocess_pure SUBPROCESS_ATTRIBUTE(pure)
-#define subprocess_weak static SUBPROCESS_ATTRIBUTE(used)
-#define subprocess_tls __thread
+#define _cex_subprocess_pure CEX_SUBPROCESS_ATTRIBUTE(pure)
+#define _cex_subprocess_weak static CEX_SUBPROCESS_ATTRIBUTE(used)
+#define _cex_subprocess_tls __thread
 #elif defined(__clang__) || defined(__GNUC__) || defined(__TINYC__)
-#define subprocess_pure SUBPROCESS_ATTRIBUTE(pure)
-// #define subprocess_weak SUBPROCESS_ATTRIBUTE(weak)
-#define subprocess_weak
-#define subprocess_tls __thread
+#define _cex_subprocess_pure CEX_SUBPROCESS_ATTRIBUTE(pure)
+// #define _cex_subprocess_weak CEX_SUBPROCESS_ATTRIBUTE(weak)
+#define _cex_subprocess_weak
+#define _cex_subprocess_tls __thread
 #else
 #error Non clang, non gcc, non MSVC compiler found!
 #endif
 
 
-enum subprocess_option_e {
+enum _cex_subprocess_option_e {
   // stdout and stderr are the same FILE.
-  subprocess_option_combined_stdout_stderr = 0x1,
+  _cex_subprocess_option_combined_stdout_stderr = 0x1,
 
   // The child process should inherit the environment variables of the parent.
-  subprocess_option_inherit_environment = 0x2,
+  _cex_subprocess_option_inherit_environment = 0x2,
 
   // Enable asynchronous reading of stdout/stderr before it has completed.
-  subprocess_option_enable_async = 0x4,
+  _cex_subprocess_option_enable_async = 0x4,
 
   // Enable the child process to be spawned with no window visible if supported
   // by the platform.
-  subprocess_option_no_window = 0x8,
+  _cex_subprocess_option_no_window = 0x8,
 
   // Search for program names in the PATH variable. Always enabled on Windows.
   // Note: this will **not** search for paths in any provided custom environment
   // and instead uses the PATH of the spawning process.
-  subprocess_option_search_user_path = 0x10
+  _cex_subprocess_option_search_user_path = 0x10
 };
 
-struct subprocess_s;
+struct _cex_subprocess_s;
 
 /// @brief Create a process.
 /// @param command_line An array of strings for the command line to execute for
 /// this process. The last element must be NULL to signify the end of the array.
 /// The memory backing this parameter only needs to persist until this function
 /// returns.
-/// @param options A bit field of subprocess_option_e's to pass.
+/// @param options A bit field of _cex_subprocess_option_e's to pass.
 /// @param out_process The newly created process.
 /// @return On success zero is returned.
-subprocess_weak int subprocess_create(const char *const command_line[],
+_cex_subprocess_weak int _cex_subprocess_create(const char *const command_line[],
                                       int options,
-                                      struct subprocess_s *const out_process);
+                                      struct _cex_subprocess_s *const out_process);
 
 /// @brief Create a process (extended create).
 /// @param command_line An array of strings for the command line to execute for
 /// this process. The last element must be NULL to signify the end of the array.
 /// The memory backing this parameter only needs to persist until this function
 /// returns.
-/// @param options A bit field of subprocess_option_e's to pass.
+/// @param options A bit field of _cex_subprocess_option_e's to pass.
 /// @param environment An optional array of strings for the environment to use
 /// for a child process (each element of the form FOO=BAR). The last element
 /// must be NULL to signify the end of the array.
 /// @param out_process The newly created process.
 /// @return On success zero is returned.
 ///
-/// If `options` contains `subprocess_option_inherit_environment`, then
+/// If `options` contains `_cex_subprocess_option_inherit_environment`, then
 /// `environment` must be NULL.
-subprocess_weak int
-subprocess_create_ex(const char *const command_line[], int options,
+_cex_subprocess_weak int
+_cex_subprocess_create_ex(const char *const command_line[], int options,
                      const char *const environment[],
-                     struct subprocess_s *const out_process);
-
-/// @brief Get the standard input file for a process.
-/// @param process The process to query.
-/// @return The file for standard input of the process.
-///
-/// The file returned can be written to by the parent process to feed data to
-/// the standard input of the process.
-subprocess_pure subprocess_weak FILE *
-subprocess_stdin(const struct subprocess_s *const process);
-
-/// @brief Get the standard output file for a process.
-/// @param process The process to query.
-/// @return The file for standard output of the process.
-///
-/// The file returned can be read from by the parent process to read data from
-/// the standard output of the child process.
-subprocess_pure subprocess_weak FILE *
-subprocess_stdout(const struct subprocess_s *const process);
-
-/// @brief Get the standard error file for a process.
-/// @param process The process to query.
-/// @return The file for standard error of the process.
-///
-/// The file returned can be read from by the parent process to read data from
-/// the standard error of the child process.
-///
-/// If the process was created with the subprocess_option_combined_stdout_stderr
-/// option bit set, this function will return NULL, and the subprocess_stdout
-/// function should be used for both the standard output and error combined.
-subprocess_pure subprocess_weak FILE *
-subprocess_stderr(const struct subprocess_s *const process);
+                     struct _cex_subprocess_s *const out_process);
 
 /// @brief Wait for a process to finish execution.
 /// @param process The process to wait for.
@@ -4023,7 +3992,7 @@ subprocess_stderr(const struct subprocess_s *const process);
 /// @return On success zero is returned.
 ///
 /// Joining a process will close the stdin pipe to the process.
-subprocess_weak int subprocess_join(struct subprocess_s *const process,
+_cex_subprocess_weak int _cex_subprocess_join(struct _cex_subprocess_s *const process,
                                     int *const out_return_code);
 
 /// @brief Destroy a previously created process.
@@ -4032,7 +4001,7 @@ subprocess_weak int subprocess_join(struct subprocess_s *const process,
 ///
 /// If the process to be destroyed had not finished execution, it may out live
 /// the parent process.
-subprocess_weak int subprocess_destroy(struct subprocess_s *const process);
+_cex_subprocess_weak int _cex_subprocess_destroy(struct _cex_subprocess_s *const process);
 
 /// @brief Terminate a previously created process.
 /// @param process The process to terminate.
@@ -4040,51 +4009,23 @@ subprocess_weak int subprocess_destroy(struct subprocess_s *const process);
 ///
 /// If the process to be destroyed had not finished execution, it will be
 /// terminated (i.e killed).
-subprocess_weak int subprocess_terminate(struct subprocess_s *const process);
-
-/// @brief Read the standard output from the child process.
-/// @param process The process to read from.
-/// @param buffer The buffer to read into.
-/// @param size The maximum number of bytes to read.
-/// @return The number of bytes actually read into buffer. Can only be 0 if the
-/// process has complete.
-///
-/// The only safe way to read from the standard output of a process during it's
-/// execution is to use the `subprocess_option_enable_async` option in
-/// conjunction with this method.
-subprocess_weak unsigned
-subprocess_read_stdout(struct subprocess_s *const process, char *const buffer,
-                       unsigned size);
-
-/// @brief Read the standard error from the child process.
-/// @param process The process to read from.
-/// @param buffer The buffer to read into.
-/// @param size The maximum number of bytes to read.
-/// @return The number of bytes actually read into buffer. Can only be 0 if the
-/// process has complete.
-///
-/// The only safe way to read from the standard error of a process during it's
-/// execution is to use the `subprocess_option_enable_async` option in
-/// conjunction with this method.
-subprocess_weak unsigned
-subprocess_read_stderr(struct subprocess_s *const process, char *const buffer,
-                       unsigned size);
+_cex_subprocess_weak int _cex_subprocess_terminate(struct _cex_subprocess_s *const process);
 
 /// @brief Returns if the subprocess is currently still alive and executing.
 /// @param process The process to check.
 /// @return If the process is still alive non-zero is returned.
-subprocess_weak int subprocess_alive(struct subprocess_s *const process);
+_cex_subprocess_weak int _cex_subprocess_alive(struct _cex_subprocess_s *const process);
 
 #if defined(__cplusplus)
-#define SUBPROCESS_CAST(type, x) static_cast<type>(x)
-#define SUBPROCESS_PTR_CAST(type, x) reinterpret_cast<type>(x)
-#define SUBPROCESS_CONST_CAST(type, x) const_cast<type>(x)
-#define SUBPROCESS_NULL NULL
+#define CEX_SUBPROCESS_CAST(type, x) static_cast<type>(x)
+#define CEX_SUBPROCESS_PTR_CAST(type, x) reinterpret_cast<type>(x)
+#define CEX_SUBPROCESS_CONST_CAST(type, x) const_cast<type>(x)
+#define CEX_SUBPROCESS_NULL NULL
 #else
-#define SUBPROCESS_CAST(type, x) ((type)(x))
-#define SUBPROCESS_PTR_CAST(type, x) ((type)(x))
-#define SUBPROCESS_CONST_CAST(type, x) ((type)(x))
-#define SUBPROCESS_NULL 0
+#define CEX_SUBPROCESS_CAST(type, x) ((type)(x))
+#define CEX_SUBPROCESS_PTR_CAST(type, x) ((type)(x))
+#define CEX_SUBPROCESS_CONST_CAST(type, x) ((type)(x))
+#define CEX_SUBPROCESS_NULL 0
 #endif
 
 #if !defined(_WIN32)
@@ -4101,17 +4042,17 @@ subprocess_weak int subprocess_alive(struct subprocess_s *const process);
 
 #if (_MSC_VER < 1920)
 #ifdef _WIN64
-typedef __int64 subprocess_intptr_t;
-typedef unsigned __int64 subprocess_size_t;
+typedef __int64 _cex_subprocess_intptr_t;
+typedef unsigned __int64 _cex_subprocess_size_t;
 #else
-typedef int subprocess_intptr_t;
-typedef unsigned int subprocess_size_t;
+typedef int _cex_subprocess_intptr_t;
+typedef unsigned int _cex_subprocess_size_t;
 #endif
 #else
 #include <inttypes.h>
 
-typedef intptr_t subprocess_intptr_t;
-typedef size_t subprocess_size_t;
+typedef intptr_t _cex_subprocess_intptr_t;
+typedef size_t _cex_subprocess_size_t;
 #endif
 
 #ifdef _MSC_VER
@@ -4122,20 +4063,20 @@ typedef size_t subprocess_size_t;
 #pragma GCC diagnostic ignored "-Wpedantic"
 #endif
 
-struct subprocess_subprocess_information_s {
+struct _cex_subprocess_subprocess_information_s {
   void *hProcess;
   void *hThread;
   unsigned long dwProcessId;
   unsigned long dwThreadId;
 };
 
-struct subprocess_security_attributes_s {
+struct _cex_subprocess_security_attributes_s {
   unsigned long nLength;
   void *lpSecurityDescriptor;
   int bInheritHandle;
 };
 
-struct subprocess_startup_info_s {
+struct _cex_subprocess_startup_info_s {
   unsigned long cb;
   char *lpReserved;
   char *lpDesktop;
@@ -4156,7 +4097,7 @@ struct subprocess_startup_info_s {
   void *hStdError;
 };
 
-struct subprocess_overlapped_s {
+struct _cex_subprocess_overlapped_s {
   uintptr_t Internal;
   uintptr_t InternalHigh;
   union {
@@ -4178,9 +4119,9 @@ struct subprocess_overlapped_s {
 #endif
 
 #if defined(_DLL)
-#define SUBPROCESS_DLLIMPORT __declspec(dllimport)
+#define CEX_SUBPROCESS_DLLIMPORT __declspec(dllimport)
 #else
-#define SUBPROCESS_DLLIMPORT
+#define CEX_SUBPROCESS_DLLIMPORT
 #endif
 
 #ifdef __clang__
@@ -4188,12 +4129,12 @@ struct subprocess_overlapped_s {
 #pragma clang diagnostic ignored "-Wreserved-identifier"
 #endif
 
-SUBPROCESS_DLLIMPORT int __cdecl _fileno(FILE *);
-SUBPROCESS_DLLIMPORT int __cdecl _open_osfhandle(subprocess_intptr_t, int);
-SUBPROCESS_DLLIMPORT subprocess_intptr_t __cdecl _get_osfhandle(int);
+CEX_SUBPROCESS_DLLIMPORT int __cdecl _fileno(FILE *);
+CEX_SUBPROCESS_DLLIMPORT int __cdecl _open_osfhandle(_cex_subprocess_intptr_t, int);
+CEX_SUBPROCESS_DLLIMPORT _cex_subprocess_intptr_t __cdecl _get_osfhandle(int);
 
 #ifndef __MINGW32__
-void *__cdecl _alloca(subprocess_size_t);
+void *__cdecl _alloca(_cex_subprocess_size_t);
 #else
 #include <malloc.h>
 #endif
@@ -4203,14 +4144,14 @@ void *__cdecl _alloca(subprocess_size_t);
 #endif
 
 #else
-typedef size_t subprocess_size_t;
+typedef size_t _cex_subprocess_size_t;
 #endif
 
 #ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wpadded"
 #endif
-struct subprocess_s {
+struct _cex_subprocess_s {
   FILE *stdin_file;
   FILE *stdout_file;
   FILE *stderr_file;
@@ -4225,13 +4166,16 @@ struct subprocess_s {
   int return_status;
 #endif
 
-  subprocess_size_t alive;
+  _cex_subprocess_size_t alive;
 };
 #ifdef __clang__
 #pragma clang diagnostic pop
 #endif
 
-#endif /* SHEREDOM_SUBPROCESS_H_INCLUDED */
+#undef CEX_SUBPROCESS_DLLIMPORT
+#undef _cex_subprocess_pure
+
+#endif /* CEX_SUBPROCESS_H_INCLUDED */
 
 #endif
 
@@ -4285,7 +4229,7 @@ static_assert(sizeof(os_cmd_flags_s) == sizeof(u32), "size?");
 /// Command container (current state of subprocess)
 typedef struct os_cmd_c
 {
-    struct subprocess_s _subpr;
+    struct _cex_subprocess_s _subpr;
     os_cmd_flags_s _flags;
     bool _is_subprocess;
     i32 _ret_code;
@@ -15086,8 +15030,8 @@ CEX_NAMESPACE_DEF struct __cex_namespace__argparse argparse = {
 #endif
 
 #if defined(_WIN32)
-subprocess_weak int subprocess_create_named_pipe_helper(void **rd, void **wr);
-int subprocess_create_named_pipe_helper(void **rd, void **wr) {
+_cex_subprocess_weak int _cex_subprocess_create_named_pipe_helper(void **rd, void **wr);
+int _cex_subprocess_create_named_pipe_helper(void **rd, void **wr) {
   const unsigned long pipeAccessInbound = 0x00000001;
   const unsigned long fileFlagOverlapped = 0x40000000;
   const unsigned long pipeTypeByte = 0x00000000;
@@ -15096,11 +15040,11 @@ int subprocess_create_named_pipe_helper(void **rd, void **wr) {
   const unsigned long openExisting = 3;
   const unsigned long fileAttributeNormal = 0x00000080;
   const void *const invalidHandleValue =
-      SUBPROCESS_PTR_CAST(void *, ~(SUBPROCESS_CAST(subprocess_intptr_t, 0)));
-  struct subprocess_security_attributes_s saAttr = {sizeof(saAttr),
-                                                    SUBPROCESS_NULL, 1};
+      CEX_SUBPROCESS_PTR_CAST(void *, ~(CEX_SUBPROCESS_CAST(_cex_subprocess_intptr_t, 0)));
+  struct _cex_subprocess_security_attributes_s saAttr = {sizeof(saAttr),
+                                                    CEX_SUBPROCESS_NULL, 1};
   char name[256] = {0};
-  static subprocess_tls long index = 0;
+  static _cex_subprocess_tls long index = 0;
   const long unique = index++;
 
 #if defined(_MSC_VER) && _MSC_VER < 1900
@@ -15118,16 +15062,16 @@ int subprocess_create_named_pipe_helper(void **rd, void **wr) {
 
   *rd =
       CreateNamedPipeA(name, pipeAccessInbound | fileFlagOverlapped,
-                       pipeTypeByte | pipeWait, 1, 4096, 4096, SUBPROCESS_NULL,
-                       SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr));
+                       pipeTypeByte | pipeWait, 1, 4096, 4096, CEX_SUBPROCESS_NULL,
+                       CEX_SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr));
 
   if (invalidHandleValue == *rd) {
     return -1;
   }
 
-  *wr = CreateFileA(name, genericWrite, SUBPROCESS_NULL,
-                    SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr),
-                    openExisting, fileAttributeNormal, SUBPROCESS_NULL);
+  *wr = CreateFileA(name, genericWrite, CEX_SUBPROCESS_NULL,
+                    CEX_SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr),
+                    openExisting, fileAttributeNormal, CEX_SUBPROCESS_NULL);
 
   if (invalidHandleValue == *wr) {
     return -1;
@@ -15137,34 +15081,34 @@ int subprocess_create_named_pipe_helper(void **rd, void **wr) {
 }
 #endif
 
-int subprocess_create(const char *const commandLine[], int options,
-                      struct subprocess_s *const out_process) {
-  return subprocess_create_ex(commandLine, options, SUBPROCESS_NULL,
+int _cex_subprocess_create(const char *const commandLine[], int options,
+                      struct _cex_subprocess_s *const out_process) {
+  return _cex_subprocess_create_ex(commandLine, options, CEX_SUBPROCESS_NULL,
                               out_process);
 }
 
-int subprocess_create_ex(const char *const commandLine[], int options,
+int _cex_subprocess_create_ex(const char *const commandLine[], int options,
                          const char *const environment[],
-                         struct subprocess_s *const out_process) {
+                         struct _cex_subprocess_s *const out_process) {
 #if defined(_WIN32)
   int fd;
   void *rd, *wr;
   char *commandLineCombined;
-  subprocess_size_t len;
+  _cex_subprocess_size_t len;
   int i, j;
   int need_quoting;
   unsigned long flags = 0;
   const unsigned long startFUseStdHandles = 0x00000100;
   const unsigned long handleFlagInherit = 0x00000001;
   const unsigned long createNoWindow = 0x08000000;
-  struct subprocess_subprocess_information_s processInfo;
-  struct subprocess_security_attributes_s saAttr = {sizeof(saAttr),
-                                                    SUBPROCESS_NULL, 1};
-  char *used_environment = SUBPROCESS_NULL;
-  struct subprocess_startup_info_s startInfo = {0,
-                                                SUBPROCESS_NULL,
-                                                SUBPROCESS_NULL,
-                                                SUBPROCESS_NULL,
+  struct _cex_subprocess_subprocess_information_s processInfo;
+  struct _cex_subprocess_security_attributes_s saAttr = {sizeof(saAttr),
+                                                    CEX_SUBPROCESS_NULL, 1};
+  char *used_environment = CEX_SUBPROCESS_NULL;
+  struct _cex_subprocess_startup_info_s startInfo = {0,
+                                                CEX_SUBPROCESS_NULL,
+                                                CEX_SUBPROCESS_NULL,
+                                                CEX_SUBPROCESS_NULL,
                                                 0,
                                                 0,
                                                 0,
@@ -15175,22 +15119,22 @@ int subprocess_create_ex(const char *const commandLine[], int options,
                                                 0,
                                                 0,
                                                 0,
-                                                SUBPROCESS_NULL,
-                                                SUBPROCESS_NULL,
-                                                SUBPROCESS_NULL,
-                                                SUBPROCESS_NULL};
+                                                CEX_SUBPROCESS_NULL,
+                                                CEX_SUBPROCESS_NULL,
+                                                CEX_SUBPROCESS_NULL,
+                                                CEX_SUBPROCESS_NULL};
 
   startInfo.cb = sizeof(startInfo);
   startInfo.dwFlags = startFUseStdHandles;
 
-  if (subprocess_option_no_window == (options & subprocess_option_no_window)) {
+  if (_cex_subprocess_option_no_window == (options & _cex_subprocess_option_no_window)) {
     flags |= createNoWindow;
   }
 
-  if (subprocess_option_inherit_environment !=
-      (options & subprocess_option_inherit_environment)) {
-    if (SUBPROCESS_NULL == environment) {
-      used_environment = SUBPROCESS_CONST_CAST(char *, "\0\0");
+  if (_cex_subprocess_option_inherit_environment !=
+      (options & _cex_subprocess_option_inherit_environment)) {
+    if (CEX_SUBPROCESS_NULL == environment) {
+      used_environment = CEX_SUBPROCESS_CONST_CAST(char *, "\0\0");
     } else {
       // We always end with two null terminators.
       len = 2;
@@ -15204,7 +15148,7 @@ int subprocess_create_ex(const char *const commandLine[], int options,
         len++;
       }
 
-      used_environment = SUBPROCESS_CAST(char *, _alloca(len));
+      used_environment = CEX_SUBPROCESS_CAST(char *, _alloca(len));
 
       // Re-use len for the insertion position
       len = 0;
@@ -15222,12 +15166,12 @@ int subprocess_create_ex(const char *const commandLine[], int options,
       used_environment[len++] = '\0';
     }
   } else {
-    if (SUBPROCESS_NULL != environment) {
+    if (CEX_SUBPROCESS_NULL != environment) {
       return -1;
     }
   }
 
-  if (!CreatePipe(&rd, &wr, SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr),
+  if (!CreatePipe(&rd, &wr, CEX_SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr),
                   0)) {
     return -1;
   }
@@ -15236,25 +15180,25 @@ int subprocess_create_ex(const char *const commandLine[], int options,
     return -1;
   }
 
-  fd = _open_osfhandle(SUBPROCESS_PTR_CAST(subprocess_intptr_t, wr), 0);
+  fd = _open_osfhandle(CEX_SUBPROCESS_PTR_CAST(_cex_subprocess_intptr_t, wr), 0);
 
   if (-1 != fd) {
     out_process->stdin_file = _fdopen(fd, "wb");
 
-    if (SUBPROCESS_NULL == out_process->stdin_file) {
+    if (CEX_SUBPROCESS_NULL == out_process->stdin_file) {
       return -1;
     }
   }
 
   startInfo.hStdInput = rd;
 
-  if (options & subprocess_option_enable_async) {
-    if (subprocess_create_named_pipe_helper(&rd, &wr)) {
+  if (options & _cex_subprocess_option_enable_async) {
+    if (_cex_subprocess_create_named_pipe_helper(&rd, &wr)) {
       return -1;
     }
   } else {
     if (!CreatePipe(&rd, &wr,
-                    SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr), 0)) {
+                    CEX_SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr), 0)) {
       return -1;
     }
   }
@@ -15263,30 +15207,30 @@ int subprocess_create_ex(const char *const commandLine[], int options,
     return -1;
   }
 
-  fd = _open_osfhandle(SUBPROCESS_PTR_CAST(subprocess_intptr_t, rd), 0);
+  fd = _open_osfhandle(CEX_SUBPROCESS_PTR_CAST(_cex_subprocess_intptr_t, rd), 0);
 
   if (-1 != fd) {
     out_process->stdout_file = _fdopen(fd, "rb");
 
-    if (SUBPROCESS_NULL == out_process->stdout_file) {
+    if (CEX_SUBPROCESS_NULL == out_process->stdout_file) {
       return -1;
     }
   }
 
   startInfo.hStdOutput = wr;
 
-  if (subprocess_option_combined_stdout_stderr ==
-      (options & subprocess_option_combined_stdout_stderr)) {
+  if (_cex_subprocess_option_combined_stdout_stderr ==
+      (options & _cex_subprocess_option_combined_stdout_stderr)) {
     out_process->stderr_file = out_process->stdout_file;
     startInfo.hStdError = startInfo.hStdOutput;
   } else {
-    if (options & subprocess_option_enable_async) {
-      if (subprocess_create_named_pipe_helper(&rd, &wr)) {
+    if (options & _cex_subprocess_option_enable_async) {
+      if (_cex_subprocess_create_named_pipe_helper(&rd, &wr)) {
         return -1;
       }
     } else {
       if (!CreatePipe(&rd, &wr,
-                      SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr), 0)) {
+                      CEX_SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr), 0)) {
         return -1;
       }
     }
@@ -15295,12 +15239,12 @@ int subprocess_create_ex(const char *const commandLine[], int options,
       return -1;
     }
 
-    fd = _open_osfhandle(SUBPROCESS_PTR_CAST(subprocess_intptr_t, rd), 0);
+    fd = _open_osfhandle(CEX_SUBPROCESS_PTR_CAST(_cex_subprocess_intptr_t, rd), 0);
 
     if (-1 != fd) {
       out_process->stderr_file = _fdopen(fd, "rb");
 
-      if (SUBPROCESS_NULL == out_process->stderr_file) {
+      if (CEX_SUBPROCESS_NULL == out_process->stderr_file) {
         return -1;
       }
     }
@@ -15308,16 +15252,16 @@ int subprocess_create_ex(const char *const commandLine[], int options,
     startInfo.hStdError = wr;
   }
 
-  if (options & subprocess_option_enable_async) {
+  if (options & _cex_subprocess_option_enable_async) {
     out_process->hEventOutput =
-        CreateEventA(SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr), 1, 1,
-                     SUBPROCESS_NULL);
+        CreateEventA(CEX_SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr), 1, 1,
+                     CEX_SUBPROCESS_NULL);
     out_process->hEventError =
-        CreateEventA(SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr), 1, 1,
-                     SUBPROCESS_NULL);
+        CreateEventA(CEX_SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr), 1, 1,
+                     CEX_SUBPROCESS_NULL);
   } else {
-    out_process->hEventOutput = SUBPROCESS_NULL;
-    out_process->hEventError = SUBPROCESS_NULL;
+    out_process->hEventOutput = CEX_SUBPROCESS_NULL;
+    out_process->hEventError = CEX_SUBPROCESS_NULL;
   }
 
   // Combine commandLine together into a single string
@@ -15327,8 +15271,8 @@ int subprocess_create_ex(const char *const commandLine[], int options,
     len++;
 
     // Quote the argument if it has a space in it
-    if (strpbrk(commandLine[i], "\t\v ") != SUBPROCESS_NULL ||
-        commandLine[i][0] == SUBPROCESS_NULL)
+    if (strpbrk(commandLine[i], "\t\v ") != CEX_SUBPROCESS_NULL ||
+        commandLine[i][0] == CEX_SUBPROCESS_NULL)
       len += 2;
 
     for (j = 0; '\0' != commandLine[i][j]; j++) {
@@ -15349,7 +15293,7 @@ int subprocess_create_ex(const char *const commandLine[], int options,
     }
   }
 
-  commandLineCombined = SUBPROCESS_CAST(char *, _alloca(len));
+  commandLineCombined = CEX_SUBPROCESS_CAST(char *, _alloca(len));
 
   if (!commandLineCombined) {
     return -1;
@@ -15363,8 +15307,8 @@ int subprocess_create_ex(const char *const commandLine[], int options,
       commandLineCombined[len++] = ' ';
     }
 
-    need_quoting = strpbrk(commandLine[i], "\t\v ") != SUBPROCESS_NULL ||
-                   commandLine[i][0] == SUBPROCESS_NULL;
+    need_quoting = strpbrk(commandLine[i], "\t\v ") != CEX_SUBPROCESS_NULL ||
+                   commandLine[i][0] == CEX_SUBPROCESS_NULL;
     if (need_quoting) {
       commandLineCombined[len++] = '"';
     }
@@ -15394,17 +15338,17 @@ int subprocess_create_ex(const char *const commandLine[], int options,
   commandLineCombined[len] = '\0';
 
   if (!CreateProcessA(
-          SUBPROCESS_NULL,
+          CEX_SUBPROCESS_NULL,
           commandLineCombined, // command line
-          SUBPROCESS_NULL,     // process security attributes
-          SUBPROCESS_NULL,     // primary thread security attributes
+          CEX_SUBPROCESS_NULL,     // process security attributes
+          CEX_SUBPROCESS_NULL,     // primary thread security attributes
           1,                   // handles are inherited
           flags,               // creation flags
           used_environment,    // used environment
-          SUBPROCESS_NULL,     // use parent's current directory
-          SUBPROCESS_PTR_CAST(LPSTARTUPINFOA,
+          CEX_SUBPROCESS_NULL,     // use parent's current directory
+          CEX_SUBPROCESS_PTR_CAST(LPSTARTUPINFOA,
                               &startInfo), // STARTUPINFO pointer
-          SUBPROCESS_PTR_CAST(LPPROCESS_INFORMATION, &processInfo))) {
+          CEX_SUBPROCESS_PTR_CAST(LPPROCESS_INFORMATION, &processInfo))) {
     return -1;
   }
 
@@ -15415,7 +15359,7 @@ int subprocess_create_ex(const char *const commandLine[], int options,
   // We don't need the handle of the primary thread in the called process.
   CloseHandle(processInfo.hThread);
 
-  if (SUBPROCESS_NULL != startInfo.hStdOutput) {
+  if (CEX_SUBPROCESS_NULL != startInfo.hStdOutput) {
     CloseHandle(startInfo.hStdOutput);
 
     if (startInfo.hStdError != startInfo.hStdOutput) {
@@ -15439,13 +15383,13 @@ int subprocess_create_ex(const char *const commandLine[], int options,
   int stderrfd[2];
   pid_t child;
   extern char **environ;
-  char *const empty_environment[1] = {SUBPROCESS_NULL};
+  char *const empty_environment[1] = {CEX_SUBPROCESS_NULL};
   posix_spawn_file_actions_t actions;
   char *const *used_environment;
 
-  if (subprocess_option_inherit_environment ==
-      (options & subprocess_option_inherit_environment)) {
-    if (SUBPROCESS_NULL != environment) {
+  if (_cex_subprocess_option_inherit_environment ==
+      (options & _cex_subprocess_option_inherit_environment)) {
+    if (CEX_SUBPROCESS_NULL != environment) {
       return -1;
     }
   }
@@ -15458,8 +15402,8 @@ int subprocess_create_ex(const char *const commandLine[], int options,
     return -1;
   }
 
-  if (subprocess_option_combined_stdout_stderr !=
-      (options & subprocess_option_combined_stdout_stderr)) {
+  if (_cex_subprocess_option_combined_stdout_stderr !=
+      (options & _cex_subprocess_option_combined_stdout_stderr)) {
     if (0 != pipe(stderrfd)) {
       return -1;
     }
@@ -15471,12 +15415,12 @@ int subprocess_create_ex(const char *const commandLine[], int options,
 #pragma clang diagnostic ignored "-Wcast-qual"
 #pragma clang diagnostic ignored "-Wold-style-cast"
 #endif
-    used_environment = SUBPROCESS_CONST_CAST(char *const *, environment);
+    used_environment = CEX_SUBPROCESS_CONST_CAST(char *const *, environment);
 #ifdef __clang__
 #pragma clang diagnostic pop
 #endif
-  } else if (subprocess_option_inherit_environment ==
-             (options & subprocess_option_inherit_environment)) {
+  } else if (_cex_subprocess_option_inherit_environment ==
+             (options & _cex_subprocess_option_inherit_environment)) {
     used_environment = environ;
   } else {
     used_environment = empty_environment;
@@ -15512,8 +15456,8 @@ int subprocess_create_ex(const char *const commandLine[], int options,
     return -1;
   }
 
-  if (subprocess_option_combined_stdout_stderr ==
-      (options & subprocess_option_combined_stdout_stderr)) {
+  if (_cex_subprocess_option_combined_stdout_stderr ==
+      (options & _cex_subprocess_option_combined_stdout_stderr)) {
     if (0 != posix_spawn_file_actions_adddup2(&actions, STDOUT_FILENO,
                                               STDERR_FILENO)) {
       posix_spawn_file_actions_destroy(&actions);
@@ -15538,17 +15482,17 @@ int subprocess_create_ex(const char *const commandLine[], int options,
 #pragma clang diagnostic ignored "-Wcast-qual"
 #pragma clang diagnostic ignored "-Wold-style-cast"
 #endif
-  if (subprocess_option_search_user_path ==
-      (options & subprocess_option_search_user_path)) {
-    if (0 != posix_spawnp(&child, commandLine[0], &actions, SUBPROCESS_NULL,
-                          SUBPROCESS_CONST_CAST(char *const *, commandLine),
+  if (_cex_subprocess_option_search_user_path ==
+      (options & _cex_subprocess_option_search_user_path)) {
+    if (0 != posix_spawnp(&child, commandLine[0], &actions, CEX_SUBPROCESS_NULL,
+                          CEX_SUBPROCESS_CONST_CAST(char *const *, commandLine),
                           used_environment)) {
       posix_spawn_file_actions_destroy(&actions);
       return -1;
     }
   } else {
-    if (0 != posix_spawn(&child, commandLine[0], &actions, SUBPROCESS_NULL,
-                         SUBPROCESS_CONST_CAST(char *const *, commandLine),
+    if (0 != posix_spawn(&child, commandLine[0], &actions, CEX_SUBPROCESS_NULL,
+                         CEX_SUBPROCESS_CONST_CAST(char *const *, commandLine),
                          used_environment)) {
       posix_spawn_file_actions_destroy(&actions);
       return -1;
@@ -15568,8 +15512,8 @@ int subprocess_create_ex(const char *const commandLine[], int options,
   // Store the stdout read end
   out_process->stdout_file = fdopen(stdoutfd[0], "rb");
 
-  if (subprocess_option_combined_stdout_stderr ==
-      (options & subprocess_option_combined_stdout_stderr)) {
+  if (_cex_subprocess_option_combined_stdout_stderr ==
+      (options & _cex_subprocess_option_combined_stdout_stderr)) {
     out_process->stderr_file = out_process->stdout_file;
   } else {
     // Close the stderr write end
@@ -15588,35 +15532,19 @@ int subprocess_create_ex(const char *const commandLine[], int options,
 #endif
 }
 
-FILE *subprocess_stdin(const struct subprocess_s *const process) {
-  return process->stdin_file;
-}
-
-FILE *subprocess_stdout(const struct subprocess_s *const process) {
-  return process->stdout_file;
-}
-
-FILE *subprocess_stderr(const struct subprocess_s *const process) {
-  if (process->stdout_file != process->stderr_file) {
-    return process->stderr_file;
-  } else {
-    return SUBPROCESS_NULL;
-  }
-}
-
-int subprocess_join(struct subprocess_s *const process,
+int _cex_subprocess_join(struct _cex_subprocess_s *const process,
                     int *const out_return_code) {
 #if defined(_WIN32)
   const unsigned long infinite = 0xFFFFFFFF;
 
   if (process->stdin_file) {
     fclose(process->stdin_file);
-    process->stdin_file = SUBPROCESS_NULL;
+    process->stdin_file = CEX_SUBPROCESS_NULL;
   }
 
   if (process->hStdInput) {
     CloseHandle(process->hStdInput);
-    process->hStdInput = SUBPROCESS_NULL;
+    process->hStdInput = CEX_SUBPROCESS_NULL;
   }
 
   if (process->hProcess) {
@@ -15626,7 +15554,7 @@ int subprocess_join(struct subprocess_s *const process,
     if (out_return_code) {
       if (!GetExitCodeProcess(
               process->hProcess,
-              SUBPROCESS_PTR_CAST(unsigned long *, out_return_code))) {
+              CEX_SUBPROCESS_PTR_CAST(unsigned long *, out_return_code))) {
         return -1;
       }
     }
@@ -15640,7 +15568,7 @@ int subprocess_join(struct subprocess_s *const process,
 
   if (process->stdin_file) {
     fclose(process->stdin_file);
-    process->stdin_file = SUBPROCESS_NULL;
+    process->stdin_file = CEX_SUBPROCESS_NULL;
   }
 
   if (process->child) {
@@ -15667,10 +15595,10 @@ int subprocess_join(struct subprocess_s *const process,
 #endif
 }
 
-int subprocess_destroy(struct subprocess_s *const process) {
+int _cex_subprocess_destroy(struct _cex_subprocess_s *const process) {
   if (process->stdin_file) {
     fclose(process->stdin_file);
-    process->stdin_file = SUBPROCESS_NULL;
+    process->stdin_file = CEX_SUBPROCESS_NULL;
   }
 
   if (process->stdout_file) {
@@ -15680,14 +15608,14 @@ int subprocess_destroy(struct subprocess_s *const process) {
       fclose(process->stderr_file);
     }
 
-    process->stdout_file = SUBPROCESS_NULL;
-    process->stderr_file = SUBPROCESS_NULL;
+    process->stdout_file = CEX_SUBPROCESS_NULL;
+    process->stderr_file = CEX_SUBPROCESS_NULL;
   }
 
 #if defined(_WIN32)
   if (process->hProcess) {
     CloseHandle(process->hProcess);
-    process->hProcess = SUBPROCESS_NULL;
+    process->hProcess = CEX_SUBPROCESS_NULL;
 
     if (process->hStdInput) {
       CloseHandle(process->hStdInput);
@@ -15706,7 +15634,7 @@ int subprocess_destroy(struct subprocess_s *const process) {
   return 0;
 }
 
-int subprocess_terminate(struct subprocess_s *const process) {
+int _cex_subprocess_terminate(struct _cex_subprocess_s *const process) {
 #if defined(_WIN32)
   unsigned int killed_process_exit_code;
   int success_terminate;
@@ -15724,98 +15652,8 @@ int subprocess_terminate(struct subprocess_s *const process) {
 #endif
 }
 
-unsigned subprocess_read_stdout(struct subprocess_s *const process,
-                                char *const buffer, unsigned size) {
-#if defined(_WIN32)
-  void *handle;
-  unsigned long bytes_read = 0;
-  struct subprocess_overlapped_s overlapped = {0, 0, {{0, 0}}, SUBPROCESS_NULL};
-  overlapped.hEvent = process->hEventOutput;
-
-  handle = SUBPROCESS_PTR_CAST(void *,
-                               _get_osfhandle(_fileno(process->stdout_file)));
-
-  if (!ReadFile(handle, buffer, size, &bytes_read,
-                SUBPROCESS_PTR_CAST(LPOVERLAPPED, &overlapped))) {
-    const unsigned long errorIoPending = 997;
-    unsigned long error = GetLastError();
-
-    // Means we've got an async read!
-    if (error == errorIoPending) {
-      if (!GetOverlappedResult(handle,
-                               SUBPROCESS_PTR_CAST(LPOVERLAPPED, &overlapped),
-                               &bytes_read, 1)) {
-        const unsigned long errorIoIncomplete = 996;
-        const unsigned long errorHandleEOF = 38;
-        error = GetLastError();
-
-        if ((error != errorIoIncomplete) && (error != errorHandleEOF)) {
-          return 0;
-        }
-      }
-    }
-  }
-
-  return SUBPROCESS_CAST(unsigned, bytes_read);
-#else
-  const int fd = fileno(process->stdout_file);
-  const ssize_t bytes_read = read(fd, buffer, size);
-
-  if (bytes_read < 0) {
-    return 0;
-  }
-
-  return SUBPROCESS_CAST(unsigned, bytes_read);
-#endif
-}
-
-unsigned subprocess_read_stderr(struct subprocess_s *const process,
-                                char *const buffer, unsigned size) {
-#if defined(_WIN32)
-  void *handle;
-  unsigned long bytes_read = 0;
-  struct subprocess_overlapped_s overlapped = {0, 0, {{0, 0}}, SUBPROCESS_NULL};
-  overlapped.hEvent = process->hEventError;
-
-  handle = SUBPROCESS_PTR_CAST(void *,
-                               _get_osfhandle(_fileno(process->stderr_file)));
-
-  if (!ReadFile(handle, buffer, size, &bytes_read,
-                SUBPROCESS_PTR_CAST(LPOVERLAPPED, &overlapped))) {
-    const unsigned long errorIoPending = 997;
-    unsigned long error = GetLastError();
-
-    // Means we've got an async read!
-    if (error == errorIoPending) {
-      if (!GetOverlappedResult(handle,
-                               SUBPROCESS_PTR_CAST(LPOVERLAPPED, &overlapped),
-                               &bytes_read, 1)) {
-        const unsigned long errorIoIncomplete = 996;
-        const unsigned long errorHandleEOF = 38;
-        error = GetLastError();
-
-        if ((error != errorIoIncomplete) && (error != errorHandleEOF)) {
-          return 0;
-        }
-      }
-    }
-  }
-
-  return SUBPROCESS_CAST(unsigned, bytes_read);
-#else
-  const int fd = fileno(process->stderr_file);
-  const ssize_t bytes_read = read(fd, buffer, size);
-
-  if (bytes_read < 0) {
-    return 0;
-  }
-
-  return SUBPROCESS_CAST(unsigned, bytes_read);
-#endif
-}
-
-int subprocess_alive(struct subprocess_s *const process) {
-  int is_alive = SUBPROCESS_CAST(int, process->alive);
+int _cex_subprocess_alive(struct _cex_subprocess_s *const process) {
+  int is_alive = CEX_SUBPROCESS_CAST(int, process->alive);
 
   if (!is_alive) {
     return 0;
@@ -15845,7 +15683,7 @@ int subprocess_alive(struct subprocess_s *const process) {
       // the child now.
       process->child = 0;
 
-      if (subprocess_join(process, SUBPROCESS_NULL)) {
+      if (_cex_subprocess_join(process, CEX_SUBPROCESS_NULL)) {
         return -1;
       }
     }
@@ -15864,6 +15702,14 @@ int subprocess_alive(struct subprocess_s *const process) {
 #pragma clang diagnostic pop
 #endif
 #endif
+
+#undef CEX_SUBPROCESS_ATTRIBUTE
+#undef CEX_SUBPROCESS_CAST
+#undef CEX_SUBPROCESS_CONST_CAST
+#undef CEX_SUBPROCESS_NULL
+#undef CEX_SUBPROCESS_PTR_CAST
+#undef _cex_subprocess_weak
+#undef _cex_subprocess_tls
 
 #endif
 
@@ -17059,12 +16905,12 @@ cex_os__cmd__create(os_cmd_c* self, char** args, usize args_len, os_cmd_flags_s*
     };
 
     int sub_flags = 0;
-    if (!self->_flags.no_inherit_env) { sub_flags |= subprocess_option_inherit_environment; }
-    if (self->_flags.no_window) { sub_flags |= subprocess_option_no_window; }
-    if (!self->_flags.no_search_path) { sub_flags |= subprocess_option_search_user_path; }
-    if (self->_flags.combine_stdouterr) { sub_flags |= subprocess_option_combined_stdout_stderr; }
+    if (!self->_flags.no_inherit_env) { sub_flags |= _cex_subprocess_option_inherit_environment; }
+    if (self->_flags.no_window) { sub_flags |= _cex_subprocess_option_no_window; }
+    if (!self->_flags.no_search_path) { sub_flags |= _cex_subprocess_option_search_user_path; }
+    if (self->_flags.combine_stdouterr) { sub_flags |= _cex_subprocess_option_combined_stdout_stderr; }
 
-    int result = subprocess_create((const char* const*)args, sub_flags, &self->_subpr);
+    int result = _cex_subprocess_create((const char* const*)args, sub_flags, &self->_subpr);
     if (result != 0) { return os.get_last_error(); }
 
     return EOK;
@@ -17074,15 +16920,15 @@ cex_os__cmd__create(os_cmd_c* self, char** args, usize args_len, os_cmd_flags_s*
 static bool
 cex_os__cmd__is_alive(os_cmd_c* self)
 {
-    return subprocess_alive(&self->_subpr);
+    return _cex_subprocess_alive(&self->_subpr);
 }
 
 /// Terminates the running process
 static Exception
 cex_os__cmd__kill(os_cmd_c* self)
 {
-    if (subprocess_alive(&self->_subpr)) {
-        if (unlikely(subprocess_terminate(&self->_subpr) != 0)) { return e$raise(Error.os, "subprocess_terminate failed"); }
+    if (_cex_subprocess_alive(&self->_subpr)) {
+        if (unlikely(_cex_subprocess_terminate(&self->_subpr) != 0)) { return e$raise(Error.os, "_cex_subprocess_terminate failed"); }
     }
     return EOK;
 }
@@ -17125,13 +16971,13 @@ cex_os__cmd__wait(os_cmd_c* procs, usize procs_cnt, f64 timeout_sec)
         // We still can have running processes in case of timeouts
         if (!cex_os__cmd__is_alive(it)) {
 
-            if (subprocess_join(&it->_subpr, &it->_ret_code)) {
+            if (_cex_subprocess_join(&it->_subpr, &it->_ret_code)) {
                 result = result == EOK ? Error.os : result;
             } else if (it->_ret_code != 0) {
                 result = result == EOK ? Error.runtime : result;
             }
 
-            subprocess_destroy(&it->_subpr);
+            _cex_subprocess_destroy(&it->_subpr);
         }
     }
 
@@ -22658,7 +22504,7 @@ CEX contains some code and ideas from the following projects, all of them licens
 2. [stb_ds.h](https://github.com/nothings/stb/blob/master/stb_ds.h) - MIT/Public domain, by Sean Barrett, CEX arr$/hm$ are refactored versions of STB data structures, great idea 
 3. [stb_sprintf.h](https://github.com/nothings/stb/blob/master/stb_sprintf.h) - MIT/Public domain, by Sean Barrett, I refactored it, fixed all UB warnings from UBSAN, added CEX specific formatting
 4. [minirent.h](https://github.com/tsoding/minirent) - Alexey Kutepov, MIT license, WIN32 compatibility lib 
-5. [subprocess.h](https://github.com/sheredom/subprocess.h) - by Neil Henning, public domain, used in CEX as a daily driver for `os$cmd` and process communication
+5. [subprocess.h](https://github.com/sheredom/subprocess.h) - by Neil Henning, public domain, used in CEX as a daily driver for `os$cmd` and process communication; vendored privately as `_cex_subprocess_*` so it can coexist with the upstream `subprocess.h`
 6. [utest.h](https://github.com/sheredom/utest.h) - by Neil Henning, public domain, CEX test$ runner borrowed some ideas of macro magic for making declarative test cases
 7. [c3-lang](https://github.com/c3lang/c3c) - I borrowed some ideas about language features from C3, especially `mem$scope`, `mem$`/`tmem$` global allocators, scoped macros too.
 

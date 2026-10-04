@@ -1186,12 +1186,12 @@ cex_os__cmd__create(os_cmd_c* self, char** args, usize args_len, os_cmd_flags_s*
     };
 
     int sub_flags = 0;
-    if (!self->_flags.no_inherit_env) { sub_flags |= subprocess_option_inherit_environment; }
-    if (self->_flags.no_window) { sub_flags |= subprocess_option_no_window; }
-    if (!self->_flags.no_search_path) { sub_flags |= subprocess_option_search_user_path; }
-    if (self->_flags.combine_stdouterr) { sub_flags |= subprocess_option_combined_stdout_stderr; }
+    if (!self->_flags.no_inherit_env) { sub_flags |= _cex_subprocess_option_inherit_environment; }
+    if (self->_flags.no_window) { sub_flags |= _cex_subprocess_option_no_window; }
+    if (!self->_flags.no_search_path) { sub_flags |= _cex_subprocess_option_search_user_path; }
+    if (self->_flags.combine_stdouterr) { sub_flags |= _cex_subprocess_option_combined_stdout_stderr; }
 
-    int result = subprocess_create((const char* const*)args, sub_flags, &self->_subpr);
+    int result = _cex_subprocess_create((const char* const*)args, sub_flags, &self->_subpr);
     if (result != 0) { return os.get_last_error(); }
 
     return EOK;
@@ -1201,15 +1201,15 @@ cex_os__cmd__create(os_cmd_c* self, char** args, usize args_len, os_cmd_flags_s*
 static bool
 cex_os__cmd__is_alive(os_cmd_c* self)
 {
-    return subprocess_alive(&self->_subpr);
+    return _cex_subprocess_alive(&self->_subpr);
 }
 
 /// Terminates the running process
 static Exception
 cex_os__cmd__kill(os_cmd_c* self)
 {
-    if (subprocess_alive(&self->_subpr)) {
-        if (unlikely(subprocess_terminate(&self->_subpr) != 0)) { return e$raise(Error.os, "subprocess_terminate failed"); }
+    if (_cex_subprocess_alive(&self->_subpr)) {
+        if (unlikely(_cex_subprocess_terminate(&self->_subpr) != 0)) { return e$raise(Error.os, "_cex_subprocess_terminate failed"); }
     }
     return EOK;
 }
@@ -1252,13 +1252,13 @@ cex_os__cmd__wait(os_cmd_c* procs, usize procs_cnt, f64 timeout_sec)
         // We still can have running processes in case of timeouts
         if (!cex_os__cmd__is_alive(it)) {
 
-            if (subprocess_join(&it->_subpr, &it->_ret_code)) {
+            if (_cex_subprocess_join(&it->_subpr, &it->_ret_code)) {
                 result = result == EOK ? Error.os : result;
             } else if (it->_ret_code != 0) {
                 result = result == EOK ? Error.runtime : result;
             }
 
-            subprocess_destroy(&it->_subpr);
+            _cex_subprocess_destroy(&it->_subpr);
         }
     }
 
