@@ -285,6 +285,8 @@ test$case(os_cmd_kill_running)
 
 test$case(os_cmd_create_exec_not_found)
 {
+    const char* valgrind = getenv("CEX_VALGRIND");
+    if (valgrind && valgrind[0] == '1') { return EOK; } // valgrind posix_spawn doesn't propagate ENOENT
     os_cmd_c c = { 0 };
     char* args[] = { "cex_no_such_command_xyz", NULL };
     tassert_ne(EOK, os.cmd.create(&c, args, 2, NULL));
@@ -293,6 +295,8 @@ test$case(os_cmd_create_exec_not_found)
 
 test$case(os_cmd_create_no_search_path_not_found)
 {
+    const char* valgrind = getenv("CEX_VALGRIND");
+    if (valgrind && valgrind[0] == '1') { return EOK; } // valgrind posix_spawn doesn't propagate ENOENT
     os_cmd_c c = { 0 };
     char* args[] = { "cex_no_such_command_xyz", NULL };
     tassert_ne(EOK, os.cmd.create(&c, args, 2, &(os_cmd_flags_s){ .no_search_path = 1 }));
@@ -678,8 +682,12 @@ test$case(os_cmd_run_exec_not_found)
 {
     os_cmd_c c = { 0 };
     char* args[] = { "cex_no_such_command_xyz", NULL };
+#ifdef _WIN32
+    tassert_ne(EOK, os.cmd.run(args, 2, &c)); // CreateProcess fails immediately
+#else
     tassert_er(EOK, os.cmd.run(args, 2, &c)); // fork succeeds, child exec fails
     tassert_er(Error.runtime, os.cmd.wait(&c, 1, 0));
+#endif
     return EOK;
 }
 
