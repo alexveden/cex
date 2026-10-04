@@ -3569,36 +3569,48 @@ cex help --example cexy.utils.git_lib_fetch            - you can call it from yo
 
 ### Getting help for project
 
-`./cex help` is CLI command for getting help for your project, it works for CEX and your project as well. You can use it as symbol search: types, functions, files, examples and source code.  Also, it supports CEX namespaces as struct interfaces and macro$namespaces as well.
+`./cex help` is CLI command for getting help for your project, it works for CEX and your project as well. You can use it as symbol search: types, functions, files, examples and source code.  Also, it supports CEX namespaces as struct interfaces and macro$namespaces as well. For a compact API use `--brief`, for a namespace docs block use `--idioms`, `--list` dumps all namespaces, and `--agents [--out <file>]` emits the agent instruction content.
 
 #### Help command
 
 ```sh
 ~ ➜ ./cex help --help
 Usage:
-cex help [options] [query]
+cex help [options] [query...]
 Symbol / documentation search tool for C projects
 
 
 Options
     -h, --help        show this help message and exit
     -f, --filter      file pattern for searching (default: './*.[hc]')
+    -b, --brief       compact agent-friendly output (default: N)
+    -l, --list        list all namespaces (default: N)
     -s, --source      show full source on match (default: N)
-    -e, --example     finds random example in source base (default: N)
+    -e, --example     show up to 3 usage examples from the source base (default: N)
+    -i, --idioms      print only the namespace idioms/docs block (e.g. 'str$') (default: N)
+    -a, --agents      dump key CEX namespace idioms for AGENTS.md (default: N)
     -o, --out         write output of command to file (default: '')
 
-Query examples:
-cex help                     - list all namespaces in project directory
-cex help foo                 - find any symbol containing 'foo' (case sensitive)
-cex help foo.                - find namespace prefix: foo$, Foo_func(), FOO_CONST, etc
-cex help os$                 - find CEX namespace help (docs, macros, functions, types)
-cex help 'foo_*_bar'         - find using pattern search for symbols (see 'cex help str.match')
-cex help '*_(bar|foo)'       - find any symbol ending with '_bar' or '_foo'
-cex help str.find            - display function documentation if exactly matched
-cex help 'os$PATH_SEP'       - display macro constant value if exactly matched
-cex help str_s               - display type info and documentation if exactly matched
-cex help --source str.find   - display function source if exactly matched
-cex help --example str.find  - display random function use in codebase if exactly matched
+Query examples: 
+./cex help                             - show this help message
+./cex help foo                         - find any symbol containing 'foo' (case sensitive)
+./cex help foo.                        - find namespace prefix: foo$, Foo_func(), FOO_CONST, etc
+./cex help os$                         - find CEX namespace help (docs, macros, functions, types)
+./cex help 'foo_*_bar'                 - find using pattern search for symbols (see './cex help str.match')
+./cex help '*_(bar|foo)'               - find any symbol ending with '_bar' or '_foo'
+./cex help str.find                    - display function documentation if exactly matched
+./cex help 'os$PATH_SEP'               - display macro constant value if exactly matched
+./cex help str_s                       - display type info and documentation if exactly matched
+./cex help --source str.find           - display function source if exactly matched
+./cex help --list                      - list all namespaces in project directory
+./cex help --example str.find          - display up to 3 usages (file:line + code) from the codebase
+./cex help --brief str.                - compact agent-friendly namespace API
+./cex help --brief a b c               - batch query multiple symbols
+./cex help --brief --example str.find  - compact example locations only
+./cex help --idioms str$               - print only namespace idioms/docs block
+./cex help --brief --idioms str$       - namespace idioms + compact API
+./cex help --agents                    - dump key CEX namespace idioms (AGENTS.md content)
+./cex help --agents --out AGENTS.md    - write AGENTS.md
 
 ```
 
@@ -3614,6 +3626,12 @@ Just type:
 ./cex help e$
 # Help for some parts of the language for$ / arr$ / hm$
 ./cex help arr$ 
+# Compact API and/or docs block only
+./cex help --brief str$
+./cex help --idioms str$
+./cex help --brief --idioms str$
+# Dump agent instructions (AGENTS.md content)
+./cex help --agents --out AGENTS.md
 # Make your own cheat-sheet!
 ./cex help myproj_namespace$
 ```
@@ -3774,6 +3792,8 @@ Just type:
 # Make your own cheat-sheet!
 ./cex help myproj_namespace$
 ```
+
+Use `./cex help --brief <ns>$` for a compact API, `--idioms` for the docs block only, `--list` to list all namespaces, and `--agents [--out <file>]` for agent instructions.
 
 ### `argparse`
 
