@@ -128,8 +128,8 @@ Tools installed (optional):
 * cexy$vcpkg_triplet        Not set
 
 Global environment:
-* Cex Version               0.14.0 (2025-06-05)
-* Git Hash                  07aa036d9094bc15eac8637786df0776ca010a33
+* Cex Version               0.70.0 (2026-10-04)
+* Git Hash                  dde1c2048e029d0b6cffd325e1e22ae94c62e44b
 * os.platform.current()     linux
 * ./cex -D<ARGS> config     ""
 ```
@@ -152,6 +152,8 @@ stats               Calculate project lines of code and quality stats
 config              Check project and system environment and config
 libfetch            Get 3rd party source code via git or install CEX libs
 test                Test running
+coverage            Test coverage run/report/export/clean
+build-docs          Build CEX documentation 
 fuzz                Generic fuzz tester
 app                 Generic app build/run/debug
 
