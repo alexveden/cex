@@ -28,7 +28,7 @@ test_vcpkg_make_lib_tree(void)
 {
     e$ret(os.fs.mkpath(VCPKG_BASE "/lib/pkgconfig/"));
     e$ret(os.fs.mkpath(VCPKG_BASE "/include/"));
-    e$ret(io.file.save(VCPKG_BASE "/lib/libcextest.a", "dummy"));
+    e$ret(io.file.save(VCPKG_BASE "/lib/libcextest" cexy$build_ext_lib_stat, "dummy"));
     return EOK;
 }
 
@@ -79,8 +79,8 @@ test$case(test_pkgconf_vcpkg_trace_and_tool_error)
         arr$(char*) out = arr$new(out, _);
         e$ret(test_vcpkg_make_lib_tree());
         // libs with a space and an empty arg exercise the trace-print branches
-        e$ret(io.file.save(VCPKG_BASE "/lib/foo bar.a", "dummy"));
-        e$ret(io.file.save(VCPKG_BASE "/lib/.a", "dummy"));
+        e$ret(io.file.save(VCPKG_BASE "/lib/foo bar" cexy$build_ext_lib_stat, "dummy"));
+        e$ret(io.file.save(VCPKG_BASE "/lib/" cexy$build_ext_lib_stat, "dummy"));
 
         char* old = os.env.get("PKG_CONFIG_PATH", NULL);
         if (old) { old = str.clone(old, _); }
