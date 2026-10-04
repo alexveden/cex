@@ -1,0 +1,547 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage-global.info - src/src/cexy.h</title>
+  <link rel="stylesheet" type="text/css" href="../../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../../index.html">top level</a> - <a href="index.html">src/src</a> - cexy.h<span style="font-size: 80%;"> (source / <a href="cexy.h.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage-global.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryHi">96.1&nbsp;%</td>
+            <td class="headerCovTableEntry">102</td>
+            <td class="headerCovTableEntry">98</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2026-10-04 10:18:36</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryHi">-</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">0</td>
+          </tr>
+                  <tr><td><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : #pragma once</span>
+<span id="L2"><span class="lineNum">       2</span>              : #if !defined(cex$enable_minimal)</span>
+<span id="L3"><span class="lineNum">       3</span>              : #include &quot;all.h&quot;</span>
+<span id="L4"><span class="lineNum">       4</span>              : </span>
+<span id="L5"><span class="lineNum">       5</span>              : #if defined(CEX_BUILD) || defined(CEX_NEW)</span>
+<span id="L6"><span class="lineNum">       6</span>              : </span>
+<span id="L7"><span class="lineNum">       7</span>              : #    ifndef cexy$cex_self_cc</span>
+<span id="L8"><span class="lineNum">       8</span>              : #        if defined(__clang__)</span>
+<span id="L9"><span class="lineNum">       9</span>              : /// Macro constant derived from the compiler type used to initially build ./cex app</span>
+<span id="L10"><span class="lineNum">      10</span> <span class="tlaGNC tlaBgGNC">          36 : #            define cexy$cex_self_cc &quot;clang&quot;</span></span>
+<span id="L11"><span class="lineNum">      11</span>              : #        elif defined(__GNUC__)</span>
+<span id="L12"><span class="lineNum">      12</span>              : #            define cexy$cex_self_cc &quot;gcc&quot;</span>
+<span id="L13"><span class="lineNum">      13</span>              : #        else</span>
+<span id="L14"><span class="lineNum">      14</span>              : #            error &quot;Compiler type is not supported&quot;</span>
+<span id="L15"><span class="lineNum">      15</span>              : #        endif</span>
+<span id="L16"><span class="lineNum">      16</span>              : #    endif // #ifndef cexy$cex_self_cc</span>
+<span id="L17"><span class="lineNum">      17</span>              : </span>
+<span id="L18"><span class="lineNum">      18</span>              : #    ifndef cexy$cc</span>
+<span id="L19"><span class="lineNum">      19</span>              : /// Default compiler for building tests/apps (by default inferred from ./cex tool compiler)</span>
+<span id="L20"><span class="lineNum">      20</span> <span class="tlaGNC">          36 : #        define cexy$cc cexy$cex_self_cc</span></span>
+<span id="L21"><span class="lineNum">      21</span>              : #    endif // #ifndef cexy$cc</span>
+<span id="L22"><span class="lineNum">      22</span>              : </span>
+<span id="L23"><span class="lineNum">      23</span>              : </span>
+<span id="L24"><span class="lineNum">      24</span>              : #    ifndef cexy$cc_include</span>
+<span id="L25"><span class="lineNum">      25</span>              : /// Include path for the #include &quot;some.h&quot; (may be overridden by user)</span>
+<span id="L26"><span class="lineNum">      26</span> <span class="tlaGNC">           4 : #        define cexy$cc_include &quot;-I.&quot;</span></span>
+<span id="L27"><span class="lineNum">      27</span>              : #    endif</span>
+<span id="L28"><span class="lineNum">      28</span>              : </span>
+<span id="L29"><span class="lineNum">      29</span>              : #    ifndef cexy$build_dir</span>
+<span id="L30"><span class="lineNum">      30</span>              : /// Build dir for project executables and tests (may be overridden by user)</span>
+<span id="L31"><span class="lineNum">      31</span> <span class="tlaGNC">         340 : #        define cexy$build_dir &quot;./build&quot;</span></span>
+<span id="L32"><span class="lineNum">      32</span>              : #    endif</span>
+<span id="L33"><span class="lineNum">      33</span>              : </span>
+<span id="L34"><span class="lineNum">      34</span>              : #    ifndef cexy$src_dir</span>
+<span id="L35"><span class="lineNum">      35</span>              : /// Directory for applications and code (may be overridden by user)</span>
+<span id="L36"><span class="lineNum">      36</span> <span class="tlaGNC">         108 : #        define cexy$src_dir &quot;./src&quot;</span></span>
+<span id="L37"><span class="lineNum">      37</span>              : #    endif</span>
+<span id="L38"><span class="lineNum">      38</span>              : </span>
+<span id="L39"><span class="lineNum">      39</span>              : #    ifndef cexy$create_compile_flags</span>
+<span id="L40"><span class="lineNum">      40</span>              : /// If 1 creates `compile_flags.txt` in project dir at every ./cex run, 0 - ignores creation (default: 1)</span>
+<span id="L41"><span class="lineNum">      41</span>              : #       define cexy$create_compile_flags 1</span>
+<span id="L42"><span class="lineNum">      42</span>              : #    endif</span>
+<span id="L43"><span class="lineNum">      43</span>              : </span>
+<span id="L44"><span class="lineNum">      44</span>              : #    ifndef cexy$cc_args_sanitizer</span>
+<span id="L45"><span class="lineNum">      45</span>              : #        ifdef CEX_TEST_NOASAN</span>
+<span id="L46"><span class="lineNum">      46</span>              : /// CEX_TEST_NOASAN (e.g. emulated CI) drops sanitizers whose runtime may be unavailable</span>
+<span id="L47"><span class="lineNum">      47</span> <span class="tlaGNC">          24 : #            define cexy$cc_args_sanitizer &quot;-fstack-protector-strong&quot;</span></span>
+<span id="L48"><span class="lineNum">      48</span>              : #        elif defined(_WIN32) || defined(MACOS_X) || defined(__APPLE__)</span>
+<span id="L49"><span class="lineNum">      49</span>              : #            if defined(__clang__)</span>
+<span id="L50"><span class="lineNum">      50</span>              : /// Debug mode and tests sanitizer flags (may be overridden by user)</span>
+<span id="L51"><span class="lineNum">      51</span>              : #                define cexy$cc_args_sanitizer                                                     \</span>
+<span id="L52"><span class="lineNum">      52</span> <span class="tlaUNC tlaBgUNC">           0 :                     &quot;-fsanitize-address-use-after-scope&quot;, &quot;-fsanitize=address&quot;,                    \</span></span>
+<span id="L53"><span class="lineNum">      53</span> <span class="tlaUNC">           0 :                         &quot;-fsanitize=undefined&quot;, &quot;-fstack-protector-strong&quot;</span></span>
+<span id="L54"><span class="lineNum">      54</span>              : #            else</span>
+<span id="L55"><span class="lineNum">      55</span>              : #                define cexy$cc_args_sanitizer &quot;-fstack-protector-strong&quot;</span>
+<span id="L56"><span class="lineNum">      56</span>              : #            endif</span>
+<span id="L57"><span class="lineNum">      57</span>              : #        else</span>
+<span id="L58"><span class="lineNum">      58</span>              : #            define cexy$cc_args_sanitizer                                                         \</span>
+<span id="L59"><span class="lineNum">      59</span> <span class="tlaUNC">           0 :                 &quot;-fsanitize-address-use-after-scope&quot;, &quot;-fsanitize=address&quot;,                        \</span></span>
+<span id="L60"><span class="lineNum">      60</span> <span class="tlaUNC">           0 :                     &quot;-fsanitize=undefined&quot;, &quot;-fsanitize=leak&quot;, &quot;-fstack-protector-strong&quot;</span></span>
+<span id="L61"><span class="lineNum">      61</span>              : #        endif</span>
+<span id="L62"><span class="lineNum">      62</span>              : #    endif</span>
+<span id="L63"><span class="lineNum">      63</span>              : </span>
+<span id="L64"><span class="lineNum">      64</span>              : #    ifndef cexy$cc_args</span>
+<span id="L65"><span class="lineNum">      65</span>              : /// Common compiler flags (may be overridden by user)</span>
+<span id="L66"><span class="lineNum">      66</span> <span class="tlaGNC tlaBgGNC">          45 : #        define cexy$cc_args &quot;-Wall&quot;, &quot;-Wextra&quot;, &quot;-Werror&quot;, &quot;-g3&quot;, cexy$cc_args_sanitizer</span></span>
+<span id="L67"><span class="lineNum">      67</span>              : #    endif</span>
+<span id="L68"><span class="lineNum">      68</span>              : </span>
+<span id="L69"><span class="lineNum">      69</span>              : #    ifndef cexy$cc_args_test</span>
+<span id="L70"><span class="lineNum">      70</span>              : /// Test runner compiler flags (may be overridden by user)</span>
+<span id="L71"><span class="lineNum">      71</span> <span class="tlaGNC">          33 : #        define cexy$cc_args_test cexy$cc_args, &quot;-Wno-unused-function&quot;, &quot;-Itests/&quot;</span></span>
+<span id="L72"><span class="lineNum">      72</span>              : #    endif</span>
+<span id="L73"><span class="lineNum">      73</span>              : </span>
+<span id="L74"><span class="lineNum">      74</span>              : #    ifndef cexy$fuzzer</span>
+<span id="L75"><span class="lineNum">      75</span>              : /// Fuzzer compilation command (supports clang libfuzzer and afl++)</span>
+<span id="L76"><span class="lineNum">      76</span> <span class="tlaGNC">           1 : #        define cexy$fuzzer &quot;clang&quot;, &quot;-O0&quot;, &quot;-Wall&quot;, &quot;-Wextra&quot;, &quot;-Werror&quot;, &quot;-g&quot;, &quot;-Wno-unused-function&quot;, &quot;-fsanitize=address,fuzzer,undefined&quot;, &quot;-fsanitize-undefined-trap-on-error&quot;</span></span>
+<span id="L77"><span class="lineNum">      77</span>              : #    endif</span>
+<span id="L78"><span class="lineNum">      78</span>              : </span>
+<span id="L79"><span class="lineNum">      79</span>              : #    ifndef cexy$cex_self_args</span>
+<span id="L80"><span class="lineNum">      80</span>              : /// Compiler flags used for building ./cex.c -&gt; ./cex (may be overridden by user)</span>
+<span id="L81"><span class="lineNum">      81</span>              : #        define cexy$cex_self_args</span>
+<span id="L82"><span class="lineNum">      82</span>              : #    endif</span>
+<span id="L83"><span class="lineNum">      83</span>              : </span>
+<span id="L84"><span class="lineNum">      84</span>              : #    ifndef cexy$pkgconf_cmd</span>
+<span id="L85"><span class="lineNum">      85</span>              : /// Dependency resolver command: pkg-config, pkgconf, etc. May be used in cross-platform</span>
+<span id="L86"><span class="lineNum">      86</span>              : /// compilation, allowed multiple command arguments here</span>
+<span id="L87"><span class="lineNum">      87</span> <span class="tlaGNC">          27 : #        define cexy$pkgconf_cmd &quot;pkgconf&quot;</span></span>
+<span id="L88"><span class="lineNum">      88</span>              : #    endif</span>
+<span id="L89"><span class="lineNum">      89</span>              : </span>
+<span id="L90"><span class="lineNum">      90</span>              : /// Helper macro for running cexy.utils.pkgconf() a dependency resolver for libs</span>
+<span id="L91"><span class="lineNum">      91</span>              : #    define cexy$pkgconf(allocator, out_cc_args, pkgconf_args...)                                  \</span>
+<span id="L92"><span class="lineNum">      92</span> <span class="tlaGNC">          15 :         ({                                                                                         \</span></span>
+<span id="L93"><span class="lineNum">      93</span> <span class="tlaGNC">          15 :             char* _args[] = { pkgconf_args };                                                      \</span></span>
+<span id="L94"><span class="lineNum">      94</span> <span class="tlaGNC">          15 :             usize _args_len = arr$len(_args);                                                      \</span></span>
+<span id="L95"><span class="lineNum">      95</span> <span class="tlaGNC">          15 :             cexy.utils.pkgconf(allocator, out_cc_args, _args, _args_len);                          \</span></span>
+<span id="L96"><span class="lineNum">      96</span> <span class="tlaGNC">          15 :         })</span></span>
+<span id="L97"><span class="lineNum">      97</span>              : </span>
+<span id="L98"><span class="lineNum">      98</span>              : #    ifndef cexy$pkgconf_libs</span>
+<span id="L99"><span class="lineNum">      99</span>              : /// list of standard system project libs (for example: &quot;lua5.3&quot;, &quot;libz&quot;)</span>
+<span id="L100"><span class="lineNum">     100</span>              : #        define cexy$pkgconf_libs</span>
+<span id="L101"><span class="lineNum">     101</span>              : #    endif</span>
+<span id="L102"><span class="lineNum">     102</span>              : </span>
+<span id="L103"><span class="lineNum">     103</span>              : #    ifndef cexy$vcpkg_root</span>
+<span id="L104"><span class="lineNum">     104</span>              : /// Current vcpkg root path (where ./vcpkg tool is located)</span>
+<span id="L105"><span class="lineNum">     105</span> <span class="tlaGNC">          42 : #        define cexy$vcpkg_root NULL</span></span>
+<span id="L106"><span class="lineNum">     106</span>              : #    endif</span>
+<span id="L107"><span class="lineNum">     107</span>              : </span>
+<span id="L108"><span class="lineNum">     108</span>              : #    ifndef cexy$vcpkg_triplet</span>
+<span id="L109"><span class="lineNum">     109</span>              : /// Current build triplet (empty, NULL, or string like &quot;x64-linux&quot;)</span>
+<span id="L110"><span class="lineNum">     110</span>              : ///   if you are using  `vcpkg install mydep`, ignored if blank or NULL, </span>
+<span id="L111"><span class="lineNum">     111</span>              : ///   list of all supported triplets is here: `vcpkg help triplet`)</span>
+<span id="L112"><span class="lineNum">     112</span>              : #        define cexy$vcpkg_triplet</span>
+<span id="L113"><span class="lineNum">     113</span>              : #    endif</span>
+<span id="L114"><span class="lineNum">     114</span>              : </span>
+<span id="L115"><span class="lineNum">     115</span>              : #    ifndef cexy$ld_args</span>
+<span id="L116"><span class="lineNum">     116</span>              : /// Linker flags (e.g. -L./lib/path/ -lmylib -lm) (may be overridden)</span>
+<span id="L117"><span class="lineNum">     117</span>              : #        define cexy$ld_args</span>
+<span id="L118"><span class="lineNum">     118</span>              : #    endif</span>
+<span id="L119"><span class="lineNum">     119</span>              : </span>
+<span id="L120"><span class="lineNum">     120</span>              : #    ifndef cexy$debug_cmd</span>
+<span id="L121"><span class="lineNum">     121</span>              : /// Command for launching debugger for cex test/app debug (may be overridden)</span>
+<span id="L122"><span class="lineNum">     122</span>              : #        define cexy$debug_cmd &quot;gdb&quot;, &quot;-q&quot;, &quot;--args&quot;</span>
+<span id="L123"><span class="lineNum">     123</span>              : #    endif</span>
+<span id="L124"><span class="lineNum">     124</span>              : </span>
+<span id="L125"><span class="lineNum">     125</span>              : #    ifndef cexy$build_ext_exe</span>
+<span id="L126"><span class="lineNum">     126</span>              : #        ifdef _WIN32</span>
+<span id="L127"><span class="lineNum">     127</span>              : /// Extension for executables (e.g. '.exe' for win32)</span>
+<span id="L128"><span class="lineNum">     128</span> <span class="tlaGNC">          41 : #            define cexy$build_ext_exe &quot;.exe&quot;</span></span>
+<span id="L129"><span class="lineNum">     129</span>              : #        else</span>
+<span id="L130"><span class="lineNum">     130</span> <span class="tlaGNC">         140 : #            define cexy$build_ext_exe &quot;&quot;</span></span>
+<span id="L131"><span class="lineNum">     131</span>              : #        endif</span>
+<span id="L132"><span class="lineNum">     132</span>              : #    endif</span>
+<span id="L133"><span class="lineNum">     133</span>              : </span>
+<span id="L134"><span class="lineNum">     134</span>              : #    ifndef cexy$build_ext_lib_dyn</span>
+<span id="L135"><span class="lineNum">     135</span>              : #        ifdef _WIN32</span>
+<span id="L136"><span class="lineNum">     136</span>              : /// Extension for dynamic linked libs (&quot;.dll&quot; win, &quot;.so&quot; linux)</span>
+<span id="L137"><span class="lineNum">     137</span>              : #            define cexy$build_ext_lib_dyn &quot;.dll&quot;</span>
+<span id="L138"><span class="lineNum">     138</span>              : #        else</span>
+<span id="L139"><span class="lineNum">     139</span>              : #            define cexy$build_ext_lib_dyn &quot;.so&quot;</span>
+<span id="L140"><span class="lineNum">     140</span>              : #        endif</span>
+<span id="L141"><span class="lineNum">     141</span>              : #    endif</span>
+<span id="L142"><span class="lineNum">     142</span>              : </span>
+<span id="L143"><span class="lineNum">     143</span>              : #    ifndef cexy$build_ext_lib_stat</span>
+<span id="L144"><span class="lineNum">     144</span>              : #        ifdef _WIN32</span>
+<span id="L145"><span class="lineNum">     145</span>              : /// Extension for static libs (&quot;.lib&quot; win, &quot;.a&quot; linux)</span>
+<span id="L146"><span class="lineNum">     146</span> <span class="tlaGNC">          12 : #            define cexy$build_ext_lib_stat &quot;.lib&quot;</span></span>
+<span id="L147"><span class="lineNum">     147</span>              : #        else</span>
+<span id="L148"><span class="lineNum">     148</span> <span class="tlaGNC">          24 : #            define cexy$build_ext_lib_stat &quot;.a&quot;</span></span>
+<span id="L149"><span class="lineNum">     149</span>              : #        endif</span>
+<span id="L150"><span class="lineNum">     150</span>              : #    endif</span>
+<span id="L151"><span class="lineNum">     151</span>              : </span>
+<span id="L152"><span class="lineNum">     152</span>              : #    ifndef cexy$process_ignore_kw</span>
+<span id="L153"><span class="lineNum">     153</span>              : /**</span>
+<span id="L154"><span class="lineNum">     154</span>              : @brief Pattern for ignoring extra macro keywords in function signatures (for cex process).</span>
+<span id="L155"><span class="lineNum">     155</span>              : See `cex help str.match` for more information about patter syntax.</span>
+<span id="L156"><span class="lineNum">     156</span>              : */</span>
+<span id="L157"><span class="lineNum">     157</span> <span class="tlaGNC">          78 : #        define cexy$process_ignore_kw &quot;&quot;</span></span>
+<span id="L158"><span class="lineNum">     158</span>              : #    endif</span>
+<span id="L159"><span class="lineNum">     159</span>              : </span>
+<span id="L160"><span class="lineNum">     160</span>              : </span>
+<span id="L161"><span class="lineNum">     161</span>              : #    define _cexy$cmd_process                                                                      \</span>
+<span id="L162"><span class="lineNum">     162</span>              :         { .name = &quot;process&quot;,                                                                       \</span>
+<span id="L163"><span class="lineNum">     163</span>              :           .func = cexy.cmd.process,                                                                \</span>
+<span id="L164"><span class="lineNum">     164</span>              :           .help = &quot;Create CEX namespaces from project source code&quot; }</span>
+<span id="L165"><span class="lineNum">     165</span>              : </span>
+<span id="L166"><span class="lineNum">     166</span>              : #    define _cexy$cmd_new { .name = &quot;new&quot;, .func = cexy.cmd.new, .help = &quot;Create new CEX project&quot; }</span>
+<span id="L167"><span class="lineNum">     167</span>              : </span>
+<span id="L168"><span class="lineNum">     168</span>              : #    define _cexy$cmd_help                                                                         \</span>
+<span id="L169"><span class="lineNum">     169</span>              :         { .name = &quot;help&quot;,                                                                          \</span>
+<span id="L170"><span class="lineNum">     170</span>              :           .func = cexy.cmd.help,                                                                   \</span>
+<span id="L171"><span class="lineNum">     171</span>              :           .help = &quot;Search cex.h and project symbols and extract help&quot; }</span>
+<span id="L172"><span class="lineNum">     172</span>              : </span>
+<span id="L173"><span class="lineNum">     173</span>              : #    define _cexy$cmd_config                                                                       \</span>
+<span id="L174"><span class="lineNum">     174</span>              :         { .name = &quot;config&quot;,                                                                        \</span>
+<span id="L175"><span class="lineNum">     175</span>              :           .func = cexy.cmd.config,                                                                 \</span>
+<span id="L176"><span class="lineNum">     176</span>              :           .help = &quot;Check project and system environment and config&quot; }</span>
+<span id="L177"><span class="lineNum">     177</span>              : </span>
+<span id="L178"><span class="lineNum">     178</span>              : #    define _cexy$cmd_libfetch                                                                     \</span>
+<span id="L179"><span class="lineNum">     179</span>              :         { .name = &quot;libfetch&quot;,                                                                      \</span>
+<span id="L180"><span class="lineNum">     180</span>              :           .func = cexy.cmd.libfetch,                                                               \</span>
+<span id="L181"><span class="lineNum">     181</span>              :           .help = &quot;Get 3rd party source code via git or install CEX libs&quot; }</span>
+<span id="L182"><span class="lineNum">     182</span>              : </span>
+<span id="L183"><span class="lineNum">     183</span>              : #    define _cexy$cmd_stats                                                                        \</span>
+<span id="L184"><span class="lineNum">     184</span>              :         { .name = &quot;stats&quot;,                                                                         \</span>
+<span id="L185"><span class="lineNum">     185</span>              :           .func = cexy.cmd.stats,                                                                  \</span>
+<span id="L186"><span class="lineNum">     186</span>              :           .help = &quot;Calculate project lines of code and quality stats&quot; }</span>
+<span id="L187"><span class="lineNum">     187</span>              : </span>
+<span id="L188"><span class="lineNum">     188</span>              : /// Simple test runner command (test runner, debugger launch, etc)</span>
+<span id="L189"><span class="lineNum">     189</span>              : #    define cexy$cmd_test                                                                          \</span>
+<span id="L190"><span class="lineNum">     190</span>              :         { .name = &quot;test&quot;,                                                                          \</span>
+<span id="L191"><span class="lineNum">     191</span>              :           .func = cexy.cmd.simple_test,                                                            \</span>
+<span id="L192"><span class="lineNum">     192</span>              :           .help = &quot;Generic unit test build/run/debug&quot; }</span>
+<span id="L193"><span class="lineNum">     193</span>              : </span>
+<span id="L194"><span class="lineNum">     194</span>              : /// Simple fuzz tests runner command</span>
+<span id="L195"><span class="lineNum">     195</span>              : #    define cexy$cmd_fuzz                                                                          \</span>
+<span id="L196"><span class="lineNum">     196</span>              :         { .name = &quot;fuzz&quot;,                                                                          \</span>
+<span id="L197"><span class="lineNum">     197</span>              :           .func = cexy.cmd.simple_fuzz,                                                            \</span>
+<span id="L198"><span class="lineNum">     198</span>              :           .help = &quot;Generic fuzz tester&quot; }</span>
+<span id="L199"><span class="lineNum">     199</span>              : </span>
+<span id="L200"><span class="lineNum">     200</span>              : </span>
+<span id="L201"><span class="lineNum">     201</span>              : /// Simple app build command (unity build, simple linking, runner, debugger launch, etc)</span>
+<span id="L202"><span class="lineNum">     202</span>              : #    define cexy$cmd_app                                                                           \</span>
+<span id="L203"><span class="lineNum">     203</span>              :         { .name = &quot;app&quot;, .func = cexy.cmd.simple_app, .help = &quot;Generic app build/run/debug&quot; }</span>
+<span id="L204"><span class="lineNum">     204</span>              : </span>
+<span id="L205"><span class="lineNum">     205</span>              : /// All built-in commands for ./cex tool</span>
+<span id="L206"><span class="lineNum">     206</span>              : #    define cexy$cmd_all                                                                           \</span>
+<span id="L207"><span class="lineNum">     207</span>              :         _cexy$cmd_help, _cexy$cmd_process, _cexy$cmd_new, _cexy$cmd_stats, _cexy$cmd_config,       \</span>
+<span id="L208"><span class="lineNum">     208</span>              :             _cexy$cmd_libfetch</span>
+<span id="L209"><span class="lineNum">     209</span>              : </span>
+<span id="L210"><span class="lineNum">     210</span>              : /// Initialize CEX build system (build itself)</span>
+<span id="L211"><span class="lineNum">     211</span>              : #    define cexy$initialize() cexy.build_self(argc, argv, __FILE__)</span>
+<span id="L212"><span class="lineNum">     212</span>              : /// ./cex --help description</span>
+<span id="L213"><span class="lineNum">     213</span>              : #    define cexy$description &quot;\nCEX language (cexy$) build and project management system&quot;</span>
+<span id="L214"><span class="lineNum">     214</span>              : /// ./cex --help usage</span>
+<span id="L215"><span class="lineNum">     215</span>              : #    define cexy$usage &quot; [-D] [-D&lt;ARG1&gt;] [-D&lt;ARG2&gt;] command [options] [args]&quot;</span>
+<span id="L216"><span class="lineNum">     216</span>              : </span>
+<span id="L217"><span class="lineNum">     217</span>              : // clang-format off</span>
+<span id="L218"><span class="lineNum">     218</span>              : /// ./cex --help epilog</span>
+<span id="L219"><span class="lineNum">     219</span>              :     #define cexy$epilog \</span>
+<span id="L220"><span class="lineNum">     220</span>              :         &quot;\nYou may try to get help for commands as well, try `cex process --help`\n&quot;\</span>
+<span id="L221"><span class="lineNum">     221</span>              :         &quot;Use `cex -DFOO -DBAR config` to set project config flags\n&quot;\</span>
+<span id="L222"><span class="lineNum">     222</span>              :         &quot;Use `cex -D config` to reset all project config flags to defaults\n&quot;</span>
+<span id="L223"><span class="lineNum">     223</span>              : // clang-format on</span>
+<span id="L224"><span class="lineNum">     224</span>              : </span>
+<span id="L225"><span class="lineNum">     225</span>              : // clang-format off</span>
+<span id="L226"><span class="lineNum">     226</span> <span class="tlaGNC">          45 : #define _cexy$cmd_test_help (\</span></span>
+<span id="L227"><span class="lineNum">     227</span> <span class="tlaGNC">          45 :         &quot;CEX built-in simple test runner\n&quot;\</span></span>
+<span id="L228"><span class="lineNum">     228</span> <span class="tlaGNC">          45 :         &quot;\nEach cexy test is self-sufficient and unity build, which allows you to test\n&quot;\</span></span>
+<span id="L229"><span class="lineNum">     229</span> <span class="tlaGNC">          45 :         &quot;static funcions, apply mocks to some selected modules and functions, have more\n&quot;\</span></span>
+<span id="L230"><span class="lineNum">     230</span> <span class="tlaGNC">          45 :         &quot;control over your code. See `cex config --help` for customization/config info.\n&quot;\</span></span>
+<span id="L231"><span class="lineNum">     231</span> <span class="tlaGNC">          45 : \</span></span>
+<span id="L232"><span class="lineNum">     232</span> <span class="tlaGNC">          45 :         &quot;\nCEX test runner keep checking include modified time to track changes in the\n&quot;\</span></span>
+<span id="L233"><span class="lineNum">     233</span> <span class="tlaGNC">          45 :         &quot;source files. It expects that each #include \&quot;myfile.c\&quot; has \&quot;myfile.h\&quot; in \n&quot; \</span></span>
+<span id="L234"><span class="lineNum">     234</span> <span class="tlaGNC">          45 :         &quot;the same folder. Test runner uses cexy$cc_include for searching.\n&quot;\</span></span>
+<span id="L235"><span class="lineNum">     235</span> <span class="tlaGNC">          45 : \</span></span>
+<span id="L236"><span class="lineNum">     236</span> <span class="tlaGNC">          45 :         &quot;\nCEX is a test-centric language, it enables additional sanity checks then in\n&quot; \</span></span>
+<span id="L237"><span class="lineNum">     237</span> <span class="tlaGNC">          45 :         &quot;test suite, all warnings are enabled -Wall -Wextra. Sanitizers are enabled by\n&quot;\</span></span>
+<span id="L238"><span class="lineNum">     238</span> <span class="tlaGNC">          45 :         &quot;default.\n&quot;\</span></span>
+<span id="L239"><span class="lineNum">     239</span> <span class="tlaGNC">          45 : \</span></span>
+<span id="L240"><span class="lineNum">     240</span> <span class="tlaGNC">          45 :         &quot;\nCode requirements:\n&quot;\</span></span>
+<span id="L241"><span class="lineNum">     241</span> <span class="tlaGNC">          45 :         &quot;1. You should include all your source files directly using #include \&quot;path/src.c\&quot;\n&quot;\</span></span>
+<span id="L242"><span class="lineNum">     242</span> <span class="tlaGNC">          45 :         &quot;2. If needed provide linker options via cexy$ld_libs / cexy$ld_args\n&quot;\</span></span>
+<span id="L243"><span class="lineNum">     243</span> <span class="tlaGNC">          45 :         &quot;3. If needed provide compiler options via cexy$cc_args_test\n&quot;\</span></span>
+<span id="L244"><span class="lineNum">     244</span> <span class="tlaGNC">          45 :         &quot;4. All tests have to be in tests/ folder, and start with `test_` prefix \n&quot;\</span></span>
+<span id="L245"><span class="lineNum">     245</span> <span class="tlaGNC">          45 :         &quot;5. Only #include with \&quot;\&quot; checked for modification \n&quot;\</span></span>
+<span id="L246"><span class="lineNum">     246</span> <span class="tlaGNC">          45 : \</span></span>
+<span id="L247"><span class="lineNum">     247</span> <span class="tlaGNC">          45 :         &quot;\nTest suite setup/teardown:\n&quot;\</span></span>
+<span id="L248"><span class="lineNum">     248</span> <span class="tlaGNC">          45 :         &quot;// setup before every case  \n&quot;\</span></span>
+<span id="L249"><span class="lineNum">     249</span> <span class="tlaGNC">          45 :         &quot;test$setup_case() {return EOK;} \n&quot;\</span></span>
+<span id="L250"><span class="lineNum">     250</span> <span class="tlaGNC">          45 :         &quot;// teardown after every case \ntest$setup_case() {return EOK;} \n&quot;\</span></span>
+<span id="L251"><span class="lineNum">     251</span> <span class="tlaGNC">          45 :         &quot;// setup before suite (only once) \ntest$setup_suite() {return EOK;} \n&quot;\</span></span>
+<span id="L252"><span class="lineNum">     252</span> <span class="tlaGNC">          45 :         &quot;// teardown after suite (only once) \ntest$setup_suite() {return EOK;} \n&quot;\</span></span>
+<span id="L253"><span class="lineNum">     253</span> <span class="tlaGNC">          45 : \</span></span>
+<span id="L254"><span class="lineNum">     254</span> <span class="tlaGNC">          45 :         &quot;\nTest case:\n&quot;\</span></span>
+<span id="L255"><span class="lineNum">     255</span> <span class="tlaGNC">          45 :         &quot;\ntest$case(my_test_case_name) {\n&quot;\</span></span>
+<span id="L256"><span class="lineNum">     256</span> <span class="tlaGNC">          45 :         &quot;    // run `cex help tassert_` / `cex help tassert_eq` to get more info \n&quot; \</span></span>
+<span id="L257"><span class="lineNum">     257</span> <span class="tlaGNC">          45 :         &quot;    tassert(0 == 1);\n&quot;\</span></span>
+<span id="L258"><span class="lineNum">     258</span> <span class="tlaGNC">          45 :         &quot;    tassertf(0 == 1, \&quot;this is a failure msg: %d\&quot;, 3);\n&quot;\</span></span>
+<span id="L259"><span class="lineNum">     259</span> <span class="tlaGNC">          45 :         &quot;    tassert_eq(buf, \&quot;foo\&quot;);\n&quot;\</span></span>
+<span id="L260"><span class="lineNum">     260</span> <span class="tlaGNC">          45 :         &quot;    tassert_eq(1, true);\n&quot;\</span></span>
+<span id="L261"><span class="lineNum">     261</span> <span class="tlaGNC">          45 :         &quot;    tassert_eq(str.sstr(\&quot;bar\&quot;), str$s(\&quot;bar\&quot;));\n&quot;\</span></span>
+<span id="L262"><span class="lineNum">     262</span> <span class="tlaGNC">          45 :         &quot;    tassert_ne(1, 0);\n&quot;\</span></span>
+<span id="L263"><span class="lineNum">     263</span> <span class="tlaGNC">          45 :         &quot;    tassert_le(0, 1);\n&quot;\</span></span>
+<span id="L264"><span class="lineNum">     264</span> <span class="tlaGNC">          45 :         &quot;    tassert_lt(0, 1);\n&quot;\</span></span>
+<span id="L265"><span class="lineNum">     265</span> <span class="tlaGNC">          45 :         &quot;    return EOK;\n&quot;\</span></span>
+<span id="L266"><span class="lineNum">     266</span> <span class="tlaGNC">          45 :         &quot;}\n&quot;\</span></span>
+<span id="L267"><span class="lineNum">     267</span> <span class="tlaGNC">          45 :         &quot;\nBenchmarking case:\n&quot;\</span></span>
+<span id="L268"><span class="lineNum">     268</span> <span class="tlaGNC">          45 :         &quot;\ntest$bench(my_bench_case_name) {\n&quot;\</span></span>
+<span id="L269"><span class="lineNum">     269</span> <span class="tlaGNC">          45 :         &quot;    // This code only execudes when `./cex test bench &lt;filename&gt;` is executed\n&quot; \</span></span>
+<span id="L270"><span class="lineNum">     270</span> <span class="tlaGNC">          45 :         &quot;    some_function_of_interest(0, 1);\n&quot;\</span></span>
+<span id="L271"><span class="lineNum">     271</span> <span class="tlaGNC">          45 :         &quot;    return EOK;\n&quot;\</span></span>
+<span id="L272"><span class="lineNum">     272</span> <span class="tlaGNC">          45 :         &quot;}\n&quot;\</span></span>
+<span id="L273"><span class="lineNum">     273</span> <span class="tlaGNC">          45 :         \</span></span>
+<span id="L274"><span class="lineNum">     274</span> <span class="tlaGNC">          45 :         &quot;\nCoverage:\n&quot;\</span></span>
+<span id="L275"><span class="lineNum">     275</span> <span class="tlaGNC">          45 :         &quot;`cex test --coverage run all` builds tests with coverage instrumentation and\n&quot;\</span></span>
+<span id="L276"><span class="lineNum">     276</span> <span class="tlaGNC">          45 :         &quot;runs them, leaving raw data next to the test binaries in cexy$build_dir. The\n&quot;\</span></span>
+<span id="L277"><span class="lineNum">     277</span> <span class="tlaGNC">          45 :         &quot;engine is auto (llvm for clang, lcov for gcc) or set with\n&quot;\</span></span>
+<span id="L278"><span class="lineNum">     278</span> <span class="tlaGNC">          45 :         &quot;`--coverage-engine=llvm|lcov`: llvm uses -fprofile-instr-generate (profraw),\n&quot;\</span></span>
+<span id="L279"><span class="lineNum">     279</span> <span class="tlaGNC">          45 :         &quot;lcov uses compiler --coverage (gcno/gcda). Project sources are instrumented;\n&quot;\</span></span>
+<span id="L280"><span class="lineNum">     280</span> <span class="tlaGNC">          45 :         &quot;the precompiled cex.h object is not. Raw data is reset per target before each\n&quot;\</span></span>
+<span id="L281"><span class="lineNum">     281</span> <span class="tlaGNC">          45 :         &quot;run: `run all` wipes everything, a single file only its own counters, so you\n&quot;\</span></span>
+<span id="L282"><span class="lineNum">     282</span> <span class="tlaGNC">          45 :         &quot;can `run all` once and re-run one test without losing the rest. llvm profiles\n&quot;\</span></span>
+<span id="L283"><span class="lineNum">     283</span> <span class="tlaGNC">          45 :         &quot;are named &lt;test_target&gt;.&lt;pid&gt;.profraw. Editing a source shared by many tests\n&quot;\</span></span>
+<span id="L284"><span class="lineNum">     284</span> <span class="tlaGNC">          45 :         &quot;and re-running one target can break the llvm merge - use `run all` after\n&quot;\</span></span>
+<span id="L285"><span class="lineNum">     285</span> <span class="tlaGNC">          45 :         &quot;shared-source changes. Not supported with `bench`.\n&quot;\</span></span>
+<span id="L286"><span class="lineNum">     286</span> <span class="tlaGNC">          45 :         \</span></span>
+<span id="L287"><span class="lineNum">     287</span> <span class="tlaGNC">          45 :         &quot;\nIf you need more control you can build your own test runner. Just use cex help\n&quot;\</span></span>
+<span id="L288"><span class="lineNum">     288</span> <span class="tlaGNC">          45 :         &quot;and get source code `./cex help --source cexy.cmd.simple_test`\n&quot;)</span></span>
+<span id="L289"><span class="lineNum">     289</span>              :         </span>
+<span id="L290"><span class="lineNum">     290</span>              : #define _cexy$cmd_test_epilog \</span>
+<span id="L291"><span class="lineNum">     291</span> <span class="tlaGNC">          45 :         &quot;\nTest running examples: \n&quot;\</span></span>
+<span id="L292"><span class="lineNum">     292</span> <span class="tlaGNC">          45 :         &quot;cex test create tests/test_file.c        - creates new test file from template\n&quot;\</span></span>
+<span id="L293"><span class="lineNum">     293</span> <span class="tlaGNC">          45 :         &quot;cex test build all                       - build all tests\n&quot;\</span></span>
+<span id="L294"><span class="lineNum">     294</span> <span class="tlaGNC">          45 :         &quot;cex test run all                         - build and run all tests\n&quot;\</span></span>
+<span id="L295"><span class="lineNum">     295</span> <span class="tlaGNC">          45 :         &quot;cex test run tests/test_file.c           - run test by path\n&quot;\</span></span>
+<span id="L296"><span class="lineNum">     296</span> <span class="tlaGNC">          45 :         &quot;cex test debug tests/test_file.c         - run test via `cexy$debug_cmd` program\n&quot;\</span></span>
+<span id="L297"><span class="lineNum">     297</span> <span class="tlaGNC">          45 :         &quot;cex test clean all                       - delete all test executables in `cexy$build_dir`\n&quot;\</span></span>
+<span id="L298"><span class="lineNum">     298</span> <span class="tlaGNC">          45 :         &quot;cex test clean test/test_file.c          - delete specific test executable\n&quot;\</span></span>
+<span id="L299"><span class="lineNum">     299</span> <span class="tlaGNC">          45 :         &quot;cex test run tests/test_file.c [--help]  - run test with passing arguments to the test runner program\n&quot; \</span></span>
+<span id="L300"><span class="lineNum">     300</span> <span class="tlaGNC">          45 :         &quot;cex test watch tests/test_file.c         - watch test file and its includes' changes with perptual re-run\n&quot; \</span></span>
+<span id="L301"><span class="lineNum">     301</span> <span class="tlaGNC">          45 :         &quot;cex test bench test/test_file.c          - run all test$bench() functions for timing\n&quot;\</span></span>
+<span id="L302"><span class="lineNum">     302</span> <span class="tlaGNC">          45 :         &quot;cex test --coverage run all               - build+run tests with coverage data\n&quot;\</span></span>
+<span id="L303"><span class="lineNum">     303</span> <span class="tlaGNC">          45 :         &quot;cex test --coverage --coverage-engine=llvm run all - coverage via llvm tools\n&quot;\</span></span>
+<span id="L304"><span class="lineNum">     304</span> <span class="tlaGNC">          45 :         &quot;cex test --coverage --coverage-engine=lcov run all - coverage via lcov\n&quot;</span></span>
+<span id="L305"><span class="lineNum">     305</span>              : </span>
+<span id="L306"><span class="lineNum">     306</span>              : </span>
+<span id="L307"><span class="lineNum">     307</span>              : // clang-format on</span>
+<span id="L308"><span class="lineNum">     308</span>              : /**</span>
+<span id="L309"><span class="lineNum">     309</span>              : </span>
+<span id="L310"><span class="lineNum">     310</span>              : ## Build system</span>
+<span id="L311"><span class="lineNum">     311</span>              : </span>
+<span id="L312"><span class="lineNum">     312</span>              : `cexy$` is CEX's integrated build system (no CMake/Make/Ninja). The build script is C code</span>
+<span id="L313"><span class="lineNum">     313</span>              : in `./cex.c` — it must live in the project root next to `cex.h`. `./cex` is the project CLI</span>
+<span id="L314"><span class="lineNum">     314</span>              : for build/test/fuzz/app/process/help. Simple config-driven mode covers most projects;</span>
+<span id="L315"><span class="lineNum">     315</span>              : low-level compiler tools are exposed for custom builds.</span>
+<span id="L316"><span class="lineNum">     316</span>              : </span>
+<span id="L317"><span class="lineNum">     317</span>              : - Configure with `#define cexy$&lt;var&gt;` before `#include &quot;cex.h&quot;` (or in `cex_config.h`)</span>
+<span id="L318"><span class="lineNum">     318</span>              : - `./cex -DSOME config` rebuilds `./cex` with `-DSOME` baked in (gate overrides with `#ifdef SOME`);</span>
+<span id="L319"><span class="lineNum">     319</span>              :   `./cex -D config` resets. The `-D` flags must come before the `config` command.</span>
+<span id="L320"><span class="lineNum">     320</span>              : - Conventions: sources in `cexy$src_dir` (`./src`), app `main()` in `src/&lt;name&gt;.c` or</span>
+<span id="L321"><span class="lineNum">     321</span>              :   `src/&lt;name&gt;/main.c`, tests in `tests/test_&lt;name&gt;.c`; unity build (no objects/link stage)</span>
+<span id="L322"><span class="lineNum">     322</span>              : - Debug builds precompile `cex.h` into a cached `.obj`; disable with `#define cexy$disable_cex_precompiling`</span>
+<span id="L323"><span class="lineNum">     323</span>              : - CLI: `./cex {help,process,new,stats,config,libfetch,test,fuzz,app} [options]`</span>
+<span id="L324"><span class="lineNum">     324</span>              : </span>
+<span id="L325"><span class="lineNum">     325</span>              : ### Getting more help</span>
+<span id="L326"><span class="lineNum">     326</span>              : </span>
+<span id="L327"><span class="lineNum">     327</span>              : - `./cex help cexy$` — all `cexy$*` config vars + the `cexy` namespace API</span>
+<span id="L328"><span class="lineNum">     328</span>              : - `./cex config` — current `cexy$*` values and toolchain</span>
+<span id="L329"><span class="lineNum">     329</span>              : - `./cex help --source cexy.cmd.simple_app` — source of the built-in app build routine</span>
+<span id="L330"><span class="lineNum">     330</span>              : - `./cex help --source cexy.cmd.simple_test` — source of the built-in test runner</span>
+<span id="L331"><span class="lineNum">     331</span>              : - `./cex help --example cexy.utils.git_lib_fetch` — real usage examples from the codebase</span>
+<span id="L332"><span class="lineNum">     332</span>              : - `./cex test --help` / `./cex app --help` / `./cex fuzz --help` — per-command help</span>
+<span id="L333"><span class="lineNum">     333</span>              : - `./cex help --agents` — dump the CEX namespace idioms (AGENTS.md content)</span>
+<span id="L334"><span class="lineNum">     334</span>              : </span>
+<span id="L335"><span class="lineNum">     335</span>              : ### Example: `./cex.c` in the project root</span>
+<span id="L336"><span class="lineNum">     336</span>              : </span>
+<span id="L337"><span class="lineNum">     337</span>              : ```c</span>
+<span id="L338"><span class="lineNum">     338</span>              : // file: ./cex.c  (project root, next to cex.h)</span>
+<span id="L339"><span class="lineNum">     339</span>              : #if __has_include(&quot;cex_config.h&quot;)</span>
+<span id="L340"><span class="lineNum">     340</span>              : #    include &quot;cex_config.h&quot;                  // persisted config, takes priority</span>
+<span id="L341"><span class="lineNum">     341</span>              : #else</span>
+<span id="L342"><span class="lineNum">     342</span>              : #    define cexy$cc_include &quot;-I.&quot;, &quot;-I./lib&quot; // redefine any cexy$ setting</span>
+<span id="L343"><span class="lineNum">     343</span>              : #    define CEX_LOG_LVL 4</span>
+<span id="L344"><span class="lineNum">     344</span>              : #endif</span>
+<span id="L345"><span class="lineNum">     345</span>              : </span>
+<span id="L346"><span class="lineNum">     346</span>              : #define CEX_IMPLEMENTATION</span>
+<span id="L347"><span class="lineNum">     347</span>              : #define CEX_BUILD</span>
+<span id="L348"><span class="lineNum">     348</span>              : #include &quot;cex.h&quot;</span>
+<span id="L349"><span class="lineNum">     349</span>              : </span>
+<span id="L350"><span class="lineNum">     350</span>              : Exception cmd_mybuild(int argc, char** argv, void* user_ctx);</span>
+<span id="L351"><span class="lineNum">     351</span>              : </span>
+<span id="L352"><span class="lineNum">     352</span>              : int</span>
+<span id="L353"><span class="lineNum">     353</span>              : main(int argc, char** argv)</span>
+<span id="L354"><span class="lineNum">     354</span>              : {</span>
+<span id="L355"><span class="lineNum">     355</span>              :     cexy$initialize(); // rebuild ./cex when cex.h/cex.c change</span>
+<span id="L356"><span class="lineNum">     356</span>              :     argparse_c args = {</span>
+<span id="L357"><span class="lineNum">     357</span>              :         .description = cexy$description,</span>
+<span id="L358"><span class="lineNum">     358</span>              :         .epilog = cexy$epilog,</span>
+<span id="L359"><span class="lineNum">     359</span>              :         .usage = cexy$usage,</span>
+<span id="L360"><span class="lineNum">     360</span>              :         argparse$cmd_list(</span>
+<span id="L361"><span class="lineNum">     361</span>              :             cexy$cmd_all,</span>
+<span id="L362"><span class="lineNum">     362</span>              :             cexy$cmd_test, // built-in test runner</span>
+<span id="L363"><span class="lineNum">     363</span>              :             cexy$cmd_app,  // built-in app runner</span>
+<span id="L364"><span class="lineNum">     364</span>              :             { .name = &quot;my-build&quot;, .func = cmd_mybuild, .help = &quot;Custom build command&quot; },</span>
+<span id="L365"><span class="lineNum">     365</span>              :         ),</span>
+<span id="L366"><span class="lineNum">     366</span>              :     };</span>
+<span id="L367"><span class="lineNum">     367</span>              :     if (argparse.parse(&amp;args, argc, argv)) { return 1; }</span>
+<span id="L368"><span class="lineNum">     368</span>              :     e$except (err, argparse.run_command(&amp;args, NULL)) {</span>
+<span id="L369"><span class="lineNum">     369</span>              :         if (err != Error.argsparse) { e$traceback_print(stderr); }</span>
+<span id="L370"><span class="lineNum">     370</span>              :         return 1;</span>
+<span id="L371"><span class="lineNum">     371</span>              :     }</span>
+<span id="L372"><span class="lineNum">     372</span>              :     return 0;</span>
+<span id="L373"><span class="lineNum">     373</span>              : }</span>
+<span id="L374"><span class="lineNum">     374</span>              : </span>
+<span id="L375"><span class="lineNum">     375</span>              : /// Custom command: run with `./cex my-build`</span>
+<span id="L376"><span class="lineNum">     376</span>              : Exception</span>
+<span id="L377"><span class="lineNum">     377</span>              : cmd_mybuild(int argc, char** argv, void* user_ctx)</span>
+<span id="L378"><span class="lineNum">     378</span>              : {</span>
+<span id="L379"><span class="lineNum">     379</span>              :     (void)argc;</span>
+<span id="L380"><span class="lineNum">     380</span>              :     (void)argv;</span>
+<span id="L381"><span class="lineNum">     381</span>              :     (void)user_ctx;</span>
+<span id="L382"><span class="lineNum">     382</span>              :     mem$scope(tmem$, _)</span>
+<span id="L383"><span class="lineNum">     383</span>              :     {</span>
+<span id="L384"><span class="lineNum">     384</span>              :         char* target = cexy.target_make(&quot;src/myapp.c&quot;, cexy$build_dir, &quot;myapp&quot;, _);</span>
+<span id="L385"><span class="lineNum">     385</span>              :         e$ret(os$cmd(cexy$cc, &quot;-o&quot;, target, &quot;src/myapp.c&quot;));</span>
+<span id="L386"><span class="lineNum">     386</span>              :     }</span>
+<span id="L387"><span class="lineNum">     387</span>              :     return EOK;</span>
+<span id="L388"><span class="lineNum">     388</span>              : }</span>
+<span id="L389"><span class="lineNum">     389</span>              : ```</span>
+<span id="L390"><span class="lineNum">     390</span>              : </span>
+<span id="L391"><span class="lineNum">     391</span>              : */</span>
+<span id="L392"><span class="lineNum">     392</span>              : struct __cex_namespace__cexy {</span>
+<span id="L393"><span class="lineNum">     393</span>              :     // Autogenerated by CEX</span>
+<span id="L394"><span class="lineNum">     394</span>              :     // clang-format off</span>
+<span id="L395"><span class="lineNum">     395</span>              : </span>
+<span id="L396"><span class="lineNum">     396</span>              :     /// Rebuilds ./cex from cex.c when cex.h or cex.c changed</span>
+<span id="L397"><span class="lineNum">     397</span>              :     void            (*build_self)(int argc, char** argv, char* cex_source);</span>
+<span id="L398"><span class="lineNum">     398</span>              :     /// True if any source in src_array is newer than target_path</span>
+<span id="L399"><span class="lineNum">     399</span>              :     bool            (*src_changed)(char* target_path, char** src_array, usize src_array_len);</span>
+<span id="L400"><span class="lineNum">     400</span>              :     /// True if src_path or one of its #includes is newer than target_path</span>
+<span id="L401"><span class="lineNum">     401</span>              :     bool            (*src_include_changed)(char* target_path, char* src_path, arr$(char*) alt_include_path);</span>
+<span id="L402"><span class="lineNum">     402</span>              :     /// Builds a build-dir output path from a source path and name/extension</span>
+<span id="L403"><span class="lineNum">     403</span>              :     char*           (*target_make)(char* src_path, char* build_dir, char* name_or_extension, IAllocator allocator);</span>
+<span id="L404"><span class="lineNum">     404</span>              : </span>
+<span id="L405"><span class="lineNum">     405</span>              :     struct {</span>
+<span id="L406"><span class="lineNum">     406</span>              :         /// Removes a built app executable</span>
+<span id="L407"><span class="lineNum">     407</span>              :         Exception       (*clean)(char* target);</span>
+<span id="L408"><span class="lineNum">     408</span>              :         /// Scaffolds a new app source file</span>
+<span id="L409"><span class="lineNum">     409</span>              :         Exception       (*create)(char* target);</span>
+<span id="L410"><span class="lineNum">     410</span>              :         /// Finds the source path for an app target</span>
+<span id="L411"><span class="lineNum">     411</span>              :         Exception       (*find_app_target_src)(IAllocator allc, char* target, char** out_result);</span>
+<span id="L412"><span class="lineNum">     412</span>              :         /// Builds and runs an app (optionally under the debugger)</span>
+<span id="L413"><span class="lineNum">     413</span>              :         Exception       (*run)(char* target, bool is_debug, int argc, char** argv);</span>
+<span id="L414"><span class="lineNum">     414</span>              :     } app;</span>
+<span id="L415"><span class="lineNum">     415</span>              : </span>
+<span id="L416"><span class="lineNum">     416</span>              :     struct {</span>
+<span id="L417"><span class="lineNum">     417</span>              :         /// CLI: show project and system environment</span>
+<span id="L418"><span class="lineNum">     418</span>              :         Exception       (*config)(int argc, char** argv, void* user_ctx);</span>
+<span id="L419"><span class="lineNum">     419</span>              :         /// CLI: symbol/doc search over the project</span>
+<span id="L420"><span class="lineNum">     420</span>              :         Exception       (*help)(int argc, char** argv, void* user_ctx);</span>
+<span id="L421"><span class="lineNum">     421</span>              :         /// CLI: fetch 3rd-party libraries via git</span>
+<span id="L422"><span class="lineNum">     422</span>              :         Exception       (*libfetch)(int argc, char** argv, void* user_ctx);</span>
+<span id="L423"><span class="lineNum">     423</span>              :         /// CLI: scaffold a new boilerplate CEX project</span>
+<span id="L424"><span class="lineNum">     424</span>              :         Exception       (*new)(int argc, char** argv, void* user_ctx);</span>
+<span id="L425"><span class="lineNum">     425</span>              :         /// CLI: generate CEX namespaces from project sources</span>
+<span id="L426"><span class="lineNum">     426</span>              :         Exception       (*process)(int argc, char** argv, void* user_ctx);</span>
+<span id="L427"><span class="lineNum">     427</span>              :         /// CLI: simple app runner (build/run/debug/create/clean)</span>
+<span id="L428"><span class="lineNum">     428</span>              :         Exception       (*simple_app)(int argc, char** argv, void* user_ctx);</span>
+<span id="L429"><span class="lineNum">     429</span>              :         /// CLI: compile and run fuzz tests</span>
+<span id="L430"><span class="lineNum">     430</span>              :         Exception       (*simple_fuzz)(int argc, char** argv, void* user_ctx);</span>
+<span id="L431"><span class="lineNum">     431</span>              :         /// CLI: simple test runner (build/run/debug/bench/watch)</span>
+<span id="L432"><span class="lineNum">     432</span>              :         Exception       (*simple_test)(int argc, char** argv, void* user_ctx);</span>
+<span id="L433"><span class="lineNum">     433</span>              :         /// CLI: parse project and report code metrics</span>
+<span id="L434"><span class="lineNum">     434</span>              :         Exception       (*stats)(int argc, char** argv, void* user_ctx);</span>
+<span id="L435"><span class="lineNum">     435</span>              :     } cmd;</span>
+<span id="L436"><span class="lineNum">     436</span>              : </span>
+<span id="L437"><span class="lineNum">     437</span>              :     struct {</span>
+<span id="L438"><span class="lineNum">     438</span>              :         /// Scaffolds a new fuzz_ file</span>
+<span id="L439"><span class="lineNum">     439</span>              :         Exception       (*create)(char* target);</span>
+<span id="L440"><span class="lineNum">     440</span>              :     } fuzz;</span>
+<span id="L441"><span class="lineNum">     441</span>              : </span>
+<span id="L442"><span class="lineNum">     442</span>              :     struct {</span>
+<span id="L443"><span class="lineNum">     443</span>              :         /// Removes built test executable(s)</span>
+<span id="L444"><span class="lineNum">     444</span>              :         Exception       (*clean)(char* target);</span>
+<span id="L445"><span class="lineNum">     445</span>              :         /// Scaffolds a new test file (optionally with a sample case)</span>
+<span id="L446"><span class="lineNum">     446</span>              :         Exception       (*create)(char* target, bool include_sample);</span>
+<span id="L447"><span class="lineNum">     447</span>              :         /// Normalizes a test target (all or a path) into a build glob</span>
+<span id="L448"><span class="lineNum">     448</span>              :         Exception       (*make_target_pattern)(char** target);</span>
+<span id="L449"><span class="lineNum">     449</span>              :         /// Builds and runs/debugs/benches/watches a test target</span>
+<span id="L450"><span class="lineNum">     450</span>              :         Exception       (*run)(char* target, char* cmd, int argc, char** argv);</span>
+<span id="L451"><span class="lineNum">     451</span>              :     } test;</span>
+<span id="L452"><span class="lineNum">     452</span>              : </span>
+<span id="L453"><span class="lineNum">     453</span>              :     struct {</span>
+<span id="L454"><span class="lineNum">     454</span>              :         /// Returns the current git commit hash (or NULL)</span>
+<span id="L455"><span class="lineNum">     455</span>              :         char*           (*git_hash)(IAllocator allc);</span>
+<span id="L456"><span class="lineNum">     456</span>              :         /// Clones/updates a git dependency into out_dir</span>
+<span id="L457"><span class="lineNum">     457</span>              :         Exception       (*git_lib_fetch)(char* git_url, char* git_label, char* out_dir, bool update_existing, bool preserve_dirs, char** repo_paths, usize repo_paths_len);</span>
+<span id="L458"><span class="lineNum">     458</span>              :         /// Writes compile_flags.txt from the project compiler flags</span>
+<span id="L459"><span class="lineNum">     459</span>              :         Exception       (*make_compile_flags)(char* flags_file, bool include_cexy_flags, arr$(char*) cc_flags_or_null);</span>
+<span id="L460"><span class="lineNum">     460</span>              :         /// Creates a new project skeleton in proj_dir</span>
+<span id="L461"><span class="lineNum">     461</span>              :         Exception       (*make_new_project)(char* proj_dir);</span>
+<span id="L462"><span class="lineNum">     462</span>              :         /// Resolves pkg-config --cflags/--libs into out_cc_args</span>
+<span id="L463"><span class="lineNum">     463</span>              :         Exception       (*pkgconf)(IAllocator allc, arr$(char*)* out_cc_args, char** pkgconf_args, usize pkgconf_args_len);</span>
+<span id="L464"><span class="lineNum">     464</span>              :     } utils;</span>
+<span id="L465"><span class="lineNum">     465</span>              : </span>
+<span id="L466"><span class="lineNum">     466</span>              :     // clang-format on</span>
+<span id="L467"><span class="lineNum">     467</span>              : };</span>
+<span id="L468"><span class="lineNum">     468</span>              : #endif // #if defined(CEX_BUILD)</span>
+<span id="L469"><span class="lineNum">     469</span>              : CEX_NAMESPACE struct __cex_namespace__cexy cexy;</span>
+<span id="L470"><span class="lineNum">     470</span>              : </span>
+<span id="L471"><span class="lineNum">     471</span>              : #endif</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>

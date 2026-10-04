@@ -1,0 +1,132 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage-global.info - src/src/cex_platform.h</title>
+  <link rel="stylesheet" type="text/css" href="../../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../../index.html">top level</a> - <a href="index.html">src/src</a> - cex_platform.h<span style="font-size: 80%;"> (source / <a href="cex_platform.h.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage-global.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryHi">100.0&nbsp;%</td>
+            <td class="headerCovTableEntry">6</td>
+            <td class="headerCovTableEntry">6</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2026-10-04 10:18:36</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryHi">-</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">0</td>
+          </tr>
+                  <tr><td><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : </span>
+<span id="L2"><span class="lineNum">       2</span>              : </span>
+<span id="L3"><span class="lineNum">       3</span>              : #ifndef cex$platform_malloc</span>
+<span id="L4"><span class="lineNum">       4</span>              : ///  Macro for redefining default platform malloc()</span>
+<span id="L5"><span class="lineNum">       5</span> <span class="tlaGNC tlaBgGNC">      140174 : #    define cex$platform_malloc malloc</span></span>
+<span id="L6"><span class="lineNum">       6</span>              : #endif</span>
+<span id="L7"><span class="lineNum">       7</span>              : </span>
+<span id="L8"><span class="lineNum">       8</span>              : #ifndef cex$platform_calloc</span>
+<span id="L9"><span class="lineNum">       9</span>              : ///  Macro for redefining default platform calloc()</span>
+<span id="L10"><span class="lineNum">      10</span> <span class="tlaGNC">       41423 : #    define cex$platform_calloc calloc</span></span>
+<span id="L11"><span class="lineNum">      11</span>              : #endif</span>
+<span id="L12"><span class="lineNum">      12</span>              : </span>
+<span id="L13"><span class="lineNum">      13</span>              : #ifndef cex$platform_free</span>
+<span id="L14"><span class="lineNum">      14</span>              : ///  Macro for redefining default platform free()</span>
+<span id="L15"><span class="lineNum">      15</span> <span class="tlaGNC">      181508 : #    define cex$platform_free free</span></span>
+<span id="L16"><span class="lineNum">      16</span>              : #endif</span>
+<span id="L17"><span class="lineNum">      17</span>              : </span>
+<span id="L18"><span class="lineNum">      18</span>              : #ifndef cex$platform_realloc</span>
+<span id="L19"><span class="lineNum">      19</span>              : ///  Macro for redefining default platform realloc()</span>
+<span id="L20"><span class="lineNum">      20</span> <span class="tlaGNC">       36271 : #    define cex$platform_realloc realloc</span></span>
+<span id="L21"><span class="lineNum">      21</span>              : #endif</span>
+<span id="L22"><span class="lineNum">      22</span>              : </span>
+<span id="L23"><span class="lineNum">      23</span>              : #ifndef cex$platform_panic</span>
+<span id="L24"><span class="lineNum">      24</span>              : ///  Macro for redefining panic function (used in assertions, and other CEX stuff)</span>
+<span id="L25"><span class="lineNum">      25</span> <span class="tlaGNC">         117 : #    define cex$platform_panic _cex_errors_panic_handler</span></span>
+<span id="L26"><span class="lineNum">      26</span>              : #endif</span>
+<span id="L27"><span class="lineNum">      27</span>              : </span>
+<span id="L28"><span class="lineNum">      28</span>              : #ifndef cex$platform_mem_panic</span>
+<span id="L29"><span class="lineNum">      29</span>              : ///  Macro for redefining memory-failure panic; define it as an empty function-like macro</span>
+<span id="L30"><span class="lineNum">      30</span>              : ///  (e.g. `#define cex$platform_mem_panic(...)`) to restore NULL returns</span>
+<span id="L31"><span class="lineNum">      31</span> <span class="tlaGNC">          32 : #    define cex$platform_mem_panic(...) cex$platform_panic(__VA_ARGS__)</span></span>
+<span id="L32"><span class="lineNum">      32</span>              : #endif</span>
+<span id="L33"><span class="lineNum">      33</span>              : </span>
+<span id="L34"><span class="lineNum">      34</span>              : #ifdef cex$enable_minimal</span>
+<span id="L35"><span class="lineNum">      35</span>              : #    undef cex$enable_minimal</span>
+<span id="L36"><span class="lineNum">      36</span>              : /// Disables all key CEX capabilities, except core types, and macros, other functionality must be</span>
+<span id="L37"><span class="lineNum">      37</span>              : /// re-enabled via `#define cex$enable_*`</span>
+<span id="L38"><span class="lineNum">      38</span>              : #    define cex$enable_minimal</span>
+<span id="L39"><span class="lineNum">      39</span>              : </span>
+<span id="L40"><span class="lineNum">      40</span>              : #else</span>
+<span id="L41"><span class="lineNum">      41</span>              : /// Enables CEX memory allocators: tmem$, mem$</span>
+<span id="L42"><span class="lineNum">      42</span>              : #    define cex$enable_mem</span>
+<span id="L43"><span class="lineNum">      43</span>              : </span>
+<span id="L44"><span class="lineNum">      44</span>              : /// Enables CEX data structures: dynamic arrays, hashmaps, arr$* macros, for$each</span>
+<span id="L45"><span class="lineNum">      45</span>              : #    define cex$enable_ds</span>
+<span id="L46"><span class="lineNum">      46</span>              : </span>
+<span id="L47"><span class="lineNum">      47</span>              : /// Enables CEX string operations</span>
+<span id="L48"><span class="lineNum">      48</span>              : #    define cex$enable_str</span>
+<span id="L49"><span class="lineNum">      49</span>              : </span>
+<span id="L50"><span class="lineNum">      50</span>              : /// Enables CEX IO operations</span>
+<span id="L51"><span class="lineNum">      51</span>              : #    define cex$enable_io</span>
+<span id="L52"><span class="lineNum">      52</span>              : </span>
+<span id="L53"><span class="lineNum">      53</span>              : /// Enables CEX os namespace + argparse</span>
+<span id="L54"><span class="lineNum">      54</span>              : #    define cex$enable_os</span>
+<span id="L55"><span class="lineNum">      55</span>              : </span>
+<span id="L56"><span class="lineNum">      56</span>              : #endif</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>

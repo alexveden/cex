@@ -1,0 +1,152 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage-global.info - src/src/fuzz.c</title>
+  <link rel="stylesheet" type="text/css" href="../../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../../index.html">top level</a> - <a href="index.html">src/src</a> - fuzz.c<span style="font-size: 80%;"> (source / <a href="fuzz.c.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage-global.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryHi">100.0&nbsp;%</td>
+            <td class="headerCovTableEntry">38</td>
+            <td class="headerCovTableEntry">38</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2026-10-04 10:18:36</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryHi">100.0&nbsp;%</td>
+            <td class="headerCovTableEntry">4</td>
+            <td class="headerCovTableEntry">4</td>
+          </tr>
+                  <tr><td><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : #if !defined(cex$enable_minimal)</span>
+<span id="L2"><span class="lineNum">       2</span>              : </span>
+<span id="L3"><span class="lineNum">       3</span>              : #include &quot;fuzz.h&quot;</span>
+<span id="L4"><span class="lineNum">       4</span>              : </span>
+<span id="L5"><span class="lineNum">       5</span>              : /// Creates new fuzz data generator, for fuzz-driven randomization</span>
+<span id="L6"><span class="lineNum">       6</span>              : cex_fuzz_s</span>
+<span id="L7"><span class="lineNum">       7</span>              : cex_fuzz_create(const u8* data, usize size)</span>
+<span id="L8"><span class="lineNum">       8</span> <span class="tlaGNC tlaBgGNC">          21 : {</span></span>
+<span id="L9"><span class="lineNum">       9</span> <span class="tlaGNC">          21 :     return (cex_fuzz_s){</span></span>
+<span id="L10"><span class="lineNum">      10</span> <span class="tlaGNC">          21 :         .cur = data,</span></span>
+<span id="L11"><span class="lineNum">      11</span> <span class="tlaGNC">          21 :         .end = data + size,</span></span>
+<span id="L12"><span class="lineNum">      12</span> <span class="tlaGNC">          21 :     };</span></span>
+<span id="L13"><span class="lineNum">      13</span> <span class="tlaGNC">          21 : }</span></span>
+<span id="L14"><span class="lineNum">      14</span>              : </span>
+<span id="L15"><span class="lineNum">      15</span>              : /// Get result from random data into buffer (returns false if not enough data)</span>
+<span id="L16"><span class="lineNum">      16</span>              : bool</span>
+<span id="L17"><span class="lineNum">      17</span>              : cex_fuzz_dget(cex_fuzz_s* fz, void* out_result, usize result_size)</span>
+<span id="L18"><span class="lineNum">      18</span> <span class="tlaGNC">          66 : {</span></span>
+<span id="L19"><span class="lineNum">      19</span> <span class="tlaGNC">          66 :     uassert(out_result != NULL);</span></span>
+<span id="L20"><span class="lineNum">      20</span> <span class="tlaGNC">          66 :     if (fz-&gt;end - fz-&gt;cur &lt; (isize)result_size) { return false; }</span></span>
+<span id="L21"><span class="lineNum">      21</span> <span class="tlaGNC">          33 :     memcpy(out_result, fz-&gt;cur, result_size);</span></span>
+<span id="L22"><span class="lineNum">      22</span> <span class="tlaGNC">          33 :     fz-&gt;cur += result_size;</span></span>
+<span id="L23"><span class="lineNum">      23</span> <span class="tlaGNC">          33 :     return true;</span></span>
+<span id="L24"><span class="lineNum">      24</span> <span class="tlaGNC">          30 : }</span></span>
+<span id="L25"><span class="lineNum">      25</span>              : </span>
+<span id="L26"><span class="lineNum">      26</span>              : /// Get current corpus dir relative tho the `this_file_name`</span>
+<span id="L27"><span class="lineNum">      27</span>              : char*</span>
+<span id="L28"><span class="lineNum">      28</span>              : cex_fuzz_corpus_dir(char* this_file_name)</span>
+<span id="L29"><span class="lineNum">      29</span> <span class="tlaGNC">          33 : {</span></span>
+<span id="L30"><span class="lineNum">      30</span> <span class="tlaGNC">          33 :     static char buf[256] = {0};</span></span>
+<span id="L31"><span class="lineNum">      31</span>              : </span>
+<span id="L32"><span class="lineNum">      32</span> <span class="tlaGNC">          33 :     if (buf[0] != '\0') {</span></span>
+<span id="L33"><span class="lineNum">      33</span>              :         // already filled </span>
+<span id="L34"><span class="lineNum">      34</span> <span class="tlaGNC">          11 :         return buf;</span></span>
+<span id="L35"><span class="lineNum">      35</span> <span class="tlaGNC">          11 :     }</span></span>
+<span id="L36"><span class="lineNum">      36</span>              : </span>
+<span id="L37"><span class="lineNum">      37</span> <span class="tlaGNC">          29 :     uassert(this_file_name);</span></span>
+<span id="L38"><span class="lineNum">      38</span> <span class="tlaGNC">          22 :     uassert(this_file_name[0] != '\0');</span></span>
+<span id="L39"><span class="lineNum">      39</span> <span class="tlaGNC">          22 :     uassert(str.len(this_file_name) &lt; sizeof(buf)-1);</span></span>
+<span id="L40"><span class="lineNum">      40</span> <span class="tlaGNC">          22 :     uassert(str.ends_with(this_file_name, &quot;.c&quot;));</span></span>
+<span id="L41"><span class="lineNum">      41</span> <span class="tlaGNC">          22 :     if(str.sprintf(buf, sizeof(buf), &quot;%S_corpus&quot;, str.sub(this_file_name, 0, -2))) {</span></span>
+<span id="L42"><span class="lineNum">      42</span> <span class="tlaGNC">          11 :         return NULL;</span></span>
+<span id="L43"><span class="lineNum">      43</span> <span class="tlaGNC">          11 :     }</span></span>
+<span id="L44"><span class="lineNum">      44</span>              : </span>
+<span id="L45"><span class="lineNum">      45</span> <span class="tlaGNC">          11 :     return buf;</span></span>
+<span id="L46"><span class="lineNum">      46</span> <span class="tlaGNC">          10 : }</span></span>
+<span id="L47"><span class="lineNum">      47</span>              : </span>
+<span id="L48"><span class="lineNum">      48</span>              : /// Get probability using fuzz data, based on threshold</span>
+<span id="L49"><span class="lineNum">      49</span>              : bool</span>
+<span id="L50"><span class="lineNum">      50</span>              : cex_fuzz_dprob(cex_fuzz_s* fz, double threshold)</span>
+<span id="L51"><span class="lineNum">      51</span> <span class="tlaGNC">          55 : {</span></span>
+<span id="L52"><span class="lineNum">      52</span> <span class="tlaGNC">          55 :     uassert(</span></span>
+<span id="L53"><span class="lineNum">      53</span> <span class="tlaGNC">          55 :         threshold &gt; 0 &amp;&amp; threshold &lt; 1.0 &amp;&amp;</span></span>
+<span id="L54"><span class="lineNum">      54</span> <span class="tlaGNC">          55 :         &quot;Probability must be &gt; 0 and &lt; 1.0, 0.1 = 10% probability&quot;</span></span>
+<span id="L55"><span class="lineNum">      55</span> <span class="tlaGNC">          55 :     );</span></span>
+<span id="L56"><span class="lineNum">      56</span> <span class="tlaGNC">          55 :     uassert(threshold &gt; 1.0 / 255.0 &amp;&amp; &quot;Probability granularity is too low&quot;);</span></span>
+<span id="L57"><span class="lineNum">      57</span> <span class="tlaGNC">          55 :     if (fz-&gt;cur &gt;= fz-&gt;end) { return false; }</span></span>
+<span id="L58"><span class="lineNum">      58</span>              : </span>
+<span id="L59"><span class="lineNum">      59</span> <span class="tlaGNC">          44 :     double p = (double)fz-&gt;cur[0];</span></span>
+<span id="L60"><span class="lineNum">      60</span> <span class="tlaGNC">          44 :     fz-&gt;cur++;</span></span>
+<span id="L61"><span class="lineNum">      61</span>              : </span>
+<span id="L62"><span class="lineNum">      62</span> <span class="tlaGNC">          44 :     return (p / 255.0) &lt;= threshold;</span></span>
+<span id="L63"><span class="lineNum">      63</span> <span class="tlaGNC">          25 : }</span></span>
+<span id="L64"><span class="lineNum">      64</span>              : </span>
+<span id="L65"><span class="lineNum">      65</span>              : CEX_NAMESPACE_DEF struct __cex_namespace__fuzz fuzz = {</span>
+<span id="L66"><span class="lineNum">      66</span>              :     // Autogenerated by CEX</span>
+<span id="L67"><span class="lineNum">      67</span>              :     // clang-format off</span>
+<span id="L68"><span class="lineNum">      68</span>              : </span>
+<span id="L69"><span class="lineNum">      69</span>              :     .corpus_dir = cex_fuzz_corpus_dir,</span>
+<span id="L70"><span class="lineNum">      70</span>              :     .create = cex_fuzz_create,</span>
+<span id="L71"><span class="lineNum">      71</span>              :     .dget = cex_fuzz_dget,</span>
+<span id="L72"><span class="lineNum">      72</span>              :     .dprob = cex_fuzz_dprob,</span>
+<span id="L73"><span class="lineNum">      73</span>              : </span>
+<span id="L74"><span class="lineNum">      74</span>              :     // clang-format on</span>
+<span id="L75"><span class="lineNum">      75</span>              : };</span>
+<span id="L76"><span class="lineNum">      76</span>              : #endif</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>

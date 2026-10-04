@@ -1,0 +1,390 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage-global.info - src/src/str.h</title>
+  <link rel="stylesheet" type="text/css" href="../../gcov.css">
+</head>
+
+<body>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="title">LCOV - code coverage report</td></tr>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+
+            <tr>
+              <td width="100%">
+                <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="10%" class="headerValue"><a href="../../index.html">top level</a> - <a href="index.html">src/src</a> - str.h<span style="font-size: 80%;"> (source / <a href="str.h.func-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="5%"></td>
+            <td width="5%" class="headerCovTableHead">Coverage</td>
+            <td width="5%" class="headerCovTableHead" title="Covered + Uncovered code">Total</td>
+            <td width="5%" class="headerCovTableHead" title="Exercised code only">Hit</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage-global.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntryHi">100.0&nbsp;%</td>
+            <td class="headerCovTableEntry">7</td>
+            <td class="headerCovTableEntry">7</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test Date:</td>
+            <td class="headerValue">2026-10-04 10:18:36</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntryHi">-</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">0</td>
+          </tr>
+                  <tr><td><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+          </table>
+
+          <table cellpadding=0 cellspacing=0 border=0>
+            <tr>
+              <td><br></td>
+            </tr>
+            <tr>
+              <td>
+<pre class="sourceHeading">            Line data    Source code</pre>
+<pre class="source">
+<span id="L1"><span class="lineNum">       1</span>              : /**</span>
+<span id="L2"><span class="lineNum">       2</span>              :  * @file</span>
+<span id="L3"><span class="lineNum">       3</span>              :  * @brief</span>
+<span id="L4"><span class="lineNum">       4</span>              :  */</span>
+<span id="L5"><span class="lineNum">       5</span>              : </span>
+<span id="L6"><span class="lineNum">       6</span>              : #pragma once</span>
+<span id="L7"><span class="lineNum">       7</span>              : #if !defined(cex$enable_minimal) || defined(cex$enable_str)</span>
+<span id="L8"><span class="lineNum">       8</span>              : </span>
+<span id="L9"><span class="lineNum">       9</span>              : #if defined(cex$enable_minimal) &amp;&amp; !defined(cex$enable_ds)</span>
+<span id="L10"><span class="lineNum">      10</span>              : #error &quot;CEX str namespace depends on `#define cex$enable_ds`&quot;</span>
+<span id="L11"><span class="lineNum">      11</span>              : #endif</span>
+<span id="L12"><span class="lineNum">      12</span>              : </span>
+<span id="L13"><span class="lineNum">      13</span>              : #include &quot;all.h&quot;</span>
+<span id="L14"><span class="lineNum">      14</span>              : </span>
+<span id="L15"><span class="lineNum">      15</span>              : /// Compares str_s (slice) with literal in performance efficient way</span>
+<span id="L16"><span class="lineNum">      16</span>              : #define str$eq(str_s_slice, compare_to_literal)                                                    \</span>
+<span id="L17"><span class="lineNum">      17</span> <span class="tlaGNC tlaBgGNC">        1491 :     ((str_s_slice).buf &amp;&amp; (str_s_slice).len == sizeof(compare_to_literal) - 1 &amp;&amp;                   \</span></span>
+<span id="L18"><span class="lineNum">      18</span> <span class="tlaGNC">        1491 :      memcmp((str_s_slice).buf, compare_to_literal, sizeof(compare_to_literal) - 1) == 0)</span></span>
+<span id="L19"><span class="lineNum">      19</span>              : </span>
+<span id="L20"><span class="lineNum">      20</span>              : /// Joins parts of strings using a separator str$join(allc, &quot;,&quot;, &quot;a&quot;, &quot;b&quot;, &quot;c&quot;) -&gt; &quot;a,b,c&quot;</span>
+<span id="L21"><span class="lineNum">      21</span>              : #define str$join(allocator, str_join_by, str_parts...)                                             \</span>
+<span id="L22"><span class="lineNum">      22</span> <span class="tlaGNC">           3 :     ({                                                                                             \</span></span>
+<span id="L23"><span class="lineNum">      23</span> <span class="tlaGNC">           3 :         char* _args[] = { str_parts };                                                             \</span></span>
+<span id="L24"><span class="lineNum">      24</span> <span class="tlaGNC">           3 :         usize _args_len = arr$len(_args);                                                          \</span></span>
+<span id="L25"><span class="lineNum">      25</span> <span class="tlaGNC">           3 :         str.join(_args, _args_len, str_join_by, allocator);                                        \</span></span>
+<span id="L26"><span class="lineNum">      26</span> <span class="tlaGNC">           3 :     })</span></span>
+<span id="L27"><span class="lineNum">      27</span>              : </span>
+<span id="L28"><span class="lineNum">      28</span>              : /// Parses string contents as value type based on generic numeric type of out_var_ptr</span>
+<span id="L29"><span class="lineNum">      29</span>              : #define str$convert(str_or_slice, out_var_ptr)                                                     \</span>
+<span id="L30"><span class="lineNum">      30</span>              :     _Generic((str_or_slice), \</span>
+<span id="L31"><span class="lineNum">      31</span>              :     char*: _Generic((out_var_ptr), \</span>
+<span id="L32"><span class="lineNum">      32</span>              :         bool*:  str.convert.to_bool, \</span>
+<span id="L33"><span class="lineNum">      33</span>              :         i8*:  str.convert.to_i8, \</span>
+<span id="L34"><span class="lineNum">      34</span>              :         u8*:  str.convert.to_u8, \</span>
+<span id="L35"><span class="lineNum">      35</span>              :         i16*:  str.convert.to_i16, \</span>
+<span id="L36"><span class="lineNum">      36</span>              :         u16*:  str.convert.to_u16, \</span>
+<span id="L37"><span class="lineNum">      37</span>              :         i32*:  str.convert.to_i32, \</span>
+<span id="L38"><span class="lineNum">      38</span>              :         u32*:  str.convert.to_u32, \</span>
+<span id="L39"><span class="lineNum">      39</span>              :         i64*:  str.convert.to_i64, \</span>
+<span id="L40"><span class="lineNum">      40</span>              :         u64*:  str.convert.to_u64, \</span>
+<span id="L41"><span class="lineNum">      41</span>              :         f32*:  str.convert.to_f32, \</span>
+<span id="L42"><span class="lineNum">      42</span>              :         f64*:  str.convert.to_f64 \</span>
+<span id="L43"><span class="lineNum">      43</span>              :     ), \</span>
+<span id="L44"><span class="lineNum">      44</span>              :     str_s: _Generic((out_var_ptr), \</span>
+<span id="L45"><span class="lineNum">      45</span>              :         bool*:  str.convert.to_bools, \</span>
+<span id="L46"><span class="lineNum">      46</span>              :         i8*:  str.convert.to_i8s, \</span>
+<span id="L47"><span class="lineNum">      47</span>              :         u8*:  str.convert.to_u8s, \</span>
+<span id="L48"><span class="lineNum">      48</span>              :         i16*:  str.convert.to_i16s, \</span>
+<span id="L49"><span class="lineNum">      49</span>              :         u16*:  str.convert.to_u16s, \</span>
+<span id="L50"><span class="lineNum">      50</span>              :         i32*:  str.convert.to_i32s, \</span>
+<span id="L51"><span class="lineNum">      51</span>              :         u32*:  str.convert.to_u32s, \</span>
+<span id="L52"><span class="lineNum">      52</span>              :         i64*:  str.convert.to_i64s, \</span>
+<span id="L53"><span class="lineNum">      53</span>              :         u64*:  str.convert.to_u64s, \</span>
+<span id="L54"><span class="lineNum">      54</span>              :         f32*:  str.convert.to_f32s, \</span>
+<span id="L55"><span class="lineNum">      55</span>              :         f64*:  str.convert.to_f64s \</span>
+<span id="L56"><span class="lineNum">      56</span>              :     ) \</span>
+<span id="L57"><span class="lineNum">      57</span>              : )(str_or_slice, out_var_ptr)</span>
+<span id="L58"><span class="lineNum">      58</span>              : </span>
+<span id="L59"><span class="lineNum">      59</span>              : /**</span>
+<span id="L60"><span class="lineNum">      60</span>              : </span>
+<span id="L61"><span class="lineNum">      61</span>              : ## Strings</span>
+<span id="L62"><span class="lineNum">      62</span>              : </span>
+<span id="L63"><span class="lineNum">      63</span>              : ### Principles</span>
+<span id="L64"><span class="lineNum">      64</span>              : </span>
+<span id="L65"><span class="lineNum">      65</span>              : - `str` namespace is built for compatibility with C strings</span>
+<span id="L66"><span class="lineNum">      66</span>              : - all string functions are NULL resilient</span>
+<span id="L67"><span class="lineNum">      67</span>              : - all string functions can return NULL on error</span>
+<span id="L68"><span class="lineNum">      68</span>              : - you don't have to check every operation for NULL every time, just at the end</span>
+<span id="L69"><span class="lineNum">      69</span>              : - all string format operations support CEX-specific specifiers (see below)</span>
+<span id="L70"><span class="lineNum">      70</span>              : </span>
+<span id="L71"><span class="lineNum">      71</span>              : ### String slices</span>
+<span id="L72"><span class="lineNum">      72</span>              : </span>
+<span id="L73"><span class="lineNum">      73</span>              : - Slices are backed by `(str_s){.buf = s, .len = NNN}` struct</span>
+<span id="L74"><span class="lineNum">      74</span>              : - Slices are passed by value and allocated on stack</span>
+<span id="L75"><span class="lineNum">      75</span>              : - Slices can be made from null-terminated strings, or buffers, or literals</span>
+<span id="L76"><span class="lineNum">      76</span>              : - str$s(&quot;hello&quot;) - use this for compile time defined slices/constants</span>
+<span id="L77"><span class="lineNum">      77</span>              : - Slices are not guaranteed to be null-terminated</span>
+<span id="L78"><span class="lineNum">      78</span>              : - Slices support operations which are allowed by read-only string view representation</span>
+<span id="L79"><span class="lineNum">      79</span>              : - CEX formatting uses `%S` for slices: `io.printf(&quot;Hello %S\n&quot;, str$s(&quot;world&quot;))`</span>
+<span id="L80"><span class="lineNum">      80</span>              : </span>
+<span id="L81"><span class="lineNum">      81</span>              : ### String macros</span>
+<span id="L82"><span class="lineNum">      82</span>              : </span>
+<span id="L83"><span class="lineNum">      83</span>              : - `str$s(&quot;hello&quot;)` - compile-time `str_s` from a string literal (literals only, not `char*`)</span>
+<span id="L84"><span class="lineNum">      84</span>              : - `str$eq(slice, &quot;literal&quot;)` - fast slice-vs-literal comparison (no `strcmp`)</span>
+<span id="L85"><span class="lineNum">      85</span>              : - `str$join(alloc, &quot;,&quot;, &quot;a&quot;, &quot;b&quot;, &quot;c&quot;)` - join parts into a new string</span>
+<span id="L86"><span class="lineNum">      86</span>              : - `str$convert(str_or_slice, &amp;out_var)` - parse a string/slice into a numeric or bool out variable</span>
+<span id="L87"><span class="lineNum">      87</span>              : - Prefer `str$convert()` / `str.convert.*` over libc `atoi`/`atof`/`strtol`/`strtod`:</span>
+<span id="L88"><span class="lineNum">      88</span>              :   type-safe, overflow-checked, NULL resilient, works on both `char*` and `str_s`</span>
+<span id="L89"><span class="lineNum">      89</span>              : </span>
+<span id="L90"><span class="lineNum">      90</span>              : ### Dynamic strings</span>
+<span id="L91"><span class="lineNum">      91</span>              : </span>
+<span id="L92"><span class="lineNum">      92</span>              : For mutable, growing strings use the `sbuf` namespace (`sbuf_c` is a `char*` alias, always</span>
+<span id="L93"><span class="lineNum">      93</span>              : null-terminated):</span>
+<span id="L94"><span class="lineNum">      94</span>              : </span>
+<span id="L95"><span class="lineNum">      95</span>              : - `sbuf.create(cap, alloc)` / `sbuf.create_static(buf, n)` - allocator- or stack-backed builder (static buffer is aligned up and cannot grow)</span>
+<span id="L96"><span class="lineNum">      96</span>              : - `sbuf.appendf(&amp;s, &quot;%s: %S&quot;, &quot;x&quot;, slice)` / `sbuf.append(&amp;s, &quot;text&quot;)` - append</span>
+<span id="L97"><span class="lineNum">      97</span>              : - `sbuf.len(&amp;s)` / `sbuf.capacity(&amp;s)` / `sbuf.clear(&amp;s)` - inspect/reset</span>
+<span id="L98"><span class="lineNum">      98</span>              : - `sbuf.destroy(&amp;s)` - free (sets `s` to NULL)</span>
+<span id="L99"><span class="lineNum">      99</span>              : </span>
+<span id="L100"><span class="lineNum">     100</span>              : See `./cex help sbuf$` for the full API.</span>
+<span id="L101"><span class="lineNum">     101</span>              : </span>
+<span id="L102"><span class="lineNum">     102</span>              : ### String formatting in CEX</span>
+<span id="L103"><span class="lineNum">     103</span>              : </span>
+<span id="L104"><span class="lineNum">     104</span>              : All CEX routines with format strings (`io.printf()`, `log$error()`, `str.fmt()`,</span>
+<span id="L105"><span class="lineNum">     105</span>              : `sbuf.appendf()`) use the CEX formatting engine with extended features:</span>
+<span id="L106"><span class="lineNum">     106</span>              : </span>
+<span id="L107"><span class="lineNum">     107</span>              : * `%S` prints a `str_s` slice — `io.printf(&quot;%S\n&quot;, str$s(&quot;world&quot;))`</span>
+<span id="L108"><span class="lineNum">     108</span>              : * `%S` has sanity checks: a plain `char*` in a `%S` slot prints `(%S-bad/overflow)`;</span>
+<span id="L109"><span class="lineNum">     109</span>              :   behavior is platform-dependent, do not rely on it</span>
+<span id="L110"><span class="lineNum">     110</span>              : * `%lu` / `%ld` — 64-bit integers, platform independent</span>
+<span id="L111"><span class="lineNum">     111</span>              : * `%u` / `%d` — 32-bit integers, platform independent</span>
+<span id="L112"><span class="lineNum">     112</span>              : * `%s` — standard null-terminated `char*`</span>
+<span id="L113"><span class="lineNum">     113</span>              : * other formats are compatible with vanilla libC</span>
+<span id="L114"><span class="lineNum">     114</span>              : </span>
+<span id="L115"><span class="lineNum">     115</span>              : ### Examples</span>
+<span id="L116"><span class="lineNum">     116</span>              : </span>
+<span id="L117"><span class="lineNum">     117</span>              : - Working with slices</span>
+<span id="L118"><span class="lineNum">     118</span>              : ```c</span>
+<span id="L119"><span class="lineNum">     119</span>              : char* cstr = &quot;hello&quot;;</span>
+<span id="L120"><span class="lineNum">     120</span>              : str_s s = str.sstr(cstr); // (str_s){.buf = &quot;hello&quot;, .len = 5}</span>
+<span id="L121"><span class="lineNum">     121</span>              : usize n = str.len(cstr);  // 5</span>
+<span id="L122"><span class="lineNum">     122</span>              : ```</span>
+<span id="L123"><span class="lineNum">     123</span>              : </span>
+<span id="L124"><span class="lineNum">     124</span>              : - Getting substring as slices</span>
+<span id="L125"><span class="lineNum">     125</span>              : ```c</span>
+<span id="L126"><span class="lineNum">     126</span>              : str.sub(&quot;123456&quot;, 1, -1);     // slice: 2345</span>
+<span id="L127"><span class="lineNum">     127</span>              : str.sub(&quot;123456&quot;, -3, -1);    // slice: 45</span>
+<span id="L128"><span class="lineNum">     128</span>              : str.sub(&quot;123456&quot;, -30, 2000); // slice: 123456 (out-of-range clamps, no crash)</span>
+<span id="L129"><span class="lineNum">     129</span>              : </span>
+<span id="L130"><span class="lineNum">     130</span>              : str_s s = str.sstr(&quot;123456&quot;);</span>
+<span id="L131"><span class="lineNum">     131</span>              : str_s sub = str.slice.sub(s, 1, 2); // slice: 2</span>
+<span id="L132"><span class="lineNum">     132</span>              : ```</span>
+<span id="L133"><span class="lineNum">     133</span>              : </span>
+<span id="L134"><span class="lineNum">     134</span>              : - Splitting / iterating via tokens</span>
+<span id="L135"><span class="lineNum">     135</span>              : ```c</span>
+<span id="L136"><span class="lineNum">     136</span>              : // zero-allocation iteration (it.val is a non-null-terminated slice — use %S)</span>
+<span id="L137"><span class="lineNum">     137</span>              : str_s s = str.sstr(&quot;123,456&quot;);</span>
+<span id="L138"><span class="lineNum">     138</span>              : for$iter (str_s, it, str.slice.iter_split(s, &quot;,&quot;, &amp;it.iterator)) {</span>
+<span id="L139"><span class="lineNum">     139</span>              :     io.printf(&quot;%S\n&quot;, it.val);</span>
+<span id="L140"><span class="lineNum">     140</span>              : }</span>
+<span id="L141"><span class="lineNum">     141</span>              : </span>
+<span id="L142"><span class="lineNum">     142</span>              : // mem-allocating split: each item is a cloned C-string</span>
+<span id="L143"><span class="lineNum">     143</span>              : mem$scope(tmem$, _)</span>
+<span id="L144"><span class="lineNum">     144</span>              : {</span>
+<span id="L145"><span class="lineNum">     145</span>              :     arr$(char*) res = str.split(&quot;123,456,789&quot;, &quot;,&quot;, _); // NULL on error</span>
+<span id="L146"><span class="lineNum">     146</span>              :     for$each (v, res) {</span>
+<span id="L147"><span class="lineNum">     147</span>              :         io.printf(&quot;%s\n&quot;, v);</span>
+<span id="L148"><span class="lineNum">     148</span>              :     }</span>
+<span id="L149"><span class="lineNum">     149</span>              : }</span>
+<span id="L150"><span class="lineNum">     150</span>              : ```</span>
+<span id="L151"><span class="lineNum">     151</span>              : </span>
+<span id="L152"><span class="lineNum">     152</span>              : - Chaining string operations</span>
+<span id="L153"><span class="lineNum">     153</span>              : ```c</span>
+<span id="L154"><span class="lineNum">     154</span>              : mem$scope(tmem$, _)</span>
+<span id="L155"><span class="lineNum">     155</span>              : {</span>
+<span id="L156"><span class="lineNum">     156</span>              :     // each op is NULL tolerant and returns NULL on error, so check once at the end</span>
+<span id="L157"><span class="lineNum">     157</span>              :     char* s = str.fmt(_, &quot;hi there&quot;);</span>
+<span id="L158"><span class="lineNum">     158</span>              :     s = str.replace(s, &quot;hi&quot;, &quot;hello&quot;, _);</span>
+<span id="L159"><span class="lineNum">     159</span>              :     s = str.fmt(_, &quot;result is: %s&quot;, s); // &quot;result is: hello there&quot;</span>
+<span id="L160"><span class="lineNum">     160</span>              :     if (s == NULL) { return; } // handle error</span>
+<span id="L161"><span class="lineNum">     161</span>              : }</span>
+<span id="L162"><span class="lineNum">     162</span>              : ```</span>
+<span id="L163"><span class="lineNum">     163</span>              : </span>
+<span id="L164"><span class="lineNum">     164</span>              : - Pattern matching</span>
+<span id="L165"><span class="lineNum">     165</span>              : ```c</span>
+<span id="L166"><span class="lineNum">     166</span>              : // * zero+ chars | ? one char | [abc] one of | [!abc] none of | [abc+] one+</span>
+<span id="L167"><span class="lineNum">     167</span>              : // [a-c0-9] range | \\* literal | (abc|def|xyz) alternatives</span>
+<span id="L168"><span class="lineNum">     168</span>              : </span>
+<span id="L169"><span class="lineNum">     169</span>              : str.match(&quot;test.txt&quot;, &quot;*?txt&quot;);                      // true</span>
+<span id="L170"><span class="lineNum">     170</span>              : str.match(&quot;image.png&quot;, &quot;image.[jp][pn]g&quot;);           // true</span>
+<span id="L171"><span class="lineNum">     171</span>              : str.match(&quot;backup.txt&quot;, &quot;[!a]*.txt&quot;);                // true</span>
+<span id="L172"><span class="lineNum">     172</span>              : str.match(&quot;create&quot;, &quot;(run|build|create|clean)&quot;);     // true</span>
+<span id="L173"><span class="lineNum">     173</span>              : </span>
+<span id="L174"><span class="lineNum">     174</span>              : str_s src = str$s(&quot;my_test __String.txt&quot;);</span>
+<span id="L175"><span class="lineNum">     175</span>              : str.slice.match(src, &quot;my_test*.txt&quot;); // true</span>
+<span id="L176"><span class="lineNum">     176</span>              : ```</span>
+<span id="L177"><span class="lineNum">     177</span>              : </span>
+<span id="L178"><span class="lineNum">     178</span>              : */</span>
+<span id="L179"><span class="lineNum">     179</span>              : struct __cex_namespace__str {</span>
+<span id="L180"><span class="lineNum">     180</span>              :     // Autogenerated by CEX</span>
+<span id="L181"><span class="lineNum">     181</span>              :     // clang-format off</span>
+<span id="L182"><span class="lineNum">     182</span>              : </span>
+<span id="L183"><span class="lineNum">     183</span>              :     /// Clones string using allocator, null tolerant, returns NULL on error.</span>
+<span id="L184"><span class="lineNum">     184</span>              :     char*           (*clone)(char* s, IAllocator allc);</span>
+<span id="L185"><span class="lineNum">     185</span>              :     /// Makes a copy of initial `src`, into `dest` buffer constrained by `destlen`. NULL tolerant,</span>
+<span id="L186"><span class="lineNum">     186</span>              :     /// always null-terminated, overflow checked.</span>
+<span id="L187"><span class="lineNum">     187</span>              :     Exception       (*copy)(char* dest, char* src, usize destlen);</span>
+<span id="L188"><span class="lineNum">     188</span>              :     /// Checks if string ends with prefix, returns false on error, NULL tolerant</span>
+<span id="L189"><span class="lineNum">     189</span>              :     bool            (*ends_with)(char* s, char* suffix);</span>
+<span id="L190"><span class="lineNum">     190</span>              :     /// Compares two null-terminated strings (null tolerant)</span>
+<span id="L191"><span class="lineNum">     191</span>              :     bool            (*eq)(char* a, char* b);</span>
+<span id="L192"><span class="lineNum">     192</span>              :     /// Compares two strings, case insensitive, null tolerant</span>
+<span id="L193"><span class="lineNum">     193</span>              :     bool            (*eqi)(char* a, char* b);</span>
+<span id="L194"><span class="lineNum">     194</span>              :     /// Find a substring in a string, returns pointer to first element. NULL tolerant, and NULL on err.</span>
+<span id="L195"><span class="lineNum">     195</span>              :     char*           (*find)(char* haystack, char* needle);</span>
+<span id="L196"><span class="lineNum">     196</span>              :     /// Find substring from the end , NULL tolerant, returns NULL on error.</span>
+<span id="L197"><span class="lineNum">     197</span>              :     char*           (*findr)(char* haystack, char* needle);</span>
+<span id="L198"><span class="lineNum">     198</span>              :     /// Formats string and allocates it dynamically using allocator, supports CEX format engine</span>
+<span id="L199"><span class="lineNum">     199</span>              :     char*           (*fmt)(IAllocator allc, char* format,...);</span>
+<span id="L200"><span class="lineNum">     200</span>              :     /// Computes string hash, seed can be null, or previous hash value for hash stacking  (null or empty</span>
+<span id="L201"><span class="lineNum">     201</span>              :     /// string returns 0 hash)</span>
+<span id="L202"><span class="lineNum">     202</span>              :     u64             (*hash)(char* a, u64 seed);</span>
+<span id="L203"><span class="lineNum">     203</span>              :     /// Joins string using a separator (join_by), NULL tolerant, returns NULL on error.</span>
+<span id="L204"><span class="lineNum">     204</span>              :     char*           (*join)(char** str_arr, usize str_arr_len, char* join_by, IAllocator allc);</span>
+<span id="L205"><span class="lineNum">     205</span>              :     /// Calculates string length, NULL tolerant.</span>
+<span id="L206"><span class="lineNum">     206</span>              :     usize           (*len)(char* s);</span>
+<span id="L207"><span class="lineNum">     207</span>              :     /// Returns new lower case string, returns NULL on error, null tolerant</span>
+<span id="L208"><span class="lineNum">     208</span>              :     char*           (*lower)(char* s, IAllocator allc);</span>
+<span id="L209"><span class="lineNum">     209</span>              :     /// String pattern matching check (see ./cex help str$ for examples)</span>
+<span id="L210"><span class="lineNum">     210</span>              :     bool            (*match)(char* s, char* pattern);</span>
+<span id="L211"><span class="lineNum">     211</span>              :     /// libc `qsort()` comparator functions, for arrays of `char*`, sorting alphabetical</span>
+<span id="L212"><span class="lineNum">     212</span>              :     int             (*qscmp)(const void* a, const void* b);</span>
+<span id="L213"><span class="lineNum">     213</span>              :     /// libc `qsort()` comparator functions, for arrays of `char*`, sorting alphabetical case insensitive</span>
+<span id="L214"><span class="lineNum">     214</span>              :     int             (*qscmpi)(const void* a, const void* b);</span>
+<span id="L215"><span class="lineNum">     215</span>              :     /// Replaces substring occurrence in a string</span>
+<span id="L216"><span class="lineNum">     216</span>              :     char*           (*replace)(char* s, char* old_sub, char* new_sub, IAllocator allc);</span>
+<span id="L217"><span class="lineNum">     217</span>              :     /// Creates string slice from a buf+len</span>
+<span id="L218"><span class="lineNum">     218</span>              :     str_s           (*sbuf)(char* s, usize length);</span>
+<span id="L219"><span class="lineNum">     219</span>              :     /// Splits string using split_by (allows many) chars, returns new dynamic array of split char*</span>
+<span id="L220"><span class="lineNum">     220</span>              :     /// tokens, allocates memory with allc, returns NULL on error. NULL tolerant. Items of array are</span>
+<span id="L221"><span class="lineNum">     221</span>              :     /// cloned, so you need free them independently or better use arena or tmem$.</span>
+<span id="L222"><span class="lineNum">     222</span>              :     arr$(char*)     (*split)(char* s, char* split_by, IAllocator allc);</span>
+<span id="L223"><span class="lineNum">     223</span>              :     /// Splits string by lines, result allocated by allc, as dynamic array of cloned lines, Returns NULL</span>
+<span id="L224"><span class="lineNum">     224</span>              :     /// on error, NULL tolerant. Items of array are cloned, so you need free them independently or</span>
+<span id="L225"><span class="lineNum">     225</span>              :     /// better use arena or tmem$. Supports \n or \r\n.</span>
+<span id="L226"><span class="lineNum">     226</span>              :     arr$(char*)     (*split_lines)(char* s, IAllocator allc);</span>
+<span id="L227"><span class="lineNum">     227</span>              :     /// Analog of sprintf() uses CEX sprintf engine. NULL tolerant, overflow safe.</span>
+<span id="L228"><span class="lineNum">     228</span>              :     Exc             (*sprintf)(char* dest, usize dest_len, char* format,...);</span>
+<span id="L229"><span class="lineNum">     229</span>              :     /// Creates string slice of input C string (NULL tolerant, (str_s){0} on error)</span>
+<span id="L230"><span class="lineNum">     230</span>              :     str_s           (*sstr)(char* ccharptr);</span>
+<span id="L231"><span class="lineNum">     231</span>              :     /// Checks if string starts with prefix, returns false on error, NULL tolerant</span>
+<span id="L232"><span class="lineNum">     232</span>              :     bool            (*starts_with)(char* s, char* prefix);</span>
+<span id="L233"><span class="lineNum">     233</span>              :     /// Makes slices of `s` char* string, start/end are indexes, can be negative from the end, if end=0</span>
+<span id="L234"><span class="lineNum">     234</span>              :     /// mean full length of the string. `s` may be not null-terminated. function is NULL tolerant,</span>
+<span id="L235"><span class="lineNum">     235</span>              :     /// return (str_s){0} on error</span>
+<span id="L236"><span class="lineNum">     236</span>              :     str_s           (*sub)(char* s, isize start, isize end);</span>
+<span id="L237"><span class="lineNum">     237</span>              :     /// Returns new upper case string, returns NULL on error, null tolerant</span>
+<span id="L238"><span class="lineNum">     238</span>              :     char*           (*upper)(char* s, IAllocator allc);</span>
+<span id="L239"><span class="lineNum">     239</span>              :     /// Analog of vsprintf() uses CEX sprintf engine. NULL tolerant, overflow safe.</span>
+<span id="L240"><span class="lineNum">     240</span>              :     Exception       (*vsprintf)(char* dest, usize dest_len, char* format, va_list va);</span>
+<span id="L241"><span class="lineNum">     241</span>              : </span>
+<span id="L242"><span class="lineNum">     242</span>              :     struct {</span>
+<span id="L243"><span class="lineNum">     243</span>              :         Exception       (*to_bool)(char* s, bool* num);</span>
+<span id="L244"><span class="lineNum">     244</span>              :         Exception       (*to_bools)(str_s s, bool* num);</span>
+<span id="L245"><span class="lineNum">     245</span>              :         Exception       (*to_f32)(char* s, f32* num);</span>
+<span id="L246"><span class="lineNum">     246</span>              :         Exception       (*to_f32s)(str_s s, f32* num);</span>
+<span id="L247"><span class="lineNum">     247</span>              :         Exception       (*to_f64)(char* s, f64* num);</span>
+<span id="L248"><span class="lineNum">     248</span>              :         Exception       (*to_f64s)(str_s s, f64* num);</span>
+<span id="L249"><span class="lineNum">     249</span>              :         Exception       (*to_i16)(char* s, i16* num);</span>
+<span id="L250"><span class="lineNum">     250</span>              :         Exception       (*to_i16s)(str_s s, i16* num);</span>
+<span id="L251"><span class="lineNum">     251</span>              :         Exception       (*to_i32)(char* s, i32* num);</span>
+<span id="L252"><span class="lineNum">     252</span>              :         Exception       (*to_i32s)(str_s s, i32* num);</span>
+<span id="L253"><span class="lineNum">     253</span>              :         Exception       (*to_i64)(char* s, i64* num);</span>
+<span id="L254"><span class="lineNum">     254</span>              :         Exception       (*to_i64s)(str_s s, i64* num);</span>
+<span id="L255"><span class="lineNum">     255</span>              :         Exception       (*to_i8)(char* s, i8* num);</span>
+<span id="L256"><span class="lineNum">     256</span>              :         Exception       (*to_i8s)(str_s s, i8* num);</span>
+<span id="L257"><span class="lineNum">     257</span>              :         Exception       (*to_u16)(char* s, u16* num);</span>
+<span id="L258"><span class="lineNum">     258</span>              :         Exception       (*to_u16s)(str_s s, u16* num);</span>
+<span id="L259"><span class="lineNum">     259</span>              :         Exception       (*to_u32)(char* s, u32* num);</span>
+<span id="L260"><span class="lineNum">     260</span>              :         Exception       (*to_u32s)(str_s s, u32* num);</span>
+<span id="L261"><span class="lineNum">     261</span>              :         Exception       (*to_u64)(char* s, u64* num);</span>
+<span id="L262"><span class="lineNum">     262</span>              :         Exception       (*to_u64s)(str_s s, u64* num);</span>
+<span id="L263"><span class="lineNum">     263</span>              :         Exception       (*to_u8)(char* s, u8* num);</span>
+<span id="L264"><span class="lineNum">     264</span>              :         Exception       (*to_u8s)(str_s s, u8* num);</span>
+<span id="L265"><span class="lineNum">     265</span>              :     } convert;</span>
+<span id="L266"><span class="lineNum">     266</span>              : </span>
+<span id="L267"><span class="lineNum">     267</span>              :     struct {</span>
+<span id="L268"><span class="lineNum">     268</span>              :         /// Clone slice into new char* allocated by `allc`, null tolerant, returns NULL on error.</span>
+<span id="L269"><span class="lineNum">     269</span>              :         char*           (*clone)(str_s s, IAllocator allc);</span>
+<span id="L270"><span class="lineNum">     270</span>              :         /// Makes a copy of initial `src` slice, into `dest` buffer constrained by `destlen`. NULL tolerant,</span>
+<span id="L271"><span class="lineNum">     271</span>              :         /// always null-terminated, overflow checked.</span>
+<span id="L272"><span class="lineNum">     272</span>              :         Exception       (*copy)(char* dest, str_s src, usize destlen);</span>
+<span id="L273"><span class="lineNum">     273</span>              :         /// Checks if slice ends with prefix, returns (str_s){0} on error, NULL tolerant</span>
+<span id="L274"><span class="lineNum">     274</span>              :         bool            (*ends_with)(str_s s, str_s suffix);</span>
+<span id="L275"><span class="lineNum">     275</span>              :         /// Compares two string slices, null tolerant</span>
+<span id="L276"><span class="lineNum">     276</span>              :         bool            (*eq)(str_s a, str_s b);</span>
+<span id="L277"><span class="lineNum">     277</span>              :         /// Compares two string slices, null tolerant, case insensitive</span>
+<span id="L278"><span class="lineNum">     278</span>              :         bool            (*eqi)(str_s a, str_s b);</span>
+<span id="L279"><span class="lineNum">     279</span>              :         /// Computes string hash, seed can be null, or previous hash value for hash stacking  (null or empty</span>
+<span id="L280"><span class="lineNum">     280</span>              :         /// string returns 0 hash)</span>
+<span id="L281"><span class="lineNum">     281</span>              :         u64             (*hash)(str_s a, u64 seed);</span>
+<span id="L282"><span class="lineNum">     282</span>              :         /// Get index of first occurrence of `needle`, returns -1 on error.</span>
+<span id="L283"><span class="lineNum">     283</span>              :         isize           (*index_of)(str_s s, str_s needle);</span>
+<span id="L284"><span class="lineNum">     284</span>              :         /// iterator over slice splits:  for$iter (str_s, it, str.slice.iter_split(s, &quot;,&quot;, &amp;it.iterator)) {}</span>
+<span id="L285"><span class="lineNum">     285</span>              :         str_s           (*iter_split)(str_s s, char* split_by, cex_iterator_s* iterator);</span>
+<span id="L286"><span class="lineNum">     286</span>              :         /// Removes white spaces from the beginning of slice</span>
+<span id="L287"><span class="lineNum">     287</span>              :         str_s           (*lstrip)(str_s s);</span>
+<span id="L288"><span class="lineNum">     288</span>              :         /// Slice pattern matching check (see ./cex help str$ for examples)</span>
+<span id="L289"><span class="lineNum">     289</span>              :         bool            (*match)(str_s s, char* pattern);</span>
+<span id="L290"><span class="lineNum">     290</span>              :         /// libc `qsort()` comparator function for alphabetical sorting of str_s arrays</span>
+<span id="L291"><span class="lineNum">     291</span>              :         int             (*qscmp)(const void* a, const void* b);</span>
+<span id="L292"><span class="lineNum">     292</span>              :         /// libc `qsort()` comparator function for alphabetical case insensitive sorting of str_s arrays</span>
+<span id="L293"><span class="lineNum">     293</span>              :         int             (*qscmpi)(const void* a, const void* b);</span>
+<span id="L294"><span class="lineNum">     294</span>              :         /// Replaces slice prefix (start part), or returns the same slice if it's not found</span>
+<span id="L295"><span class="lineNum">     295</span>              :         str_s           (*remove_prefix)(str_s s, str_s prefix);</span>
+<span id="L296"><span class="lineNum">     296</span>              :         /// Replaces slice suffix (end part), or returns the same slice if it's not found</span>
+<span id="L297"><span class="lineNum">     297</span>              :         str_s           (*remove_suffix)(str_s s, str_s suffix);</span>
+<span id="L298"><span class="lineNum">     298</span>              :         /// Removes white spaces from the end of slice</span>
+<span id="L299"><span class="lineNum">     299</span>              :         str_s           (*rstrip)(str_s s);</span>
+<span id="L300"><span class="lineNum">     300</span>              :         /// Checks if slice starts with prefix, returns (str_s){0} on error, NULL tolerant</span>
+<span id="L301"><span class="lineNum">     301</span>              :         bool            (*starts_with)(str_s s, str_s prefix);</span>
+<span id="L302"><span class="lineNum">     302</span>              :         /// Removes white spaces from both ends of slice</span>
+<span id="L303"><span class="lineNum">     303</span>              :         str_s           (*strip)(str_s s);</span>
+<span id="L304"><span class="lineNum">     304</span>              :         /// Makes slices of `s` slice, start/end are indexes, can be negative from the end, if end=0 mean</span>
+<span id="L305"><span class="lineNum">     305</span>              :         /// full length of the string. `s` may be not null-terminated. function is NULL tolerant, return</span>
+<span id="L306"><span class="lineNum">     306</span>              :         /// (str_s){0} on error</span>
+<span id="L307"><span class="lineNum">     307</span>              :         str_s           (*sub)(str_s s, isize start, isize end);</span>
+<span id="L308"><span class="lineNum">     308</span>              :     } slice;</span>
+<span id="L309"><span class="lineNum">     309</span>              : </span>
+<span id="L310"><span class="lineNum">     310</span>              :     // clang-format on</span>
+<span id="L311"><span class="lineNum">     311</span>              : };</span>
+<span id="L312"><span class="lineNum">     312</span>              : CEX_NAMESPACE struct __cex_namespace__str str;</span>
+<span id="L313"><span class="lineNum">     313</span>              : </span>
+<span id="L314"><span class="lineNum">     314</span>              : #endif</span>
+        </pre>
+              </td>
+            </tr>
+          </table>
+          <br>
+
+          <table width="100%" border=0 cellspacing=0 cellpadding=0>
+            <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+            <tr><td class="versionInfo">Generated by: <a href="https://github.com//linux-test-project/lcov" target="_parent">LCOV version 2.0-1</a></td></tr>
+          </table>
+          <br>
+
+</body>
+</html>
