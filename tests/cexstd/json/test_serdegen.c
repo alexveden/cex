@@ -467,6 +467,30 @@ test$case(serdegen_gen_too_many_fields)
     return EOK;
 }
 
+test$case(serdegen_gen_duplicate_type)
+{
+    mem$arena_scope(256 * 1024, _)
+    {
+        char* code =
+            "json$$struct();\ntypedef struct Dup_c {\n    i32 a;\n} Dup_c;\n"
+            "json$$struct();\ntypedef struct Dup_c {\n    i32 b;\n} Dup_c;\n";
+        tassert_er(Error.exists, test_serdegen_process_code(_, code));
+    }
+    return EOK;
+}
+
+test$case(serdegen_gen_body_comment)
+{
+    mem$arena_scope(256 * 1024, _)
+    {
+        char* code =
+            "json$$struct();\ntypedef struct Cmt_c {\n"
+            "    // comment inside the struct body\n    i32 a;\n} Cmt_c;\n";
+        tassert_er(EOK, test_serdegen_process_code(_, code));
+    }
+    return EOK;
+}
+
 #endif // #if !defined(__EMSCRIPTEN__)
 
 test$main();

@@ -1345,15 +1345,11 @@ _cex_json__gen__codegen_deserialize_field(
                     if (!f->flags.is_nullable) {
                         cg$pf("json$rd_egoto(jr, JsonError.null_field, fail);");
                     } else {
-                        if (!f->flags.is_nullable) {
-                            cg$pf("json$rd_egoto(jr, JsonError.null_field, fail);");
-                        } else {
-                            cg$pf(
-                                "// field `%s` is nullable json$$field(.nullable = true)",
-                                f->name
-                            );
-                            cg$pf("out_item->%s = NULL;", f->name);
-                        }
+                        cg$pf(
+                            "// field `%s` is nullable json$$field(.nullable = true)",
+                            f->name
+                        );
+                        cg$pf("out_item->%s = NULL;", f->name);
                     }
                 } else {
                     cg$pf("json$rd_egoto(jr, JsonError.null_field, fail);");

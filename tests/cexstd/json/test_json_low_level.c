@@ -745,4 +745,72 @@ test$case(json_reader_bad_stuff_handling)
     return EOK;
 }
 
+test$case(json_reader_nesting_overflow)
+{
+    mem$scope(tmem$, _)
+    {
+        sbuf_c buf = sbuf.create(CEX_MAX_JSON_DEPTH * 2 + 8, _);
+        for (i32 i = 0; i < CEX_MAX_JSON_DEPTH + 2; i++) { e$ret(sbuf.append(&buf, "[")); }
+
+        json_rd_c js;
+        e$ret(json.rd.create(&js, buf, 0, &(json_rd_kw){ .strict_mode = false }));
+
+        Exc err = EOK;
+        for (i32 i = 0; i < CEX_MAX_JSON_DEPTH + 2; i++) {
+            err = json.rd.step_in(&js, js.type);
+            if (err) { break; }
+            json.rd.next(&js);
+        }
+        tassert_ne(err, EOK);
+        tassert_eq(js.error, "JSON Scope nesting overflow");
+    }
+    return EOK;
+}
+
+test$case(json_writer_null_key)
+{
+    mem$scope(tmem$, _)
+    {
+        json_wr_c jw;
+        sbuf_c buf = sbuf.create(256, _);
+        e$ret(json.wr.create(&jw, &(json_wr_kw){ .buf = &buf, .indent = 2 }));
+
+        json.wr.print_scope_enter(&jw, JsonType__obj);
+        json.wr.print_key(&jw, NULL);
+        tassert_eq(jw.error, JsonError.null_field);
+    }
+    return EOK;
+}
+
+test$case(json_writer_scope_overflow)
+{
+    mem$scope(tmem$, _)
+    {
+        json_wr_c jw;
+        sbuf_c buf = sbuf.create(256, _);
+        e$ret(json.wr.create(&jw, &(json_wr_kw){ .buf = &buf }));
+
+        for (i32 i = 0; i < CEX_MAX_JSON_DEPTH + 2 && jw.error == EOK; i++) {
+            json.wr.print_scope_enter(&jw, JsonType__arr);
+        }
+        tassert_eq(jw.error, "Scope overflow");
+    }
+    return EOK;
+}
+
+test$case(json_writer_scope_underflow)
+{
+    mem$scope(tmem$, _)
+    {
+        json_wr_c jw;
+        sbuf_c buf = sbuf.create(256, _);
+        e$ret(json.wr.create(&jw, &(json_wr_kw){ .buf = &buf }));
+
+        json_wr_c* p = &jw;
+        json.wr.print_scope_exit(&p);
+        tassert_eq(jw.error, "Scope overflow");
+    }
+    return EOK;
+}
+
 test$main();
