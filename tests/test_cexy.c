@@ -900,6 +900,333 @@ test$case(test_pkgconf)
     return EOK;
 }
 
+test$case(test_cmd_stats_exclude_and_tokens)
+{
+    e$ret(io.file.save(
+        TBUILDDIR "stat_src2.c",
+        "#define FOO \\\n    1\n"
+        "// single line comment\n"
+        "/* multi\nline\ncomment */\n"
+        "int foo(void) { return 1; }\n"
+    ));
+    e$ret(io.file.save(TBUILDDIR "stat_excl.c", "int e(void) { return 0; }\n"));
+
+    char* argv[] = { "stats", "-v", TBUILDDIR "stat_*.c", "!" TBUILDDIR "stat_excl.c" };
+    tassert_er(EOK, cexy.cmd.stats(arr$len(argv), argv, NULL));
+
+    char* only_excl[] = { "stats", "!" };
+    tassert_er(EOK, cexy.cmd.stats(arr$len(only_excl), only_excl, NULL));
+    return EOK;
+}
+
+test$case(test_cmd_stats_parse_error)
+{
+    e$ret(io.file.save(TBUILDDIR "stat_bad.c", "\"hello\nworld\"\n"));
+    char* argv[] = { "stats", TBUILDDIR "stat_bad.c" };
+    tassert_er(Error.integrity, cexy.cmd.stats(arr$len(argv), argv, NULL));
+    return EOK;
+}
+
+test$case(test_simple_test_invalid_command)
+{
+    char* argv[] = { "test", "bogus", "x" };
+    tassert_er(Error.argsparse, cexy.cmd.simple_test(arr$len(argv), argv, NULL));
+    return EOK;
+}
+
+test$case(test_simple_test_create_clean_cli)
+{
+    char* target = TBUILDDIR "test_cli_created.c";
+    char* create[] = { "test", "create", target };
+    tassert_er(EOK, cexy.cmd.simple_test(arr$len(create), create, NULL));
+    tassert(os.path.exists(target));
+
+    e$ret(os.fs.mkpath(TBUILDDIR "tests/"));
+    char* clean[] = { "test", "clean", "all" };
+    tassert_er(EOK, cexy.cmd.simple_test(arr$len(clean), clean, NULL));
+    return EOK;
+}
+
+test$case(test_simple_test_jobs_build)
+{
+    e$ret(cexy.test.create(TBUILDDIR "test_multi_a.c", false));
+    e$ret(cexy.test.create(TBUILDDIR "test_multi_b.c", false));
+    char* argv[] = { "test", "-j", "1", "build", TBUILDDIR "test_multi_*.c" };
+    tassert_er(EOK, cexy.cmd.simple_test(arr$len(argv), argv, NULL));
+    return EOK;
+}
+
+test$case(test_simple_test_bench_build)
+{
+    char* target = TBUILDDIR "test_bench_cli.c";
+    e$ret(cexy.test.create(target, false));
+    char* argv[] = { "test", "bench", target };
+    tassert_er(EOK, cexy.cmd.simple_test(arr$len(argv), argv, NULL));
+    return EOK;
+}
+
+test$case(test_simple_test_coverage_run)
+{
+    char* src = TBUILDDIR "test_covrun.c";
+    e$ret(io.file.save(
+        src,
+        "#define CEX_IMPLEMENTATION\n"
+        "#define CEX_TEST\n"
+        "#include \"cex.h\"\n"
+        "test$case(ok) { tassert_eq(1, 1); return EOK; }\n"
+        "test$main();\n"
+    ));
+    char* argv[] = { "test", "--coverage", "run", src };
+    tassert_er(EOK, cexy.cmd.simple_test(arr$len(argv), argv, NULL));
+    return EOK;
+}
+
+static bool
+test_cexy_mock_cmd_exists_false(char* cmd_exe)
+{
+    (void)cmd_exe;
+    return false;
+}
+
+static Exception
+test_cexy_mock_cmd_create_ok(os_cmd_c* self, char** args, usize args_len, os_cmd_flags_s* flags)
+{
+    (void)self;
+    (void)args;
+    (void)args_len;
+    (void)flags;
+    return EOK;
+}
+
+static Exception
+test_cexy_mock_cmd_create_fail(os_cmd_c* self, char** args, usize args_len, os_cmd_flags_s* flags)
+{
+    (void)self;
+    (void)args;
+    (void)args_len;
+    (void)flags;
+    return Error.runtime;
+}
+
+static Exception
+test_cexy_mock_cmd_wait_ok(os_cmd_c* procs, usize cnt, f64 timeout_sec)
+{
+    (void)procs;
+    (void)cnt;
+    (void)timeout_sec;
+    return EOK;
+}
+
+static Exception
+test_cexy_mock_cmd_wait_fail(os_cmd_c* procs, usize cnt, f64 timeout_sec)
+{
+    (void)procs;
+    (void)cnt;
+    (void)timeout_sec;
+    return Error.runtime;
+}
+
+static char*
+test_cexy_mock_cmd_read_empty(os_cmd_c* self, IAllocator allc)
+{
+    (void)self;
+    (void)allc;
+    return "";
+}
+
+static char*
+test_cexy_mock_cmd_read_long(os_cmd_c* self, IAllocator allc)
+{
+    (void)self;
+    (void)allc;
+    return "0123456789012345678901234567890123456789012345678901234567890";
+}
+
+static char*
+test_cexy_mock_cmd_read_nonhex(os_cmd_c* self, IAllocator allc)
+{
+    (void)self;
+    (void)allc;
+    return "zzzz";
+}
+
+test$case(test_git_hash_error_paths)
+{
+    mem$scope(tmem$, _)
+    {
+        test$mock_scope(os) {
+            os.cmd.exists = test_cexy_mock_cmd_exists_false;
+            tassert_eq(cexy.utils.git_hash(_), NULL);
+        }
+        test$mock_scope(os) {
+            os.cmd.create = test_cexy_mock_cmd_create_fail;
+            tassert_eq(cexy.utils.git_hash(_), NULL);
+        }
+        test$mock_scope(os) {
+            os.cmd.create = test_cexy_mock_cmd_create_ok;
+            os.cmd.wait = test_cexy_mock_cmd_wait_fail;
+            tassert_eq(cexy.utils.git_hash(_), NULL);
+        }
+        test$mock_scope(os) {
+            os.cmd.create = test_cexy_mock_cmd_create_ok;
+            os.cmd.wait = test_cexy_mock_cmd_wait_ok;
+            os.cmd.read_all = test_cexy_mock_cmd_read_empty;
+            tassert_eq(cexy.utils.git_hash(_), NULL);
+        }
+        test$mock_scope(os) {
+            os.cmd.create = test_cexy_mock_cmd_create_ok;
+            os.cmd.wait = test_cexy_mock_cmd_wait_ok;
+            os.cmd.read_all = test_cexy_mock_cmd_read_long;
+            tassert_eq(cexy.utils.git_hash(_), NULL);
+        }
+        test$mock_scope(os) {
+            os.cmd.create = test_cexy_mock_cmd_create_ok;
+            os.cmd.wait = test_cexy_mock_cmd_wait_ok;
+            os.cmd.read_all = test_cexy_mock_cmd_read_nonhex;
+            tassert_eq(cexy.utils.git_hash(_), NULL);
+        }
+    }
+    return EOK;
+}
+
+test$case(test_src_changed_edges)
+{
+    mem$scope(tmem$, _)
+    {
+        char* tgt = TBUILDDIR "edge_tgt";
+        char* src_file = TBUILDDIR "edge_src.c";
+        e$ret(io.file.save(src_file, "// x\n"));
+        char* srcs[] = { src_file };
+
+        tassert_eq(0, cexy.src_changed(tgt, srcs, 0));   // empty array
+        tassert_eq(0, cexy.src_changed(NULL, srcs, 1));  // NULL target
+        tassert_eq(0, cexy.src_changed(TBUILDDIR, srcs, 1));  // dir target
+
+        char* tgt2 = TBUILDDIR "edge_tgt2";
+        e$ret(io.file.save(tgt2, ""));
+        char* dirsrc[] = { TBUILDDIR };
+        tassert_eq(0, cexy.src_changed(tgt2, dirsrc, 1));  // non-file src
+    }
+    return EOK;
+}
+
+test$case(test_src_include_changed_edges)
+{
+    mem$scope(tmem$, _)
+    {
+        char* tgt = TBUILDDIR "inc_tgt";
+        char* src = TBUILDDIR "inc_src.c";
+        e$ret(io.file.save(tgt, ""));
+        e$ret(io.file.save(src, "#include \"missing.h\"\nint x(void) { return 0; }\n"));
+
+        // directory target
+        tassert_eq(0, cexy.src_include_changed(TBUILDDIR, src, NULL));
+
+        // alt include path that does not exist
+        arr$(char*) alt = arr$new(alt, _);
+        arr$push(alt, TBUILDDIR "nope_dir/");
+        tassert_eq(0, cexy.src_include_changed(tgt, src, alt));
+
+        // bad include (too short to be a real path)
+        e$ret(io.file.save(src, "#include <>\nint x(void) { return 0; }\n"));
+        tassert_eq(0, cexy.src_include_changed(tgt, src, NULL));
+
+        // non .c/.h source: only the mtime check runs
+        char* src_txt = TBUILDDIR "inc_src.txt";
+        e$ret(io.file.save(src_txt, "plain text\n"));
+        os.sleep(1.2);
+        char* tgt3 = TBUILDDIR "inc_tgt3";
+        e$ret(io.file.save(tgt3, ""));
+        tassert_eq(0, cexy.src_include_changed(tgt3, src_txt, NULL));
+    }
+    return EOK;
+}
+
+test$case(test_test_run_missing_target)
+{
+    tassert_er(Error.not_found, cexy.test.run(TBUILDDIR "test_nope.c", "run", 0, NULL));
+    return EOK;
+}
+
+test$case(test_test_run_quiet)
+{
+    char* src = TBUILDDIR "test_runq.c";
+    e$ret(io.file.save(
+        src,
+        "#define CEX_IMPLEMENTATION\n"
+        "#define CEX_TEST\n"
+        "#include \"cex.h\"\n"
+        "test$case(ok) { tassert_eq(1, 1); return EOK; }\n"
+        "test$main();\n"
+    ));
+    char* build[] = { "test", "build", src };
+    tassert_er(EOK, cexy.cmd.simple_test(arr$len(build), build, NULL));
+
+    char* noargs[] = { NULL };
+    tassert_er(EOK, cexy.test.run(TBUILDDIR "test_*.c", "run", 0, noargs));
+    return EOK;
+}
+
+test$case(test_test_run_failure)
+{
+    char* bad = TBUILDDIR "test_runbad.c";
+    e$ret(io.file.save(
+        bad,
+        "#define CEX_IMPLEMENTATION\n"
+        "#define CEX_TEST\n"
+        "#include \"cex.h\"\n"
+        "test$case(bad) { tassert_eq(1, 2); return EOK; }\n"
+        "test$main();\n"
+    ));
+    char* build[] = { "test", "build", bad };
+    tassert_er(EOK, cexy.cmd.simple_test(arr$len(build), build, NULL));
+
+    char* noargs[] = { NULL };
+    tassert_er(Error.runtime, cexy.test.run(bad, "run", 0, noargs));
+    return EOK;
+}
+
+test$case(test_pkgconf_parse_escaped_quote)
+{
+    mem$scope(tmem$, _)
+    {
+        arr$(char*) args = arr$new(args, _);
+        tassert_er(EOK, _cexy__utils__pkgconf_parse(_, &args, "-I\"a\\b\" -c"));
+        tassert_eq((int)arr$len(args), 2);
+        tassert_eq(args[0], "-I\"a\\b\"");
+        tassert_eq(args[1], "-c");
+    }
+    return EOK;
+}
+
+test$case(test_colorize_print_token_edges)
+{
+    mem$scope(tmem$, _)
+    {
+        char* path = TBUILDDIR "colorize_edges.txt";
+        FILE* out = NULL;
+        e$ret(io.fopen(&out, path, "w"));
+        test$mock_scope(io) {
+            io.isatty = test_cexy_mock_isatty_true;
+            _cexy__colorize_print(str$s("foo"), str$s("foo"), out);
+            _cexy__colorize_print(str$s("foo (bar)"), str$s("foo"), out);
+            _cexy__colorize_print(str$s("(*ptr)"), str$s("foo"), out);
+        }
+        io.fclose(&out);
+        char* got = io.file.load(path, _);
+        tassert(got != NULL);
+        tassert(str.find(got, "foo") != NULL);
+    }
+    return EOK;
+}
+
+test$case(test_cmd_libfetch_ok_no_paths)
+{
+    char* argv[] = { "libfetch" };
+    tassert_er(EOK, cexy.cmd.libfetch(arr$len(argv), argv, NULL));
+    return EOK;
+}
+
 #endif  // #if !defined(__EMSCRIPTEN__)
 
 test$main();

@@ -51,6 +51,28 @@ test$case(test_make_new_project_partial_exists)
     return EOK;
 }
 
+test$case(test_make_new_project_dir_exists)
+{
+    e$ret(os.fs.mkpath(TBUILDDIR "already/"));
+    tassert_er(Error.exists, cexy.utils.make_new_project(TBUILDDIR "already"));
+    return EOK;
+}
+
+test$case(test_make_new_project_cex_c_exists)
+{
+    mem$scope(tmem$, _)
+    {
+        e$ret(os.fs.mkpath(TBUILDDIR));
+        e$ret(io.file.save(TBUILDDIR "cex.c", "// existing\n"));
+        char* old = os.fs.getcwd(_);
+        e$ret(os.fs.chdir(TBUILDDIR));
+        Exc err = cexy.utils.make_new_project(".");
+        e$ret(os.fs.chdir(old));
+        tassert_er(Error.exists, err);
+    }
+    return EOK;
+}
+
 #endif  // #if !defined(__EMSCRIPTEN__)
 
 test$main();

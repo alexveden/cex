@@ -169,6 +169,17 @@ test$case(test_cmd_simple_fuzz)
     return EOK;
 }
 
+test$case(test_app_create_main_exists)
+{
+    mem$scope(tmem$, _)
+    {
+        e$ret(os.fs.mkpath(cexy$src_dir "myapp2/main.c"));
+        e$ret(io.file.save(cexy$src_dir "myapp2/main.c", "// main\n"));
+        tassert_er(Error.exists, cexy.app.create("myapp2"));
+    }
+    return EOK;
+}
+
 test$case(test_add_precompiled_debug_cex_h)
 {
     mem$scope(tmem$, _)

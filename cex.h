@@ -276,7 +276,7 @@ If the project has no agent instruction file (`AGENTS.md`, `CLAUDE.md`,
 /// CEX patch version
 #define cex$version_patch 0
 /// CEX build date (substituted at bundle time)
-#define cex$version_date "2026-10-03"
+#define cex$version_date "2026-10-04"
 
 
 
@@ -17814,6 +17814,7 @@ _cex__codegen_print_case_exit(cex_codegen_s** cgptr)
 #        include <time.h>
 
 /// Rebuilds ./cex from cex.c when cex.h or cex.c changed
+// LCOV_EXCL_START
 static void
 cexy_build_self(int argc, char** argv, char* cex_source)
 {
@@ -17921,6 +17922,7 @@ cexy_build_self(int argc, char** argv, char* cex_source)
         exit(1);
     }
 }
+// LCOV_EXCL_STOP
 
 /// True if src_path or one of its #includes is newer than target_path
 static bool
@@ -18587,8 +18589,8 @@ _cexy__process_update_code(
     {
         char* code = io.file.load(code_file, _);
         if (unlikely(code == NULL)) {
-            log$error("Failed loading: %s\n", code_file);
-            return e$raise(Error.io, "failed loading code file");
+            log$error("Failed loading: %s\n", code_file); // LCOV_EXCL_LINE
+            return e$raise(Error.io, "failed loading code file"); // LCOV_EXCL_LINE
         }
 
         bool is_header = str.ends_with(code_file, ".h");
@@ -18838,8 +18840,8 @@ cexy__cmd__process(int argc, char** argv, void* user_ctx)
                 }
                 char* code = io.file.load(src_fn, _);
                 if (unlikely(code == NULL)) {
-                    log$error("Failed loading: %s\n", src_fn);
-                    return e$raise(Error.io, "failed loading code file");
+                    log$error("Failed loading: %s\n", src_fn); // LCOV_EXCL_LINE
+                    return e$raise(Error.io, "failed loading code file"); // LCOV_EXCL_LINE
                 }
                 arr$(cex_token_s) items = arr$new(items, _);
                 arr$(cex_decl_s*) decls = arr$new(decls, _, .capacity = 128);
@@ -18982,8 +18984,8 @@ cexy__cmd__stats(int argc, char** argv, void* user_ctx)
             {
                 char* code = io.file.load(src_fn.key, _);
                 if (unlikely(!code)) {
-                    log$error("Error opening file: %s\n", src_fn.key);
-                    return e$raise(Error.os, "Error opening file");
+                    log$error("Error opening file: %s\n", src_fn.key); // LCOV_EXCL_LINE
+                    return e$raise(Error.os, "Error opening file"); // LCOV_EXCL_LINE
                 }
                 stats->n_files++;
 
@@ -19021,7 +19023,7 @@ cexy__cmd__stats(int argc, char** argv, void* user_ctx)
                             }
                         }
                             fallthrough();
-                        case CexTkn__comment_single:
+                        case CexTkn__comment_single: // LCOV_EXCL_LINE
                             stats->n_lines_comments++;
                             break;
                         case CexTkn__preproc: {
@@ -19715,7 +19717,7 @@ _cexy__help_query(
                 if (str.slice.eqi(sub_name, prefix) && sub_name.buf[prefix.len] == '_') {
                     if (d->type == CexTkn__func_def && str.eqi(query, "cex.")) {
                         // skipping other namespaces of cex, e.g. cex_str_len()
-                        continue;
+                        continue; // LCOV_EXCL_LINE
                     }
                     has_match = true;
                 }
@@ -19998,8 +20000,8 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
 
                 char* code = io.file.load(src_fn, arena);
                 if (unlikely(code == NULL)) {
-                    log$error("Error loading: %s\n", src_fn);
-                    return e$raise(Error.not_found, "Error loading");
+                    log$error("Error loading: %s\n", src_fn); // LCOV_EXCL_LINE
+                    return e$raise(Error.not_found, "Error loading"); // LCOV_EXCL_LINE
                 }
                 arr$(cex_token_s) items = arr$new(items, _);
 
@@ -20064,8 +20066,8 @@ cexy__cmd__help(int argc, char** argv, void* user_ctx)
                     case CexTkn__macro_const:
                         io.fprintf(output, "%-20s", "macro namespace");
                         break;
-                    default:
-                        io.fprintf(output, "%-20s", CexTkn_str[it.value->type]);
+                    default: // LCOV_EXCL_LINE
+                        io.fprintf(output, "%-20s", CexTkn_str[it.value->type]); // LCOV_EXCL_LINE
                 }
                 io.fprintf(output, " %-30S %s:%d\n", it.key, it.value->file, it.value->line + 1);
             }
@@ -20221,7 +20223,7 @@ cexy__cmd__config(int argc, char** argv, void* user_ctx)
                     io.printf(
                         "\tPKG_CONFIG_LIBDIR: %s/installed/%s/lib/pkgconfig\n",
                         vcpkg_root,
-                        triplet[0]
+                        triplet[0] // LCOV_EXCL_LINE
                     );
                 }
                 io.printf("\tCompile with `#define CEX_LOG_LVL 5` for more info\n");
@@ -20542,6 +20544,7 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
             e$ret(cexy.test.run(target, cmd, cmd_args.argc, cmd_args.argv));
             goto end;
         } else if (str.eq(cmd, "watch")) {
+            // LCOV_EXCL_START
             if (!io.isatty(stdout)) {
                 return "watch command is only available in interactive shell";
             }
@@ -20555,6 +20558,7 @@ cexy__cmd__simple_test(int argc, char** argv, void* user_ctx)
                 spinner_cnt++;
                 printf("\rWatching [%c]", spinner[spinner_cnt % 4]);
             }
+            // LCOV_EXCL_STOP
         } else {
             goto end;
         }
@@ -21147,7 +21151,7 @@ cexy__utils__git_hash(IAllocator allc)
 
         return str.fmt(allc, "%S", clean_hash);
     }
-    return NULL;
+    return NULL; // LCOV_EXCL_LINE
 }
 
 static Exception

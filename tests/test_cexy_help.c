@@ -1,6 +1,8 @@
 #define TBUILDDIR "tests/build/cexytest/"
 #define TNSDIR "cexytest_ns_myfoo/"
 #define TEXDIR "cexytest_example/"
+#define THFDIR "cexytest_helpfoo/"
+#define THBDIR "cexytest_badhelp/"
 #define CEX_LOG_LVL 4
 #define cexy$cc_include "-I.", "-I" TBUILDDIR
 #include "src/all.c"
@@ -17,6 +19,8 @@ test$teardown_case()
 {
     if (os.fs.remove_tree(TBUILDDIR)) {};
     if (os.fs.remove_tree(TEXDIR)) {};
+    if (os.fs.remove_tree(THFDIR)) {};
+    if (os.fs.remove_tree(THBDIR)) {};
     return EOK;
 }
 
@@ -727,6 +731,223 @@ test$case(test_find_symbol_usage_word_boundary)
     tassert_eq(_cexy__find_symbol_usage(str$s("xstr.find(x)"), str$s("str.find")), -1);
     tassert_eq(_cexy__find_symbol_usage(str$s("arr$pushm(x)"), str$s("arr$push")), -1);
     tassert_eq(_cexy__find_symbol_usage(str$s("x = arr$push(a, b);"), str$s("arr$push")), 4);
+    return EOK;
+}
+
+test$case(test_help_pattern_query)
+{
+    char* out_path = TBUILDDIR "help_pat.txt";
+    char* argv[] = { "help",
+                     "--brief",
+                     "--filter",
+                     "./src/str.[hc]",
+                     "--out",
+                     out_path,
+                     "str.find*",
+                     NULL };
+    tassert_er(EOK, cexy.cmd.help(arr$len(argv) - 1, argv, NULL));
+    return EOK;
+}
+
+test$case(test_help_cex_dot_query)
+{
+    char* out_path = TBUILDDIR "help_cexdot.txt";
+    char* argv[] = { "help",
+                     "--brief",
+                     "--filter",
+                     "./src/io.[hc]",
+                     "--out",
+                     out_path,
+                     "cex.",
+                     NULL };
+    // cex_ prefixed functions are skipped for the `cex.` query
+    tassert_er(EOK, cexy.cmd.help(arr$len(argv) - 1, argv, NULL));
+    return EOK;
+}
+
+test$case(test_help_dot_form_namespace_query)
+{
+    if (os.fs.remove_tree(THFDIR)) {};
+    e$ret(os.fs.mkpath(THFDIR));
+    e$ret(io.file.save(
+        THFDIR "foo.h",
+        "/// foo namespace\n"
+        "struct __cex_namespace__foo {\n"
+        "    /// Does bar\n"
+        "    int (*bar)(int x);\n"
+        "};\n"
+    ));
+    e$ret(io.file.save(THFDIR "foo.c", "int foo_bar(int x) { return x; }\n"));
+
+    char* out_path = TBUILDDIR "help_dot.txt";
+    char* argv[] = { "help",
+                     "--filter",
+                     "./" THFDIR "*.[hc]",
+                     "--out",
+                     out_path,
+                     "foo.",
+                     NULL };
+    tassert_er(EOK, cexy.cmd.help(arr$len(argv) - 1, argv, NULL));
+    mem$scope(tmem$, _)
+    {
+        char* content = io.file.load(out_path, _);
+        tassert(content != NULL);
+        tassert(str.find(content, "foo.bar") != NULL);
+    }
+
+    char* out_brief = TBUILDDIR "help_dot_brief.txt";
+    char* argv_brief[] = { "help",
+                           "--brief",
+                           "--filter",
+                           "./" THFDIR "*.[hc]",
+                           "--out",
+                           out_brief,
+                           "foo.",
+                           NULL };
+    tassert_er(EOK, cexy.cmd.help(arr$len(argv_brief) - 1, argv_brief, NULL));
+    mem$scope(tmem$, _)
+    {
+        char* content = io.file.load(out_brief, _);
+        tassert(content != NULL);
+        tassert(str.find(content, "foo.bar") != NULL);
+    }
+    return EOK;
+}
+
+test$case(test_help_skips_tests_sources)
+{
+    char* out_path = TBUILDDIR "help_skip.txt";
+    char* argv[] = { "help",
+                     "--filter",
+                     "./tests/test_cexy_help.c",
+                     "--out",
+                     out_path,
+                     "foo$",
+                     NULL };
+    tassert_er(Error.not_found, cexy.cmd.help(arr$len(argv) - 1, argv, NULL));
+    return EOK;
+}
+
+test$case(test_help_parse_error_source)
+{
+    if (os.fs.remove_tree(THBDIR)) {};
+    e$ret(os.fs.mkpath(THBDIR));
+    e$ret(io.file.save(THBDIR "bad.c", "#define 123\n"));
+
+    char* out_path = TBUILDDIR "help_bad.txt";
+    char* argv[] = { "help",
+                     "--filter",
+                     "./" THBDIR "*.[hc]",
+                     "--out",
+                     out_path,
+                     "foo$",
+                     NULL };
+    tassert_er(Error.not_found, cexy.cmd.help(arr$len(argv) - 1, argv, NULL));
+    return EOK;
+}
+
+test$case(test_display_full_info_namespace_body)
+{
+    mem$scope(tmem$, _)
+    {
+        char* out_path = TBUILDDIR "dfi_ns.txt";
+        FILE* out = NULL;
+        e$ret(io.fopen(&out, out_path, "w"));
+
+        sbuf_c empty = sbuf.create(8, _);
+        cex_decl_s placeholder = {
+            .name = str$s("__myfoo$"),
+            .type = CexTkn__macro_const,
+        };
+        cex_decl_s ns = {
+            .name = str$s("myfoo"),
+            .type = CexTkn__cex_module_struct,
+            .ret_type = empty,
+            .args = empty,
+            .file = "foo.h",
+        };
+        arr$(cex_decl_s*) ns_decls = arr$new(ns_decls, _);
+        arr$push(ns_decls, &placeholder);
+        arr$push(ns_decls, &ns);
+
+        arr$(cex_decl_s*) all = arr$new(all, _);
+        tassert_er(
+            EOK,
+            _cexy__display_full_info(&ns, "myfoo", true, false, false, false, ns_decls, all, out)
+        );
+        io.fclose(&out);
+        char* got = io.file.load(out_path, _);
+        tassert(got != NULL);
+    }
+    return EOK;
+}
+
+test$case(test_display_full_info_macro_define)
+{
+    mem$scope(tmem$, _)
+    {
+        char* out_path = TBUILDDIR "dfi_macro.txt";
+        FILE* out = NULL;
+        e$ret(io.fopen(&out, out_path, "w"));
+
+        sbuf_c empty = sbuf.create(8, _);
+        cex_decl_s m = {
+            .name = str$s("myfoo$bar"),
+            .type = CexTkn__macro_const,
+            .ret_type = empty,
+            .args = empty,
+            .file = "foo.h",
+            .line = 1,
+        };
+        tassert_er(
+            EOK,
+            _cexy__display_full_info(&m, "myfoo", false, false, false, false, NULL, NULL, out)
+        );
+        io.fclose(&out);
+        char* got = io.file.load(out_path, _);
+        tassert(got != NULL);
+        tassert(str.find(got, "#define myfoo$bar") != NULL);
+    }
+    return EOK;
+}
+
+test$case(test_display_full_info_typedef_rejected_in_brief_ns)
+{
+    mem$scope(tmem$, _)
+    {
+        char* out_path = TBUILDDIR "dfi_td.txt";
+        FILE* out = NULL;
+        e$ret(io.fopen(&out, out_path, "w"));
+
+        sbuf_c empty = sbuf.create(8, _);
+        cex_decl_s td = {
+            .name = str$s("myfoo_bar_t"),
+            .type = CexTkn__typedef,
+            .ret_type = empty,
+            .args = empty,
+            .file = "foo.h",
+        };
+        cex_decl_s ns = {
+            .name = str$s("myfoo"),
+            .type = CexTkn__cex_module_struct,
+            .ret_type = empty,
+            .args = empty,
+            .file = "foo.h",
+        };
+        arr$(cex_decl_s*) ns_decls = arr$new(ns_decls, _);
+        arr$push(ns_decls, &td);
+        arr$push(ns_decls, &ns);
+
+        tassert_er(
+            EOK,
+            _cexy__display_full_info(&ns, "myfoo", false, false, false, true, ns_decls, NULL, out)
+        );
+        io.fclose(&out);
+        char* got = io.file.load(out_path, _);
+        tassert(got != NULL);
+        tassert(str.find(got, "namespace myfoo") != NULL);
+        tassert(str.find(got, "myfoo_bar_t") == NULL);
+    }
     return EOK;
 }
 
