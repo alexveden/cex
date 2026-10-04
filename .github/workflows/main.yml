@@ -5,6 +5,7 @@ on:
     branches: [ master, staging*]
   pull_request:
     branches: [ master ]
+  workflow_dispatch:
 
 
 jobs:
@@ -437,12 +438,23 @@ jobs:
 
       - name: Merge tracefiles
         run: |
+          # lcov patterns are unanchored globs: 'cexstd/*' also matches 'tests/cexstd/*',
+          # so exclude the tests tree to keep the published report production-only.
           lcov --ignore-errors inconsistent,mismatch,empty,unused,source,format,unsupported,corrupt \
-            --include 'src/*' --include 'cexstd/*' \
+            --include 'src/*' --include 'cexstd/*' --exclude 'tests/*' \
             -a 'tracefiles/coverage-*-full.info' \
             -o coverage-global.info
           test -s coverage-global.info
           grep -q '^SF:' coverage-global.info
+
+      - name: Coverage floor gate
+        env:
+          COVERAGE_FLOOR: '88'
+        run: |
+          PCT=$(awk -F: '/^LH:/{lh+=$2} /^LF:/{lf+=$2} END{ if (lf>0) printf "%.2f", lh/lf*100; else print "0.0" }' coverage-global.info)
+          lcov --list coverage-global.info | tail -1
+          echo "Merged production coverage: ${PCT}% (floor ${COVERAGE_FLOOR}%)"
+          awk -v p="$PCT" -v f="$COVERAGE_FLOOR" 'BEGIN{ if (p+0 < f+0) { printf "::error::coverage %.2f%% below floor %.2f%%\n", p, f; exit 1 } }'
 
       - name: HTML report
         run: |
