@@ -1,7 +1,7 @@
 # CEX Release Notes
 
-## 0.22
-2026-09-27
+## 0.70
+2026-10-04
 
 ### Changes / improvements
 - feat(test): `mem$` is assignable in `CEX_TEST` builds, so a test can swap in a custom global allocator; the runner saves it before each case and restores it after
