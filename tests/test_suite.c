@@ -1260,6 +1260,20 @@ bench_failing_fn(void)
     return EOK;
 }
 
+static Exc
+bench_us_fn(void)
+{
+    os.sleep(0.0003); // ~0.3ms -> "us " duration branch
+    return EOK;
+}
+
+static Exc
+bench_ms_fn(void)
+{
+    os.sleep(0.002); // ~2ms -> "ms " duration branch
+    return EOK;
+}
+
 test$case(test_bench_internals)
 {
     e$ret(_cex_test_bench_call_timer_overhead());
@@ -1280,6 +1294,22 @@ test$case(test_bench_internals)
     g_bench_call_count = 0;
     g_bench_fail_on_call = 2;
     tassert(_cex_test_run_bench_case(&bench) != EOK);
+
+    return EOK;
+}
+
+test$case(test_bench_duration_units)
+{
+    struct _cex_test_case_s bench = {
+        .test_fn = bench_us_fn,
+        .test_name = "synthetic_bench_us",
+        .is_benchmark = true,
+    };
+    e$ret(_cex_test_run_bench_case(&bench));
+
+    bench.test_fn = bench_ms_fn;
+    bench.test_name = "synthetic_bench_ms";
+    e$ret(_cex_test_run_bench_case(&bench));
 
     return EOK;
 }
