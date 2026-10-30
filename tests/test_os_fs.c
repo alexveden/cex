@@ -744,6 +744,28 @@ test$case(test_os_mkpath)
     return EOK;
 }
 
+test$case(test_os_mkpath_absolute)
+{
+    mem$scope(tmem$, _)
+    {
+        char* abs_file = os.path.absolute(TBUILDDIR "abs/a/b/file.txt", _);
+        tassert(abs_file != NULL);
+        tassert(!os.path.exists(abs_file));
+        tassert(!os.path.exists(TBUILDDIR "abs/"));
+
+        tassert_er(EOK, os.fs.mkpath(abs_file));
+        tassert(os.path.exists(TBUILDDIR "abs/a/b/"));
+        tassert(!os.path.exists(abs_file));
+
+        char* abs_dir = os.path.absolute(TBUILDDIR "abs_dir/a/b", _);
+        tassert(abs_dir != NULL);
+        char* abs_dir_sep = str.fmt(_, "%s%c", abs_dir, os$PATH_SEP);
+        tassert_er(EOK, os.fs.mkpath(abs_dir_sep));
+        tassert(os.path.exists(abs_dir));
+    }
+    return EOK;
+}
+
 test$case(test_os_mkdir_error)
 {
     // parent directory does not exist -> mkdir fails with ENOENT
@@ -771,6 +793,96 @@ test$case(test_os_mkpath_overflow)
     tassert_er(Error.overflow, os.fs.mkpath(path));
     return EOK;
 }
+
+#ifdef _WIN32
+static arr$(char*) g_mkpath_mkdir_calls;
+
+static bool
+test_os_mkpath_exists_false(char* path)
+{
+    (void)path;
+    return false;
+}
+
+static Exception
+test_os_mkpath_mkdir_record(char* path)
+{
+    arr$push(g_mkpath_mkdir_calls, str.clone(path, test$alloc));
+    return EOK;
+}
+
+test$case(test_os_mkpath_unc)
+{
+    g_mkpath_mkdir_calls = arr$new(g_mkpath_mkdir_calls, test$alloc);
+
+    test$mock_scope(os) {
+        os.path.exists = test_os_mkpath_exists_false;
+        os.fs.mkdir = test_os_mkpath_mkdir_record;
+        tassert_er(EOK, os.fs.mkpath("\\\\server\\share\\dir\\file.txt"));
+    }
+
+    tassert_eq(arr$len(g_mkpath_mkdir_calls), 2);
+    tassert_eq(g_mkpath_mkdir_calls[0], "\\\\server\\share");
+    tassert_eq(g_mkpath_mkdir_calls[1], "\\\\server\\share\\dir");
+
+    return EOK;
+}
+
+test$case(test_os_mkpath_rooted)
+{
+    g_mkpath_mkdir_calls = arr$new(g_mkpath_mkdir_calls, test$alloc);
+
+    test$mock_scope(os) {
+        os.path.exists = test_os_mkpath_exists_false;
+        os.fs.mkdir = test_os_mkpath_mkdir_record;
+        tassert_er(EOK, os.fs.mkpath("\\new\\a\\file.txt"));
+    }
+
+    tassert_eq(arr$len(g_mkpath_mkdir_calls), 2);
+    tassert_eq(g_mkpath_mkdir_calls[0], "\\new");
+    tassert_eq(g_mkpath_mkdir_calls[1], "\\new\\a");
+
+    return EOK;
+}
+
+test$case(test_os_mkpath_drive_rooted)
+{
+    g_mkpath_mkdir_calls = arr$new(g_mkpath_mkdir_calls, test$alloc);
+
+    test$mock_scope(os) {
+        os.path.exists = test_os_mkpath_exists_false;
+        os.fs.mkdir = test_os_mkpath_mkdir_record;
+        tassert_er(EOK, os.fs.mkpath("C:\\test\\dir\\file.txt"));
+    }
+
+    tassert_eq(arr$len(g_mkpath_mkdir_calls), 2);
+    tassert_eq(g_mkpath_mkdir_calls[0], "C:\\test");
+    tassert_eq(g_mkpath_mkdir_calls[1], "C:\\test\\dir");
+
+    g_mkpath_mkdir_calls = arr$new(g_mkpath_mkdir_calls, test$alloc);
+
+    test$mock_scope(os) {
+        os.path.exists = test_os_mkpath_exists_false;
+        os.fs.mkdir = test_os_mkpath_mkdir_record;
+        tassert_er(EOK, os.fs.mkpath("c:\\test\\"));
+    }
+
+    tassert_eq(arr$len(g_mkpath_mkdir_calls), 1);
+    tassert_eq(g_mkpath_mkdir_calls[0], "c:\\test");
+
+    g_mkpath_mkdir_calls = arr$new(g_mkpath_mkdir_calls, test$alloc);
+
+    test$mock_scope(os) {
+        os.path.exists = test_os_mkpath_exists_false;
+        os.fs.mkdir = test_os_mkpath_mkdir_record;
+        tassert_er(EOK, os.fs.mkpath("C:\\test"));
+    }
+
+    tassert_eq(arr$len(g_mkpath_mkdir_calls), 0);
+
+    return EOK;
+}
+#endif
 
 test$case(test_os_copy_file)
 {

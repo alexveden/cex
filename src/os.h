@@ -374,7 +374,8 @@ struct __cex_namespace__os {
         char*           (*getcwd)(IAllocator allc);
         /// Makes directory (no error if exists)
         Exception       (*mkdir)(char* path);
-        /// Makes all directories in a path
+        /// Makes all directories in a path (absolute or relative). A trailing separator makes the path
+        /// itself a directory; otherwise the path is treated as a file and only its parents are created
         Exception       (*mkpath)(char* path);
         /// Removes file or empty directory (also see os.fs.remove_tree)
         Exception       (*remove)(char* path);

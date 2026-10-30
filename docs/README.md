@@ -128,7 +128,7 @@ Tools installed (optional):
 * cexy$vcpkg_triplet        Not set
 
 Global environment:
-* Cex Version               0.70.0 (2026-10-04)
+* Cex Version               0.71.0 (2026-10-30)
 * Git Hash                  dde1c2048e029d0b6cffd325e1e22ae94c62e44b
 * os.platform.current()     linux
 * ./cex -D<ARGS> config     ""

@@ -272,11 +272,11 @@ If the project has no agent instruction file (`AGENTS.md`, `CLAUDE.md`,
 /// CEX major version
 #define cex$version_major 0
 /// CEX minor version
-#define cex$version_minor 70
+#define cex$version_minor 71
 /// CEX patch version
 #define cex$version_patch 0
 /// CEX build date (substituted at bundle time)
-#define cex$version_date "2026-10-04"
+#define cex$version_date "2026-10-30"
 
 
 
@@ -4560,7 +4560,8 @@ struct __cex_namespace__os {
         char*           (*getcwd)(IAllocator allc);
         /// Makes directory (no error if exists)
         Exception       (*mkdir)(char* path);
-        /// Makes all directories in a path
+        /// Makes all directories in a path (absolute or relative). A trailing separator makes the path
+        /// itself a directory; otherwise the path is treated as a file and only its parents are created
         Exception       (*mkpath)(char* path);
         /// Removes file or empty directory (also see os.fs.remove_tree)
         Exception       (*remove)(char* path);
@@ -16052,7 +16053,8 @@ cex_os__fs__mkdir(char* path)
     return EOK;
 }
 
-/// Makes all directories in a path
+/// Makes all directories in a path (absolute or relative). A trailing separator makes the path
+/// itself a directory; otherwise the path is treated as a file and only its parents are created
 static Exception
 cex_os__fs__mkpath(char* path)
 {
@@ -16061,10 +16063,32 @@ cex_os__fs__mkpath(char* path)
     char dir_path[PATH_MAX] = { 0 };
     e$ret(str.slice.copy(dir_path, dir, sizeof(dir_path)));
     if (os.path.exists(dir_path)) { return EOK; }
+
     usize dir_path_len = 0;
+    bool unc_server_pending = false;
+    bool is_rooted = false;
+#    ifdef _WIN32
+    is_rooted = dir.len > 0 && (dir.buf[0] == '/' || dir.buf[0] == '\\');
+#    else
+    is_rooted = dir.len > 0 && dir.buf[0] == '/';
+#    endif
+    if (is_rooted) {
+        dir_path[dir_path_len] = os$PATH_SEP;
+        dir_path_len++;
+        dir_path[dir_path_len] = '\0';
+#        ifdef _WIN32
+        if (dir.len > 1 && (dir.buf[1] == '/' || dir.buf[1] == '\\')) {
+            dir_path[dir_path_len] = os$PATH_SEP;
+            dir_path_len++;
+            dir_path[dir_path_len] = '\0';
+            unc_server_pending = true;
+        }
+#        endif
+    }
 
     for$iter (str_s, it, str.slice.iter_split(dir, "\\/", &it.iterator)) {
-        if (dir_path_len > 0) {
+        if (it.val.len == 0) { continue; }
+        if (dir_path_len > 0 && dir_path[dir_path_len - 1] != os$PATH_SEP) {
             if (unlikely(dir_path_len >= sizeof(dir_path) - 2)) {
                 return e$raise(Error.overflow, "dir path is too long");
             }
@@ -16074,6 +16098,13 @@ cex_os__fs__mkpath(char* path)
         }
         e$ret(str.slice.copy(dir_path + dir_path_len, it.val, sizeof(dir_path) - dir_path_len));
         dir_path_len += it.val.len;
+        if (unc_server_pending) {
+            unc_server_pending = false;
+            continue;
+        }
+#        ifdef _WIN32
+        if (dir_path_len == 2 && dir_path[1] == ':') { continue; }
+#        endif
         e$ret(os.fs.mkdir(dir_path));
     }
     return EOK;

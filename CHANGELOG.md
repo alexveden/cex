@@ -1,5 +1,11 @@
 # CEX Release Notes
 
+## 0.71
+2026-10-30
+
+### Fixes
+- fix(os): `os.fs.mkpath()` now creates absolute, Windows root-relative, UNC, and drive-rooted paths; empty path components are skipped and drive roots are not passed to `mkdir`
+
 ## 0.70
 2026-10-04
 
