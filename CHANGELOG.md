@@ -3,6 +3,9 @@
 ## 0.71
 2026-10-30
 
+### Changes / improvements
+- feat: `e$traceback_format(buf, size)` - format the recorded traceback into a caller buffer without allocation; on overflow it keeps the truncated prefix and NUL-terminates at `buf[size - 1]`
+
 ### Fixes
 - fix(os): `os.fs.mkpath()` now creates absolute, Windows root-relative, UNC, and drive-rooted paths; empty path components are skipped and drive roots are not passed to `mkdir`
 - fix(docs): vendored subprocess macros renamed to `_CEX_SUBPROCESS_*`, so they no longer leak into the generated `cex$` docs

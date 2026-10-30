@@ -518,6 +518,48 @@ test$case(traceback_print_nonempty)
     return EOK;
 }
 
+test$case(traceback_format_nonempty)
+{
+    Exc e = ladder_ret2();
+    tassert_eq(e, Error.io);
+    tassert_eq(e$traceback_len, 3);
+
+    char buf[512] = {0};
+    Exc r = e$traceback_format(buf, sizeof(buf));
+    tassert_eq(r, EOK);
+    tassert(str.find(buf, "#0") != NULL);
+    tassert(str.find(buf, "#2") != NULL);
+    tassert(str.find(buf, __FILE_NAME__) != NULL);
+#if CEX_TRACEBACK_VERBOSITY == 2
+    tassert(str.find(buf, "ladder bottom") != NULL);
+    tassert(str.find(buf, "ladder_raise()") != NULL);
+    tassert(str.find(buf, "ladder_ret1()") != NULL);
+    tassert(str.find(buf, "ladder_ret2()") != NULL);
+#endif
+    tassert_eq(e$traceback_len, 3);
+    return EOK;
+}
+
+test$case(traceback_format_overflow)
+{
+    Exc e = ladder_ret2();
+    tassert_eq(e, Error.io);
+    tassert_eq(e$traceback_len, 3);
+
+    char big[512] = {0};
+    Exc r = e$traceback_format(big, sizeof(big));
+    tassert_eq(r, EOK);
+
+    char small[8] = {0};
+    r = e$traceback_format(small, sizeof(small));
+    tassert_eq(r, Error.overflow);
+    tassert(small[0] != '\0');
+    tassert_eq(small[sizeof(small) - 1], '\0');
+    tassert_eq(memcmp(small, big, sizeof(small) - 1), 0);
+    tassert_eq(e$traceback_len, 3);
+    return EOK;
+}
+
 #endif // TB_RECORDS
 
 test$case(traceback_reset_drops)
@@ -543,5 +585,21 @@ test$case(traceback_print_empty)
     tassert(pos == 0);
 
     io.fclose(&f);
+    return EOK;
+}
+
+test$case(traceback_format_argument)
+{
+    char buf[8];
+    tassert_er(Error.argument, e$traceback_format(NULL, sizeof(buf)));
+    tassert_er(Error.argument, e$traceback_format(buf, 0));
+    return EOK;
+}
+
+test$case(traceback_format_empty)
+{
+    char buf[8] = "junk";
+    tassert_eq(e$traceback_format(buf, sizeof(buf)), EOK);
+    tassert_eq(buf[0], '\0');
     return EOK;
 }

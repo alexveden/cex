@@ -465,6 +465,14 @@ extern
 
 /* ==== 4. Traceback read-back (buffered levels fill the ring; 0/3 stay empty) ==== */
 
+/// Format the recorded traceback into a caller buffer (NUL-terminated, no allocation).
+/// Error.argument on NULL/zero buffer; Error.overflow when truncated, the buffer keeps the
+/// maximal prefix and is NUL-terminated at buf[size - 1]. Never records or resets frames.
+Exception _cex_errors_traceback_format(char* buf, usize size);
+
+/// Format the whole traceback into a caller buffer
+#define e$traceback_format(_buf, _size) _cex_errors_traceback_format(_buf, _size)
+
 #if !defined(cex$enable_minimal) || defined(cex$enable_io)
 
 /// Print the recorded traceback to a stream (no allocation)

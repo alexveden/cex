@@ -537,6 +537,7 @@ Errors are `char*` pointers:
 | `e$ret(expr)`               | handler   | record a frame and return `expr` on error            |
 | `e$goto(expr, label)`       | handler   | record a frame and `goto label` on error             |
 | `e$traceback_print(stream)` | traceback | print recorded frames to a `FILE*`                   |
+| `e$traceback_format(buf, size)` | traceback | format recorded frames into a buffer             |
 | `e$traceback_arr`           | traceback | recorded frames array, iterate with `for$each`       |
 | `e$traceback_len`           | traceback | number of recorded frames                            |
 | `e$traceback_reset()`       | traceback | drop all recorded frames                             |
@@ -647,6 +648,8 @@ Ring capacity is `CEX_TRACEBACK_CAP` (default 32 frames): the oldest frames are 
 and extra ones are dropped. Traceback read-back API:
 
 - `e$traceback_print(stream)` — print all recorded frames to a `FILE*`
+- `e$traceback_format(buf, size)` — format all recorded frames into a buffer (no allocation);
+  `Error.overflow` keeps the truncated prefix, NUL-terminated at `buf[size - 1]`
 - `e$traceback_arr` — recorded frames array, use with `for$each`/`for$eachp`
 - `e$traceback_len` — number of recorded frames
 - `e$traceback_reset()` — drop all recorded frames
@@ -3569,6 +3572,14 @@ extern
 #endif // CEX_TRACEBACK_VERBOSITY
 
 /* ==== 4. Traceback read-back (buffered levels fill the ring; 0/3 stay empty) ==== */
+
+/// Format the recorded traceback into a caller buffer (NUL-terminated, no allocation).
+/// Error.argument on NULL/zero buffer; Error.overflow when truncated, the buffer keeps the
+/// maximal prefix and is NUL-terminated at buf[size - 1]. Never records or resets frames.
+Exception _cex_errors_traceback_format(char* buf, usize size);
+
+/// Format the whole traceback into a caller buffer
+#define e$traceback_format(_buf, _size) _cex_errors_traceback_format(_buf, _size)
 
 #if !defined(cex$enable_minimal) || defined(cex$enable_io)
 
@@ -14247,12 +14258,23 @@ CEX_NAMESPACE_DEF struct __cex_namespace__io io = {
 /*
 *                          src/cex_errors.c
 */
+#include <limits.h>
 
 #if CEX_TRACEBACK_VERBOSITY >= 1 && CEX_TRACEBACK_VERBOSITY <= 2
 #    if !cex$is_freestanding
 _Thread_local
 #    endif
 _cex_errors_traceback_data_s _cex_errors_traceback_data_array;
+
+#    if CEX_TRACEBACK_VERBOSITY == 2
+#        define _cex_errors_traceback_fmt "#%u (%s:%u %s()) [%s] %s\n"
+#        define _cex_errors_traceback_args(_idx, _r)                                              \
+            (u32)(_idx), (_r)->file, (_r)->line, (_r)->func, (_r)->err, (_r)->msg
+#    else
+#        define _cex_errors_traceback_fmt "#%u (%s:%u) [%s]\n"
+#        define _cex_errors_traceback_args(_idx, _r)                                              \
+            (u32)(_idx), (_r)->file, (_r)->line, (_r)->err
+#    endif
 #endif // CEX_TRACEBACK_VERBOSITY >= 1 && <= 2
 
 #if !defined(cex$enable_minimal) || defined(cex$enable_io)
@@ -14263,20 +14285,7 @@ _cex_errors_traceback_print(FILE* stream)
 #if CEX_TRACEBACK_VERBOSITY >= 1 && CEX_TRACEBACK_VERBOSITY <= 2
     for (u32 i = 0; i < _cex_errors_traceback_data_array.len; i++) {
         const _cex_errors_traceback_s* _r = &_cex_errors_traceback_data_array.items[i];
-#    if CEX_TRACEBACK_VERBOSITY == 2
-        (void)io.fprintf(
-            stream,
-            "#%u (%s:%u %s()) [%s] %s\n",
-            (u32)i,
-            _r->file,
-            _r->line,
-            _r->func,
-            _r->err,
-            _r->msg
-        );
-#    else
-        (void)io.fprintf(stream, "#%u (%s:%u) [%s]\n", (u32)i, _r->file, _r->line, _r->err);
-#    endif
+        (void)io.fprintf(stream, _cex_errors_traceback_fmt, _cex_errors_traceback_args(i, _r));
     }
 #else
     (void)stream;
@@ -14284,6 +14293,38 @@ _cex_errors_traceback_print(FILE* stream)
 }
 
 #endif // !defined(cex$enable_minimal) || defined(cex$enable_io)
+
+Exception
+_cex_errors_traceback_format(char* buf, usize size)
+{
+    if (buf == NULL || size == 0) { return Error.argument; }
+    if (size > (usize)INT_MAX) { size = (usize)INT_MAX; }
+    buf[0] = '\0';
+
+#if CEX_TRACEBACK_VERBOSITY >= 1 && CEX_TRACEBACK_VERBOSITY <= 2
+    usize used = 0;
+    for (u32 i = 0; i < _cex_errors_traceback_data_array.len; i++) {
+        const _cex_errors_traceback_s* r = &_cex_errors_traceback_data_array.items[i];
+        int n = cexsp__snprintf(
+            buf + used,
+            (int)(size - used),
+            _cex_errors_traceback_fmt,
+            _cex_errors_traceback_args(i, r)
+        );
+        if (n < 0 || (usize)n >= size - used) {
+            buf[size - 1] = '\0';
+            return Error.overflow;
+        }
+        used += (usize)n;
+    }
+#endif
+    return EOK;
+}
+
+#if CEX_TRACEBACK_VERBOSITY >= 1 && CEX_TRACEBACK_VERBOSITY <= 2
+#    undef _cex_errors_traceback_fmt
+#    undef _cex_errors_traceback_args
+#endif
 
 #if !defined(NDEBUG) && !defined(__clang_analyzer__) &&                                            \
     CEX_PANIC_VERBOSITY >= 1

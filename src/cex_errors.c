@@ -1,11 +1,22 @@
 #include "cex_errors.h"
 #include "all.h"
+#include <limits.h>
 
 #if CEX_TRACEBACK_VERBOSITY >= 1 && CEX_TRACEBACK_VERBOSITY <= 2
 #    if !cex$is_freestanding
 _Thread_local
 #    endif
 _cex_errors_traceback_data_s _cex_errors_traceback_data_array;
+
+#    if CEX_TRACEBACK_VERBOSITY == 2
+#        define _cex_errors_traceback_fmt "#%u (%s:%u %s()) [%s] %s\n"
+#        define _cex_errors_traceback_args(_idx, _r)                                              \
+            (u32)(_idx), (_r)->file, (_r)->line, (_r)->func, (_r)->err, (_r)->msg
+#    else
+#        define _cex_errors_traceback_fmt "#%u (%s:%u) [%s]\n"
+#        define _cex_errors_traceback_args(_idx, _r)                                              \
+            (u32)(_idx), (_r)->file, (_r)->line, (_r)->err
+#    endif
 #endif // CEX_TRACEBACK_VERBOSITY >= 1 && <= 2
 
 #if !defined(cex$enable_minimal) || defined(cex$enable_io)
@@ -16,20 +27,7 @@ _cex_errors_traceback_print(FILE* stream)
 #if CEX_TRACEBACK_VERBOSITY >= 1 && CEX_TRACEBACK_VERBOSITY <= 2
     for (u32 i = 0; i < _cex_errors_traceback_data_array.len; i++) {
         const _cex_errors_traceback_s* _r = &_cex_errors_traceback_data_array.items[i];
-#    if CEX_TRACEBACK_VERBOSITY == 2
-        (void)io.fprintf(
-            stream,
-            "#%u (%s:%u %s()) [%s] %s\n",
-            (u32)i,
-            _r->file,
-            _r->line,
-            _r->func,
-            _r->err,
-            _r->msg
-        );
-#    else
-        (void)io.fprintf(stream, "#%u (%s:%u) [%s]\n", (u32)i, _r->file, _r->line, _r->err);
-#    endif
+        (void)io.fprintf(stream, _cex_errors_traceback_fmt, _cex_errors_traceback_args(i, _r));
     }
 #else
     (void)stream;
@@ -37,6 +35,38 @@ _cex_errors_traceback_print(FILE* stream)
 }
 
 #endif // !defined(cex$enable_minimal) || defined(cex$enable_io)
+
+Exception
+_cex_errors_traceback_format(char* buf, usize size)
+{
+    if (buf == NULL || size == 0) { return Error.argument; }
+    if (size > (usize)INT_MAX) { size = (usize)INT_MAX; }
+    buf[0] = '\0';
+
+#if CEX_TRACEBACK_VERBOSITY >= 1 && CEX_TRACEBACK_VERBOSITY <= 2
+    usize used = 0;
+    for (u32 i = 0; i < _cex_errors_traceback_data_array.len; i++) {
+        const _cex_errors_traceback_s* r = &_cex_errors_traceback_data_array.items[i];
+        int n = cexsp__snprintf(
+            buf + used,
+            (int)(size - used),
+            _cex_errors_traceback_fmt,
+            _cex_errors_traceback_args(i, r)
+        );
+        if (n < 0 || (usize)n >= size - used) {
+            buf[size - 1] = '\0';
+            return Error.overflow;
+        }
+        used += (usize)n;
+    }
+#endif
+    return EOK;
+}
+
+#if CEX_TRACEBACK_VERBOSITY >= 1 && CEX_TRACEBACK_VERBOSITY <= 2
+#    undef _cex_errors_traceback_fmt
+#    undef _cex_errors_traceback_args
+#endif
 
 #if !defined(NDEBUG) && !defined(__clang_analyzer__) &&                                            \
     CEX_PANIC_VERBOSITY >= 1

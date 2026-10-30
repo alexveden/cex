@@ -57,6 +57,7 @@ Errors are `char*` pointers:
 | `e$ret(expr)`               | handler   | record a frame and return `expr` on error            |
 | `e$goto(expr, label)`       | handler   | record a frame and `goto label` on error             |
 | `e$traceback_print(stream)` | traceback | print recorded frames to a `FILE*`                   |
+| `e$traceback_format(buf, size)` | traceback | format recorded frames into a buffer             |
 | `e$traceback_arr`           | traceback | recorded frames array, iterate with `for$each`       |
 | `e$traceback_len`           | traceback | number of recorded frames                            |
 | `e$traceback_reset()`       | traceback | drop all recorded frames                             |
@@ -167,6 +168,8 @@ Ring capacity is `CEX_TRACEBACK_CAP` (default 32 frames): the oldest frames are 
 and extra ones are dropped. Traceback read-back API:
 
 - `e$traceback_print(stream)` — print all recorded frames to a `FILE*`
+- `e$traceback_format(buf, size)` — format all recorded frames into a buffer (no allocation);
+  `Error.overflow` keeps the truncated prefix, NUL-terminated at `buf[size - 1]`
 - `e$traceback_arr` — recorded frames array, use with `for$each`/`for$eachp`
 - `e$traceback_len` — number of recorded frames
 - `e$traceback_reset()` — drop all recorded frames
@@ -224,6 +227,9 @@ tests `uassert_disable()` / `uassert_enable()` toggle reporting, and a disabled
 
 /// Recorded traceback frames array, use with for$each/for$eachp
 #define e$traceback_arr((_cex_errors_traceback_s*)NULL)
+
+/// Format the whole traceback into a caller buffer
+#define e$traceback_format(_buf, _size)
 
 /// Number of recorded traceback frames
 #define e$traceback_len
