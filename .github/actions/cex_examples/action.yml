@@ -97,6 +97,21 @@ runs:
         ./cex json-build
         ./cex app run myapp myapp.json
 
+    - name: Cex Library
+      shell: ${{ inputs.shell }}
+      run: |
+        echo ""
+        echo "---------------------------------------------------------------------"
+        echo "           STEP: example cex_lib"
+        echo "---------------------------------------------------------------------"
+        cd examples/cex_lib/
+        cc -g ./cex.c -o ./cex
+        ./cex config
+        ./cex test run all
+        ./cex build-lib
+        ./cex consumer
+        ls -la build/lib
+
     - name: Cex FreeStanding
       shell: ${{ inputs.shell }}
       run: |

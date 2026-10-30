@@ -3102,6 +3102,134 @@ e$ret(os$cmda(args));
 >
 > You can get example source code with highlighting if any function is used in the project, use shell command: `./cex help --example os.platform.current`
 
+### Building libraries
+
+CEX can produce a conventional C ABI library — a static archive and a shared
+library — that non-CEX callers link or load. Use this when you want to ship CEX
+code to C/C++, Python, Node, Rust, Zig, etc. The complete project lives in
+[`examples/cex_lib`](https://github.com/alexveden/cex/tree/master/examples/cex_lib).
+
+#### Project layout
+
+```text
+examples/cex_lib/
+  cex.c                  # CLI + custom build-lib / consumer commands
+  lib/cex_demo.h         # public ABI: stdint/stddef, extern "C", export macro
+  lib/cex_demo.c         # implementation: CEX_IMPLEMENTATION + cex.h
+  tests/test_cex_demo.c  # native tests; unity-includes lib/cex_demo.c
+  consumer/main.c        # plain C consumer linked against the static archive
+```
+
+#### Public ABI rules
+
+1. The public header uses only standard types (`<stdint.h>`, `<stddef.h>`) and
+   wraps declarations in `extern "C"`. Do not expose `cex.h` or CEX types.
+2. Compile the library with `-fvisibility=hidden` and mark exported symbols
+   with a library-specific macro (`__declspec(dllexport/dllimport)` on Windows,
+   `visibility("default")` elsewhere). Static consumers define
+   `CEX_DEMO_STATIC` to make the macro empty.
+3. Return errors as `const char*`; `NULL` means success. Export a `const`
+   struct of error pointers and compare by address, never by string content.
+4. Keep public structs POD and fixed-width so the layout matches across
+   compilers and language bindings.
+5. Export a traceback helper that formats the CEX ring into a caller-owned
+   buffer via `e$traceback_format()`. Foreign callers cannot read CEX's global
+   traceback ring directly.
+
+```c
+typedef const char* cex_demo_exc_t;
+
+typedef struct
+{
+    cex_demo_exc_t ok;
+    cex_demo_exc_t argument;
+    cex_demo_exc_t overflow;
+} cex_demo_errors_t;
+
+CEX_DEMO_API cex_demo_exc_t cex_demo_run(cex_demo_request_t* req);
+CEX_DEMO_API cex_demo_exc_t cex_demo_traceback(char* buf, size_t buf_size);
+CEX_DEMO_API extern const cex_demo_errors_t cex_demo_Error;
+```
+
+The implementation embeds CEX and initializes the error table from the
+`_cex_errors_Error_*` address constants, which are the same objects `Error.*`
+points at:
+
+```c
+#define CEX_IMPLEMENTATION
+#include "cex.h"
+#define CEX_DEMO_BUILD
+#include "cex_demo.h"
+
+CEX_DEMO_API const cex_demo_errors_t cex_demo_Error = {
+    .ok = NULL,
+    .argument = _cex_errors_Error_argument,
+    .overflow = _cex_errors_Error_overflow,
+};
+```
+
+#### Building static and shared
+
+Add a custom `build-lib` command to `cex.c` (there is no built-in library
+command). Compile one position-independent object, then pack it with `ar` and
+link it with the platform's shared-library flag:
+
+```c
+char* out_dir = cexy$build_dir "/lib";
+e$ret(os.fs.mkpath(str.fmt(mem$, "%s/", out_dir)));
+
+char* obj = str.fmt(mem$, "%s/cex_demo.o", out_dir);
+e$ret(os$cmd(cexy$cc, "-c", "lib/cex_demo.c", "-o", obj,
+             "-fPIC", "-fvisibility=hidden", "-I.", "-I./lib"));
+
+char* stat_lib = str.fmt(mem$, "%s/libcex_demo%s", out_dir, cexy$build_ext_lib_stat);
+e$ret(os$cmd("ar", "rcs", stat_lib, obj));
+
+#if defined(__APPLE__)
+char* dyn_lib = str.fmt(mem$, "%s/libcex_demo.dylib", out_dir);
+#else
+char* dyn_lib = str.fmt(mem$, "%s/libcex_demo%s", out_dir, cexy$build_ext_lib_dyn);
+#endif
+// Linux/Windows: -shared; macOS: -dynamiclib
+e$ret(os$cmd(cexy$cc, "-shared", "-fPIC", "-fvisibility=hidden", "-o", dyn_lib, obj));
+```
+
+Use `cexy$build_ext_lib_stat` / `cexy$build_ext_lib_dyn` for platform
+extensions (`.a`/`.lib`, `.so`/`.dll`) and `cexy$build_dir` for the output
+directory.
+
+#### Testing and consuming
+
+Tests stay a unity build: include the implementation directly, then run the
+normal test runner.
+
+```c
+#define CEX_IMPLEMENTATION
+#define CEX_TEST
+#include "cex.h"
+#include "lib/cex_demo.c"
+```
+
+A consumer includes only the public header and links the static archive. Define
+`CEX_DEMO_STATIC` so the export macro does not emit `dllimport` on Windows:
+
+```sh
+cc -DCEX_DEMO_STATIC -Ilib -c consumer/main.c -o build/consumer/main.o
+cc build/consumer/main.o build/lib/libcex_demo.a -o build/consumer/main
+```
+
+The example wraps this in `./cex consumer`, which rebuilds the library first.
+
+#### FFI notes
+
+The shared library can be loaded from any FFI (Python `ctypes`/`cffi`, Node,
+Rust, Zig, ...). The contract is the same as for C: compare the returned
+`const char*` against the exported error pointers and read the traceback into a
+caller-owned buffer. Cross-compiling with `zig cc -target ...` works too.
+
+For a full example with 12 language bindings and zig cross targets, see
+[`cex_lib_ffi_test`](https://github.com/alexveden/cex_lib_ffi_test).
+
 ## Developer Tools
 
 CEX language is designed for improving developer experience with C, `./cex` CLI contains key tools for managing project, running apps, debugging, unit testing and fuzzing.

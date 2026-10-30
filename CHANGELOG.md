@@ -6,6 +6,7 @@
 ### Changes / improvements
 - feat: `_cex_errors_Error_<name>` arrays hold the canonical `Error.<name>` strings; their addresses are address constants usable in static initializers, and `Error` points at the same objects
 - feat: `e$traceback_format(buf, size)` - format the recorded traceback into a caller buffer without allocation; on overflow it keeps the truncated prefix and NUL-terminates at `buf[size - 1]`
+- example: `cex_lib` - minimal static/shared C library with a C consumer; docs: "Building libraries" subsection
 
 ### Fixes
 - fix(os): `os.fs.mkpath()` now creates absolute, Windows root-relative, UNC, and drive-rooted paths; empty path components are skipped and drive roots are not passed to `mkdir`

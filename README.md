@@ -220,6 +220,7 @@ The CEX codebase uses the `clang-tidy` static analyzer in its continuous integra
 ## Examples
 * [Building Lua + Lua Module in CEX](https://github.com/alexveden/cex/tree/master/examples/lua_module)
 * [Building SQLite Program From Source](https://github.com/alexveden/cex/tree/master/examples/sqlite)
+* [Building a C library (static + shared)](https://github.com/alexveden/cex/tree/master/examples/cex_lib)
 * [Building with system libraries](https://github.com/alexveden/cex/tree/master/examples/libs_sys)
 
 * [Building with vcpkg local repo](https://github.com/alexveden/cex/tree/master/examples/libs_vcpkg)
