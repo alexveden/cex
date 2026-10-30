@@ -369,6 +369,27 @@ extern const struct _CEX_Error_struct
     Exc try_again;
 } Error;
 
+/// Canonical error string storage. Their addresses are address constants, so
+/// they can be used in static initializers in any translation unit, unlike
+/// Error.<field> which is a runtime load from an extern object.
+extern const char _cex_errors_Error_memory[];
+extern const char _cex_errors_Error_io[];
+extern const char _cex_errors_Error_overflow[];
+extern const char _cex_errors_Error_argument[];
+extern const char _cex_errors_Error_integrity[];
+extern const char _cex_errors_Error_exists[];
+extern const char _cex_errors_Error_not_found[];
+extern const char _cex_errors_Error_skip[];
+extern const char _cex_errors_Error_null_or_empty[];
+extern const char _cex_errors_Error_eof[];
+extern const char _cex_errors_Error_argsparse[];
+extern const char _cex_errors_Error_runtime[];
+extern const char _cex_errors_Error_assert[];
+extern const char _cex_errors_Error_os[];
+extern const char _cex_errors_Error_timeout[];
+extern const char _cex_errors_Error_permission[];
+extern const char _cex_errors_Error_try_again[];
+
 #ifndef __cex__fprintf
 
 // NOTE: you may try to define our own fprintf
