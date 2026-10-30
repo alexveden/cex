@@ -21,7 +21,7 @@ const char _cex_errors_Error_permission[] = "PermissionError";
 const char _cex_errors_Error_try_again[] = "TryAgainError";
 
 static_assert(
-    __builtin_types_compatible_p(__typeof__(_cex_errors_Error_memory[0]), const char),
+    __builtin_types_compatible_p(__typeof__(&_cex_errors_Error_memory[0]), const char*),
     "error storage must be const"
 );
 
