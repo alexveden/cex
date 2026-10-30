@@ -260,6 +260,9 @@ test$case(os_cmd_join_timeout)
         tassert_er(Error.timeout, os.cmd.wait(&c, 1, 1));
         tassert_eq(os.cmd.ret_code(&c), -1);
 
+        tassert_er(EOK, os.cmd.kill(&c));
+        tassert_er(Error.runtime, os.cmd.wait(&c, 1, 0));
+
         tassert_er(EOK, os.cmd.create(&c, args, arr$len(args), NULL));
 
         tassert_er(Error.ok, os.cmd.wait(&c, 1, 3));
@@ -314,6 +317,9 @@ test$case(os_cmd_huge_join)
 
         tassert_er(Error.timeout, os.cmd.wait(&c, 1, 1));
         tassert_eq(os.cmd.ret_code(&c), -1);
+
+        tassert_er(EOK, os.cmd.kill(&c));
+        tassert_er(Error.runtime, os.cmd.wait(&c, 1, 0));
     }
     return EOK;
 }
@@ -329,6 +335,9 @@ test$case(os_cmd_huge_join_stderr)
 
         tassert_er(Error.timeout, os.cmd.wait(&c, 1, 1));
         tassert_eq(os.cmd.ret_code(&c), -1);
+
+        tassert_er(EOK, os.cmd.kill(&c));
+        tassert_er(Error.runtime, os.cmd.wait(&c, 1, 0));
     }
     return EOK;
 }
