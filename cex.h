@@ -3895,8 +3895,8 @@ CEX_NAMESPACE struct __cex_namespace__argparse argparse;
    For more information, please refer to <http://unlicense.org/>
 */
 
-#ifndef CEX_SUBPROCESS_H_INCLUDED
-#define CEX_SUBPROCESS_H_INCLUDED
+#ifndef _CEX_SUBPROCESS_H_INCLUDED
+#define _CEX_SUBPROCESS_H_INCLUDED
 
 #if defined(_MSC_VER)
 #pragma warning(push, 1)
@@ -3911,9 +3911,9 @@ CEX_NAMESPACE struct __cex_namespace__argparse argparse;
 #endif
 
 #if defined(__TINYC__)
-#define CEX_SUBPROCESS_ATTRIBUTE(a) __attribute((a))
+#define _CEX_SUBPROCESS_ATTRIBUTE(a) __attribute((a))
 #else
-#define CEX_SUBPROCESS_ATTRIBUTE(a) __attribute__((a))
+#define _CEX_SUBPROCESS_ATTRIBUTE(a) __attribute__((a))
 #endif
 
 #if defined(_MSC_VER)
@@ -3921,12 +3921,12 @@ CEX_NAMESPACE struct __cex_namespace__argparse argparse;
 #define _cex_subprocess_weak __inline
 #define _cex_subprocess_tls __declspec(thread)
 #elif defined(__MINGW32__)
-#define _cex_subprocess_pure CEX_SUBPROCESS_ATTRIBUTE(pure)
-#define _cex_subprocess_weak static CEX_SUBPROCESS_ATTRIBUTE(used)
+#define _cex_subprocess_pure _CEX_SUBPROCESS_ATTRIBUTE(pure)
+#define _cex_subprocess_weak static _CEX_SUBPROCESS_ATTRIBUTE(used)
 #define _cex_subprocess_tls __thread
 #elif defined(__clang__) || defined(__GNUC__) || defined(__TINYC__)
-#define _cex_subprocess_pure CEX_SUBPROCESS_ATTRIBUTE(pure)
-// #define _cex_subprocess_weak CEX_SUBPROCESS_ATTRIBUTE(weak)
+#define _cex_subprocess_pure _CEX_SUBPROCESS_ATTRIBUTE(pure)
+// #define _cex_subprocess_weak _CEX_SUBPROCESS_ATTRIBUTE(weak)
 #define _cex_subprocess_weak
 #define _cex_subprocess_tls __thread
 #else
@@ -4019,15 +4019,15 @@ _cex_subprocess_weak int _cex_subprocess_terminate(struct _cex_subprocess_s *con
 _cex_subprocess_weak int _cex_subprocess_alive(struct _cex_subprocess_s *const process);
 
 #if defined(__cplusplus)
-#define CEX_SUBPROCESS_CAST(type, x) static_cast<type>(x)
-#define CEX_SUBPROCESS_PTR_CAST(type, x) reinterpret_cast<type>(x)
-#define CEX_SUBPROCESS_CONST_CAST(type, x) const_cast<type>(x)
-#define CEX_SUBPROCESS_NULL NULL
+#define _CEX_SUBPROCESS_CAST(type, x) static_cast<type>(x)
+#define _CEX_SUBPROCESS_PTR_CAST(type, x) reinterpret_cast<type>(x)
+#define _CEX_SUBPROCESS_CONST_CAST(type, x) const_cast<type>(x)
+#define _CEX_SUBPROCESS_NULL NULL
 #else
-#define CEX_SUBPROCESS_CAST(type, x) ((type)(x))
-#define CEX_SUBPROCESS_PTR_CAST(type, x) ((type)(x))
-#define CEX_SUBPROCESS_CONST_CAST(type, x) ((type)(x))
-#define CEX_SUBPROCESS_NULL 0
+#define _CEX_SUBPROCESS_CAST(type, x) ((type)(x))
+#define _CEX_SUBPROCESS_PTR_CAST(type, x) ((type)(x))
+#define _CEX_SUBPROCESS_CONST_CAST(type, x) ((type)(x))
+#define _CEX_SUBPROCESS_NULL 0
 #endif
 
 #if !defined(_WIN32)
@@ -4121,9 +4121,9 @@ struct _cex_subprocess_overlapped_s {
 #endif
 
 #if defined(_DLL)
-#define CEX_SUBPROCESS_DLLIMPORT __declspec(dllimport)
+#define _CEX_SUBPROCESS_DLLIMPORT __declspec(dllimport)
 #else
-#define CEX_SUBPROCESS_DLLIMPORT
+#define _CEX_SUBPROCESS_DLLIMPORT
 #endif
 
 #ifdef __clang__
@@ -4131,9 +4131,9 @@ struct _cex_subprocess_overlapped_s {
 #pragma clang diagnostic ignored "-Wreserved-identifier"
 #endif
 
-CEX_SUBPROCESS_DLLIMPORT int __cdecl _fileno(FILE *);
-CEX_SUBPROCESS_DLLIMPORT int __cdecl _open_osfhandle(_cex_subprocess_intptr_t, int);
-CEX_SUBPROCESS_DLLIMPORT _cex_subprocess_intptr_t __cdecl _get_osfhandle(int);
+_CEX_SUBPROCESS_DLLIMPORT int __cdecl _fileno(FILE *);
+_CEX_SUBPROCESS_DLLIMPORT int __cdecl _open_osfhandle(_cex_subprocess_intptr_t, int);
+_CEX_SUBPROCESS_DLLIMPORT _cex_subprocess_intptr_t __cdecl _get_osfhandle(int);
 
 #ifndef __MINGW32__
 void *__cdecl _alloca(_cex_subprocess_size_t);
@@ -4174,10 +4174,10 @@ struct _cex_subprocess_s {
 #pragma clang diagnostic pop
 #endif
 
-#undef CEX_SUBPROCESS_DLLIMPORT
+#undef _CEX_SUBPROCESS_DLLIMPORT
 #undef _cex_subprocess_pure
 
-#endif /* CEX_SUBPROCESS_H_INCLUDED */
+#endif /* _CEX_SUBPROCESS_H_INCLUDED */
 
 #endif
 
@@ -15047,9 +15047,9 @@ int _cex_subprocess_create_named_pipe_helper(void **rd, void **wr) {
   const unsigned long openExisting = 3;
   const unsigned long fileAttributeNormal = 0x00000080;
   const void *const invalidHandleValue =
-      CEX_SUBPROCESS_PTR_CAST(void *, ~(CEX_SUBPROCESS_CAST(_cex_subprocess_intptr_t, 0)));
+      _CEX_SUBPROCESS_PTR_CAST(void *, ~(_CEX_SUBPROCESS_CAST(_cex_subprocess_intptr_t, 0)));
   struct _cex_subprocess_security_attributes_s saAttr = {sizeof(saAttr),
-                                                    CEX_SUBPROCESS_NULL, 1};
+                                                    _CEX_SUBPROCESS_NULL, 1};
   char name[256] = {0};
   static _cex_subprocess_tls long index = 0;
   const long unique = index++;
@@ -15069,16 +15069,16 @@ int _cex_subprocess_create_named_pipe_helper(void **rd, void **wr) {
 
   *rd =
       CreateNamedPipeA(name, pipeAccessInbound | fileFlagOverlapped,
-                       pipeTypeByte | pipeWait, 1, 4096, 4096, CEX_SUBPROCESS_NULL,
-                       CEX_SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr));
+                       pipeTypeByte | pipeWait, 1, 4096, 4096, _CEX_SUBPROCESS_NULL,
+                       _CEX_SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr));
 
   if (invalidHandleValue == *rd) {
     return -1;
   }
 
-  *wr = CreateFileA(name, genericWrite, CEX_SUBPROCESS_NULL,
-                    CEX_SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr),
-                    openExisting, fileAttributeNormal, CEX_SUBPROCESS_NULL);
+  *wr = CreateFileA(name, genericWrite, _CEX_SUBPROCESS_NULL,
+                    _CEX_SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr),
+                    openExisting, fileAttributeNormal, _CEX_SUBPROCESS_NULL);
 
   if (invalidHandleValue == *wr) {
     return -1;
@@ -15090,7 +15090,7 @@ int _cex_subprocess_create_named_pipe_helper(void **rd, void **wr) {
 
 int _cex_subprocess_create(const char *const commandLine[], int options,
                       struct _cex_subprocess_s *const out_process) {
-  return _cex_subprocess_create_ex(commandLine, options, CEX_SUBPROCESS_NULL,
+  return _cex_subprocess_create_ex(commandLine, options, _CEX_SUBPROCESS_NULL,
                               out_process);
 }
 
@@ -15110,12 +15110,12 @@ int _cex_subprocess_create_ex(const char *const commandLine[], int options,
   const unsigned long createNoWindow = 0x08000000;
   struct _cex_subprocess_subprocess_information_s processInfo;
   struct _cex_subprocess_security_attributes_s saAttr = {sizeof(saAttr),
-                                                    CEX_SUBPROCESS_NULL, 1};
-  char *used_environment = CEX_SUBPROCESS_NULL;
+                                                    _CEX_SUBPROCESS_NULL, 1};
+  char *used_environment = _CEX_SUBPROCESS_NULL;
   struct _cex_subprocess_startup_info_s startInfo = {0,
-                                                CEX_SUBPROCESS_NULL,
-                                                CEX_SUBPROCESS_NULL,
-                                                CEX_SUBPROCESS_NULL,
+                                                _CEX_SUBPROCESS_NULL,
+                                                _CEX_SUBPROCESS_NULL,
+                                                _CEX_SUBPROCESS_NULL,
                                                 0,
                                                 0,
                                                 0,
@@ -15126,10 +15126,10 @@ int _cex_subprocess_create_ex(const char *const commandLine[], int options,
                                                 0,
                                                 0,
                                                 0,
-                                                CEX_SUBPROCESS_NULL,
-                                                CEX_SUBPROCESS_NULL,
-                                                CEX_SUBPROCESS_NULL,
-                                                CEX_SUBPROCESS_NULL};
+                                                _CEX_SUBPROCESS_NULL,
+                                                _CEX_SUBPROCESS_NULL,
+                                                _CEX_SUBPROCESS_NULL,
+                                                _CEX_SUBPROCESS_NULL};
 
   startInfo.cb = sizeof(startInfo);
   startInfo.dwFlags = startFUseStdHandles;
@@ -15140,8 +15140,8 @@ int _cex_subprocess_create_ex(const char *const commandLine[], int options,
 
   if (_cex_subprocess_option_inherit_environment !=
       (options & _cex_subprocess_option_inherit_environment)) {
-    if (CEX_SUBPROCESS_NULL == environment) {
-      used_environment = CEX_SUBPROCESS_CONST_CAST(char *, "\0\0");
+    if (_CEX_SUBPROCESS_NULL == environment) {
+      used_environment = _CEX_SUBPROCESS_CONST_CAST(char *, "\0\0");
     } else {
       // We always end with two null terminators.
       len = 2;
@@ -15155,7 +15155,7 @@ int _cex_subprocess_create_ex(const char *const commandLine[], int options,
         len++;
       }
 
-      used_environment = CEX_SUBPROCESS_CAST(char *, _alloca(len));
+      used_environment = _CEX_SUBPROCESS_CAST(char *, _alloca(len));
 
       // Re-use len for the insertion position
       len = 0;
@@ -15173,12 +15173,12 @@ int _cex_subprocess_create_ex(const char *const commandLine[], int options,
       used_environment[len++] = '\0';
     }
   } else {
-    if (CEX_SUBPROCESS_NULL != environment) {
+    if (_CEX_SUBPROCESS_NULL != environment) {
       return -1;
     }
   }
 
-  if (!CreatePipe(&rd, &wr, CEX_SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr),
+  if (!CreatePipe(&rd, &wr, _CEX_SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr),
                   0)) {
     return -1;
   }
@@ -15187,12 +15187,12 @@ int _cex_subprocess_create_ex(const char *const commandLine[], int options,
     return -1;
   }
 
-  fd = _open_osfhandle(CEX_SUBPROCESS_PTR_CAST(_cex_subprocess_intptr_t, wr), 0);
+  fd = _open_osfhandle(_CEX_SUBPROCESS_PTR_CAST(_cex_subprocess_intptr_t, wr), 0);
 
   if (-1 != fd) {
     out_process->stdin_file = _fdopen(fd, "wb");
 
-    if (CEX_SUBPROCESS_NULL == out_process->stdin_file) {
+    if (_CEX_SUBPROCESS_NULL == out_process->stdin_file) {
       return -1;
     }
   }
@@ -15205,7 +15205,7 @@ int _cex_subprocess_create_ex(const char *const commandLine[], int options,
     }
   } else {
     if (!CreatePipe(&rd, &wr,
-                    CEX_SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr), 0)) {
+                    _CEX_SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr), 0)) {
       return -1;
     }
   }
@@ -15214,12 +15214,12 @@ int _cex_subprocess_create_ex(const char *const commandLine[], int options,
     return -1;
   }
 
-  fd = _open_osfhandle(CEX_SUBPROCESS_PTR_CAST(_cex_subprocess_intptr_t, rd), 0);
+  fd = _open_osfhandle(_CEX_SUBPROCESS_PTR_CAST(_cex_subprocess_intptr_t, rd), 0);
 
   if (-1 != fd) {
     out_process->stdout_file = _fdopen(fd, "rb");
 
-    if (CEX_SUBPROCESS_NULL == out_process->stdout_file) {
+    if (_CEX_SUBPROCESS_NULL == out_process->stdout_file) {
       return -1;
     }
   }
@@ -15237,7 +15237,7 @@ int _cex_subprocess_create_ex(const char *const commandLine[], int options,
       }
     } else {
       if (!CreatePipe(&rd, &wr,
-                      CEX_SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr), 0)) {
+                      _CEX_SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr), 0)) {
         return -1;
       }
     }
@@ -15246,12 +15246,12 @@ int _cex_subprocess_create_ex(const char *const commandLine[], int options,
       return -1;
     }
 
-    fd = _open_osfhandle(CEX_SUBPROCESS_PTR_CAST(_cex_subprocess_intptr_t, rd), 0);
+    fd = _open_osfhandle(_CEX_SUBPROCESS_PTR_CAST(_cex_subprocess_intptr_t, rd), 0);
 
     if (-1 != fd) {
       out_process->stderr_file = _fdopen(fd, "rb");
 
-      if (CEX_SUBPROCESS_NULL == out_process->stderr_file) {
+      if (_CEX_SUBPROCESS_NULL == out_process->stderr_file) {
         return -1;
       }
     }
@@ -15261,14 +15261,14 @@ int _cex_subprocess_create_ex(const char *const commandLine[], int options,
 
   if (options & _cex_subprocess_option_enable_async) {
     out_process->hEventOutput =
-        CreateEventA(CEX_SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr), 1, 1,
-                     CEX_SUBPROCESS_NULL);
+        CreateEventA(_CEX_SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr), 1, 1,
+                     _CEX_SUBPROCESS_NULL);
     out_process->hEventError =
-        CreateEventA(CEX_SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr), 1, 1,
-                     CEX_SUBPROCESS_NULL);
+        CreateEventA(_CEX_SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr), 1, 1,
+                     _CEX_SUBPROCESS_NULL);
   } else {
-    out_process->hEventOutput = CEX_SUBPROCESS_NULL;
-    out_process->hEventError = CEX_SUBPROCESS_NULL;
+    out_process->hEventOutput = _CEX_SUBPROCESS_NULL;
+    out_process->hEventError = _CEX_SUBPROCESS_NULL;
   }
 
   // Combine commandLine together into a single string
@@ -15278,8 +15278,8 @@ int _cex_subprocess_create_ex(const char *const commandLine[], int options,
     len++;
 
     // Quote the argument if it has a space in it
-    if (strpbrk(commandLine[i], "\t\v ") != CEX_SUBPROCESS_NULL ||
-        commandLine[i][0] == CEX_SUBPROCESS_NULL)
+    if (strpbrk(commandLine[i], "\t\v ") != _CEX_SUBPROCESS_NULL ||
+        commandLine[i][0] == _CEX_SUBPROCESS_NULL)
       len += 2;
 
     for (j = 0; '\0' != commandLine[i][j]; j++) {
@@ -15300,7 +15300,7 @@ int _cex_subprocess_create_ex(const char *const commandLine[], int options,
     }
   }
 
-  commandLineCombined = CEX_SUBPROCESS_CAST(char *, _alloca(len));
+  commandLineCombined = _CEX_SUBPROCESS_CAST(char *, _alloca(len));
 
   if (!commandLineCombined) {
     return -1;
@@ -15314,8 +15314,8 @@ int _cex_subprocess_create_ex(const char *const commandLine[], int options,
       commandLineCombined[len++] = ' ';
     }
 
-    need_quoting = strpbrk(commandLine[i], "\t\v ") != CEX_SUBPROCESS_NULL ||
-                   commandLine[i][0] == CEX_SUBPROCESS_NULL;
+    need_quoting = strpbrk(commandLine[i], "\t\v ") != _CEX_SUBPROCESS_NULL ||
+                   commandLine[i][0] == _CEX_SUBPROCESS_NULL;
     if (need_quoting) {
       commandLineCombined[len++] = '"';
     }
@@ -15345,17 +15345,17 @@ int _cex_subprocess_create_ex(const char *const commandLine[], int options,
   commandLineCombined[len] = '\0';
 
   if (!CreateProcessA(
-          CEX_SUBPROCESS_NULL,
+          _CEX_SUBPROCESS_NULL,
           commandLineCombined, // command line
-          CEX_SUBPROCESS_NULL,     // process security attributes
-          CEX_SUBPROCESS_NULL,     // primary thread security attributes
+          _CEX_SUBPROCESS_NULL,     // process security attributes
+          _CEX_SUBPROCESS_NULL,     // primary thread security attributes
           1,                   // handles are inherited
           flags,               // creation flags
           used_environment,    // used environment
-          CEX_SUBPROCESS_NULL,     // use parent's current directory
-          CEX_SUBPROCESS_PTR_CAST(LPSTARTUPINFOA,
+          _CEX_SUBPROCESS_NULL,     // use parent's current directory
+          _CEX_SUBPROCESS_PTR_CAST(LPSTARTUPINFOA,
                               &startInfo), // STARTUPINFO pointer
-          CEX_SUBPROCESS_PTR_CAST(LPPROCESS_INFORMATION, &processInfo))) {
+          _CEX_SUBPROCESS_PTR_CAST(LPPROCESS_INFORMATION, &processInfo))) {
     return -1;
   }
 
@@ -15366,7 +15366,7 @@ int _cex_subprocess_create_ex(const char *const commandLine[], int options,
   // We don't need the handle of the primary thread in the called process.
   CloseHandle(processInfo.hThread);
 
-  if (CEX_SUBPROCESS_NULL != startInfo.hStdOutput) {
+  if (_CEX_SUBPROCESS_NULL != startInfo.hStdOutput) {
     CloseHandle(startInfo.hStdOutput);
 
     if (startInfo.hStdError != startInfo.hStdOutput) {
@@ -15390,13 +15390,13 @@ int _cex_subprocess_create_ex(const char *const commandLine[], int options,
   int stderrfd[2];
   pid_t child;
   extern char **environ;
-  char *const empty_environment[1] = {CEX_SUBPROCESS_NULL};
+  char *const empty_environment[1] = {_CEX_SUBPROCESS_NULL};
   posix_spawn_file_actions_t actions;
   char *const *used_environment;
 
   if (_cex_subprocess_option_inherit_environment ==
       (options & _cex_subprocess_option_inherit_environment)) {
-    if (CEX_SUBPROCESS_NULL != environment) {
+    if (_CEX_SUBPROCESS_NULL != environment) {
       return -1;
     }
   }
@@ -15422,7 +15422,7 @@ int _cex_subprocess_create_ex(const char *const commandLine[], int options,
 #pragma clang diagnostic ignored "-Wcast-qual"
 #pragma clang diagnostic ignored "-Wold-style-cast"
 #endif
-    used_environment = CEX_SUBPROCESS_CONST_CAST(char *const *, environment);
+    used_environment = _CEX_SUBPROCESS_CONST_CAST(char *const *, environment);
 #ifdef __clang__
 #pragma clang diagnostic pop
 #endif
@@ -15491,15 +15491,15 @@ int _cex_subprocess_create_ex(const char *const commandLine[], int options,
 #endif
   if (_cex_subprocess_option_search_user_path ==
       (options & _cex_subprocess_option_search_user_path)) {
-    if (0 != posix_spawnp(&child, commandLine[0], &actions, CEX_SUBPROCESS_NULL,
-                          CEX_SUBPROCESS_CONST_CAST(char *const *, commandLine),
+    if (0 != posix_spawnp(&child, commandLine[0], &actions, _CEX_SUBPROCESS_NULL,
+                          _CEX_SUBPROCESS_CONST_CAST(char *const *, commandLine),
                           used_environment)) {
       posix_spawn_file_actions_destroy(&actions);
       return -1;
     }
   } else {
-    if (0 != posix_spawn(&child, commandLine[0], &actions, CEX_SUBPROCESS_NULL,
-                         CEX_SUBPROCESS_CONST_CAST(char *const *, commandLine),
+    if (0 != posix_spawn(&child, commandLine[0], &actions, _CEX_SUBPROCESS_NULL,
+                         _CEX_SUBPROCESS_CONST_CAST(char *const *, commandLine),
                          used_environment)) {
       posix_spawn_file_actions_destroy(&actions);
       return -1;
@@ -15546,12 +15546,12 @@ int _cex_subprocess_join(struct _cex_subprocess_s *const process,
 
   if (process->stdin_file) {
     fclose(process->stdin_file);
-    process->stdin_file = CEX_SUBPROCESS_NULL;
+    process->stdin_file = _CEX_SUBPROCESS_NULL;
   }
 
   if (process->hStdInput) {
     CloseHandle(process->hStdInput);
-    process->hStdInput = CEX_SUBPROCESS_NULL;
+    process->hStdInput = _CEX_SUBPROCESS_NULL;
   }
 
   if (process->hProcess) {
@@ -15561,7 +15561,7 @@ int _cex_subprocess_join(struct _cex_subprocess_s *const process,
     if (out_return_code) {
       if (!GetExitCodeProcess(
               process->hProcess,
-              CEX_SUBPROCESS_PTR_CAST(unsigned long *, out_return_code))) {
+              _CEX_SUBPROCESS_PTR_CAST(unsigned long *, out_return_code))) {
         return -1;
       }
     }
@@ -15575,7 +15575,7 @@ int _cex_subprocess_join(struct _cex_subprocess_s *const process,
 
   if (process->stdin_file) {
     fclose(process->stdin_file);
-    process->stdin_file = CEX_SUBPROCESS_NULL;
+    process->stdin_file = _CEX_SUBPROCESS_NULL;
   }
 
   if (process->child) {
@@ -15605,7 +15605,7 @@ int _cex_subprocess_join(struct _cex_subprocess_s *const process,
 int _cex_subprocess_destroy(struct _cex_subprocess_s *const process) {
   if (process->stdin_file) {
     fclose(process->stdin_file);
-    process->stdin_file = CEX_SUBPROCESS_NULL;
+    process->stdin_file = _CEX_SUBPROCESS_NULL;
   }
 
   if (process->stdout_file) {
@@ -15615,14 +15615,14 @@ int _cex_subprocess_destroy(struct _cex_subprocess_s *const process) {
       fclose(process->stderr_file);
     }
 
-    process->stdout_file = CEX_SUBPROCESS_NULL;
-    process->stderr_file = CEX_SUBPROCESS_NULL;
+    process->stdout_file = _CEX_SUBPROCESS_NULL;
+    process->stderr_file = _CEX_SUBPROCESS_NULL;
   }
 
 #if defined(_WIN32)
   if (process->hProcess) {
     CloseHandle(process->hProcess);
-    process->hProcess = CEX_SUBPROCESS_NULL;
+    process->hProcess = _CEX_SUBPROCESS_NULL;
 
     if (process->hStdInput) {
       CloseHandle(process->hStdInput);
@@ -15660,7 +15660,7 @@ int _cex_subprocess_terminate(struct _cex_subprocess_s *const process) {
 }
 
 int _cex_subprocess_alive(struct _cex_subprocess_s *const process) {
-  int is_alive = CEX_SUBPROCESS_CAST(int, process->alive);
+  int is_alive = _CEX_SUBPROCESS_CAST(int, process->alive);
 
   if (!is_alive) {
     return 0;
@@ -15690,7 +15690,7 @@ int _cex_subprocess_alive(struct _cex_subprocess_s *const process) {
       // the child now.
       process->child = 0;
 
-      if (_cex_subprocess_join(process, CEX_SUBPROCESS_NULL)) {
+      if (_cex_subprocess_join(process, _CEX_SUBPROCESS_NULL)) {
         return -1;
       }
     }
@@ -15710,11 +15710,11 @@ int _cex_subprocess_alive(struct _cex_subprocess_s *const process) {
 #endif
 #endif
 
-#undef CEX_SUBPROCESS_ATTRIBUTE
-#undef CEX_SUBPROCESS_CAST
-#undef CEX_SUBPROCESS_CONST_CAST
-#undef CEX_SUBPROCESS_NULL
-#undef CEX_SUBPROCESS_PTR_CAST
+#undef _CEX_SUBPROCESS_ATTRIBUTE
+#undef _CEX_SUBPROCESS_CAST
+#undef _CEX_SUBPROCESS_CONST_CAST
+#undef _CEX_SUBPROCESS_NULL
+#undef _CEX_SUBPROCESS_PTR_CAST
 #undef _cex_subprocess_weak
 #undef _cex_subprocess_tls
 

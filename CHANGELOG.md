@@ -5,6 +5,7 @@
 
 ### Fixes
 - fix(os): `os.fs.mkpath()` now creates absolute, Windows root-relative, UNC, and drive-rooted paths; empty path components are skipped and drive roots are not passed to `mkdir`
+- fix(docs): vendored subprocess macros renamed to `_CEX_SUBPROCESS_*`, so they no longer leak into the generated `cex$` docs
 
 ## 0.70
 2026-10-04

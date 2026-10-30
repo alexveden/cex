@@ -33,8 +33,8 @@
 */
 #pragma once
 
-#ifndef CEX_SUBPROCESS_H_INCLUDED
-#define CEX_SUBPROCESS_H_INCLUDED
+#ifndef _CEX_SUBPROCESS_H_INCLUDED
+#define _CEX_SUBPROCESS_H_INCLUDED
 #include "cex_header.h"
 
 #if defined(_MSC_VER)
@@ -50,9 +50,9 @@
 #endif
 
 #if defined(__TINYC__)
-#define CEX_SUBPROCESS_ATTRIBUTE(a) __attribute((a))
+#define _CEX_SUBPROCESS_ATTRIBUTE(a) __attribute((a))
 #else
-#define CEX_SUBPROCESS_ATTRIBUTE(a) __attribute__((a))
+#define _CEX_SUBPROCESS_ATTRIBUTE(a) __attribute__((a))
 #endif
 
 #if defined(_MSC_VER)
@@ -60,12 +60,12 @@
 #define _cex_subprocess_weak __inline
 #define _cex_subprocess_tls __declspec(thread)
 #elif defined(__MINGW32__)
-#define _cex_subprocess_pure CEX_SUBPROCESS_ATTRIBUTE(pure)
-#define _cex_subprocess_weak static CEX_SUBPROCESS_ATTRIBUTE(used)
+#define _cex_subprocess_pure _CEX_SUBPROCESS_ATTRIBUTE(pure)
+#define _cex_subprocess_weak static _CEX_SUBPROCESS_ATTRIBUTE(used)
 #define _cex_subprocess_tls __thread
 #elif defined(__clang__) || defined(__GNUC__) || defined(__TINYC__)
-#define _cex_subprocess_pure CEX_SUBPROCESS_ATTRIBUTE(pure)
-// #define _cex_subprocess_weak CEX_SUBPROCESS_ATTRIBUTE(weak)
+#define _cex_subprocess_pure _CEX_SUBPROCESS_ATTRIBUTE(pure)
+// #define _cex_subprocess_weak _CEX_SUBPROCESS_ATTRIBUTE(weak)
 #define _cex_subprocess_weak
 #define _cex_subprocess_tls __thread
 #else
@@ -158,15 +158,15 @@ _cex_subprocess_weak int _cex_subprocess_terminate(struct _cex_subprocess_s *con
 _cex_subprocess_weak int _cex_subprocess_alive(struct _cex_subprocess_s *const process);
 
 #if defined(__cplusplus)
-#define CEX_SUBPROCESS_CAST(type, x) static_cast<type>(x)
-#define CEX_SUBPROCESS_PTR_CAST(type, x) reinterpret_cast<type>(x)
-#define CEX_SUBPROCESS_CONST_CAST(type, x) const_cast<type>(x)
-#define CEX_SUBPROCESS_NULL NULL
+#define _CEX_SUBPROCESS_CAST(type, x) static_cast<type>(x)
+#define _CEX_SUBPROCESS_PTR_CAST(type, x) reinterpret_cast<type>(x)
+#define _CEX_SUBPROCESS_CONST_CAST(type, x) const_cast<type>(x)
+#define _CEX_SUBPROCESS_NULL NULL
 #else
-#define CEX_SUBPROCESS_CAST(type, x) ((type)(x))
-#define CEX_SUBPROCESS_PTR_CAST(type, x) ((type)(x))
-#define CEX_SUBPROCESS_CONST_CAST(type, x) ((type)(x))
-#define CEX_SUBPROCESS_NULL 0
+#define _CEX_SUBPROCESS_CAST(type, x) ((type)(x))
+#define _CEX_SUBPROCESS_PTR_CAST(type, x) ((type)(x))
+#define _CEX_SUBPROCESS_CONST_CAST(type, x) ((type)(x))
+#define _CEX_SUBPROCESS_NULL 0
 #endif
 
 #if !defined(_WIN32)
@@ -261,9 +261,9 @@ struct _cex_subprocess_overlapped_s {
 #endif
 
 #if defined(_DLL)
-#define CEX_SUBPROCESS_DLLIMPORT __declspec(dllimport)
+#define _CEX_SUBPROCESS_DLLIMPORT __declspec(dllimport)
 #else
-#define CEX_SUBPROCESS_DLLIMPORT
+#define _CEX_SUBPROCESS_DLLIMPORT
 #endif
 
 #ifdef __clang__
@@ -271,9 +271,9 @@ struct _cex_subprocess_overlapped_s {
 #pragma clang diagnostic ignored "-Wreserved-identifier"
 #endif
 
-CEX_SUBPROCESS_DLLIMPORT int __cdecl _fileno(FILE *);
-CEX_SUBPROCESS_DLLIMPORT int __cdecl _open_osfhandle(_cex_subprocess_intptr_t, int);
-CEX_SUBPROCESS_DLLIMPORT _cex_subprocess_intptr_t __cdecl _get_osfhandle(int);
+_CEX_SUBPROCESS_DLLIMPORT int __cdecl _fileno(FILE *);
+_CEX_SUBPROCESS_DLLIMPORT int __cdecl _open_osfhandle(_cex_subprocess_intptr_t, int);
+_CEX_SUBPROCESS_DLLIMPORT _cex_subprocess_intptr_t __cdecl _get_osfhandle(int);
 
 #ifndef __MINGW32__
 void *__cdecl _alloca(_cex_subprocess_size_t);
@@ -314,9 +314,9 @@ struct _cex_subprocess_s {
 #pragma clang diagnostic pop
 #endif
 
-#undef CEX_SUBPROCESS_DLLIMPORT
+#undef _CEX_SUBPROCESS_DLLIMPORT
 #undef _cex_subprocess_pure
 
-#endif /* CEX_SUBPROCESS_H_INCLUDED */
+#endif /* _CEX_SUBPROCESS_H_INCLUDED */
 
 #endif
