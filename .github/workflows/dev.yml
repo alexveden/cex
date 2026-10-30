@@ -9,7 +9,7 @@ on:
 
 jobs:
   tests-linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     strategy:
       # Don't abort runners if a single one fails
@@ -165,7 +165,7 @@ jobs:
 
   tests-linux-multiarch:
     name: alpine-${{ matrix.arch }}-${{ matrix.cex_preset }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -218,7 +218,7 @@ jobs:
           #./cex test run tests/test_sprintf.c
   #
   wasm-enscripten:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     strategy:
       # Don't abort runners if a single one fails
@@ -261,7 +261,7 @@ jobs:
           ./cex test debug all
 
   clang-tidy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     strategy:
       # Don't abort runners if a single one fails
@@ -313,7 +313,7 @@ jobs:
           clang-tidy tests/cexstd/json/basic/serdegen.c
 
   test-filc:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 

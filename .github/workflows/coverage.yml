@@ -13,7 +13,7 @@ jobs:
   # 3 engines: clang+llvm, gcc+lcov, clang+lcov
   coverage-linux:
     name: linux-${{ matrix.label }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     strategy:
       # Don't abort runners if a single one fails

@@ -50,7 +50,7 @@ jobs:
         name: cex test suite
 
   linux-ubuntu2404:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     strategy:
       # Don't abort runners if a single one fails
@@ -93,7 +93,7 @@ jobs:
         name: cex test suite
 
   linux-valgrind:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     strategy:
       # Don't abort runners if a single one fails
@@ -230,7 +230,7 @@ jobs:
 
   tests-linux-alpine:
     name: alpine-${{ matrix.arch }}-${{ matrix.cex_preset }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -290,7 +290,7 @@ jobs:
   # publish is master-gated.
   coverage-full-linux:
     name: coverage-full-linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout cex
         uses: actions/checkout@v4
@@ -419,7 +419,7 @@ jobs:
   coverage-merge:
     name: coverage-merge
     needs: [coverage-full-linux, coverage-full-macos, coverage-full-windows]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout cex
         uses: actions/checkout@v4
@@ -482,7 +482,7 @@ jobs:
   deploy-release:
     # Publish only from master; staging and PR runs build coverage artifacts but never deploy
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [coverage-merge, tests-macos, tests-windows, linux-ubuntu2404]
     permissions:
       contents: write  # This allows creating releases and uploading assets
@@ -546,7 +546,7 @@ jobs:
 
 
   wasm-enscripten:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     strategy:
       # Don't abort runners if a single one fails
@@ -589,7 +589,7 @@ jobs:
           ./cex test debug all
 
   clang-tidy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     strategy:
       # Don't abort runners if a single one fails
@@ -641,7 +641,7 @@ jobs:
           clang-tidy tests/cexstd/json/basic/serdegen.c
 
   test-filc:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 

@@ -9,7 +9,7 @@ on:
 jobs:
   tests-linux-multiarch:
     name: alpine-${{ matrix.arch }}-${{ matrix.cex_preset }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:

@@ -9,7 +9,7 @@ on:
 
 jobs:
   tests-linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     strategy:
       # Don't abort runners if a single one fails
