@@ -10,21 +10,20 @@ runs:
       run: |
         git config --global user.email "ci@cex-c.org"
         git config --global user.name "CEX CI"
-        sudo mkdir /var/cores
+        sudo mkdir -p /var/cores
         sudo chmod ugo+rwx /var/cores/
         echo "ASAN_OPTIONS=abort_on_error=1:disable_coredump=0:unmap_shadow_on_exit=1" >> $GITHUB_ENV
 
-        sudo apt-get remove apport  
-        sudo systemctl disable apport.service
-        sudo bash -c 'echo "/var/cores/core.%e.%t.%p" > /proc/sys/kernel/core_pattern'
-        sudo sysctl -w fs.suid_dumpable=2
+        sudo apt-get remove -y apport || true
+        sudo systemctl disable apport.service || true
+        sudo bash -c 'echo "/var/cores/core.%e.%t.%p" > /proc/sys/kernel/core_pattern' || true
+        sudo sysctl -w fs.suid_dumpable=2 || true
 
         echo "Install i386 arch"
         sudo dpkg --add-architecture i386
         sudo apt-get update
-        sudo apt install gcc-multilib
-        sudo apt install clang llvm lld
-        sudo apt install libc6-dev-i386
+        sudo apt-get install -y gcc-multilib libc6-dev-i386 || true
+        sudo apt-get install -y gcc clang llvm lld
 
 
     - name: test access to core dump directory
@@ -55,11 +54,11 @@ runs:
         ulimit -c               # should output 'unlimited' now
         echo "Core pattern:"
         sudo cat /proc/sys/kernel/core_pattern
-        sudo sysctl -a | grep kernel.core_pattern
-        sudo sysctl -a | grep dump
+        sudo sysctl -a | grep kernel.core_pattern || true
+        sudo sysctl -a | grep dump || true
         echo "int main() {return *(int*)0;}" > coredump.c
         gcc coredump.c
         ./a.out || echo "core dumped?"
         ls -la /var/cores
-        rm -r /var/cores/*
+        rm -rf /var/cores/* || true
 

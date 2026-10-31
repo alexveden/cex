@@ -1,0 +1,214 @@
+name: Ubuntu 26.04 canary
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ dev*, master, staging* ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ubuntu-2604-canary-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  probe-toolchains:
+    name: probe-toolchains
+    runs-on: ubuntu-26.04
+    continue-on-error: true
+    steps:
+      - name: Probe available toolchains
+        run: |
+          . /etc/os-release
+          echo "## Ubuntu 26.04 toolchain probe" >> "$GITHUB_STEP_SUMMARY"
+          echo "- OS: $PRETTY_NAME" >> "$GITHUB_STEP_SUMMARY"
+          sudo apt-get update
+          {
+            echo "gcc: $(apt-cache search --names-only '^gcc-[0-9]+$' | awk '{print $1}' | sort -V | tr '\n' ' ')"
+            echo "clang: $(apt-cache search --names-only '^clang-[0-9]+$' | awk '{print $1}' | sort -V | tr '\n' ' ')"
+            echo "clang-tidy: $(apt-cache search --names-only '^clang-tidy-[0-9]+$' | awk '{print $1}' | sort -V | tr '\n' ' ')"
+            echo "valgrind: $(apt-cache policy valgrind | sed -n 's/  Candidate: //p')"
+            echo "lcov: $(apt-cache policy lcov | sed -n 's/  Candidate: //p')"
+            echo "llvm: $(apt-cache policy llvm | sed -n 's/  Candidate: //p')"
+          } | tee ubuntu-2604-toolchains.txt
+          cat ubuntu-2604-toolchains.txt >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload probe
+        uses: actions/upload-artifact@v4
+        with:
+          name: ubuntu-2604-toolchains
+          path: ubuntu-2604-toolchains.txt
+          if-no-files-found: error
+
+  unit-linux:
+    name: unit-${{ matrix.compiler }}-${{ matrix.cex_preset }}
+    runs-on: ubuntu-26.04
+    continue-on-error: true
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: ["gcc", "clang"]
+        cex_preset: ["CEX_DEBUG"]
+
+    steps:
+      - name: Checkout cex
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/env_setup
+        name: Setup env
+
+      - name: cc setup
+        run: |
+          sudo apt-get install -y ${{ matrix.compiler }}
+          echo "Replacing: cc to ${{ matrix.compiler }}"
+          sudo rm -f /usr/bin/cc
+          sudo ln -s /usr/bin/${{ matrix.compiler }} /usr/bin/cc
+          echo "cc --version"
+          cc --version
+
+      - name: cex initial build
+        run: |
+          ulimit -c unlimited
+          ls -la
+          echo "Priming cex tool"
+          cc -g ./cex.c -o ./cex
+          ./cex -D${{ matrix.cex_preset }} config
+
+      - uses: ./.github/actions/cex_test
+        name: cex test suite
+
+  valgrind-linux:
+    name: valgrind-gcc
+    runs-on: ubuntu-26.04
+    continue-on-error: true
+    timeout-minutes: 120
+    steps:
+      - name: Checkout cex
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/env_setup
+        name: Setup env
+
+      - name: cc setup
+        run: |
+          sudo apt-get install -y gcc valgrind
+          echo "Replacing: cc to gcc"
+          sudo rm -f /usr/bin/cc
+          sudo ln -s /usr/bin/gcc /usr/bin/cc
+          echo "cc --version"
+          cc --version
+          valgrind --version
+
+      - name: cex initial build
+        run: |
+          ulimit -c unlimited
+          ls -la
+          echo "Priming cex tool"
+          cc -g ./cex.c -o ./cex
+          ./cex -DCEX_VALGRIND config
+
+      - name: cex valgrind
+        run: |
+          ulimit -c unlimited
+          ./cex test debug all
+
+  clang-tidy-next:
+    name: clang-tidy-next
+    runs-on: ubuntu-26.04
+    continue-on-error: true
+    timeout-minutes: 60
+    steps:
+      - name: Checkout cex
+        uses: actions/checkout@v4
+
+      - uses: ./.github/actions/env_setup
+        name: Setup env
+
+      - name: cc setup
+        run: |
+          sudo apt-get install -y clang clang-tidy
+          echo "Replacing: cc to clang"
+          sudo rm -f /usr/bin/cc
+          sudo ln -s /usr/bin/clang /usr/bin/cc
+          echo "cc --version"
+          cc --version
+          echo "clang-tidy --version"
+          clang-tidy --version
+
+      - name: cex initial build
+        run: |
+          ls -la
+          echo "Priming cex tool"
+          cc -g ./cex.c -o ./cex
+          file ./cex
+          ./cex config
+
+      - name: clang-tidy core
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          clang-tidy --export-fixes=clang-tidy-src.yaml $(find ./src -name "*.c" -o -name "*.h") 2>&1 | tee clang-tidy-src.log
+
+      - name: clang-tidy std
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          clang-tidy --export-fixes=clang-tidy-std.yaml $(find ./cexstd -name "*.c" -o -name "*.h") 2>&1 | tee clang-tidy-std.log
+
+      - name: clang-tidy serdegen
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          clang-tidy --export-fixes=clang-tidy-serdegen.yaml tests/cexstd/json/advanced/serdegen.c tests/cexstd/json/basic/serdegen.c 2>&1 | tee clang-tidy-serdegen.log
+
+      - name: Summarize clang-tidy
+        if: always()
+        run: |
+          {
+            echo "## clang-tidy next"
+            for f in clang-tidy-*.log; do
+              [ -f "$f" ] || continue
+              echo "### $f"
+              echo "- warnings: $(grep -c 'warning:' "$f" || true)"
+              echo "- errors: $(grep -c 'error:' "$f" || true)"
+              echo '```'
+              grep -oE '\[[a-zA-Z0-9_.-]+\]$' "$f" | sort | uniq -c | sort -rn | head -20 || true
+              echo '```'
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload clang-tidy logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ubuntu-2604-clang-tidy
+          path: |
+            clang-tidy-*.log
+            clang-tidy-*.yaml
+          if-no-files-found: warn
+
+  alpine-docker-x86_64:
+    name: alpine-3.24-x86_64
+    runs-on: ubuntu-26.04
+    continue-on-error: true
+    timeout-minutes: 60
+    steps:
+      - name: Checkout cex
+        uses: actions/checkout@v4
+
+      - name: Run Alpine in Docker
+        run: |
+          docker run --rm \
+            -v "$PWD:/src" -w /src \
+            alpine:3.24 sh -c '
+              set -e
+              apk add --no-cache build-base clang musl-dev git file pkgconf zlib-dev compiler-rt
+              rm -f /usr/bin/cc
+              ln -s /usr/bin/clang /usr/bin/cc
+              cc --version
+              cc -g ./cex.c -o ./cex
+              ./cex -DCEX_RELEASE config
+              ./cex test run all
+            '
