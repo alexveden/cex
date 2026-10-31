@@ -323,7 +323,7 @@ struct __cex_namespace__os {
         FILE*           (*fstdin)(os_cmd_c* self);
         /// Get running command stdout stream
         FILE*           (*fstdout)(os_cmd_c* self);
-        /// Checks if process is running
+        /// Checks if process is running; reaps a finished process and harvests its exit code.
         bool            (*is_alive)(os_cmd_c* self);
         /// Terminates the running process
         Exception       (*kill)(os_cmd_c* self);
@@ -331,7 +331,8 @@ struct __cex_namespace__os {
         char*           (*read_all)(os_cmd_c* self, IAllocator allc);
         /// Read line from process stdout, NULL if stdout is not available
         char*           (*read_line)(os_cmd_c* self, IAllocator allc);
-        /// Get return code of the finished command result, active process always return -1.
+        /// Get return code of the finished command result; -1 while active or not yet reaped by
+        /// is_alive()/wait(). On Windows a real -1 exit code is indistinguishable from "not harvested".
         i32             (*ret_code)(os_cmd_c* self);
         /// Run command using arguments array and resulting os_cmd_c
         Exception       (*run)(char** args, usize args_len, os_cmd_c* out_cmd);

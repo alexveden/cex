@@ -4542,7 +4542,7 @@ struct __cex_namespace__os {
         FILE*           (*fstdin)(os_cmd_c* self);
         /// Get running command stdout stream
         FILE*           (*fstdout)(os_cmd_c* self);
-        /// Checks if process is running
+        /// Checks if process is running; reaps a finished process and harvests its exit code.
         bool            (*is_alive)(os_cmd_c* self);
         /// Terminates the running process
         Exception       (*kill)(os_cmd_c* self);
@@ -4550,7 +4550,8 @@ struct __cex_namespace__os {
         char*           (*read_all)(os_cmd_c* self, IAllocator allc);
         /// Read line from process stdout, NULL if stdout is not available
         char*           (*read_line)(os_cmd_c* self, IAllocator allc);
-        /// Get return code of the finished command result, active process always return -1.
+        /// Get return code of the finished command result; -1 while active or not yet reaped by
+        /// is_alive()/wait(). On Windows a real -1 exit code is indistinguishable from "not harvested".
         i32             (*ret_code)(os_cmd_c* self);
         /// Run command using arguments array and resulting os_cmd_c
         Exception       (*run)(char** args, usize args_len, os_cmd_c* out_cmd);
@@ -15850,7 +15851,7 @@ int _cex_subprocess_terminate(struct _cex_subprocess_s *const process) {
   if (!process->hProcess) {
     return -1;
   }
-  return TerminateProcess(process->hProcess, 99) ? 0 : -1;
+  return TerminateProcess(process->hProcess, EXIT_FAILURE) ? 0 : -1;
 #else
   int result;
 
@@ -17175,18 +17176,24 @@ cex_os__cmd__create(os_cmd_c* self, char** args, usize args_len, os_cmd_flags_s*
     return EOK;
 }
 
-/// Checks if process is running
+/// Checks if process is running; reaps a finished process and harvests its exit code.
 static bool
 cex_os__cmd__is_alive(os_cmd_c* self)
 {
-    return _cex_subprocess_alive(&self->_subpr);
+    bool was_alive = self->_subpr.alive;
+
+    if (_cex_subprocess_alive(&self->_subpr)) { return true; }
+
+    if (was_alive) { (void)_cex_subprocess_join(&self->_subpr, &self->_ret_code); }
+
+    return false;
 }
 
 /// Terminates the running process
 static Exception
 cex_os__cmd__kill(os_cmd_c* self)
 {
-    if (_cex_subprocess_alive(&self->_subpr)) {
+    if (cex_os__cmd__is_alive(self)) {
         if (unlikely(_cex_subprocess_terminate(&self->_subpr) != 0)) { return e$raise(Error.os, "_cex_subprocess_terminate failed"); }
     }
     return EOK;
@@ -17243,7 +17250,8 @@ cex_os__cmd__wait(os_cmd_c* procs, usize procs_cnt, f64 timeout_sec)
     return result;
 }
 
-/// Get return code of the finished command result, active process always return -1.
+/// Get return code of the finished command result; -1 while active or not yet reaped by
+/// is_alive()/wait(). On Windows a real -1 exit code is indistinguishable from "not harvested".
 static i32
 cex_os__cmd__ret_code(os_cmd_c* self)
 {

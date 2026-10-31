@@ -738,7 +738,7 @@ int _cex_subprocess_terminate(struct _cex_subprocess_s *const process) {
   if (!process->hProcess) {
     return -1;
   }
-  return TerminateProcess(process->hProcess, 99) ? 0 : -1;
+  return TerminateProcess(process->hProcess, EXIT_FAILURE) ? 0 : -1;
 #else
   int result;
 

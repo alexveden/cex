@@ -14,6 +14,8 @@
 - fix(os): `os.cmd` create/spawn error paths close every pipe fd and preserve `errno`
 - fix(os): `os.cmd` parent-side pipes are `FD_CLOEXEC`, so later children no longer inherit them
 - fix(os): `os.cmd` lifecycle hardened - `join`/`is_alive` retry `EINTR`, settle `ECHILD`, never `waitpid(0/-1)`, and always clear `alive`; `kill` rejects invalid pids and treats `ESRCH` as success; Windows `is_alive` closes stdin on exit
+- fix(os): `os.cmd.ret_code()` reports the exit code after `os.cmd.is_alive()` returns false or `os.cmd.kill()` finds the process already finished; `-1` still means active or not yet harvested
+- fix(os): `os.cmd.kill()` reports `EXIT_FAILURE` through `os.cmd.ret_code()` on Windows too, matching POSIX
 - test(os): `os.cmd` fd-leak, CLOEXEC, fault-injection, EINTR, ECHILD, and invalid-pid coverage
 
 ## 0.70

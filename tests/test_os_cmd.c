@@ -512,6 +512,109 @@ test$case(os_cmd_alive_closes_stdin)
     return EOK;
 }
 
+test$case(os_cmd_ret_code_after_is_alive)
+{
+    os_cmd_c c = { 0 };
+    mem$scope(tmem$, _)
+    {
+        arr$(char*) args = arr$new(args, _);
+        arr$pushm(args, test_app("sleep_ms", _), "150", NULL);
+        tassert_er(EOK, os.cmd.create(&c, args, arr$len(args), NULL));
+
+        int spins = 0;
+        while (os.cmd.is_alive(&c) && spins++ < 500) { os.sleep(0.01); }
+        tassert(spins < 500);
+
+        tassert_eq(50, os.cmd.ret_code(&c));
+        tassert_er(Error.runtime, os.cmd.wait(&c, 1, 0));
+    }
+    return EOK;
+}
+
+test$case(os_cmd_ret_code_after_is_alive_zero)
+{
+    os_cmd_c c = { 0 };
+    mem$scope(tmem$, _)
+    {
+        arr$(char*) args = arr$new(args, _);
+        arr$pushm(args, test_app("sleep_ms", _), "100", NULL);
+        tassert_er(EOK, os.cmd.create(&c, args, arr$len(args), NULL));
+
+        int spins = 0;
+        while (os.cmd.is_alive(&c) && spins++ < 500) { os.sleep(0.01); }
+        tassert(spins < 500);
+
+        tassert_eq(0, os.cmd.ret_code(&c));
+        tassert_er(EOK, os.cmd.wait(&c, 1, 0));
+    }
+    return EOK;
+}
+
+test$case(os_cmd_ret_code_after_is_alive_killed)
+{
+    os_cmd_c c = { 0 };
+    mem$scope(tmem$, _)
+    {
+        arr$(char*) args = arr$new(args, _);
+        arr$pushm(args, test_app("sleep", _), "1", NULL);
+        tassert_er(EOK, os.cmd.create(&c, args, arr$len(args), NULL));
+        tassert_er(EOK, os.cmd.kill(&c));
+
+        int spins = 0;
+        while (os.cmd.is_alive(&c) && spins++ < 500) { os.sleep(0.01); }
+        tassert(spins < 500);
+
+        tassert_eq(EXIT_FAILURE, os.cmd.ret_code(&c));
+        tassert_er(Error.runtime, os.cmd.wait(&c, 1, 0));
+    }
+    return EOK;
+}
+
+test$case(os_cmd_ret_code_after_is_alive_run)
+{
+    os_cmd_c c = { 0 };
+    mem$scope(tmem$, _)
+    {
+        arr$(char*) args = arr$new(args, _);
+        arr$pushm(args, test_app("sleep_ms", _), "150", NULL);
+        tassert_er(EOK, os.cmd.run(args, arr$len(args), &c));
+
+        int spins = 0;
+        while (os.cmd.is_alive(&c) && spins++ < 500) { os.sleep(0.01); }
+        tassert(spins < 500);
+
+        tassert_eq(50, os.cmd.ret_code(&c));
+        tassert_er(Error.runtime, os.cmd.wait(&c, 1, 0));
+    }
+    return EOK;
+}
+
+test$case(os_cmd_ret_code_not_alive_unchanged)
+{
+    os_cmd_c c = { ._ret_code = -1 };
+    tassert_eq(false, os.cmd.is_alive(&c));
+    tassert_eq(-1, os.cmd.ret_code(&c));
+    return EOK;
+}
+
+test$case(os_cmd_ret_code_after_kill_dead)
+{
+    os_cmd_c c = { 0 };
+    mem$scope(tmem$, _)
+    {
+        arr$(char*) args = arr$new(args, _);
+        arr$pushm(args, test_app("sleep_ms", _), "100", NULL);
+        tassert_er(EOK, os.cmd.create(&c, args, arr$len(args), NULL));
+
+        os.sleep(1.0);
+
+        tassert_er(EOK, os.cmd.kill(&c));
+        tassert_eq(0, os.cmd.ret_code(&c));
+        tassert_er(EOK, os.cmd.wait(&c, 1, 0));
+    }
+    return EOK;
+}
+
 test$case(os_cmd_create_exec_not_found)
 {
     const char* valgrind = getenv("CEX_VALGRIND");
