@@ -862,10 +862,12 @@ test$case(test_fread_line_realloc_oom)
 test$case(test_fread_all_file_too_big)
 {
 #ifndef _WIN32
+    if (sizeof(off_t) <= sizeof(i32)) { return EOK; }
+
     FILE* file = tmpfile();
     tassert(file != NULL);
     // sparse file just above the INT32_MAX limit
-    tassert_eq(0, ftruncate(fileno(file), (off_t)INT32_MAX + 1));
+    tassert_eq(0, ftruncate(fileno(file), (off_t)((u64)INT32_MAX + 1)));
 
     str_s content;
     tassert_ne(Error.ok, io.fread_all(file, &content, mem$));

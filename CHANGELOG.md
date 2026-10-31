@@ -23,6 +23,7 @@
 - docs(os): `os.cmd.wait()` timeout semantics clarified - running processes are untouched; finished processes are joined, harvested, and cleaned up
 - test(os): `os.cmd` fd-leak, CLOEXEC, fault-injection, EINTR, ECHILD, invalid-pid, and live/partial reuse coverage
 - test(os): Windows `os.cmd` handle-leak, spawn-error state, `hStdInput`, partial-destroy, and inherit-env mismatch coverage
+- test(io): `test_fread_all_file_too_big` skips 32-bit `off_t` builds, where the >`INT32_MAX` file cannot be created
 
 ## 0.70
 2026-10-04
