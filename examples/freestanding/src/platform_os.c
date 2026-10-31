@@ -57,6 +57,14 @@ close(int fd)
     return -1;
 }
 
+int
+fcntl(int fd, int cmd, ...)
+{
+    (void)fd;
+    (void)cmd;
+    return -1;
+}
+
 ssize_t
 read(int fd, void* buf, size_t count)
 {
