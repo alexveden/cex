@@ -1,0 +1,9 @@
+# Valgrind 3.25+ treats a dup2-reassigned stdout as a normal fd and reports it
+# as unclosed at exit. The test runner restores stdout this way after capturing
+# each case's output, so silence only that false positive.
+{
+   cex_test_runner_stdout_fd
+   CoreError:FdNotClosed
+   ...
+   fun:_cex_test_unmute
+}

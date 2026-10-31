@@ -48,7 +48,8 @@
 #    define cexy$cc_args "-O0", "-Wall", "-Wextra", "-Werror", "-gdwarf-4", "-DCEX_VALGRIND"
 #    define cexy$debug_cmd                                                                         \
         "valgrind", "--leak-check=full", "--show-leak-kinds=definite,indirect,possible",           \
-            "--error-exitcode=1", "--track-fds=yes", "--track-origins=yes"
+            "--error-exitcode=1", "--track-fds=yes", "--track-origins=yes",                        \
+            "--suppressions=tests/valgrind.supp"
 #endif
 
 #ifdef CEX_WASM_DEBUG
