@@ -1196,7 +1196,31 @@ cex_os__path__dirname(char* path, IAllocator allc)
 }
 
 
-/// Creates new os command (use os$cmd() and os$cmd() for easy cases). flags can be NULL.
+static Exception
+_cex_os__cmd__ensure_reusable(os_cmd_c* self)
+{
+    if (unlikely(self->_subpr.alive)) {
+        return e$raise(Error.integrity, "os_cmd is still alive; call os.cmd.wait() first");
+    }
+    if (self->_subpr.stdin_file || self->_subpr.stdout_file || self->_subpr.stderr_file) {
+        return e$raise(Error.integrity, "os_cmd has open streams; call os.cmd.wait() first");
+    }
+#if defined(_WIN32)
+    if (self->_subpr.hProcess || self->_subpr.hStdInput || self->_subpr.hEventOutput ||
+        self->_subpr.hEventError) {
+        return e$raise(Error.integrity, "os_cmd has open handles; call os.cmd.wait() first");
+    }
+#else
+    if (self->_subpr.child) {
+        return e$raise(Error.integrity, "os_cmd has an unreaped child; call os.cmd.wait() first");
+    }
+#endif
+    return EOK;
+}
+
+/// Creates new os command (use os$cmd() for easy cases). flags can be NULL. `self` must be
+/// zero-initialized or fully cleaned by os.cmd.wait(); a live or partially-open command returns
+/// `Error.integrity` instead of being overwritten.
 static Exception
 cex_os__cmd__create(os_cmd_c* self, char** args, usize args_len, os_cmd_flags_s* flags)
 {
@@ -1208,6 +1232,8 @@ cex_os__cmd__create(os_cmd_c* self, char** args, usize args_len, os_cmd_flags_s*
             return "one of `args` items is NULL, which may indicate string operation failure";
         }
     }
+
+    e$ret(_cex_os__cmd__ensure_reusable(self));
 
     *self = (os_cmd_c){
         ._is_subprocess = true,
@@ -1240,7 +1266,7 @@ cex_os__cmd__is_alive(os_cmd_c* self)
     return false;
 }
 
-/// Terminates the running process
+/// Terminates the running process; a finished process is reaped and its exit code harvested.
 static Exception
 cex_os__cmd__kill(os_cmd_c* self)
 {
@@ -1250,9 +1276,11 @@ cex_os__cmd__kill(os_cmd_c* self)
     return EOK;
 }
 
-/// Waits until array of `procs` is finished. If timeout_sec is 0 waits indefinitely, when
-/// timeout occurs `Error.timeout` returned and `procs` untouched. Otherwise all `procs` awaited and
-/// cleaned up, `Error.runtime` returned in case of any non-zero return code.
+/// Waits until all `procs` finish. `timeout_sec == 0` waits indefinitely. On timeout,
+/// `Error.timeout` is returned; running processes are left untouched, while processes that
+/// already finished are joined, their return codes harvested, and their resources cleaned up.
+/// Without a timeout, all `procs` are joined and cleaned up; `Error.runtime` is returned if any
+/// exit code is non-zero.
 static Exception
 cex_os__cmd__wait(os_cmd_c* procs, usize procs_cnt, f64 timeout_sec)
 {
@@ -1438,12 +1466,13 @@ cex_os__cmd__exists(char* cmd_exe)
     return false;
 }
 
-/// Run command using arguments array and resulting os_cmd_c
+/// Run command using arguments array and resulting os_cmd_c. `out_cmd` must be zero-initialized
+/// or fully cleaned by os.cmd.wait(); a live or partially-open command returns `Error.integrity`
+/// instead of being overwritten.
 static Exception
 cex_os__cmd__run(char** args, usize args_len, os_cmd_c* out_cmd)
 {
     if (unlikely(out_cmd == NULL)) { return e$raise(Error.argument, "out_cmd is NULL"); }
-    memset(out_cmd, 0, sizeof(os_cmd_c));
 
     if (unlikely(args == NULL || args_len == 0)) {
         return e$raise(Error.argument, "`args` argument is empty or null");
@@ -1457,6 +1486,10 @@ cex_os__cmd__run(char** args, usize args_len, os_cmd_c* out_cmd)
             return e$raise(Error.argument, "`args` item is NULL/empty");
         }
     }
+
+    e$ret(_cex_os__cmd__ensure_reusable(out_cmd));
+
+    memset(out_cmd, 0, sizeof(os_cmd_c));
 
 
 #    ifdef _WIN32

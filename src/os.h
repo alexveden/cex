@@ -312,7 +312,9 @@ struct __cex_namespace__os {
     f64             (*timer)(void);
 
     struct {
-        /// Creates new os command (use os$cmd() and os$cmd() for easy cases). flags can be NULL.
+        /// Creates new os command (use os$cmd() for easy cases). flags can be NULL. `self` must be
+        /// zero-initialized or fully cleaned by os.cmd.wait(); a live or partially-open command returns
+        /// `Error.integrity` instead of being overwritten.
         Exception       (*create)(os_cmd_c* self, char** args, usize args_len, os_cmd_flags_s* flags);
         /// Check if `cmd_exe` program name exists in PATH. cmd_exe can be absolute, or simple command name,
         /// e.g. `cat`
@@ -325,7 +327,7 @@ struct __cex_namespace__os {
         FILE*           (*fstdout)(os_cmd_c* self);
         /// Checks if process is running; reaps a finished process and harvests its exit code.
         bool            (*is_alive)(os_cmd_c* self);
-        /// Terminates the running process
+        /// Terminates the running process; a finished process is reaped and its exit code harvested.
         Exception       (*kill)(os_cmd_c* self);
         /// Read all output from process stdout, NULL if stdout is not available
         char*           (*read_all)(os_cmd_c* self, IAllocator allc);
@@ -334,11 +336,15 @@ struct __cex_namespace__os {
         /// Get return code of the finished command result; -1 while active or not yet reaped by
         /// is_alive()/wait(). On Windows a real -1 exit code is indistinguishable from "not harvested".
         i32             (*ret_code)(os_cmd_c* self);
-        /// Run command using arguments array and resulting os_cmd_c
+        /// Run command using arguments array and resulting os_cmd_c. `out_cmd` must be zero-initialized
+        /// or fully cleaned by os.cmd.wait(); a live or partially-open command returns `Error.integrity`
+        /// instead of being overwritten.
         Exception       (*run)(char** args, usize args_len, os_cmd_c* out_cmd);
-        /// Waits until array of `procs` is finished. If timeout_sec is 0 waits indefinitely, when
-        /// timeout occurs `Error.timeout` returned and `procs` untouched. Otherwise all `procs` awaited and
-        /// cleaned up, `Error.runtime` returned in case of any non-zero return code.
+        /// Waits until all `procs` finish. `timeout_sec == 0` waits indefinitely. On timeout,
+        /// `Error.timeout` is returned; running processes are left untouched, while processes that
+        /// already finished are joined, their return codes harvested, and their resources cleaned up.
+        /// Without a timeout, all `procs` are joined and cleaned up; `Error.runtime` is returned if any
+        /// exit code is non-zero.
         Exception       (*wait)(os_cmd_c* procs, usize procs_cnt, f64 timeout_sec);
         /// Writes line to the process stdin
         Exception       (*write_line)(os_cmd_c* self, char* line);

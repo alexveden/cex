@@ -615,6 +615,108 @@ test$case(os_cmd_ret_code_after_kill_dead)
     return EOK;
 }
 
+test$case(os_cmd_create_live_struct_rejected)
+{
+    os_cmd_c c = { 0 };
+    mem$scope(tmem$, _)
+    {
+        arr$(char*) args = arr$new(args, _);
+        arr$pushm(args, test_app("sleep", _), "1", NULL);
+        tassert_er(EOK, os.cmd.create(&c, args, arr$len(args), NULL));
+
+        Exc err = os.cmd.create(&c, args, arr$len(args), NULL);
+        bool was_alive = os.cmd.is_alive(&c);
+
+        if (os.cmd.kill(&c)) {}
+        if (os.cmd.wait(&c, 1, 0)) {}
+
+        tassert_er(Error.integrity, err);
+        tassert_eq(true, was_alive);
+    }
+    return EOK;
+}
+
+test$case(os_cmd_run_live_struct_rejected)
+{
+    os_cmd_c c = { 0 };
+    mem$scope(tmem$, _)
+    {
+        arr$(char*) args = arr$new(args, _);
+        arr$pushm(args, test_app("sleep", _), "1", NULL);
+        tassert_er(EOK, os.cmd.create(&c, args, arr$len(args), NULL));
+
+        Exc err = os.cmd.run(args, arr$len(args), &c);
+        bool was_alive = os.cmd.is_alive(&c);
+
+        if (os.cmd.kill(&c)) {}
+        if (os.cmd.wait(&c, 1, 0)) {}
+
+        tassert_er(Error.integrity, err);
+        tassert_eq(true, was_alive);
+    }
+    return EOK;
+}
+
+test$case(os_cmd_create_after_is_alive_rejected)
+{
+    os_cmd_c c = { 0 };
+    mem$scope(tmem$, _)
+    {
+        arr$(char*) args = arr$new(args, _);
+        arr$pushm(args, test_app("sleep_ms", _), "100", NULL);
+        tassert_er(EOK, os.cmd.create(&c, args, arr$len(args), NULL));
+
+        int spins = 0;
+        while (os.cmd.is_alive(&c) && spins++ < 500) { os.sleep(0.01); }
+        tassert(spins < 500);
+
+        Exc err = os.cmd.create(&c, args, arr$len(args), NULL);
+        if (os.cmd.wait(&c, 1, 0)) {}
+
+        tassert_er(EOK, os.cmd.create(&c, args, arr$len(args), NULL));
+        tassert_er(EOK, os.cmd.wait(&c, 1, 0));
+        tassert_er(Error.integrity, err);
+    }
+    return EOK;
+}
+
+test$case(os_cmd_create_after_failed_create_allowed)
+{
+#if !defined(_WIN32)
+    const char* valgrind = getenv("CEX_VALGRIND");
+    if (valgrind && valgrind[0] == '1') { return EOK; } // valgrind posix_spawn doesn't propagate ENOENT
+#endif
+    os_cmd_c c = { 0 };
+    mem$scope(tmem$, _)
+    {
+        char* bad[] = { "cex_no_such_command_xyz", NULL };
+        tassert_ne(EOK, os.cmd.create(&c, bad, 2, NULL));
+
+        arr$(char*) args = arr$new(args, _);
+        arr$pushm(args, test_app("sleep_ms", _), "100", NULL);
+        tassert_er(EOK, os.cmd.create(&c, args, arr$len(args), NULL));
+        tassert_er(EOK, os.cmd.wait(&c, 1, 0));
+    }
+    return EOK;
+}
+
+test$case(os_cmd_run_after_wait_allowed)
+{
+    os_cmd_c c = { 0 };
+    mem$scope(tmem$, _)
+    {
+        arr$(char*) args = arr$new(args, _);
+        arr$pushm(args, test_app("sleep_ms", _), "100", NULL);
+
+        tassert_er(EOK, os.cmd.run(args, arr$len(args), &c));
+        tassert_er(EOK, os.cmd.wait(&c, 1, 0));
+
+        tassert_er(EOK, os.cmd.run(args, arr$len(args), &c));
+        tassert_er(EOK, os.cmd.wait(&c, 1, 0));
+    }
+    return EOK;
+}
+
 test$case(os_cmd_create_exec_not_found)
 {
     const char* valgrind = getenv("CEX_VALGRIND");

@@ -19,7 +19,9 @@
 - fix(os): Windows `os.cmd` create/destroy close every pipe, handle, and event on failure, zero the subprocess state, and preserve `GetLastError`
 - fix(os): Windows `os.cmd` closes the child stdin handle after spawn and `_cex_subprocess_destroy()` closes each handle independently of `hProcess`
 - fix(os): Windows `os.cmd` checks async event creation and the named-pipe helper closes its pipe on failure
-- test(os): `os.cmd` fd-leak, CLOEXEC, fault-injection, EINTR, ECHILD, and invalid-pid coverage
+- fix(os): `os.cmd.create()`/`run()` reject a live or partially-cleaned `os_cmd_c` with `Error.integrity` instead of overwriting and leaking the previous process
+- docs(os): `os.cmd.wait()` timeout semantics clarified - running processes are untouched; finished processes are joined, harvested, and cleaned up
+- test(os): `os.cmd` fd-leak, CLOEXEC, fault-injection, EINTR, ECHILD, invalid-pid, and live/partial reuse coverage
 - test(os): Windows `os.cmd` handle-leak, spawn-error state, `hStdInput`, partial-destroy, and inherit-env mismatch coverage
 
 ## 0.70
