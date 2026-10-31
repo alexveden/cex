@@ -170,6 +170,7 @@ _cex_subprocess_weak int _cex_subprocess_alive(struct _cex_subprocess_s *const p
 #endif
 
 #if !defined(_WIN32)
+#include <fcntl.h>
 #include <signal.h>
 #include <spawn.h>
 #include <stdlib.h>

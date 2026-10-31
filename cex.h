@@ -4063,6 +4063,7 @@ _cex_subprocess_weak int _cex_subprocess_alive(struct _cex_subprocess_s *const p
 #endif
 
 #if !defined(_WIN32)
+#include <fcntl.h>
 #include <signal.h>
 #include <spawn.h>
 #include <stdlib.h>
@@ -7634,7 +7635,7 @@ const char _cex_errors_Error_permission[] = "PermissionError";
 const char _cex_errors_Error_try_again[] = "TryAgainError";
 
 static_assert(
-    __builtin_types_compatible_p(__typeof__(_cex_errors_Error_memory[0]), const char),
+    __builtin_types_compatible_p(__typeof__(&_cex_errors_Error_memory[0]), const char*),
     "error storage must be const"
 );
 
@@ -15173,6 +15174,39 @@ int _cex_subprocess_create_named_pipe_helper(void **rd, void **wr) {
 }
 #endif
 
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
+static int _cex_subprocess_pipe(int fds[2]) {
+  int flags;
+
+  if (0 != pipe(fds)) {
+    return -1;
+  }
+
+  flags = fcntl(fds[0], F_GETFD);
+  if (0 > flags || 0 != fcntl(fds[0], F_SETFD, flags | FD_CLOEXEC)) {
+    goto fail;
+  }
+
+  flags = fcntl(fds[1], F_GETFD);
+  if (0 > flags || 0 != fcntl(fds[1], F_SETFD, flags | FD_CLOEXEC)) {
+    goto fail;
+  }
+
+  return 0;
+
+fail:
+  {
+    int saved_errno = errno;
+    close(fds[0]);
+    close(fds[1]);
+    fds[0] = -1;
+    fds[1] = -1;
+    errno = saved_errno;
+  }
+  return -1;
+}
+#endif
+
 int _cex_subprocess_create(const char *const commandLine[], int options,
                       struct _cex_subprocess_s *const out_process) {
   return _cex_subprocess_create_ex(commandLine, options, _CEX_SUBPROCESS_NULL,
@@ -15470,34 +15504,39 @@ int _cex_subprocess_create_ex(const char *const commandLine[], int options,
   uassert(false && "This functionality is not supported by WASM" );
   return -1;
 #else
-  int stdinfd[2];
-  int stdoutfd[2];
-  int stderrfd[2];
-  pid_t child;
+  int stdinfd[2] = {-1, -1};
+  int stdoutfd[2] = {-1, -1};
+  int stderrfd[2] = {-1, -1};
+  pid_t child = 0;
   extern char **environ;
   char *const empty_environment[1] = {_CEX_SUBPROCESS_NULL};
-  posix_spawn_file_actions_t actions;
+  posix_spawn_file_actions_t actions = {0};
   char *const *used_environment;
+  int spawn_rc;
+  int actions_inited = 0;
+
+  memset(out_process, 0, sizeof(*out_process));
 
   if (_cex_subprocess_option_inherit_environment ==
       (options & _cex_subprocess_option_inherit_environment)) {
     if (_CEX_SUBPROCESS_NULL != environment) {
+      errno = EINVAL;
       return -1;
     }
   }
 
-  if (0 != pipe(stdinfd)) {
-    return -1;
+  if (0 != _cex_subprocess_pipe(stdinfd)) {
+    goto fail;
   }
 
-  if (0 != pipe(stdoutfd)) {
-    return -1;
+  if (0 != _cex_subprocess_pipe(stdoutfd)) {
+    goto fail;
   }
 
   if (_cex_subprocess_option_combined_stdout_stderr !=
       (options & _cex_subprocess_option_combined_stdout_stderr)) {
-    if (0 != pipe(stderrfd)) {
-      return -1;
+    if (0 != _cex_subprocess_pipe(stderrfd)) {
+      goto fail;
     }
   }
 
@@ -15518,54 +15557,64 @@ int _cex_subprocess_create_ex(const char *const commandLine[], int options,
     used_environment = empty_environment;
   }
 
-  if (0 != posix_spawn_file_actions_init(&actions)) {
-    return -1;
+  spawn_rc = posix_spawn_file_actions_init(&actions);
+  if (0 != spawn_rc) {
+    errno = spawn_rc;
+    goto fail;
   }
+  actions_inited = 1;
 
   // Close the stdin write end
-  if (0 != posix_spawn_file_actions_addclose(&actions, stdinfd[1])) {
-    posix_spawn_file_actions_destroy(&actions);
-    return -1;
+  spawn_rc = posix_spawn_file_actions_addclose(&actions, stdinfd[1]);
+  if (0 != spawn_rc) {
+    errno = spawn_rc;
+    goto fail;
   }
 
   // Map the read end to stdin
-  if (0 !=
-      posix_spawn_file_actions_adddup2(&actions, stdinfd[0], STDIN_FILENO)) {
-    posix_spawn_file_actions_destroy(&actions);
-    return -1;
+  spawn_rc =
+      posix_spawn_file_actions_adddup2(&actions, stdinfd[0], STDIN_FILENO);
+  if (0 != spawn_rc) {
+    errno = spawn_rc;
+    goto fail;
   }
 
   // Close the stdout read end
-  if (0 != posix_spawn_file_actions_addclose(&actions, stdoutfd[0])) {
-    posix_spawn_file_actions_destroy(&actions);
-    return -1;
+  spawn_rc = posix_spawn_file_actions_addclose(&actions, stdoutfd[0]);
+  if (0 != spawn_rc) {
+    errno = spawn_rc;
+    goto fail;
   }
 
   // Map the write end to stdout
-  if (0 !=
-      posix_spawn_file_actions_adddup2(&actions, stdoutfd[1], STDOUT_FILENO)) {
-    posix_spawn_file_actions_destroy(&actions);
-    return -1;
+  spawn_rc =
+      posix_spawn_file_actions_adddup2(&actions, stdoutfd[1], STDOUT_FILENO);
+  if (0 != spawn_rc) {
+    errno = spawn_rc;
+    goto fail;
   }
 
   if (_cex_subprocess_option_combined_stdout_stderr ==
       (options & _cex_subprocess_option_combined_stdout_stderr)) {
-    if (0 != posix_spawn_file_actions_adddup2(&actions, STDOUT_FILENO,
-                                              STDERR_FILENO)) {
-      posix_spawn_file_actions_destroy(&actions);
-      return -1;
+    spawn_rc = posix_spawn_file_actions_adddup2(&actions, STDOUT_FILENO,
+                                                STDERR_FILENO);
+    if (0 != spawn_rc) {
+      errno = spawn_rc;
+      goto fail;
     }
   } else {
     // Close the stderr read end
-    if (0 != posix_spawn_file_actions_addclose(&actions, stderrfd[0])) {
-      posix_spawn_file_actions_destroy(&actions);
-      return -1;
+    spawn_rc = posix_spawn_file_actions_addclose(&actions, stderrfd[0]);
+    if (0 != spawn_rc) {
+      errno = spawn_rc;
+      goto fail;
     }
     // Map the write end to stdout
-    if (0 != posix_spawn_file_actions_adddup2(&actions, stderrfd[1],
-                                              STDERR_FILENO)) {
-      posix_spawn_file_actions_destroy(&actions);
-      return -1;
+    spawn_rc = posix_spawn_file_actions_adddup2(&actions, stderrfd[1],
+                                                STDERR_FILENO);
+    if (0 != spawn_rc) {
+      errno = spawn_rc;
+      goto fail;
     }
   }
 
@@ -15576,33 +15625,54 @@ int _cex_subprocess_create_ex(const char *const commandLine[], int options,
 #endif
   if (_cex_subprocess_option_search_user_path ==
       (options & _cex_subprocess_option_search_user_path)) {
-    if (0 != posix_spawnp(&child, commandLine[0], &actions, _CEX_SUBPROCESS_NULL,
-                          _CEX_SUBPROCESS_CONST_CAST(char *const *, commandLine),
-                          used_environment)) {
-      posix_spawn_file_actions_destroy(&actions);
-      return -1;
-    }
+    spawn_rc =
+        posix_spawnp(&child, commandLine[0], &actions, _CEX_SUBPROCESS_NULL,
+                     _CEX_SUBPROCESS_CONST_CAST(char *const *, commandLine),
+                     used_environment);
   } else {
-    if (0 != posix_spawn(&child, commandLine[0], &actions, _CEX_SUBPROCESS_NULL,
-                         _CEX_SUBPROCESS_CONST_CAST(char *const *, commandLine),
-                         used_environment)) {
-      posix_spawn_file_actions_destroy(&actions);
-      return -1;
-    }
+    spawn_rc =
+        posix_spawn(&child, commandLine[0], &actions, _CEX_SUBPROCESS_NULL,
+                    _CEX_SUBPROCESS_CONST_CAST(char *const *, commandLine),
+                    used_environment);
   }
 #ifdef __clang__
 #pragma clang diagnostic pop
 #endif
 
+  if (0 != spawn_rc) {
+    errno = spawn_rc;
+    goto fail;
+  }
+
+  posix_spawn_file_actions_destroy(&actions);
+  actions_inited = 0;
+
+  out_process->child = child;
+  out_process->alive = 1;
+
   // Close the stdin read end
   close(stdinfd[0]);
+  stdinfd[0] = -1;
   // Store the stdin write end
   out_process->stdin_file = fdopen(stdinfd[1], "wb");
+  if (_CEX_SUBPROCESS_NULL == out_process->stdin_file) {
+    close(stdinfd[1]);
+    stdinfd[1] = -1;
+    goto fail_child;
+  }
+  stdinfd[1] = -1;
 
   // Close the stdout write end
   close(stdoutfd[1]);
+  stdoutfd[1] = -1;
   // Store the stdout read end
   out_process->stdout_file = fdopen(stdoutfd[0], "rb");
+  if (_CEX_SUBPROCESS_NULL == out_process->stdout_file) {
+    close(stdoutfd[0]);
+    stdoutfd[0] = -1;
+    goto fail_child;
+  }
+  stdoutfd[0] = -1;
 
   if (_cex_subprocess_option_combined_stdout_stderr ==
       (options & _cex_subprocess_option_combined_stdout_stderr)) {
@@ -15610,17 +15680,58 @@ int _cex_subprocess_create_ex(const char *const commandLine[], int options,
   } else {
     // Close the stderr write end
     close(stderrfd[1]);
+    stderrfd[1] = -1;
     // Store the stderr read end
     out_process->stderr_file = fdopen(stderrfd[0], "rb");
+    if (_CEX_SUBPROCESS_NULL == out_process->stderr_file) {
+      close(stderrfd[0]);
+      stderrfd[0] = -1;
+      goto fail_child;
+    }
+    stderrfd[0] = -1;
   }
 
-  // Store the child's pid
-  out_process->child = child;
-
-  out_process->alive = 1;
-
-  posix_spawn_file_actions_destroy(&actions);
   return 0;
+
+fail_child:
+  {
+    int saved_errno = errno;
+    _cex_subprocess_terminate(out_process);
+    _cex_subprocess_join(out_process, _CEX_SUBPROCESS_NULL);
+    _cex_subprocess_destroy(out_process);
+    errno = saved_errno;
+  }
+
+fail:
+  {
+    int saved_errno = errno;
+
+    if (actions_inited) {
+      posix_spawn_file_actions_destroy(&actions);
+    }
+
+    if (0 <= stdinfd[0]) {
+      close(stdinfd[0]);
+    }
+    if (0 <= stdinfd[1]) {
+      close(stdinfd[1]);
+    }
+    if (0 <= stdoutfd[0]) {
+      close(stdoutfd[0]);
+    }
+    if (0 <= stdoutfd[1]) {
+      close(stdoutfd[1]);
+    }
+    if (0 <= stderrfd[0]) {
+      close(stderrfd[0]);
+    }
+    if (0 <= stderrfd[1]) {
+      close(stderrfd[1]);
+    }
+
+    errno = saved_errno;
+  }
+  return -1;
 #endif
 }
 
@@ -15688,20 +15799,23 @@ int _cex_subprocess_join(struct _cex_subprocess_s *const process,
 }
 
 int _cex_subprocess_destroy(struct _cex_subprocess_s *const process) {
+  FILE *stdout_file = process->stdout_file;
+  FILE *stderr_file = process->stderr_file;
+
   if (process->stdin_file) {
     fclose(process->stdin_file);
     process->stdin_file = _CEX_SUBPROCESS_NULL;
   }
 
-  if (process->stdout_file) {
-    fclose(process->stdout_file);
+  process->stdout_file = _CEX_SUBPROCESS_NULL;
+  process->stderr_file = _CEX_SUBPROCESS_NULL;
 
-    if (process->stdout_file != process->stderr_file) {
-      fclose(process->stderr_file);
-    }
+  if (stdout_file) {
+    fclose(stdout_file);
+  }
 
-    process->stdout_file = _CEX_SUBPROCESS_NULL;
-    process->stderr_file = _CEX_SUBPROCESS_NULL;
+  if (stderr_file && stderr_file != stdout_file) {
+    fclose(stderr_file);
   }
 
 #if defined(_WIN32)

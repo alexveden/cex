@@ -306,6 +306,60 @@ test$case(os_cmd_create_no_search_path_not_found)
     return EOK;
 }
 
+test$case(os_cmd_create_failure_no_fd_leak)
+{
+#if defined(_WIN32)
+    return EOK;
+#else
+    const char* valgrind = getenv("CEX_VALGRIND");
+    if (valgrind && valgrind[0] == '1') { return EOK; } // valgrind posix_spawn doesn't propagate ENOENT
+    int probe = open("/dev/null", O_RDONLY);
+    tassert(probe >= 0);
+    close(probe);
+
+    os_cmd_c c = { 0 };
+    char* args[] = { "cex_no_such_command_xyz", NULL };
+    tassert_ne(EOK, os.cmd.create(&c, args, 2, NULL));
+
+    int probe_after = open("/dev/null", O_RDONLY);
+    tassert(probe_after >= 0);
+    tassert_eq(probe, probe_after);
+    close(probe_after);
+    return EOK;
+#endif
+}
+
+test$case(os_cmd_pipes_are_cloexec)
+{
+#if defined(_WIN32)
+    return EOK;
+#else
+    os_cmd_c c = { 0 };
+    mem$scope(tmem$, _)
+    {
+        arr$(char*) args = arr$new(args, _);
+        arr$pushm(args, test_app("sleep", _), "1", NULL);
+        tassert_er(EOK, os.cmd.create(&c, args, arr$len(args), NULL));
+
+        int fds[] = {
+            fileno(os.cmd.fstdin(&c)),
+            fileno(os.cmd.fstdout(&c)),
+            fileno(os.cmd.fstderr(&c)),
+        };
+        for$each (fd, fds) {
+            tassert(fd >= 0);
+            int flags = fcntl(fd, F_GETFD);
+            tassert(flags >= 0);
+            tassert(flags & FD_CLOEXEC);
+        }
+
+        tassert_er(EOK, os.cmd.kill(&c));
+        tassert_er(Error.runtime, os.cmd.wait(&c, 1, 0));
+    }
+    return EOK;
+#endif
+}
+
 test$case(os_cmd_huge_join)
 {
     os_cmd_c c = { 0 };
