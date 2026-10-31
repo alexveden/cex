@@ -11,6 +11,10 @@
 ### Fixes
 - fix(os): `os.fs.mkpath()` now creates absolute, Windows root-relative, UNC, and drive-rooted paths; empty path components are skipped and drive roots are not passed to `mkdir`
 - fix(docs): vendored subprocess macros renamed to `_CEX_SUBPROCESS_*`, so they no longer leak into the generated `cex$` docs
+- fix(os): `os.cmd` create/spawn error paths close every pipe fd and preserve `errno`
+- fix(os): `os.cmd` parent-side pipes are `FD_CLOEXEC`, so later children no longer inherit them
+- fix(os): `os.cmd` lifecycle hardened - `join`/`is_alive` retry `EINTR`, settle `ECHILD`, never `waitpid(0/-1)`, and always clear `alive`; `kill` rejects invalid pids and treats `ESRCH` as success; Windows `is_alive` closes stdin on exit
+- test(os): `os.cmd` fd-leak, CLOEXEC, fault-injection, EINTR, ECHILD, and invalid-pid coverage
 
 ## 0.70
 2026-10-04

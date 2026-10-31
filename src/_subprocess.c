@@ -627,6 +627,7 @@ int _cex_subprocess_join(struct _cex_subprocess_s *const process,
                     int *const out_return_code) {
 #if defined(_WIN32)
   const unsigned long infinite = 0xFFFFFFFF;
+  int rc = 0;
 
   if (process->stdin_file) {
     fclose(process->stdin_file);
@@ -639,50 +640,54 @@ int _cex_subprocess_join(struct _cex_subprocess_s *const process,
   }
 
   if (process->hProcess) {
-    // It's fine to have NULL process, just skip it
-    WaitForSingleObject(process->hProcess, infinite);
-
-    if (out_return_code) {
+    if (0 != WaitForSingleObject(process->hProcess, infinite)) {
+      rc = -1;
+    } else if (out_return_code) {
       if (!GetExitCodeProcess(
               process->hProcess,
               _CEX_SUBPROCESS_PTR_CAST(unsigned long *, out_return_code))) {
-        return -1;
+        rc = -1;
       }
     }
   }
 
   process->alive = 0;
 
-  return 0;
+  return rc;
 #else
-  int status;
+  int rc = 0;
 
   if (process->stdin_file) {
     fclose(process->stdin_file);
     process->stdin_file = _CEX_SUBPROCESS_NULL;
   }
 
-  if (process->child) {
-    if (process->child != waitpid(process->child, &status, 0)) {
-      return -1;
-    }
+  if (0 < process->child) {
+    int status = 0;
+    pid_t waited;
 
-    process->child = 0;
+    do {
+      waited = waitpid(process->child, &status, 0);
+    } while (-1 == waited && EINTR == errno);
 
-    if (WIFEXITED(status)) {
+    if (-1 == waited) {
+      process->return_status = EXIT_FAILURE;
+      rc = -1;
+    } else if (WIFEXITED(status)) {
       process->return_status = WEXITSTATUS(status);
     } else {
       process->return_status = EXIT_FAILURE;
     }
-
-    process->alive = 0;
   }
 
-  if (out_return_code) {
+  process->child = 0;
+  process->alive = 0;
+
+  if (out_return_code && 0 == rc) {
     *out_return_code = process->return_status;
   }
 
-  return 0;
+  return rc;
 #endif
 }
 
@@ -730,18 +735,22 @@ int _cex_subprocess_destroy(struct _cex_subprocess_s *const process) {
 
 int _cex_subprocess_terminate(struct _cex_subprocess_s *const process) {
 #if defined(_WIN32)
-  unsigned int killed_process_exit_code;
-  int success_terminate;
-  int windows_call_result;
-
-  killed_process_exit_code = 99;
-  windows_call_result =
-      TerminateProcess(process->hProcess, killed_process_exit_code);
-  success_terminate = (windows_call_result == 0) ? 1 : 0;
-  return success_terminate;
+  if (!process->hProcess) {
+    return -1;
+  }
+  return TerminateProcess(process->hProcess, 99) ? 0 : -1;
 #else
   int result;
+
+  if (0 >= process->child) {
+    errno = EINVAL;
+    return -1;
+  }
+
   result = kill(process->child, 9);
+  if (0 != result && ESRCH == errno) {
+    return 0;
+  }
   return result;
 #endif
 }
@@ -755,38 +764,52 @@ int _cex_subprocess_alive(struct _cex_subprocess_s *const process) {
 #if defined(_WIN32)
   {
     const unsigned long zero = 0x0;
-    const unsigned long wait_object_0 = 0x00000000L;
+    const unsigned long wait_timeout = 0x00000102L;
 
-    is_alive = wait_object_0 != WaitForSingleObject(process->hProcess, zero);
+    if (!process->hProcess) {
+      process->alive = 0;
+      return 0;
+    }
+
+    is_alive = wait_timeout == WaitForSingleObject(process->hProcess, zero);
+    if (!is_alive) {
+      process->alive = 0;
+      _cex_subprocess_join(process, _CEX_SUBPROCESS_NULL);
+    }
   }
 #else
   {
-    int status;
-    int waitpid_ret = waitpid(process->child, &status, WNOHANG);
-    is_alive = 0 == waitpid_ret;
+    int status = 0;
+    pid_t waited;
 
-    // If the process was successfully waited on we need to cleanup now.
-    if (!is_alive) {
-      if (WIFEXITED(status)) {
-        process->return_status = WEXITSTATUS(status);
-      } else {
-        process->return_status = EXIT_FAILURE;
-      }
-
-      // Since we've already successfully waited on the process, we need to wipe
-      // the child now.
+    if (0 >= process->child) {
       process->child = 0;
-
-      if (_cex_subprocess_join(process, _CEX_SUBPROCESS_NULL)) {
-        return -1;
-      }
+      process->alive = 0;
+      return 0;
     }
+
+    do {
+      waited = waitpid(process->child, &status, WNOHANG);
+    } while (-1 == waited && EINTR == errno);
+
+    if (0 == waited) {
+      return 1;
+    }
+
+    if (-1 == waited) {
+      process->return_status = EXIT_FAILURE;
+    } else if (WIFEXITED(status)) {
+      process->return_status = WEXITSTATUS(status);
+    } else {
+      process->return_status = EXIT_FAILURE;
+    }
+
+    process->child = 0;
+    process->alive = 0;
+    _cex_subprocess_join(process, _CEX_SUBPROCESS_NULL);
+    is_alive = 0;
   }
 #endif
-
-  if (!is_alive) {
-    process->alive = 0;
-  }
 
   return is_alive;
 }

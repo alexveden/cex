@@ -17,6 +17,18 @@
 #    include <sys/resource.h>
 #endif
 
+#if !defined(_WIN32)
+#    include <sys/time.h>
+#endif
+
+#if !defined(_WIN32)
+static void
+os_cmd_sigalrm_handler(int sig)
+{
+    (void)sig;
+}
+#endif
+
 #define TBUILDDIR "tests/build/os_cmd_test/"
 test$setup_case()
 {
@@ -298,6 +310,204 @@ test$case(os_cmd_kill_running)
         tassert_eq(1, os.cmd.is_alive(&c));
         tassert_er(EOK, os.cmd.kill(&c));
         tassert_er(Error.runtime, os.cmd.wait(&c, 1, 0));
+    }
+    return EOK;
+}
+
+test$case(os_cmd_wait_survives_eintr)
+{
+#if defined(_WIN32)
+    return EOK;
+#else
+    os_cmd_c c = { 0 };
+    mem$scope(tmem$, _)
+    {
+        arr$(char*) args = arr$new(args, _);
+        arr$pushm(args, test_app("sleep_ms", _), "500", NULL);
+        tassert_er(EOK, os.cmd.create(&c, args, arr$len(args), NULL));
+
+        if (c._subpr.stdin_file) {
+            fclose(c._subpr.stdin_file);
+            c._subpr.stdin_file = NULL;
+        }
+
+        struct sigaction sa = { 0 };
+        struct sigaction old = { 0 };
+        sa.sa_handler = os_cmd_sigalrm_handler;
+        sigemptyset(&sa.sa_mask);
+        sa.sa_flags = 0;
+        int sig_rc = sigaction(SIGALRM, &sa, &old);
+
+        int timer_rc = -1;
+        int join_rc = -1;
+        int ret = -1;
+        if (0 == sig_rc) {
+            struct itimerval timer = { 0 };
+            timer.it_value.tv_usec = 50000;
+            timer_rc = setitimer(ITIMER_REAL, &timer, NULL);
+
+            if (0 == timer_rc) { join_rc = _cex_subprocess_join(&c._subpr, &ret); }
+
+            struct itimerval disarm = { 0 };
+            setitimer(ITIMER_REAL, &disarm, NULL);
+            sigaction(SIGALRM, &old, NULL);
+        }
+
+        if (join_rc != 0) {
+            if (os.cmd.kill(&c)) {}
+            if (os.cmd.wait(&c, 1, 0)) {}
+        } else {
+            _cex_subprocess_destroy(&c._subpr);
+        }
+
+        tassert_eq(0, sig_rc);
+        tassert_eq(0, timer_rc);
+        tassert_eq(0, join_rc);
+        tassert_eq(0, ret);
+    }
+    return EOK;
+#endif
+}
+
+test$case(os_cmd_join_echild)
+{
+#if defined(_WIN32)
+    return EOK;
+#else
+    os_cmd_c c = { 0 };
+    mem$scope(tmem$, _)
+    {
+        arr$(char*) args = arr$new(args, _);
+        arr$pushm(args, test_app("sleep_ms", _), "100", NULL);
+        tassert_er(EOK, os.cmd.create(&c, args, arr$len(args), NULL));
+
+        int status = 0;
+        tassert_eq(c._subpr.child, waitpid(c._subpr.child, &status, 0));
+
+        int ret = 123;
+        errno = 0;
+        int rc = _cex_subprocess_join(&c._subpr, &ret);
+        int saved_errno = errno;
+        pid_t child = c._subpr.child;
+        int alive = c._subpr.alive;
+        int return_status = c._subpr.return_status;
+
+        _cex_subprocess_destroy(&c._subpr);
+
+        tassert_eq(-1, rc);
+        tassert_eq(ECHILD, saved_errno);
+        tassert_eq(0, child);
+        tassert_eq(0, alive);
+        tassert_eq(EXIT_FAILURE, return_status);
+        tassert_eq(123, ret);
+    }
+    return EOK;
+#endif
+}
+
+test$case(os_cmd_join_clears_alive)
+{
+    struct _cex_subprocess_s p = { .alive = 1 };
+    int ret = 123;
+    int rc = _cex_subprocess_join(&p, &ret);
+    int alive = p.alive;
+#if !defined(_WIN32)
+    pid_t child = p.child;
+#endif
+
+    tassert_eq(0, rc);
+    tassert_eq(0, alive);
+#if !defined(_WIN32)
+    tassert_eq(0, child);
+    tassert_eq(0, ret);
+#endif
+    return EOK;
+}
+
+test$case(os_cmd_terminate_no_process)
+{
+#if defined(_WIN32)
+    struct _cex_subprocess_s p = { .alive = 1 };
+    tassert_eq(-1, _cex_subprocess_terminate(&p));
+    return EOK;
+#else
+    const char* valgrind = getenv("CEX_VALGRIND");
+    if (valgrind && valgrind[0] == '1') { return EOK; } // valgrind error-exitcode overrides the forked child status
+    pid_t child = fork();
+    tassert(child >= 0);
+    if (child == 0) {
+        if (0 != setpgid(0, 0)) { _exit(2); }
+        struct _cex_subprocess_s p = { .alive = 1, .child = 0 };
+        _exit(-1 == _cex_subprocess_terminate(&p) ? 0 : 1);
+    }
+
+    int status = 0;
+    tassert_eq(child, waitpid(child, &status, 0));
+    tassert(WIFEXITED(status));
+    tassert_eq(0, WEXITSTATUS(status));
+    return EOK;
+#endif
+}
+
+test$case(os_cmd_terminate_already_gone)
+{
+#if defined(_WIN32)
+    return EOK;
+#else
+    struct _cex_subprocess_s p = { .alive = 1, .child = INT_MAX };
+    tassert_eq(0, _cex_subprocess_terminate(&p));
+    return EOK;
+#endif
+}
+
+test$case(os_cmd_alive_after_external_reap)
+{
+#if defined(_WIN32)
+    return EOK;
+#else
+    os_cmd_c c = { 0 };
+    mem$scope(tmem$, _)
+    {
+        arr$(char*) args = arr$new(args, _);
+        arr$pushm(args, test_app("sleep_ms", _), "100", NULL);
+        tassert_er(EOK, os.cmd.create(&c, args, arr$len(args), NULL));
+
+        int status = 0;
+        tassert_eq(c._subpr.child, waitpid(c._subpr.child, &status, 0));
+
+        int alive_rc = _cex_subprocess_alive(&c._subpr);
+        pid_t child = c._subpr.child;
+        int alive = c._subpr.alive;
+        int return_status = c._subpr.return_status;
+
+        _cex_subprocess_destroy(&c._subpr);
+
+        tassert_eq(0, alive_rc);
+        tassert_eq(0, child);
+        tassert_eq(0, alive);
+        tassert_eq(EXIT_FAILURE, return_status);
+    }
+    return EOK;
+#endif
+}
+
+test$case(os_cmd_alive_closes_stdin)
+{
+    os_cmd_c c = { 0 };
+    mem$scope(tmem$, _)
+    {
+        arr$(char*) args = arr$new(args, _);
+        arr$pushm(args, test_app("sleep_ms", _), "100", NULL);
+        tassert_er(EOK, os.cmd.create(&c, args, arr$len(args), NULL));
+
+        int spins = 0;
+        while (os.cmd.is_alive(&c) && spins++ < 500) { os.sleep(0.01); }
+        tassert(spins < 500);
+
+        tassert(os.cmd.fstdin(&c) == NULL);
+        tassert(os.cmd.fstdout(&c) != NULL);
+
+        tassert_er(EOK, os.cmd.wait(&c, 1, 0));
     }
     return EOK;
 }
