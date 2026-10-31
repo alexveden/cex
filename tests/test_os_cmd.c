@@ -713,6 +713,21 @@ test$case(os_cmd_create_failure_no_fd_leak)
 test$case(os_cmd_create_spawn_error_state)
 {
 #if defined(_WIN32)
+    struct _cex_subprocess_s p = { .alive = 1, .hProcess = (void*)1 };
+    const char* args[] = { "cex_no_such_command_xyz", NULL };
+    SetLastError(0);
+    int rc = _cex_subprocess_create(args, 0, &p);
+
+    tassert_eq(-1, rc);
+    tassert(GetLastError() != 0);
+    tassert_eq(0, p.alive);
+    tassert(p.hProcess == NULL);
+    tassert(p.hStdInput == NULL);
+    tassert(p.hEventOutput == NULL);
+    tassert(p.hEventError == NULL);
+    tassert(p.stdin_file == NULL);
+    tassert(p.stdout_file == NULL);
+    tassert(p.stderr_file == NULL);
     return EOK;
 #else
     const char* valgrind = getenv("CEX_VALGRIND");
@@ -764,6 +779,24 @@ test$case(os_cmd_create_eacces_no_fd_leak)
 test$case(os_cmd_create_inherit_env_mismatch)
 {
 #if defined(_WIN32)
+    struct _cex_subprocess_s p = { .alive = 1, .hProcess = (void*)1 };
+    const char* args[] = { "true", NULL };
+    const char* env[] = { "FOO=bar", NULL };
+    SetLastError(0);
+    int rc = _cex_subprocess_create_ex(
+        args, _cex_subprocess_option_inherit_environment, env, &p
+    );
+
+    tassert_eq(-1, rc);
+    tassert_eq(ERROR_INVALID_PARAMETER, GetLastError());
+    tassert_eq(0, p.alive);
+    tassert(p.hProcess == NULL);
+    tassert(p.hStdInput == NULL);
+    tassert(p.hEventOutput == NULL);
+    tassert(p.hEventError == NULL);
+    tassert(p.stdin_file == NULL);
+    tassert(p.stdout_file == NULL);
+    tassert(p.stderr_file == NULL);
     return EOK;
 #else
     struct _cex_subprocess_s p = { .alive = 1, .child = 123 };
@@ -841,6 +874,26 @@ test$case(os_cmd_child_does_not_inherit_pipes)
 test$case(os_cmd_destroy_partial_state)
 {
 #if defined(_WIN32)
+    struct _cex_subprocess_s p = { 0 };
+    tassert_eq(0, _cex_subprocess_destroy(&p));
+
+    HANDLE h1 = CreateEventA(NULL, 1, 1, NULL);
+    HANDLE h2 = CreateEventA(NULL, 1, 1, NULL);
+    HANDLE h3 = CreateEventA(NULL, 1, 1, NULL);
+    tassert(h1 != NULL && h2 != NULL && h3 != NULL);
+
+    p = (struct _cex_subprocess_s){
+        .hStdInput = h1,
+        .hEventOutput = h2,
+        .hEventError = h3,
+    };
+    tassert_eq(0, _cex_subprocess_destroy(&p));
+    tassert(p.hStdInput == NULL);
+    tassert(p.hEventOutput == NULL);
+    tassert(p.hEventError == NULL);
+    tassert_eq(0, CloseHandle(h1));
+    tassert_eq(0, CloseHandle(h2));
+    tassert_eq(0, CloseHandle(h3));
     return EOK;
 #else
     struct _cex_subprocess_s p = { 0 };
@@ -887,6 +940,48 @@ test$case(os_cmd_destroy_partial_state)
     close(probe4);
     close(probe5);
 
+    return EOK;
+#endif
+}
+
+test$case(os_cmd_create_failure_no_handle_leak)
+{
+#if defined(_WIN32)
+    DWORD before = 0;
+    DWORD after = 0;
+    char* args[] = { "cex_no_such_command_xyz", NULL };
+    os_cmd_flags_s flags = { .no_search_path = 1 };
+
+    os_cmd_c warmup = { 0 };
+    tassert_ne(EOK, os.cmd.create(&warmup, args, 2, &flags));
+
+    tassert(GetProcessHandleCount(GetCurrentProcess(), &before));
+    for (int i = 0; i < 10; i++) {
+        os_cmd_c c = { 0 };
+        tassert_ne(EOK, os.cmd.create(&c, args, 2, &flags));
+    }
+    tassert(GetProcessHandleCount(GetCurrentProcess(), &after));
+    tassert_le(after, before);
+    return EOK;
+#else
+    return EOK;
+#endif
+}
+
+test$case(os_cmd_create_success_clears_hstdin)
+{
+#if defined(_WIN32)
+    os_cmd_c c = { 0 };
+    mem$scope(tmem$, _)
+    {
+        arr$(char*) args = arr$new(args, _);
+        arr$pushm(args, test_app("sleep_ms", _), "100", NULL);
+        tassert_er(EOK, os.cmd.create(&c, args, arr$len(args), NULL));
+        tassert(c._subpr.hStdInput == NULL);
+        tassert_er(EOK, os.cmd.wait(&c, 1, 0));
+    }
+    return EOK;
+#else
     return EOK;
 #endif
 }

@@ -274,6 +274,7 @@ struct _cex_subprocess_overlapped_s {
 
 _CEX_SUBPROCESS_DLLIMPORT int __cdecl _fileno(FILE *);
 _CEX_SUBPROCESS_DLLIMPORT int __cdecl _open_osfhandle(_cex_subprocess_intptr_t, int);
+_CEX_SUBPROCESS_DLLIMPORT int __cdecl _close(int);
 _CEX_SUBPROCESS_DLLIMPORT _cex_subprocess_intptr_t __cdecl _get_osfhandle(int);
 
 #ifndef __MINGW32__

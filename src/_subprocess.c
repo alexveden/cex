@@ -27,6 +27,7 @@ int _cex_subprocess_create_named_pipe_helper(void **rd, void **wr) {
   char name[256] = {0};
   static _cex_subprocess_tls long index = 0;
   const long unique = index++;
+  unsigned long saved_error = 0;
 
 #if defined(_MSC_VER) && _MSC_VER < 1900
 #pragma warning(push, 1)
@@ -47,6 +48,8 @@ int _cex_subprocess_create_named_pipe_helper(void **rd, void **wr) {
                        _CEX_SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr));
 
   if (invalidHandleValue == *rd) {
+    *rd = _CEX_SUBPROCESS_NULL;
+    *wr = _CEX_SUBPROCESS_NULL;
     return -1;
   }
 
@@ -55,6 +58,11 @@ int _cex_subprocess_create_named_pipe_helper(void **rd, void **wr) {
                     openExisting, fileAttributeNormal, _CEX_SUBPROCESS_NULL);
 
   if (invalidHandleValue == *wr) {
+    saved_error = GetLastError();
+    CloseHandle(*rd);
+    *rd = _CEX_SUBPROCESS_NULL;
+    *wr = _CEX_SUBPROCESS_NULL;
+    SetLastError(saved_error);
     return -1;
   }
 
@@ -106,12 +114,18 @@ int _cex_subprocess_create_ex(const char *const commandLine[], int options,
                          struct _cex_subprocess_s *const out_process) {
 #if defined(_WIN32)
   int fd;
-  void *rd, *wr;
+  void *stdin_rd = _CEX_SUBPROCESS_NULL;
+  void *stdin_wr = _CEX_SUBPROCESS_NULL;
+  void *stdout_rd = _CEX_SUBPROCESS_NULL;
+  void *stdout_wr = _CEX_SUBPROCESS_NULL;
+  void *stderr_rd = _CEX_SUBPROCESS_NULL;
+  void *stderr_wr = _CEX_SUBPROCESS_NULL;
   char *commandLineCombined;
   _cex_subprocess_size_t len;
   int i, j;
   int need_quoting;
   unsigned long flags = 0;
+  unsigned long saved_error = 0;
   const unsigned long startFUseStdHandles = 0x00000100;
   const unsigned long handleFlagInherit = 0x00000001;
   const unsigned long createNoWindow = 0x08000000;
@@ -137,6 +151,8 @@ int _cex_subprocess_create_ex(const char *const commandLine[], int options,
                                                 _CEX_SUBPROCESS_NULL,
                                                 _CEX_SUBPROCESS_NULL,
                                                 _CEX_SUBPROCESS_NULL};
+
+  memset(out_process, 0, sizeof(*out_process));
 
   startInfo.cb = sizeof(startInfo);
   startInfo.dwFlags = startFUseStdHandles;
@@ -181,57 +197,72 @@ int _cex_subprocess_create_ex(const char *const commandLine[], int options,
     }
   } else {
     if (_CEX_SUBPROCESS_NULL != environment) {
-      return -1;
+      SetLastError(ERROR_INVALID_PARAMETER);
+      goto fail;
     }
   }
 
-  if (!CreatePipe(&rd, &wr, _CEX_SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr),
-                  0)) {
-    return -1;
+  if (!CreatePipe(&stdin_rd, &stdin_wr,
+                  _CEX_SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr), 0)) {
+    goto fail;
   }
 
-  if (!SetHandleInformation(wr, handleFlagInherit, 0)) {
-    return -1;
+  if (!SetHandleInformation(stdin_wr, handleFlagInherit, 0)) {
+    goto fail;
   }
 
-  fd = _open_osfhandle(_CEX_SUBPROCESS_PTR_CAST(_cex_subprocess_intptr_t, wr), 0);
+  fd = _open_osfhandle(_CEX_SUBPROCESS_PTR_CAST(_cex_subprocess_intptr_t, stdin_wr), 0);
 
-  if (-1 != fd) {
-    out_process->stdin_file = _fdopen(fd, "wb");
-
-    if (_CEX_SUBPROCESS_NULL == out_process->stdin_file) {
-      return -1;
-    }
+  if (-1 == fd) {
+    SetLastError(ERROR_TOO_MANY_OPEN_FILES);
+    goto fail;
   }
 
-  startInfo.hStdInput = rd;
+  stdin_wr = _CEX_SUBPROCESS_NULL;
+
+  out_process->stdin_file = _fdopen(fd, "wb");
+
+  if (_CEX_SUBPROCESS_NULL == out_process->stdin_file) {
+    _close(fd);
+    SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+    goto fail;
+  }
+
+  startInfo.hStdInput = stdin_rd;
 
   if (options & _cex_subprocess_option_enable_async) {
-    if (_cex_subprocess_create_named_pipe_helper(&rd, &wr)) {
-      return -1;
+    if (_cex_subprocess_create_named_pipe_helper(&stdout_rd, &stdout_wr)) {
+      goto fail;
     }
   } else {
-    if (!CreatePipe(&rd, &wr,
+    if (!CreatePipe(&stdout_rd, &stdout_wr,
                     _CEX_SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr), 0)) {
-      return -1;
+      goto fail;
     }
   }
 
-  if (!SetHandleInformation(rd, handleFlagInherit, 0)) {
-    return -1;
+  if (!SetHandleInformation(stdout_rd, handleFlagInherit, 0)) {
+    goto fail;
   }
 
-  fd = _open_osfhandle(_CEX_SUBPROCESS_PTR_CAST(_cex_subprocess_intptr_t, rd), 0);
+  fd = _open_osfhandle(_CEX_SUBPROCESS_PTR_CAST(_cex_subprocess_intptr_t, stdout_rd), 0);
 
-  if (-1 != fd) {
-    out_process->stdout_file = _fdopen(fd, "rb");
-
-    if (_CEX_SUBPROCESS_NULL == out_process->stdout_file) {
-      return -1;
-    }
+  if (-1 == fd) {
+    SetLastError(ERROR_TOO_MANY_OPEN_FILES);
+    goto fail;
   }
 
-  startInfo.hStdOutput = wr;
+  stdout_rd = _CEX_SUBPROCESS_NULL;
+
+  out_process->stdout_file = _fdopen(fd, "rb");
+
+  if (_CEX_SUBPROCESS_NULL == out_process->stdout_file) {
+    _close(fd);
+    SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+    goto fail;
+  }
+
+  startInfo.hStdOutput = stdout_wr;
 
   if (_cex_subprocess_option_combined_stdout_stderr ==
       (options & _cex_subprocess_option_combined_stdout_stderr)) {
@@ -239,40 +270,56 @@ int _cex_subprocess_create_ex(const char *const commandLine[], int options,
     startInfo.hStdError = startInfo.hStdOutput;
   } else {
     if (options & _cex_subprocess_option_enable_async) {
-      if (_cex_subprocess_create_named_pipe_helper(&rd, &wr)) {
-        return -1;
+      if (_cex_subprocess_create_named_pipe_helper(&stderr_rd, &stderr_wr)) {
+        goto fail;
       }
     } else {
-      if (!CreatePipe(&rd, &wr,
+      if (!CreatePipe(&stderr_rd, &stderr_wr,
                       _CEX_SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr), 0)) {
-        return -1;
+        goto fail;
       }
     }
 
-    if (!SetHandleInformation(rd, handleFlagInherit, 0)) {
-      return -1;
+    if (!SetHandleInformation(stderr_rd, handleFlagInherit, 0)) {
+      goto fail;
     }
 
-    fd = _open_osfhandle(_CEX_SUBPROCESS_PTR_CAST(_cex_subprocess_intptr_t, rd), 0);
+    fd = _open_osfhandle(_CEX_SUBPROCESS_PTR_CAST(_cex_subprocess_intptr_t, stderr_rd), 0);
 
-    if (-1 != fd) {
-      out_process->stderr_file = _fdopen(fd, "rb");
-
-      if (_CEX_SUBPROCESS_NULL == out_process->stderr_file) {
-        return -1;
-      }
+    if (-1 == fd) {
+      SetLastError(ERROR_TOO_MANY_OPEN_FILES);
+      goto fail;
     }
 
-    startInfo.hStdError = wr;
+    stderr_rd = _CEX_SUBPROCESS_NULL;
+
+    out_process->stderr_file = _fdopen(fd, "rb");
+
+    if (_CEX_SUBPROCESS_NULL == out_process->stderr_file) {
+      _close(fd);
+      SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+      goto fail;
+    }
+
+    startInfo.hStdError = stderr_wr;
   }
 
   if (options & _cex_subprocess_option_enable_async) {
     out_process->hEventOutput =
         CreateEventA(_CEX_SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr), 1, 1,
                      _CEX_SUBPROCESS_NULL);
+
+    if (!out_process->hEventOutput) {
+      goto fail;
+    }
+
     out_process->hEventError =
         CreateEventA(_CEX_SUBPROCESS_PTR_CAST(LPSECURITY_ATTRIBUTES, &saAttr), 1, 1,
                      _CEX_SUBPROCESS_NULL);
+
+    if (!out_process->hEventError) {
+      goto fail;
+    }
   } else {
     out_process->hEventOutput = _CEX_SUBPROCESS_NULL;
     out_process->hEventError = _CEX_SUBPROCESS_NULL;
@@ -310,7 +357,8 @@ int _cex_subprocess_create_ex(const char *const commandLine[], int options,
   commandLineCombined = _CEX_SUBPROCESS_CAST(char *, _alloca(len));
 
   if (!commandLineCombined) {
-    return -1;
+    SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+    goto fail;
   }
 
   // Gonna re-use len to store the write index into commandLineCombined
@@ -363,27 +411,61 @@ int _cex_subprocess_create_ex(const char *const commandLine[], int options,
           _CEX_SUBPROCESS_PTR_CAST(LPSTARTUPINFOA,
                               &startInfo), // STARTUPINFO pointer
           _CEX_SUBPROCESS_PTR_CAST(LPPROCESS_INFORMATION, &processInfo))) {
-    return -1;
+    goto fail;
   }
 
   out_process->hProcess = processInfo.hProcess;
 
-  out_process->hStdInput = startInfo.hStdInput;
-
   // We don't need the handle of the primary thread in the called process.
   CloseHandle(processInfo.hThread);
 
-  if (_CEX_SUBPROCESS_NULL != startInfo.hStdOutput) {
-    CloseHandle(startInfo.hStdOutput);
-
-    if (startInfo.hStdError != startInfo.hStdOutput) {
-      CloseHandle(startInfo.hStdError);
-    }
+  if (stdin_rd) {
+    CloseHandle(stdin_rd);
+    stdin_rd = _CEX_SUBPROCESS_NULL;
   }
+  startInfo.hStdInput = _CEX_SUBPROCESS_NULL;
+
+  if (stdout_wr) {
+    CloseHandle(stdout_wr);
+  }
+  if (stderr_wr && stderr_wr != stdout_wr) {
+    CloseHandle(stderr_wr);
+  }
+  stdout_wr = _CEX_SUBPROCESS_NULL;
+  stderr_wr = _CEX_SUBPROCESS_NULL;
+  startInfo.hStdOutput = _CEX_SUBPROCESS_NULL;
+  startInfo.hStdError = _CEX_SUBPROCESS_NULL;
+
+  out_process->hStdInput = _CEX_SUBPROCESS_NULL;
 
   out_process->alive = 1;
 
   return 0;
+
+fail:
+  saved_error = GetLastError();
+  _cex_subprocess_destroy(out_process);
+  if (stdin_rd) {
+    CloseHandle(stdin_rd);
+  }
+  if (stdin_wr) {
+    CloseHandle(stdin_wr);
+  }
+  if (stdout_rd) {
+    CloseHandle(stdout_rd);
+  }
+  if (stdout_wr) {
+    CloseHandle(stdout_wr);
+  }
+  if (stderr_rd) {
+    CloseHandle(stderr_rd);
+  }
+  if (stderr_wr) {
+    CloseHandle(stderr_wr);
+  }
+  memset(out_process, 0, sizeof(*out_process));
+  SetLastError(saved_error);
+  return -1;
 #    elif defined(__EMSCRIPTEN__)
   (void)commandLine;
   (void)environment;
@@ -712,21 +794,24 @@ int _cex_subprocess_destroy(struct _cex_subprocess_s *const process) {
   }
 
 #if defined(_WIN32)
+  if (process->hStdInput) {
+    CloseHandle(process->hStdInput);
+    process->hStdInput = _CEX_SUBPROCESS_NULL;
+  }
+
+  if (process->hEventOutput) {
+    CloseHandle(process->hEventOutput);
+    process->hEventOutput = _CEX_SUBPROCESS_NULL;
+  }
+
+  if (process->hEventError) {
+    CloseHandle(process->hEventError);
+    process->hEventError = _CEX_SUBPROCESS_NULL;
+  }
+
   if (process->hProcess) {
     CloseHandle(process->hProcess);
     process->hProcess = _CEX_SUBPROCESS_NULL;
-
-    if (process->hStdInput) {
-      CloseHandle(process->hStdInput);
-    }
-
-    if (process->hEventOutput) {
-      CloseHandle(process->hEventOutput);
-    }
-
-    if (process->hEventError) {
-      CloseHandle(process->hEventError);
-    }
   }
 #endif
 

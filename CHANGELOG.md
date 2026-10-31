@@ -16,7 +16,11 @@
 - fix(os): `os.cmd` lifecycle hardened - `join`/`is_alive` retry `EINTR`, settle `ECHILD`, never `waitpid(0/-1)`, and always clear `alive`; `kill` rejects invalid pids and treats `ESRCH` as success; Windows `is_alive` closes stdin on exit
 - fix(os): `os.cmd.ret_code()` reports the exit code after `os.cmd.is_alive()` returns false or `os.cmd.kill()` finds the process already finished; `-1` still means active or not yet harvested
 - fix(os): `os.cmd.kill()` reports `EXIT_FAILURE` through `os.cmd.ret_code()` on Windows too, matching POSIX
+- fix(os): Windows `os.cmd` create/destroy close every pipe, handle, and event on failure, zero the subprocess state, and preserve `GetLastError`
+- fix(os): Windows `os.cmd` closes the child stdin handle after spawn and `_cex_subprocess_destroy()` closes each handle independently of `hProcess`
+- fix(os): Windows `os.cmd` checks async event creation and the named-pipe helper closes its pipe on failure
 - test(os): `os.cmd` fd-leak, CLOEXEC, fault-injection, EINTR, ECHILD, and invalid-pid coverage
+- test(os): Windows `os.cmd` handle-leak, spawn-error state, `hStdInput`, partial-destroy, and inherit-env mismatch coverage
 
 ## 0.70
 2026-10-04

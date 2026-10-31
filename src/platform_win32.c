@@ -146,8 +146,17 @@ typedef OVERLAPPED* LPOVERLAPPED;
 #ifndef ERROR_PATH_NOT_FOUND
 #define ERROR_PATH_NOT_FOUND 3L
 #endif
+#ifndef ERROR_TOO_MANY_OPEN_FILES
+#define ERROR_TOO_MANY_OPEN_FILES 4L
+#endif
 #ifndef ERROR_ACCESS_DENIED
 #define ERROR_ACCESS_DENIED  5L
+#endif
+#ifndef ERROR_NOT_ENOUGH_MEMORY
+#define ERROR_NOT_ENOUGH_MEMORY 8L
+#endif
+#ifndef ERROR_INVALID_PARAMETER
+#define ERROR_INVALID_PARAMETER 87L
 #endif
 #ifndef ERROR_MR_MID_NOT_FOUND
 #define ERROR_MR_MID_NOT_FOUND 317L
@@ -198,9 +207,12 @@ typedef OVERLAPPED* LPOVERLAPPED;
 
 // --- kernel32.dll ---
 __declspec(dllimport) DWORD    __stdcall GetLastError(void);
+__declspec(dllimport) void     __stdcall SetLastError(DWORD dwErrCode);
 __declspec(dllimport) void     __stdcall Sleep(DWORD milliseconds);
 __declspec(dllimport) DWORD    __stdcall GetCurrentProcessId(void);
 __declspec(dllimport) DWORD    __stdcall GetCurrentThreadId(void);
+__declspec(dllimport) HANDLE   __stdcall GetCurrentProcess(void);
+__declspec(dllimport) BOOL     __stdcall GetProcessHandleCount(HANDLE, DWORD*);
 __declspec(dllimport) HANDLE   __stdcall GetStdHandle(DWORD nStdHandle);
 __declspec(dllimport) BOOL     __stdcall CloseHandle(HANDLE hObject);
 __declspec(dllimport) BOOL     __stdcall ReadFile(HANDLE, void*, DWORD, DWORD*, LPOVERLAPPED);
