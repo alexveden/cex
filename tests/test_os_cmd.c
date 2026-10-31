@@ -1,6 +1,22 @@
 #include "src/all.c"
 #include "src/all.h"
 
+#if defined(__SANITIZE_ADDRESS__)
+#    define TEST_OS_CMD_ASAN 1
+#elif defined(__clang__)
+#    if __has_feature(address_sanitizer)
+#        define TEST_OS_CMD_ASAN 1
+#    else
+#        define TEST_OS_CMD_ASAN 0
+#    endif
+#else
+#    define TEST_OS_CMD_ASAN 0
+#endif
+
+#if defined(__linux__)
+#    include <sys/resource.h>
+#endif
+
 #define TBUILDDIR "tests/build/os_cmd_test/"
 test$setup_case()
 {
@@ -306,6 +322,68 @@ test$case(os_cmd_create_no_search_path_not_found)
     return EOK;
 }
 
+#if !defined(_WIN32)
+static Exception
+os_cmd_create_failure_probe(os_cmd_flags_s flags)
+{
+    int probe = open("/dev/null", O_RDONLY);
+    tassert(probe >= 0);
+    close(probe);
+
+    os_cmd_c c = { 0 };
+    char* args[] = { "cex_no_such_command_xyz", NULL };
+    tassert_ne(EOK, os.cmd.create(&c, args, 2, &flags));
+
+    int n_fds = flags.combine_stdouterr ? 4 : 6;
+    int probes[6] = { -1 };
+    for (int i = 0; i < n_fds; i++) { probes[i] = open("/dev/null", O_RDONLY); }
+    for (int i = 0; i < n_fds; i++) {
+        if (probes[i] >= 0) { close(probes[i]); }
+    }
+    for (int i = 0; i < n_fds; i++) { tassert_eq(probe + i, probes[i]); }
+
+    tassert_eq(0, c._subpr.alive);
+    tassert_eq(0, c._subpr.child);
+    tassert(c._subpr.stdin_file == NULL);
+    tassert(c._subpr.stdout_file == NULL);
+    tassert(c._subpr.stderr_file == NULL);
+
+    return EOK;
+}
+
+static Exception
+os_cmd_pipes_are_cloexec_check(os_cmd_flags_s flags)
+{
+    os_cmd_c c = { 0 };
+    mem$scope(tmem$, _)
+    {
+        arr$(char*) args = arr$new(args, _);
+        arr$pushm(args, test_app("sleep", _), "1", NULL);
+        tassert_er(EOK, os.cmd.create(&c, args, arr$len(args), &flags));
+
+        if (flags.combine_stdouterr) {
+            tassert(os.cmd.fstderr(&c) == os.cmd.fstdout(&c));
+        }
+
+        int fds[] = {
+            fileno(os.cmd.fstdin(&c)),
+            fileno(os.cmd.fstdout(&c)),
+            fileno(os.cmd.fstderr(&c)),
+        };
+        for$each (fd, fds) {
+            tassert(fd >= 0);
+            int fd_flags = fcntl(fd, F_GETFD);
+            tassert(fd_flags >= 0);
+            tassert(fd_flags & FD_CLOEXEC);
+        }
+
+        tassert_er(EOK, os.cmd.kill(&c));
+        tassert_er(Error.runtime, os.cmd.wait(&c, 1, 0));
+    }
+    return EOK;
+}
+#endif
+
 test$case(os_cmd_create_failure_no_fd_leak)
 {
 #if defined(_WIN32)
@@ -313,13 +391,54 @@ test$case(os_cmd_create_failure_no_fd_leak)
 #else
     const char* valgrind = getenv("CEX_VALGRIND");
     if (valgrind && valgrind[0] == '1') { return EOK; } // valgrind posix_spawn doesn't propagate ENOENT
+    e$ret(os_cmd_create_failure_probe((os_cmd_flags_s){ 0 }));
+    e$ret(os_cmd_create_failure_probe((os_cmd_flags_s){ .combine_stdouterr = 1 }));
+    return EOK;
+#endif
+}
+
+test$case(os_cmd_create_spawn_error_state)
+{
+#if defined(_WIN32)
+    return EOK;
+#else
+    const char* valgrind = getenv("CEX_VALGRIND");
+    if (valgrind && valgrind[0] == '1') { return EOK; } // valgrind posix_spawn doesn't propagate ENOENT
+
+    struct _cex_subprocess_s p = { .alive = 1, .child = 123 };
+    const char* args[] = { "cex_no_such_command_xyz", NULL };
+    errno = 0;
+    int rc = _cex_subprocess_create(args, 0, &p);
+
+    tassert_eq(-1, rc);
+    tassert_eq(ENOENT, errno);
+    tassert_eq(0, p.alive);
+    tassert_eq(0, p.child);
+    tassert(p.stdin_file == NULL);
+    tassert(p.stdout_file == NULL);
+    tassert(p.stderr_file == NULL);
+    return EOK;
+#endif
+}
+
+test$case(os_cmd_create_eacces_no_fd_leak)
+{
+#if defined(_WIN32)
+    return EOK;
+#else
+    const char* valgrind = getenv("CEX_VALGRIND");
+    if (valgrind && valgrind[0] == '1') { return EOK; } // valgrind posix_spawn doesn't propagate spawn errors
+    e$ret(io.file.save(TBUILDDIR "not_exec", "test"));
+
     int probe = open("/dev/null", O_RDONLY);
     tassert(probe >= 0);
     close(probe);
 
     os_cmd_c c = { 0 };
-    char* args[] = { "cex_no_such_command_xyz", NULL };
-    tassert_ne(EOK, os.cmd.create(&c, args, 2, NULL));
+    char* args[] = { TBUILDDIR "not_exec", NULL };
+    os_cmd_flags_s flags = { .no_search_path = 1 };
+    tassert_ne(EOK, os.cmd.create(&c, args, 2, &flags));
+    tassert_eq(EACCES, errno);
 
     int probe_after = open("/dev/null", O_RDONLY);
     tassert(probe_after >= 0);
@@ -329,33 +448,197 @@ test$case(os_cmd_create_failure_no_fd_leak)
 #endif
 }
 
+test$case(os_cmd_create_inherit_env_mismatch)
+{
+#if defined(_WIN32)
+    return EOK;
+#else
+    struct _cex_subprocess_s p = { .alive = 1, .child = 123 };
+    const char* args[] = { "true", NULL };
+    const char* env[] = { "FOO=bar", NULL };
+    errno = 0;
+    int rc = _cex_subprocess_create_ex(
+        args, _cex_subprocess_option_inherit_environment, env, &p
+    );
+
+    tassert_eq(-1, rc);
+    tassert_eq(EINVAL, errno);
+    tassert_eq(0, p.alive);
+    tassert_eq(0, p.child);
+    tassert(p.stdin_file == NULL);
+    tassert(p.stdout_file == NULL);
+    tassert(p.stderr_file == NULL);
+    return EOK;
+#endif
+}
+
 test$case(os_cmd_pipes_are_cloexec)
 {
 #if defined(_WIN32)
     return EOK;
 #else
-    os_cmd_c c = { 0 };
+    e$ret(os_cmd_pipes_are_cloexec_check((os_cmd_flags_s){ 0 }));
+    e$ret(os_cmd_pipes_are_cloexec_check((os_cmd_flags_s){ .combine_stdouterr = 1 }));
+    return EOK;
+#endif
+}
+
+test$case(os_cmd_child_does_not_inherit_pipes)
+{
+#if defined(_WIN32)
+    return EOK;
+#else
+    os_cmd_c sleeper = { 0 };
+    os_cmd_c checker = { 0 };
     mem$scope(tmem$, _)
     {
-        arr$(char*) args = arr$new(args, _);
-        arr$pushm(args, test_app("sleep", _), "1", NULL);
-        tassert_er(EOK, os.cmd.create(&c, args, arr$len(args), NULL));
+        arr$(char*) sleep_args = arr$new(sleep_args, _);
+        arr$pushm(sleep_args, test_app("sleep", _), "10", NULL);
+        tassert_er(EOK, os.cmd.create(&sleeper, sleep_args, arr$len(sleep_args), NULL));
 
         int fds[] = {
-            fileno(os.cmd.fstdin(&c)),
-            fileno(os.cmd.fstdout(&c)),
-            fileno(os.cmd.fstderr(&c)),
+            fileno(os.cmd.fstdin(&sleeper)),
+            fileno(os.cmd.fstdout(&sleeper)),
+            fileno(os.cmd.fstderr(&sleeper)),
         };
-        for$each (fd, fds) {
-            tassert(fd >= 0);
-            int flags = fcntl(fd, F_GETFD);
-            tassert(flags >= 0);
-            tassert(flags & FD_CLOEXEC);
+        tassert(fds[0] >= 0);
+        tassert(fds[1] >= 0);
+        tassert(fds[2] >= 0);
+
+        char fd_str[3][16];
+        arr$(char*) check_args = arr$new(check_args, _);
+        arr$push(check_args, test_app("check_fds", _));
+        for (usize i = 0; i < arr$len(fds); i++) {
+            snprintf(fd_str[i], sizeof(fd_str[i]), "%d", fds[i]);
+            arr$push(check_args, fd_str[i]);
+        }
+        arr$push(check_args, NULL);
+
+        tassert_er(EOK, os.cmd.create(&checker, check_args, arr$len(check_args), NULL));
+        tassert_er(EOK, os.cmd.wait(&checker, 1, 0));
+        tassert_eq(0, os.cmd.ret_code(&checker));
+
+        tassert_er(EOK, os.cmd.kill(&sleeper));
+        tassert_er(Error.runtime, os.cmd.wait(&sleeper, 1, 0));
+    }
+    return EOK;
+#endif
+}
+
+test$case(os_cmd_destroy_partial_state)
+{
+#if defined(_WIN32)
+    return EOK;
+#else
+    struct _cex_subprocess_s p = { 0 };
+    tassert_eq(0, _cex_subprocess_destroy(&p));
+
+    FILE* f1 = fopen("/dev/null", "rb");
+    tassert(f1 != NULL);
+    int fd1 = fileno(f1);
+    p = (struct _cex_subprocess_s){ .stdout_file = f1 };
+    tassert_eq(0, _cex_subprocess_destroy(&p));
+    int probe1 = open("/dev/null", O_RDONLY);
+    tassert_eq(fd1, probe1);
+    close(probe1);
+
+    FILE* f2 = fopen("/dev/null", "rb");
+    tassert(f2 != NULL);
+    int fd2 = fileno(f2);
+    p = (struct _cex_subprocess_s){ .stderr_file = f2 };
+    tassert_eq(0, _cex_subprocess_destroy(&p));
+    int probe2 = open("/dev/null", O_RDONLY);
+    tassert_eq(fd2, probe2);
+    close(probe2);
+
+    FILE* f3 = fopen("/dev/null", "rb");
+    tassert(f3 != NULL);
+    int fd3 = fileno(f3);
+    p = (struct _cex_subprocess_s){ .stdout_file = f3, .stderr_file = f3 };
+    tassert_eq(0, _cex_subprocess_destroy(&p));
+    int probe3 = open("/dev/null", O_RDONLY);
+    tassert_eq(fd3, probe3);
+    close(probe3);
+
+    FILE* f4 = fopen("/dev/null", "rb");
+    FILE* f5 = fopen("/dev/null", "rb");
+    tassert(f4 != NULL && f5 != NULL);
+    int fd4 = fileno(f4);
+    int fd5 = fileno(f5);
+    p = (struct _cex_subprocess_s){ .stdout_file = f4, .stderr_file = f5 };
+    tassert_eq(0, _cex_subprocess_destroy(&p));
+    int probe4 = open("/dev/null", O_RDONLY);
+    int probe5 = open("/dev/null", O_RDONLY);
+    tassert_eq(fd4, probe4);
+    tassert_eq(fd5, probe5);
+    close(probe4);
+    close(probe5);
+
+    return EOK;
+#endif
+}
+
+test$case(os_cmd_pipe_failure_no_fd_leak)
+{
+#if defined(__linux__)
+    const char* valgrind = getenv("CEX_VALGRIND");
+    if (valgrind && valgrind[0] == '1') { return EOK; } // valgrind needs fds
+    if (TEST_OS_CMD_ASAN) { return EOK; }
+
+    pid_t pid = fork();
+    tassert(pid >= 0);
+    if (pid == 0) {
+        for (int fd = 3; fd < 1024; fd++) { close(fd); }
+
+        struct rlimit lim;
+        if (getrlimit(RLIMIT_NOFILE, &lim) != 0) { _exit(2); }
+        rlim_t hard = lim.rlim_max;
+
+        const char* args[] = { "sleep", "1", NULL };
+
+        lim.rlim_cur = 4;
+        lim.rlim_max = hard;
+        if (setrlimit(RLIMIT_NOFILE, &lim) != 0) { _exit(3); }
+        struct _cex_subprocess_s p1 = { 0 };
+        if (_cex_subprocess_create(args, _cex_subprocess_option_search_user_path, &p1) != -1) {
+            _exit(4);
+        }
+        errno = 0;
+        if (fcntl(3, F_GETFD) != -1 || errno != EBADF) { _exit(5); }
+
+        lim.rlim_cur = 5;
+        lim.rlim_max = hard;
+        if (setrlimit(RLIMIT_NOFILE, &lim) != 0) { _exit(6); }
+        struct _cex_subprocess_s p2 = { 0 };
+        if (_cex_subprocess_create(args, _cex_subprocess_option_search_user_path, &p2) != -1) {
+            _exit(7);
+        }
+        errno = 0;
+        if (fcntl(3, F_GETFD) != -1 || errno != EBADF) { _exit(8); }
+        errno = 0;
+        if (fcntl(4, F_GETFD) != -1 || errno != EBADF) { _exit(9); }
+
+        lim.rlim_cur = 7;
+        lim.rlim_max = hard;
+        if (setrlimit(RLIMIT_NOFILE, &lim) != 0) { _exit(10); }
+        struct _cex_subprocess_s p3 = { 0 };
+        if (_cex_subprocess_create(args, _cex_subprocess_option_search_user_path, &p3) != -1) {
+            _exit(11);
+        }
+        for (int fd = 3; fd <= 6; fd++) {
+            errno = 0;
+            if (fcntl(fd, F_GETFD) != -1 || errno != EBADF) { _exit(12); }
         }
 
-        tassert_er(EOK, os.cmd.kill(&c));
-        tassert_er(Error.runtime, os.cmd.wait(&c, 1, 0));
+        _exit(0);
     }
+
+    int status = 0;
+    tassert_eq(pid, waitpid(pid, &status, 0));
+    tassert(WIFEXITED(status));
+    tassertf(WEXITSTATUS(status) == 0, "child exit code %d", WEXITSTATUS(status));
+    return EOK;
+#else
     return EOK;
 #endif
 }
