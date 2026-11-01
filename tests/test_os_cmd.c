@@ -27,6 +27,12 @@ os_cmd_sigalrm_handler(int sig)
 {
     (void)sig;
 }
+
+static int
+os_cmd_probe_fd(void)
+{
+    return open("/dev/null", O_RDONLY);
+}
 #endif
 
 #define TBUILDDIR "tests/build/os_cmd_test/"
@@ -741,7 +747,7 @@ test$case(os_cmd_create_no_search_path_not_found)
 static Exception
 os_cmd_create_failure_probe(os_cmd_flags_s flags)
 {
-    int probe = open("/dev/null", O_RDONLY);
+    int probe = os_cmd_probe_fd();
     tassert(probe >= 0);
     close(probe);
 
@@ -751,7 +757,7 @@ os_cmd_create_failure_probe(os_cmd_flags_s flags)
 
     int n_fds = flags.combine_stdouterr ? 4 : 6;
     int probes[6] = { -1 };
-    for (int i = 0; i < n_fds; i++) { probes[i] = open("/dev/null", O_RDONLY); }
+    for (int i = 0; i < n_fds; i++) { probes[i] = os_cmd_probe_fd(); }
     for (int i = 0; i < n_fds; i++) {
         if (probes[i] >= 0) { close(probes[i]); }
     }
@@ -860,7 +866,7 @@ test$case(os_cmd_create_eacces_no_fd_leak)
     if (valgrind && valgrind[0] == '1') { return EOK; } // valgrind posix_spawn doesn't propagate spawn errors
     e$ret(io.file.save(TBUILDDIR "not_exec", "test"));
 
-    int probe = open("/dev/null", O_RDONLY);
+    int probe = os_cmd_probe_fd();
     tassert(probe >= 0);
     close(probe);
 
@@ -870,7 +876,7 @@ test$case(os_cmd_create_eacces_no_fd_leak)
     tassert_ne(EOK, os.cmd.create(&c, args, 2, &flags));
     tassert_eq(EACCES, errno);
 
-    int probe_after = open("/dev/null", O_RDONLY);
+    int probe_after = os_cmd_probe_fd();
     tassert(probe_after >= 0);
     tassert_eq(probe, probe_after);
     close(probe_after);
@@ -1006,7 +1012,7 @@ test$case(os_cmd_destroy_partial_state)
     int fd1 = fileno(f1);
     p = (struct _cex_subprocess_s){ .stdout_file = f1 };
     tassert_eq(0, _cex_subprocess_destroy(&p));
-    int probe1 = open("/dev/null", O_RDONLY);
+    int probe1 = os_cmd_probe_fd();
     tassert_eq(fd1, probe1);
     close(probe1);
 
@@ -1015,7 +1021,7 @@ test$case(os_cmd_destroy_partial_state)
     int fd2 = fileno(f2);
     p = (struct _cex_subprocess_s){ .stderr_file = f2 };
     tassert_eq(0, _cex_subprocess_destroy(&p));
-    int probe2 = open("/dev/null", O_RDONLY);
+    int probe2 = os_cmd_probe_fd();
     tassert_eq(fd2, probe2);
     close(probe2);
 
@@ -1024,7 +1030,7 @@ test$case(os_cmd_destroy_partial_state)
     int fd3 = fileno(f3);
     p = (struct _cex_subprocess_s){ .stdout_file = f3, .stderr_file = f3 };
     tassert_eq(0, _cex_subprocess_destroy(&p));
-    int probe3 = open("/dev/null", O_RDONLY);
+    int probe3 = os_cmd_probe_fd();
     tassert_eq(fd3, probe3);
     close(probe3);
 
@@ -1035,8 +1041,8 @@ test$case(os_cmd_destroy_partial_state)
     int fd5 = fileno(f5);
     p = (struct _cex_subprocess_s){ .stdout_file = f4, .stderr_file = f5 };
     tassert_eq(0, _cex_subprocess_destroy(&p));
-    int probe4 = open("/dev/null", O_RDONLY);
-    int probe5 = open("/dev/null", O_RDONLY);
+    int probe4 = os_cmd_probe_fd();
+    int probe5 = os_cmd_probe_fd();
     tassert_eq(fd4, probe4);
     tassert_eq(fd5, probe5);
     close(probe4);

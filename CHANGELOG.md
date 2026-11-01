@@ -24,6 +24,7 @@
 - test(os): `os.cmd` fd-leak, CLOEXEC, fault-injection, EINTR, ECHILD, invalid-pid, and live/partial reuse coverage
 - test(os): Windows `os.cmd` handle-leak, spawn-error state, `hStdInput`, partial-destroy, and inherit-env mismatch coverage
 - test(io): `test_fread_all_file_too_big` skips 32-bit `off_t` builds, where the >`INT32_MAX` file cannot be created
+- test(os): fd probes use a non-`optimize("O0")` helper, so GCC fortify no longer rejects the 2-arg `open()` in `test$case` functions
 - test(valgrind): suppress the valgrind 3.25+ `FdNotClosed` false positive for the test runner's stdout `dup2` restore
 
 ## 0.70
