@@ -1,0 +1,1 @@
+genhtml --quiet --synthesize-missing --ignore-errors inconsistent,mismatch,empty,unused,source,format,unsupported coverage-global.info -o coverage-html
